@@ -46,11 +46,11 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/nascheme/dhruva"
-Documentation = "https://github.com/nascheme/dhruva#readme"
-Repository = "https://github.com/nascheme/dhruva"
-"Source Code" = "https://github.com/nascheme/dhruva"
-"Bug Tracker" = "https://github.com/nascheme/dhruva/issues"
+Homepage = "https://github.com/lesleslie/dhruva"
+Documentation = "https://github.com/lesleslie/dhruva#readme"
+Repository = "https://github.com/lesleslie/dhruva"
+"Source Code" = "https://github.com/lesleslie/dhruva"
+"Bug Tracker" = "https://github.com/lesleslie/dhruva/issues"
 
 [project.scripts]
 dhruva = "dhruva.__main__:main"

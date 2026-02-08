@@ -39,7 +39,7 @@ Install dhruva in editable mode for development:
 
 ```bash
 # Clone repository
-git clone https://github.com/your-org/dhruva.git
+git clone https://github.com/lesleslie/dhruva.git
 cd dhruva
 
 # Create virtual environment
@@ -102,7 +102,7 @@ Cloud Native Buildpacks automatically detect your Python application and create 
 ./deployment/scripts/deploy.sh buildpack
 
 # Or manually with pack
-pack build ghcr.io/your-org/dhruva:5.0.0 \
+pack build ghcr.io/lesleslie/dhruva:5.0.0 \
     --builder paketobuildpacks/builder:base \
     --env BP_PYTHON_VERSION=3.13
 ```
@@ -129,7 +129,7 @@ docker run -d \
     -p 2972:2972 \
     -v dhruva-data:/data \
     -e PORT=2972 \
-    ghcr.io/your-org/dhruva:5.0.0
+    ghcr.io/lesleslie/dhruva:5.0.0
 ```
 
 ### Pushing to Registry
@@ -139,7 +139,7 @@ docker run -d \
 ./deployment/scripts/deploy.sh push-buildpack
 
 # Or manually
-docker push ghcr.io/your-org/dhruva:5.0.0
+docker push ghcr.io/lesleslie/dhruva:5.0.0
 ```
 
 ## Cloud Platform Deployment
@@ -183,15 +183,15 @@ kubectl logs -f deployment/dhruva-server -n dhruva
 
 ```bash
 # Build with Cloud Native Buildpacks
-pack build ghcr.io/your-org/dhruva:5.0.0 \
+pack build ghcr.io/lesleslie/dhruva:5.0.0 \
     --builder=gcr.io/buildpacks/builder:v1
 
 # Push to registry
-docker push ghcr.io/your-org/dhruva:5.0.0
+docker push ghcr.io/lesleslie/dhruva:5.0.0
 
 # Deploy to Cloud Run
 gcloud run deploy dhruva-server \
-    --image=ghcr.io/your-org/dhruva:5.0.0 \
+    --image=ghcr.io/lesleslie/dhruva:5.0.0 \
     --platform=managed \
     --region=us-central1 \
     --allow-unauthenticated \
@@ -522,7 +522,7 @@ kubectl logs deployment/dhruva-server -n dhruva --tail=100
 
 ```bash
 # Native installation (quickest)
-git clone https://github.com/your-org/dhruva.git
+git clone https://github.com/lesleslie/dhruva.git
 cd dhruva
 pip install -e .
 python -m dhruva.cli.server
