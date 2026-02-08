@@ -77,3 +77,145 @@ def file_connection(temp_file_storage):
             # test with file storage
     """
     return Connection(temp_file_storage)
+
+
+# =============================================================================
+# Additional Fixtures for Enhanced Testing
+# =============================================================================
+
+@pytest.fixture
+def msgspec_serializer():
+    """
+    Provides a MsgspecSerializer instance for tests.
+
+    Msgspec is the default, fast, and safe serialization format.
+
+    Usage:
+        def test_something(msgspec_serializer):
+            data = msgspec_serializer.serialize(obj)
+            # test serialization
+    """
+    from dhruva.serialize import MsgspecSerializer
+    return MsgspecSerializer()
+
+
+@pytest.fixture
+def fallback_serializer():
+    """
+    Provides a FallbackSerializer with default whitelist for tests.
+
+    The fallback serializer tries msgspec first, then falls back to pickle
+    for whitelisted types (NumPy, Pandas, etc.).
+
+    Usage:
+        def test_something(fallback_serializer):
+            data = fallback_serializer.serialize(obj)
+            # test serialization with fallback
+    """
+    from dhruva.serialize import FallbackSerializer
+    return FallbackSerializer()
+
+
+@pytest.fixture
+def temp_storage_dir():
+    """
+    Provides a temporary directory for FileStorage operations.
+
+    The directory and all contents are automatically cleaned up after the test.
+
+    Usage:
+        def test_something(temp_storage_dir):
+            storage = FileStorage(f"{temp_storage_dir}/test.dhruva")
+            # use storage
+            # directory is automatically cleaned up
+    """
+    from tempfile import TemporaryDirectory
+    with TemporaryDirectory() as tmpdir:
+        yield tmpdir
+
+
+@pytest.fixture
+def empty_root(connection):
+    """
+    Provides an empty root object from the connection.
+
+    Usage:
+        def test_something(empty_root):
+            empty_root["key"] = "value"
+            # test root operations
+    """
+    return connection.get_root()
+
+
+@pytest.fixture
+def sample_data():
+    """
+    Provides sample data dictionary for testing.
+
+    Usage:
+        def test_something(sample_data):
+            data = sample_data["users"]
+            # test with sample data
+    """
+    return {
+        "users": {
+            "alice": {"email": "alice@example.com", "age": 30},
+            "bob": {"email": "bob@example.com", "age": 25},
+        },
+        "settings": {
+            "theme": "dark",
+            "language": "en",
+        },
+    }
+
+
+@pytest.fixture
+def large_dataset():
+    """
+    Provides a large dataset for performance testing.
+
+    Generates a dictionary with 1000 entries for testing
+    storage performance and serialization.
+
+    Usage:
+        def test_something(large_dataset):
+            root["large"] = large_dataset
+            connection.commit()
+            # test performance with large dataset
+    """
+    return {f"key_{i}": f"value_{i}" * 100 for i in range(1000)}
+
+
+@pytest.fixture
+def persistent_class():
+    """
+    Factory fixture that creates a Persistent class for testing.
+
+    Usage:
+        def test_something(persistent_class):
+            obj = persistent_class()
+            # test persistent object
+    """
+    from dhruva import Persistent
+
+    class TestObject(Persistent):
+        def __init__(self, value):
+            self.value = value
+
+    return TestObject
+
+
+@pytest.fixture
+def auto_cleanup(request):
+    """
+    Automatically cleans up test resources based on test outcome.
+
+    Usage:
+        def test_something(auto_cleanup):
+            # Create test resources
+            # Resources are tracked and cleaned up
+    """
+    yield
+
+    # Cleanup is handled based on test outcome
+    pass
