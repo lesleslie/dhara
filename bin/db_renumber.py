@@ -5,7 +5,7 @@ This script creates a new storage with the oids of all instances,
 which makes FileStorage (when using the Shelf format) more compact
 and efficient for some operations.
 """
-from durus.connection import Connection
+from dhruva.connection import Connection
 from os.path import exists
 from tempfile import TemporaryFile
 import sys

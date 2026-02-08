@@ -1,3 +1,181 @@
 [build-system]
 requires = ["setuptools", "wheel"]
 
+[dependency-groups]
+dev = [
+    "crackerjack",
+    "onnxruntime>=1.20.0",
+]
+
+[tool.uv]
+override-dependencies = [
+    "onnxruntime>=1.20.0",
+]
+
+# Full-Featured Library Template
+# For: Libraries, frameworks, shared packages (oneiric, mcp-common, acb, fastblocks)
+# Features: Comprehensive testing, quality tools, type checking fallback
+
+[project]
+name = "dhruva"
+version = "0.5.0"
+description = "A Python Object Database"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "CNRI and others", email = "nas-dhruva@arctrix.com"},
+]
+maintainers = [
+    {name = "dhruva Development Team", email = "nas-dhruva@arctrix.com"},
+]
+keywords = ["database", "persistence", "object-database", "storage", "nosql"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Database",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[project.urls]
+Homepage = "https://github.com/nascheme/dhruva"
+Documentation = "https://github.com/nascheme/dhruva#readme"
+Repository = "https://github.com/nascheme/dhruva"
+"Source Code" = "https://github.com/nascheme/dhruva"
+"Bug Tracker" = "https://github.com/nascheme/dhruva/issues"
+
+[project.scripts]
+dhruva = "dhruva.__main__:main"
+
+[tool.setuptools]
+packages = ["dhruva"]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+exclude = ["tests/", "test_*.py", "*_test.py"]
+
+[tool.ruff.lint]
+extend-select = ["C901", "F", "I", "UP"]
+ignore = ["E402", "F821"]
+fixable = ["ALL"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+timeout = 600
+testpaths = ["test"]
+addopts = [
+    "--cov=dhruva",
+    "--cov-report=term-missing:skip-covered",
+    "--cov-report=html:htmlcov",
+    "--cov-report=json",
+    "--strict-markers",
+    "--strict-config",
+    "-ra",
+    "--tb=short",
+]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+    "e2e: End-to-end tests",
+    "security: Security-focused tests",
+    "performance: Performance and load tests",
+    "slow: Slow tests (>2s)",
+    "benchmark: Benchmark tests (deferred)",
+    "smoke: Quick smoke tests",
+    "regression: Regression tests",
+    "api: API endpoint tests",
+]
+
+[tool.coverage.run]
+branch = true
+parallel = true  # CRITICAL for pytest-xdist
+concurrency = ["multiprocessing"]
+source = ["dhruva"]
+data_file = ".coverage"
+omit = [
+    "*/test/*",
+    "*/__pycache__/*",
+    "*/__init__.py",
+    "*/_version.py",
+    "*/conftest.py",
+]
+
+[tool.coverage.report]
+exclude_also = [
+    "pragma: no cover",
+    "def __repr__",
+    "def __str__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "@abstractmethod",
+    "pass",
+    "raise ImportError",
+    "except ImportError",
+]
+
+[tool.pyright]
+include = ["dhruva"]
+exclude = [
+    "test/*",
+    "scratch",
+    ".venv",
+    "build",
+    "dist",
+]
+typeCheckingMode = "strict"
+pythonVersion = "3.13"
+
+[tool.bandit]
+target = ["dhruva"]
+skips = ["B101", "B110", "B112", "B404", "B603", "B607"]
+exclude_dirs = ["test/"]
+
+[tool.codespell]
+quiet-level = 3
+ignore-words-list = "crate,uptodate,nd,nin"
+
+[tool.creosote]
+paths = ["dhruva"]
+deps-file = "pyproject.toml"
+exclude-deps = [
+    "hatchling",
+    "pytest",
+    "pytest-asyncio",
+    "pytest-cov",
+    "pytest-mock",
+    "pytest-xdist",
+    "pytest-timeout",
+    "pytest-benchmark",
+    "ruff",
+    "pyright",
+    "bandit",
+    "creosote",
+    "codespell",
+    "refurb",
+    "complexipy",
+]
+
+[tool.refurb]
+enable_all = false
+quiet = true
+python_version = "3.13"
+
+[tool.complexipy]
+default_pattern = "**/*.py"
+exclude_patterns = [
+    "**/test/**",
+    "**/test_*.py",
+]
+max_complexity = 15

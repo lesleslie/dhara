@@ -1,0 +1,61 @@
+# Paketo Buildpack Configuration for dhruva
+# https://paketo.io/docs/reference/configuration
+
+[project]
+# Buildpacks to use (auto-detected from Python)
+# Uses paketo-buildpacks/python
+
+[[build.env]]
+name = "BP_PYTHON_VERSION"
+value = "3.13"
+
+[[build.env]]
+name = "BP_PYTHON_VERBOSE"
+value = "true"
+
+# Install dev dependencies for testing (optional)
+[[build.env]]
+name = "BP_INSTALL_TEST_DEPENDENCIES"
+value = "false"
+
+# Use uv for faster dependency resolution (if available)
+[[build.env]]
+name = "BP_PYTHON_ENABLE_UV"
+value = "auto"
+
+# Keep pip cache for faster builds
+[[build.env]]
+name = "BP_PIP_CACHE_ENABLED"
+value = "true"
+
+# Live reload configuration for development
+[[build.env]]
+name = "BP_LIVE_RELOAD_ENABLED"
+value = "true"
+
+[[build.env]]
+name = "BP_LIVE_RELOAD_INTEGRATION_FILES"
+value = "dhruva/**/*.py"
+
+# Runtime configuration
+[[build.env]]
+name = "PYTHONPATH"
+value = "/workspace:/layers/paketo-buildpacks_python-start/pythonpath"
+
+# Server process configuration
+[[build.env]]
+name = "PORT"
+value = "2972"
+
+# Health check endpoint
+[[build.env]]
+name = "BP_HEALTH_CHECKER_ENABLED"
+value = "true"
+
+[[build.env]]
+name = "BP_HEALTH_CHECKER_TYPE"
+value = "port"
+
+[[build.env]]
+name = "BP_HEALTH_CHECKER_PORT"
+value = "2972"

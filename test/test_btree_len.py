@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Test BTree _count tracking"""
 
-from durus.btree import BTree, BNode
+from dhruva.collections.btree import BNode, BTree
 
 
 def test_len_basic():
@@ -56,7 +56,7 @@ def test_len_with_deletes():
     print("Len tracking with deletes works")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_len_basic()
     test_len_with_splits()
     test_len_with_deletes()

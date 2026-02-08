@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 """Comprehensive test that BTree still works correctly with _count tracking"""
 
-from durus.btree import BTree, BNode
 import random
+
+from dhruva.collections.btree import BNode, BTree
 
 
 def test_comprehensive():
@@ -47,6 +48,6 @@ def test_comprehensive():
     print(f"All tests passed! Final size: {len(bt)} items")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     random.seed(42)  # For reproducibility
     test_comprehensive()

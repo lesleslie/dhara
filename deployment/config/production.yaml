@@ -1,0 +1,325 @@
+# dhruva 5.0 Production Configuration
+# This file demonstrates Oneiric integration with config/loader.py
+# Usage: Set DHRUVA_CONFIG=/path/to/this/file.yaml environment variable
+
+# Storage Configuration
+storage:
+  # Backend type: 'file', 'sqlite', 'client', 'memory'
+  backend: file
+
+  # Storage file path (required for file/sqlite backends)
+  path: /data/dhruva.dhruva
+
+  # Client storage settings (for backend='client')
+  host: localhost
+  port: 2972
+
+  # Read-only mode (useful for replicas/backup reads)
+  read_only: false
+
+# Cache Configuration
+cache:
+  # Maximum number of objects to cache in memory
+  # Higher values = better read performance, more memory usage
+  size: 100000
+
+  # Cache shrink threshold
+  # When cache exceeds size * shrink_threshold, it shrinks to size
+  shrink_threshold: 2.0
+
+  # Enable/disable caching (disable for memory-constrained environments)
+  enabled: true
+
+# Connection Configuration
+connection:
+  # Connection timeout in seconds
+  timeout: 30.0
+
+  # Maximum number of connection retries
+  max_retries: 3
+
+  # Delay between retries in seconds
+  retry_delay: 1.0
+
+# Debug mode (set to false in production)
+debug_mode: false
+
+# Server-specific settings (used when running dhruva -s)
+server:
+  # Host to listen on (0.0.0.0 for all interfaces)
+  host: 0.0.0.0
+
+  # Port to listen on
+  port: 2972
+
+  # Garbage collection threshold in bytes
+  # When storage grows by this many bytes, trigger automatic GC
+  # Default: 10MB (10485760 bytes)
+  gcbytes: 10485760
+
+  # Logging configuration
+  logging:
+    # Log level: 10=DEBUG, 20=INFO, 30=WARNING, 40=ERROR, 50=CRITICAL
+    level: 20
+
+    # Log file path (empty for stderr/stdout)
+    file: /var/log/dhruva/dhruva.log
+
+    # Log rotation (if using external log rotator)
+    max_size_mb: 100
+    backup_count: 10
+
+# Serialization settings
+serialization:
+  # Default serializer: 'msgspec' (fast, secure) or 'pickle' (legacy)
+  default: msgspec
+
+  # msgspec-specific settings
+  msgspec:
+    # Enable experimental features
+    experimental: false
+
+    # Maximum serialized object size (bytes)
+    max_size: 104857600  # 100MB
+
+# Backup settings (if backup system is enabled)
+backup:
+  # Enable automatic backups
+  enabled: true
+
+  # Backup directory
+  directory: /data/backups
+
+  # Retention policy
+  retention:
+    # Number of backups to keep
+    count: 7
+
+    # Maximum age of backups (days)
+    max_age_days: 30
+
+# Monitoring settings
+monitoring:
+  # Enable Prometheus metrics endpoint
+  prometheus:
+    enabled: false
+    port: 9090
+    path: /metrics
+
+  # Enable health check endpoint
+  health:
+    enabled: true
+    port: 8080
+    path: /health
+
+# Security settings
+security:
+  # Enable access logging
+  access_log: true
+
+  # Rate limiting (requests per second per client)
+  rate_limit: 1000
+
+  # Maximum concurrent connections
+  max_connections: 100
+
+  # Authentication and Authorization
+  authentication:
+    # Enable authentication (recommended for production)
+    enabled: true
+
+    # Authentication method: 'token', 'hmac', 'environment', 'mtls'
+    # token: Bearer token authentication
+    # hmac: HMAC signature authentication
+    # environment: Environment variable authentication (dev only)
+    # mtls: mTLS certificate authentication (future)
+    method: token
+
+    # Token-based authentication settings
+    token:
+      # Path to tokens file (JSON format)
+      tokens_file: /etc/dhruva/tokens.json
+
+      # Require authentication for all operations
+      require_auth: true
+
+      # Default role if no token provided (when require_auth=false)
+      default_role: readonly
+
+      # Rate limiting per token (requests per minute)
+      default_rate_limit: 1000
+
+    # HMAC-based authentication settings
+    hmac:
+      # Path to secrets file (JSON format)
+      secrets_file: /etc/dhruva/hmac_secrets.json
+
+      # Require authentication for all operations
+      require_auth: true
+
+      # Timestamp tolerance (seconds) to prevent replay attacks
+      timestamp_tolerance: 300
+
+    # Environment-based authentication (development only)
+    environment:
+      # Environment variable name
+      env_var: DHRUVA_AUTH_TOKEN
+
+      # Require authentication
+      require_auth: false
+
+      # Role granted
+      role: admin
+
+    # mTLS authentication (future implementation)
+    mtls:
+      # Enable mTLS
+      enabled: false
+
+      # CA certificate path
+      ca_cert: /etc/dhruva/ca.crt
+
+      # Client certificate directory
+      client_certs_dir: /etc/dhruva/client_certs
+
+  # Authorization settings
+  authorization:
+    # Enable authorization checks
+    enabled: true
+
+    # Role-based access control
+    rbac:
+      # Define roles and their permissions
+      roles:
+        readonly:
+          permissions:
+            - read
+            - list
+
+        readwrite:
+          permissions:
+            - read
+            - list
+            - write
+            - delete
+
+        admin:
+          permissions:
+            - read
+            - list
+            - write
+            - delete
+            - checkpoint
+            - restore
+            - admin
+
+      # Tool-to-permission mapping
+      tool_permissions:
+        dhruva_connect: read
+        dhruva_get: read
+        dhruva_set: write
+        dhruva_list: list
+        dhruva_delete: delete
+        dhruva_checkpoint: checkpoint
+        dhruva_restore_checkpoint: restore
+
+        oneiric_register_adapter: write
+        oneiric_get_adapter: read
+        oneiric_list_adapters: list
+        oneiric_search_adapters: read
+
+  # Audit logging
+  audit:
+    # Enable audit logging
+    enabled: true
+
+    # Audit log file
+    file: /var/log/dhruva/audit.log
+
+    # Log authentication events
+    log_auth_events: true
+
+    # Log authorization events
+    log_authz_events: true
+
+    # Log data access
+    log_data_access: false
+
+    # Retention policy (days)
+    retention_days: 90
+
+# MCP Server Configuration
+mcp:
+  # dhruva MCP Server
+  dhruva_server:
+    # Enable server
+    enabled: true
+
+    # Server name
+    name: "dhruva-mcp-server"
+
+    # Server version
+    version: "5.0.0"
+
+    # Description
+    description: "dhruva persistent object database MCP server"
+
+    # Host to bind to
+    host: 0.0.0.0
+
+    # Port to listen on
+    port: 2973
+
+    # Enable authentication
+    authentication:
+      enabled: true
+
+    # Enable authorization
+    authorization:
+      enabled: true
+
+    # Enable metrics
+    metrics:
+      enabled: true
+
+    # Enable request logging
+    logging:
+      enabled: true
+      level: INFO
+
+  # Oneiric-compatible MCP Server
+  oneiric_server:
+    # Enable server
+    enabled: true
+
+    # Server name
+    name: "oneiric-mcp-server"
+
+    # Server version
+    version: "5.0.0"
+
+    # Description
+    description: "Oneiric adapter registry MCP server"
+
+    # Host to bind to
+    host: 0.0.0.0
+
+    # Port to listen on
+    port: 2974
+
+    # Enable authentication
+    authentication:
+      enabled: true
+
+    # Enable authorization
+    authorization:
+      enabled: true
+
+    # Enable metrics
+    metrics:
+      enabled: true
+
+    # Enable request logging
+    logging:
+      enabled: true
+      level: INFO

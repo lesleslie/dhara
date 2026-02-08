@@ -1,0 +1,209 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dhruva-server
+  namespace: ${NAMESPACE}
+  labels:
+    app: dhruva
+    component: server
+    version: v5.0.0
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: dhruva
+      component: server
+  template:
+    metadata:
+      labels:
+        app: dhruva
+        component: server
+        version: v5.0.0
+      annotations:
+        prometheus.io/scrape: "false"
+        prometheus.io/port: "2972"
+    spec:
+      # Security context for pod
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+
+      # Init container to set up data directory permissions
+      initContainers:
+      - name: setup-data
+        image: busybox:1.36
+        command:
+          - sh
+          - -c
+          - |
+            chown -R 999:999 /data
+            chmod 750 /data
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        securityContext:
+          runAsUser: 0
+          runAsGroup: 0
+
+      containers:
+      - name: dhruva-server
+        image: ${IMAGE_NAME}:${IMAGE_TAG}
+        imagePullPolicy: IfNotPresent
+
+        # Security context for container
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
+          runAsUser: 999
+
+        ports:
+        - name: dhruva
+          containerPort: 2972
+          protocol: TCP
+
+        env:
+        - name: DHRUVA_HOST
+          value: "0.0.0.0"
+        - name: DHRUVA_PORT
+          value: "2972"
+        - name: DHRUVA_STORAGE_BACKEND
+          value: "file"
+        - name: DHRUVA_STORAGE_PATH
+          value: "/data/dhruva.dhruva"
+        - name: DHRUVA_CACHE_SIZE
+          value: "100000"
+        - name: DHRUVA_CONFIG
+          value: "/etc/dhruva/config.yaml"
+        - name: DHRUVA_DEBUG
+          value: "false"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: PYTHONDONTWRITEBYTECODE
+          value: "1"
+
+        # Mount configuration from ConfigMap
+        volumeMounts:
+        - name: config
+          mountPath: /etc/dhruva
+          readOnly: true
+        - name: data
+          mountPath: /data
+        - name: logs
+          mountPath: /var/log/dhruva
+
+        # Resource limits
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1Gi"
+
+        # Liveness probe - checks if container is alive
+        livenessProbe:
+          exec:
+            command:
+            - python
+            - -c
+            - "import socket; s=socket.socket(); s.settimeout(5); s.connect(('localhost', 2972)); s.close()"
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          successThreshold: 1
+          failureThreshold: 3
+
+        # Readiness probe - checks if container is ready to serve traffic
+        readinessProbe:
+          exec:
+            command:
+            - python
+            - -c
+            - "import socket; s=socket.socket(); s.settimeout(5); s.connect(('localhost', 2972)); s.close()"
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+
+        # Startup probe - gives extra time for slow-starting containers
+        startupProbe:
+          exec:
+            command:
+            - python
+            - -c
+            - "import socket; s=socket.socket(); s.settimeout(5); s.connect(('localhost', 2972)); s.close()"
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 30  # Allow up to 5 minutes for startup
+
+      volumes:
+      # Configuration from ConfigMap
+      - name: config
+        configMap:
+          name: dhruva-config
+          items:
+          - key: production.yaml
+            path: config.yaml
+
+      # Persistent data volume
+      - name: data
+        persistentVolumeClaim:
+          claimName: dhruva-data-pvc
+
+      # Logs volume (could be mounted by log aggregation sidecar)
+      - name: logs
+        emptyDir: {}
+
+      # Node affinity (optional - uncomment if needed)
+      # affinity:
+      #   podAntiAffinity:
+      #     preferredDuringSchedulingIgnoredDuringExecution:
+      #     - weight: 100
+      #       podAffinityTerm:
+      #         labelSelector:
+      #           matchExpressions:
+      #           - key: app
+      #             operator: In
+      #             values:
+      #             - dhruva
+      #         topologyKey: kubernetes.io/hostname
+
+      # Tolerations (optional - uncomment if running on control plane nodes)
+      # tolerations:
+      # - key: node-role.kubernetes.io/control-plane
+      #   effect: NoSchedule
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: dhruva-data-pvc
+  namespace: ${NAMESPACE}
+  labels:
+    app: dhruva
+    component: server
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  # storageClassName can be set based on your cluster's storage classes
+  # storageClassName: standard

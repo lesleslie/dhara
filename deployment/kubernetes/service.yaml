@@ -1,0 +1,98 @@
+---
+# Service for dhruva server
+apiVersion: v1
+kind: Service
+metadata:
+  name: dhruva-server
+  namespace: ${NAMESPACE}
+  labels:
+    app: dhruva
+    component: server
+  annotations:
+    # Optional: Add service annotations for cloud providers
+    # cloud.google.com/load-balancer-type: "Internal"
+spec:
+  type: ClusterIP  # Use LoadBalancer or NodePort for external access
+  sessionAffinity: None  # Could use ClientIP for sticky sessions
+  ports:
+  - name: dhruva
+    port: 2972
+    targetPort: 2972
+    protocol: TCP
+    # nodePort: 32972  # Required if type=NodePort (30000-32767 range)
+  selector:
+    app: dhruva
+    component: server
+
+---
+# Optional: Headless service for StatefulSet
+# Uncomment if using StatefulSet instead of Deployment
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: dhruva-server-headless
+#   namespace: ${NAMESPACE}
+#   labels:
+#     app: dhruva
+#     component: server
+# spec:
+#   type: ClusterIP
+#   clusterIP: None
+#   ports:
+#   - name: dhruva
+#     port: 2972
+#     targetPort: 2972
+#     protocol: TCP
+#   selector:
+#     app: dhruva
+#     component: server
+
+---
+# Optional: ServiceMonitor for Prometheus Operator
+# Uncomment if you have Prometheus Operator installed
+# apiVersion: monitoring.coreos.com/v1
+# kind: ServiceMonitor
+# metadata:
+#   name: dhruva-server
+#   namespace: ${NAMESPACE}
+#   labels:
+#     app: dhruva
+# spec:
+#   selector:
+#     matchLabels:
+#       app: dhruva
+#       component: server
+#   endpoints:
+#   - port: dhruva
+#     interval: 30s
+#     scrapeTimeout: 10s
+#     path: /metrics
+#     scheme: http
+
+---
+# Optional: Ingress for external access (if using LoadBalancer)
+# Uncomment and configure based on your ingress controller
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: dhruva-server
+#   namespace: ${NAMESPACE}
+#   labels:
+#     app: dhruva
+#   annotations:
+#     # Example annotations for NGINX Ingress Controller
+#     nginx.ingress.kubernetes.io/backend-protocol: "TCP"
+#     nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+# spec:
+#   ingressClassName: nginx
+#   rules:
+#   - host: dhruva.example.com
+#     http:
+#       paths:
+#       - path: /
+#         pathType: Prefix
+#         backend:
+#           service:
+#             name: dhruva-server
+#             port:
+#               number: 2972

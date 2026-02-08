@@ -1,0 +1,180 @@
+"""
+$URL$
+$Id$
+"""
+import pytest
+import sys
+import tempfile
+import os
+
+from durus.connection import Connection
+from durus.file_storage import FileStorage
+from durus.persistent import Persistent, PersistentObject
+from durus.utils import int8_to_str, dumps, loads
+
+
+class TestPersistent:
+    """Test Persistent class functionality."""
+
+    def test_getstate(self):
+        p = Persistent()
+        assert p.__getstate__() == {}
+        p.a = 1
+        assert p.__getstate__() == {'a': 1}
+
+    def test_setstate(self):
+        p = Persistent()
+        p.__setstate__())
+        p.__setstate__({'a': 1})
+        assert p.a == 1
+
+    def test_accessors(self):
+        p = Persistent()
+        p._p_oid
+        assert p._p_format_oid() == 'None'
+        p._p_oid = 'aaaaaaaa'
+        assert p._p_format_oid() == '7016996765293437281'
+        p._p_oid = int8_to_str(1)
+        assert p._p_format_oid() == '1'
+        assert repr(p) == "<Persistent 1>"
+
+    def test_state_transitions(self):
+        _, filename = tempfile.mkstemp(suffix='.durus')
+        try:
+            storage = FileStorage(filename)
+            connection = Connection(storage)
+            root = connection.get_root()
+            assert not root._p_is_ghost()
+            root['a'] = 1
+            assert root._p_is_unsaved()
+            del root['a']
+            connection.abort()
+            assert root._p_is_ghost()
+            with pytest.raises(AttributeError):
+                getattr(root, 'a')
+            root._p_set_status_saved()
+            assert root._p_is_saved()
+            root._p_set_status_unsaved()
+            assert root._p_is_unsaved()
+            root._p_set_status_ghost()
+            assert root._p_is_ghost()
+            root._p_set_status_unsaved()
+        finally:
+            if os.path.exists(filename):
+                os.unlink(filename)
+
+    def test_pickling(self):
+        a = Persistent()
+        pickle_a = dumps(a, 2)
+        b = loads(pickle_a)
+        assert isinstance(b, Persistent)
+
+    def test_lowlevelops(self):
+        from durus.persistent import _getattribute, _setattribute
+        from durus.persistent import _delattribute, _hasattribute
+        _, filename = tempfile.mkstemp(suffix='.durus')
+        try:
+            storage = FileStorage(filename)
+            connection = Connection(storage)
+            root = connection.get_root()
+            root._p_set_status_ghost()
+            assert not _hasattribute(root, 'data')
+            root._p_set_status_ghost()
+            with pytest.raises(AttributeError):
+                _getattribute(root, 'data')
+            assert root._p_is_ghost()
+            _setattribute(root, 'data', 'bogus')
+            assert root._p_is_ghost()
+            _delattribute(root, 'data')
+            assert root._p_is_ghost()
+        finally:
+            if os.path.exists(filename):
+                os.unlink(filename)
+
+
+class TestPersistentObject:
+    """Test PersistentObject class functionality."""
+
+    def test_getstate(self):
+        p = PersistentObject()
+        assert p.__getstate__() == {}
+        with pytest.raises(AttributeError):
+            setattr(p, 'a', 1)
+
+    def test_setstate(self):
+        p = PersistentObject()
+        p.__setstate__()
+        with pytest.raises(AttributeError):
+            p.__setstate__({'a': 1})
+
+    def test_change(self):
+        p = PersistentObject()
+        p._p_note_change()
+
+    def test_accessors(self):
+        p = PersistentObject()
+        p._p_oid
+        assert p._p_format_oid() == 'None'
+        p._p_oid = int8_to_str(1)
+        assert p._p_format_oid() == '1'
+        assert repr(p) == "<PersistentObject 1>"
+
+    def test_pickling(self):
+        a = PersistentObject()
+        pickle_a = dumps(a, 2)
+        b = loads(pickle_a)
+        assert isinstance(b, PersistentObject)
+
+
+class SlottedPersistentObject(PersistentObject):
+    """Test class with __slots__."""
+
+    __slots__ = ['a', 'b']
+
+
+class SlottedPersistentObjectWithDict(PersistentObject):
+    """Test class with __slots__ including __dict__."""
+
+    __slots__ = ['a', 'b', '__dict__']
+
+
+# Register classes in __main__ for pickle support
+sys.modules['__main__'].SlottedPersistentObject = SlottedPersistentObject
+sys.modules['__main__'].SlottedPersistentObjectWithDict = SlottedPersistentObjectWithDict
+
+
+class TestSlottedPersistentObject:
+    """Test slotted PersistentObject."""
+
+    def test_operations(self):
+        p = SlottedPersistentObject()
+        assert p.__getstate__() == {}
+        p.a = 1
+        assert p.__getstate__() == dict(a=1)
+        with pytest.raises(AttributeError):
+            setattr(p, 'c', 2)
+
+    def test_pickling(self):
+        a = SlottedPersistentObject()
+        pickle_a = dumps(a, 2)
+        b = loads(pickle_a)
+        assert isinstance(b, SlottedPersistentObject)
+
+
+class TestSlottedPersistentObjectWithDict:
+    """Test slotted PersistentObject with __dict__."""
+
+    def test_operations(self):
+        p = SlottedPersistentObjectWithDict()
+        assert p.__getstate__() == {}
+        p.a = 1
+        assert p.__getstate__() == dict(a=1)
+        p.c = 2
+        assert p.__getstate__() == dict(a=1, c=2)
+        assert p.__dict__ == dict(c=2)
+
+    def test_pickling(self):
+        a = SlottedPersistentObjectWithDict()
+        pickle_a = dumps(a, 2)
+        b = loads(pickle_a)
+        assert isinstance(b, SlottedPersistentObjectWithDict)
