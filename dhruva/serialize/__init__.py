@@ -27,8 +27,8 @@ from dhruva.serialize.adapter import (
 )
 from dhruva.serialize.base import Serializer, SerializerProtocol
 from dhruva.serialize.dill import DillSerializer
-from dhruva.serialize.fallback import FallbackSerializer
 from dhruva.serialize.factory import create_serializer
+from dhruva.serialize.fallback import FallbackSerializer
 from dhruva.serialize.msgspec import MsgspecSerializer
 from dhruva.serialize.pickle import PickleSerializer
 

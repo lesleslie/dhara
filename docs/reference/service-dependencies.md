@@ -33,6 +33,7 @@ root["workflows"] = {}
 ```
 
 **Integration Benefits**:
+
 - ACID guarantees for workflow state
 - Transactional workflow execution
 - Persistent workflow history
@@ -43,12 +44,14 @@ root["workflows"] = {}
 Dhruva supports multiple storage backends:
 
 **File Storage (Default)**
+
 ```bash
 # No external service needed
 dhruva -s --file data.dhruva
 ```
 
 **SQLite Storage**
+
 ```python
 from dhruva.storage import SqliteStorage
 # Uses SQLite3 (included in Python standard library)
@@ -56,6 +59,7 @@ connection = Connection(SqliteStorage("data.db"))
 ```
 
 **Client/Server Mode**
+
 ```bash
 # Server (standalone)
 dhruva -s --port 2973
@@ -79,12 +83,14 @@ server.run()
 ```
 
 **MCP Server Features**:
+
 - Query operations
 - Transaction management
 - Schema inspection
 - Authentication and authorization
 
 **Dependencies**:
+
 - None (MCP protocol is built-in)
 
 ### Oneiric (Configuration)
@@ -113,6 +119,7 @@ logging:
 ```
 
 **Dependencies**:
+
 - Oneiric library (for configuration loading)
 - Environment variables (for secrets)
 
@@ -123,6 +130,7 @@ logging:
 Dhruva integrates with Oneiric for secret management:
 
 **Supported Backends**:
+
 - Environment variables (default)
 - HashiCorp Vault (optional)
 - AWS Secrets Manager (optional)
@@ -153,6 +161,7 @@ logging:
 ```
 
 **Optional Integrations**:
+
 - **Logfire**: Python observability (via Oneiric)
 - **Sentry**: Error tracking (via Oneiric)
 - **Cloud logging**: Any service supporting structured JSON logs
@@ -171,6 +180,7 @@ dhruva -c --file data.dhruva
 ### Client/Server Mode
 
 **Network protocols**:
+
 - TCP (default port: 2972)
 - Unix domain sockets (local only)
 
@@ -183,6 +193,7 @@ dhruva -s --socket /var/run/dhruva.sock
 ```
 
 **Firewall considerations**:
+
 - Allow TCP port 2972 (or custom port)
 - Use TLS/SSL for production deployments
 - Consider Unix domain sockets for local communication
@@ -222,6 +233,7 @@ python setup.py build_ext --inplace
 ```
 
 **Dependencies**:
+
 - Python.h (CPython headers)
 - C compiler (gcc, clang, or MSVC)
 
@@ -230,6 +242,7 @@ python setup.py build_ext --inplace
 ### Standalone Deployment
 
 **Minimum requirements**:
+
 - Python 3.13+
 - Disk space for storage files
 - No network required
@@ -243,6 +256,7 @@ dhruva -s --file /var/lib/dhruva/data.dhruva
 ### Client/Server Deployment
 
 **Requirements**:
+
 - Network connectivity
 - Server: TCP port 2972 (or custom)
 - Client: Server address
@@ -345,19 +359,23 @@ connection.commit()
 When integrated with the ecosystem, Dhruva provides:
 
 1. **For Mahavishnu**:
+
    - Persistent workflow state
    - Transactional execution history
    - ACID guarantees for orchestration
 
-2. **For Session-Buddy**:
+1. **For Session-Buddy**:
+
    - Persistent session storage
    - Long-term memory retention
 
-3. **For Akosha**:
+1. **For Akosha**:
+
    - Knowledge graph persistence
    - Vector database backend
 
-4. **For MCP Agents**:
+1. **For MCP Agents**:
+
    - Stateful agent memory
    - Transactional operations
 

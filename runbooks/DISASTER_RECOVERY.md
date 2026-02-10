@@ -5,26 +5,29 @@ This runbook provides step-by-step procedures for responding to and recovering f
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Activation Criteria](#activation-criteria)
-3. [Response Team](#response-team)
-4. [Incident Classification](#incident-classification)
-5. [Procedural Steps](#procedural-steps)
-6. [Recovery Scenarios](#recovery-scenarios)
-7. [Communication Plan](#communication-plan)
-8. [Post-Incident](#post-incident)
-9. [Checklists](#checklists)
-10. [Contacts](#contacts)
+1. [Activation Criteria](#activation-criteria)
+1. [Response Team](#response-team)
+1. [Incident Classification](#incident-classification)
+1. [Procedural Steps](#procedural-steps)
+1. [Recovery Scenarios](#recovery-scenarios)
+1. [Communication Plan](#communication-plan)
+1. [Post-Incident](#post-incident)
+1. [Checklists](#checklists)
+1. [Contacts](#contacts)
 
 ## Overview
 
 ### Purpose
+
 - Provide clear, actionable steps for disaster recovery
 - Minimize downtime and data loss
 - Ensure consistent response to incidents
 - Maintain business continuity
 
 ### Scope
+
 This runbook covers:
+
 - Hardware failures
 - Software corruption
 - Natural disasters
@@ -33,6 +36,7 @@ This runbook covers:
 - Service provider failures
 
 ### Success Metrics
+
 - **RTO**: < 1 hour for critical systems
 - **RPO**: < 5 minutes for transactional data
 - **Recovery Success Rate**: > 99%
@@ -41,6 +45,7 @@ This runbook covers:
 ## Activation Criteria
 
 ### Immediate Activation
+
 - Complete database failure
 - Data corruption requiring restore
 - Natural disaster affecting primary site
@@ -48,6 +53,7 @@ This runbook covers:
 - Prolonged unavailability (> 4 hours)
 
 ### Conditional Activation
+
 - Partial system failure
 - Performance degradation
 - Backup failures
@@ -55,6 +61,7 @@ This runbook covers:
 - Network issues
 
 ### Deactivation Criteria
+
 - Systems restored to service
 - Business operations normal
 - All stakeholders notified
@@ -65,31 +72,37 @@ This runbook covers:
 ### Emergency Response Team
 
 **Incident Commander**
+
 - Role: Overall coordination
 - Contact: [Phone], [Email]
 - Backup: [Name]
 
 **Technical Lead**
+
 - Role: Technical coordination
 - Contact: [Phone], [Email]
 - Backup: [Name]
 
 **Database Administrator**
+
 - Role: Database recovery
 - Contact: [Phone], [Email]
 - Backup: [Name]
 
 **System Administrator**
+
 - Role: Infrastructure recovery
 - Contact: [Phone], [Email]
 - Backup: [Name]
 
 **Security Officer**
+
 - Role: Security coordination
 - Contact: [Phone], [Email]
 - Backup: [Name]
 
 **Communications Lead**
+
 - Role: Stakeholder communication
 - Contact: [Phone], [Email]
 - Backup: [Name]
@@ -97,22 +110,27 @@ This runbook covers:
 ### Support Team
 
 **Application Owners**
+
 - Role: Application coordination
 - Contact: [Phone], [Email]
 
 **Business Continuity**
+
 - Role: Business coordination
 - Contact: [Phone], [Email]
 
 **Vendor Support**
+
 - Role: Vendor coordination
 - Contact: [Phone], [Email]
 
 ## Incident Classification
 
 ### Critical (P0)
+
 **Definition**: Complete system failure affecting all customers
 **Symptoms**:
+
 - Database unavailable for all customers
 - Data corruption affecting core operations
 - Primary site completely down
@@ -120,8 +138,10 @@ This runbook covers:
 **Response**: Immediate activation, 24/7 response
 
 ### High (P1)
+
 **Definition**: Partial system failure affecting significant customers
 **Symptoms**:
+
 - Database partially available
 - Performance severely degraded
 - Data corruption in specific modules
@@ -129,8 +149,10 @@ This runbook covers:
 **Response**: 1 hour response, 24/7 support
 
 ### Medium (P2)
+
 **Definition**: Non-critical system failure
 **Symptoms**:
+
 - Backup failures
 - Storage warnings
 - Performance issues
@@ -138,8 +160,10 @@ This runbook covers:
 **Response**: 4 hour response, business hours support
 
 ### Low (P3)
+
 **Definition**: Minor issues with no customer impact
 **Symptoms**:
+
 - Documentation issues
 - Training needs
 - Process improvements
@@ -151,6 +175,7 @@ This runbook covers:
 ### Initial Response (0-15 minutes)
 
 1. **Incident Detection**
+
    ```bash
    # Check system status
    check_backup_status.sh
@@ -162,12 +187,14 @@ This runbook covers:
    df -h | grep backup
    ```
 
-2. **Incident Commander Activation**
+1. **Incident Commander Activation**
+
    - Contact Incident Commander
    - Initial assessment of impact
    - Determine activation level
 
-3. **Team Notification**
+1. **Team Notification**
+
    ```bash
    # Notify response team
    notify_team.sh "P0" "Primary database down"
@@ -176,7 +203,8 @@ This runbook covers:
    create_incident.sh "P0-001" "Primary database failure"
    ```
 
-4. **Initial Assessment**
+1. **Initial Assessment**
+
    - Determine root cause
    - Identify affected systems
    - Assess impact on business
@@ -184,6 +212,7 @@ This runbook covers:
 ### Assessment Phase (15-30 minutes)
 
 1. **System Diagnostics**
+
    ```bash
    # Check database status
    systemctl status durus-server
@@ -195,13 +224,15 @@ This runbook covers:
    netstat -tuln | grep :2972
    ```
 
-2. **Impact Assessment**
+1. **Impact Assessment**
+
    - Affected customer segments
    - Estimated downtime
    - Data loss potential
    - Business impact analysis
 
-3. **Strategy Determination**
+1. **Strategy Determination**
+
    - Recovery method selection
    - Resource requirements
    - Timeline estimation
@@ -210,6 +241,7 @@ This runbook covers:
 ### Recovery Phase (30 minutes - 6 hours)
 
 #### Backup Verification
+
 ```bash
 # Check backup catalog
 python -m durus.backup.catalog --list-backups --days 7
@@ -222,6 +254,7 @@ python -m durus.backup.restore --test --backup latest
 ```
 
 #### Recovery Procedures
+
 ```bash
 # Restore from backup
 python -m durus.backup.restore \
@@ -236,6 +269,7 @@ python -m durus.backup.verify --connection "localhost:2972" --health-check
 ```
 
 #### Performance Tuning
+
 ```bash
 # Monitor recovery
 monitor_recovery.sh
@@ -250,12 +284,14 @@ load_test_recovery.sh
 ### Post-Recovery (1-2 hours)
 
 1. **Verification Checklist**
+
    - Data integrity verified
    - Application connectivity confirmed
    - Performance meets requirements
    - Security controls active
 
-2. **Stakeholder Notification**
+1. **Stakeholder Notification**
+
    ```bash
    # Notify customers
    notify_customers.sh "service_restored" "recovery_complete"
@@ -264,7 +300,8 @@ load_test_recovery.sh
    update_management.sh "recovery_metrics"
    ```
 
-3. **Documentation**
+1. **Documentation**
+
    - Timeline recording
    - Root cause identification
    - Lessons learned
@@ -277,13 +314,15 @@ load_test_recovery.sh
 **Symptoms**: Error messages, application failures, corrupted data
 
 **Procedure**:
+
 1. Isolate affected database
-2. Verify backup catalog
-3. Perform point-in-time restore
-4. Validate data integrity
-5. Restore application connectivity
+1. Verify backup catalog
+1. Perform point-in-time restore
+1. Validate data integrity
+1. Restore application connectivity
 
 **Commands**:
+
 ```bash
 # Isolate database
 pkill -f durus-server
@@ -306,13 +345,15 @@ python -m durus.backup.verify --integrity --performance
 **Symptoms**: Server unresponsive, storage errors, network issues
 
 **Procedure**:
+
 1. Identify failed hardware
-2. Activate secondary hardware
-3. Restore from last backup
-4. Replicate to new hardware
-5. Test failover
+1. Activate secondary hardware
+1. Restore from last backup
+1. Replicate to new hardware
+1. Test failover
 
 **Commands**:
+
 ```bash
 # Check hardware status
 hardware_health_check.sh
@@ -334,13 +375,15 @@ test_failover.sh
 **Symptoms**: Site down, network unavailable, power failure
 
 **Procedure**:
+
 1. Activate disaster recovery site
-2. Restore from cloud backup
-3. Establish network connectivity
-4. Replicate data
-5. Failover to DR site
+1. Restore from cloud backup
+1. Establish network connectivity
+1. Replicate data
+1. Failover to DR site
 
 **Commands**:
+
 ```bash
 # Activate DR site
 activate_dr_site.sh
@@ -362,13 +405,15 @@ failover_to_dr.sh
 **Symptoms**: Encrypted files, ransom notes, abnormal activity
 
 **Procedure**:
+
 1. Isolate affected systems
-2. Scan for malware
-3. Restore from clean backup
-4. Change all passwords
-5. Monitor for additional issues
+1. Scan for malware
+1. Restore from clean backup
+1. Change all passwords
+1. Monitor for additional issues
 
 **Commands**:
+
 ```bash
 # Isolate systems
 isolate_infected_systems.sh
@@ -393,18 +438,21 @@ security_monitoring.sh
 ### Stakeholder Communication
 
 **Customers**
+
 - Initial notification within 15 minutes
 - Updates every 30 minutes
 - Restoration confirmation
 - Post-incident summary
 
 **Internal Teams**
+
 - Real-time updates via Slack
 - Incident command center
 - Regular briefings
 - Debrief sessions
 
 **Management**
+
 - Executive summary within 30 minutes
 - Regular status updates
 - Recovery projections
@@ -413,6 +461,7 @@ security_monitoring.sh
 ### Communication Templates
 
 **Initial Alert**
+
 ```
 Subject: Critical Database Incident - [System Name]
 
@@ -431,6 +480,7 @@ Incident Commander: [Name]
 ```
 
 **Status Update**
+
 ```
 Subject: Status Update - Database Recovery
 
@@ -445,6 +495,7 @@ Monitoring: [metrics]
 ```
 
 **Resolution Notice**
+
 ```
 Subject: Service Restored - [System Name]
 
@@ -465,6 +516,7 @@ Thank you for your patience.
 ### Documentation
 
 1. **Incident Report**
+
    ```markdown
    # Incident Report: [ID]
 
@@ -490,13 +542,15 @@ Thank you for your patience.
    - [ ] Item 2
    ```
 
-2. **Process Improvements**
+1. **Process Improvements**
+
    - Update runbook procedures
    - Modify backup policies
    - Enhance monitoring
    - Improve training
 
-3. **Performance Review**
+1. **Performance Review**
+
    ```python
    # Analyze recovery performance
    analyze_recovery_performance.py --incident "P0-001"
@@ -508,18 +562,21 @@ Thank you for your patience.
 ### Training Updates
 
 1. **Team Training**
+
    - Incident response refresher
    - New procedures review
    - Technology updates
    - Role-specific training
 
-2. **Documentation Updates**
+1. **Documentation Updates**
+
    - Runbook revisions
    - Playbook additions
    - FAQ updates
    - Training materials
 
-3. **Simulation Exercises**
+1. **Simulation Exercises**
+
    - Tabletop exercises
    - Live simulations
    - Cross-team coordination
@@ -578,12 +635,14 @@ Thank you for your patience.
 ### Emergency Contacts
 
 **Incident Commander**
+
 - [Name]
 - [Phone]
 - [Email]
 - [Backup Name/Contact]
 
 **Technical Lead**
+
 - [Name]
 - [Phone]
 - [Email]
@@ -592,18 +651,21 @@ Thank you for your patience.
 ### Support Contacts
 
 **Database Administrator**
+
 - [Name]
 - [Phone]
 - [Email]
 - [Backup Name/Contact]
 
 **System Administrator**
+
 - [Name]
 - [Phone]
 - [Email]
 - [Backup Name/Contact]
 
 **Security Officer**
+
 - [Name]
 - [Phone]
 - [Email]
@@ -612,12 +674,14 @@ Thank you for your patience.
 ### Vendor Contacts
 
 **Cloud Provider**
+
 - [Support Phone]
 - [Support Email]
 - [Account Manager]
 - [Emergency Contact]
 
 **Hardware Vendor**
+
 - [Support Phone]
 - [Support Email]
 - [Account Manager]
@@ -640,7 +704,7 @@ Thank you for your patience.
 - **Communication Channels**: [Slack channel, Email list]
 - **Command Center**: [Location, Access info]
 
----
+______________________________________________________________________
 
 **Revision History:**
 
@@ -651,8 +715,8 @@ Thank you for your patience.
 
 **Approval:**
 
-Incident Commander: _________________________
-Technical Lead: _________________________
-Database Administrator: _________________________
-Security Officer: _________________________
-Management: _________________________
+Incident Commander: \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
+Technical Lead: \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
+Database Administrator: \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
+Security Officer: \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_
+Management: \_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_\_

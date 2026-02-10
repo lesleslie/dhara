@@ -151,7 +151,7 @@ class DhruvaShell(AdminShell):
 
         return f"""
 🦀 Dhruva Admin Shell v{version}
-{'=' * 60}
+{"=" * 60}
 Persistent Object Storage & Adapter Distribution
 
 Session Tracking: Enabled
@@ -166,7 +166,7 @@ Dhruva is the curator component providing:
 
 Storage Info:
   Adapters Registered: {adapter_count}
-  Connection: {'Active' if self.connection else 'Inactive'}
+  Connection: {"Active" if self.connection else "Inactive"}
 
 Convenience Functions:
   push_adapters()        - Push Oneiric adapters to Dhruva
@@ -193,7 +193,7 @@ Available Objects:
   config                 - Current DhruvaSettings instance
 
 Type 'help()' for Python help or %help_shell for shell commands
-{'=' * 60}
+{"=" * 60}
 """
 
     async def _push_adapters(self) -> None:
@@ -232,7 +232,9 @@ Type 'help()' for Python help or %help_shell for shell commands
                 console.print("\n[red]Errors:[/red]")
                 for detail in results["details"]:
                     if detail["status"] != "success":
-                        console.print(f"  • {detail['adapter_id']}: {detail.get('error', 'Unknown')}")
+                        console.print(
+                            f"  • {detail['adapter_id']}: {detail.get('error', 'Unknown')}"
+                        )
 
         except ImportError:
             console.print("[red]✗ Oneiric adapter pusher not found[/red]")
@@ -285,7 +287,9 @@ Type 'help()' for Python help or %help_shell for shell commands
             # Group by category
             from collections import Counter
 
-            categories = Counter(a["metadata"].get("category", "unknown") for a in adapters)
+            categories = Counter(
+                a["metadata"].get("category", "unknown") for a in adapters
+            )
 
             table = Table(title="Adapter Distribution Summary")
             table.add_column("Category", style="cyan")
@@ -312,7 +316,9 @@ Type 'help()' for Python help or %help_shell for shell commands
                 "adapters": self._get_adapters_info(),
                 "component_type": "curator",
                 "adapter_count": self.registry.count(),
-                "storage_path": str(self.app.storage.path) if hasattr(self.app, "storage") else None,
+                "storage_path": str(self.app.storage.path)
+                if hasattr(self.app, "storage")
+                else None,
             }
 
             self._session_id = await self.session_tracker.emit_session_start(
@@ -323,7 +329,9 @@ Type 'help()' for Python help or %help_shell for shell commands
             if self._session_id:
                 logger.info(f"Dhruva shell session started: {self._session_id}")
             else:
-                logger.debug("Session tracking unavailable (Session-Buddy MCP not reachable)")
+                logger.debug(
+                    "Session tracking unavailable (Session-Buddy MCP not reachable)"
+                )
         except Exception as e:
             logger.debug(f"Failed to emit session start: {e}")
 

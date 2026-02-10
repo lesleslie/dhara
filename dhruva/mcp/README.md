@@ -9,35 +9,41 @@ This module provides comprehensive authentication and authorization for Durus MC
 ### Authentication Methods
 
 1. **Token-based Authentication**
+
    - Bearer token authentication
    - SHA-256 hashed token storage
    - Constant-time token comparison (timing attack resistant)
    - Token expiration and revocation
    - Per-token rate limiting
 
-2. **HMAC-based Authentication**
+1. **HMAC-based Authentication**
+
    - HMAC-SHA256 signature verification
    - Request payload signing
    - Timestamp validation to prevent replay attacks
    - Shared secret management
 
-3. **Environment-based Authentication**
+1. **Environment-based Authentication**
+
    - Environment variable authentication
    - Ideal for local development
    - Configurable role assignment
 
-4. **mTLS Authentication (Future)**
+1. **mTLS Authentication (Future)**
+
    - Certificate-based authentication
    - Client certificate validation
 
 ### Authorization Model
 
 - **Role-based Access Control (RBAC)**
+
   - `readonly`: Read and list operations
   - `readwrite`: Read, list, write, and delete operations
   - `admin`: Full administrative access including checkpoints and restores
 
 - **Granular Permissions**
+
   - `READ`: Read data
   - `WRITE`: Write data
   - `DELETE`: Delete data
@@ -49,23 +55,27 @@ This module provides comprehensive authentication and authorization for Durus MC
 ### Security Features
 
 1. **Rate Limiting**
+
    - Per-token rate limiting (requests per minute)
    - Token bucket algorithm
    - Configurable limits per token
 
-2. **Audit Logging**
+1. **Audit Logging**
+
    - Authentication events
    - Authorization events
    - Data access logging (optional)
    - Configurable retention policy
 
-3. **Secure Token Storage**
+1. **Secure Token Storage**
+
    - Tokens stored as SHA-256 hashes
    - Never log tokens or secrets
    - Secure random generation
    - File-based persistence with secure permissions
 
-4. **Token Management**
+1. **Token Management**
+
    - Token expiration
    - Token revocation
    - Token validation
@@ -245,32 +255,37 @@ server = DurusMCPServer(
 ### Production Deployment
 
 1. **Always enable authentication in production**
+
    ```yaml
    security:
      authentication:
        enabled: true
    ```
 
-2. **Use strong, randomly generated tokens**
+1. **Use strong, randomly generated tokens**
+
    ```bash
    # Use the token generation utility
    python deployment/scripts/generate_token.py --token-id myapp --role admin
    ```
 
-3. **Set appropriate token expiration**
+1. **Set appropriate token expiration**
+
    ```bash
    # Admin tokens: 30 days
    # App tokens: 90 days
    # Service tokens: No expiration (rotate manually)
    ```
 
-4. **Configure rate limiting**
+1. **Configure rate limiting**
+
    ```yaml
    token:
      default_rate_limit: 1000  # Adjust based on usage
    ```
 
-5. **Enable audit logging**
+1. **Enable audit logging**
+
    ```yaml
    audit:
      enabled: true
@@ -278,14 +293,16 @@ server = DurusMCPServer(
      log_authz_events: true
    ```
 
-6. **Secure token storage**
+1. **Secure token storage**
+
    ```bash
    # Ensure proper file permissions
    chmod 600 /etc/durus/tokens.json
    chown durus:durus /etc/durus/tokens.json
    ```
 
-7. **Regular token rotation**
+1. **Regular token rotation**
+
    ```bash
    # Revoke old token
    python deployment/scripts/generate_token.py --token-id old_token --revoke
@@ -412,28 +429,31 @@ python -m pytest test/test_mcp_auth.py --cov=durus/mcp/auth --cov=durus/mcp/midd
 **Problem**: `Authentication failed: invalid or expired token`
 
 **Solutions**:
+
 1. Verify token is correct: `python deployment/scripts/generate_token.py --list`
-2. Check token hasn't expired
-3. Ensure token hasn't been revoked
-4. Verify tokens file path is correct
+1. Check token hasn't expired
+1. Ensure token hasn't been revoked
+1. Verify tokens file path is correct
 
 ### Permission Denied
 
 **Problem**: `Permission denied for tool 'durus_set'`
 
 **Solutions**:
+
 1. Check token role: `python deployment/scripts/generate_token.py --list`
-2. Verify role has required permission
-3. Upgrade token role if needed
+1. Verify role has required permission
+1. Upgrade token role if needed
 
 ### Rate Limit Exceeded
 
 **Problem**: `Rate limit exceeded`
 
 **Solutions**:
+
 1. Wait for rate limit window to expire (1 minute)
-2. Increase token rate limit
-3. Use multiple tokens for high-throughput applications
+1. Increase token rate limit
+1. Use multiple tokens for high-throughput applications
 
 ## File Structure
 

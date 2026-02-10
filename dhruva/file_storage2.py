@@ -157,8 +157,7 @@ class FileStorage2(Storage):
         self.pending_records[oid] = record
 
     def _generate_pending_records(self):
-        for oid, record in iteritems(self.pending_records):
-            yield oid, record
+        yield from iteritems(self.pending_records)
 
     def end(self, handle_invalidations=None):
         """Complete a commit."""
@@ -170,7 +169,7 @@ class FileStorage2(Storage):
         self.fp.flush()
         self.fp.fsync()
         if is_logging(20):
-            log(20, "Transaction at [%s] end=%s" % (datetime.now(), self.fp.tell()))
+            log(20, f"Transaction at [{datetime.now()}] end={self.fp.tell()}")
         self.index.update(index)
         if self.pack_extra is not None:
             self.pack_extra.extend(index)
@@ -207,10 +206,9 @@ class FileStorage2(Storage):
             for oid, offset in iteritems(self.index):
                 yield oid, self.load(oid)
         else:
-            for item in Storage.gen_oid_record(
+            yield from Storage.gen_oid_record(
                 self, start_oid=start_oid, batch_size=batch_size
-            ):
-                yield item
+            )
 
     def _packer(self):
         name = self.fp.get_name()
@@ -297,7 +295,7 @@ class FileStorage2(Storage):
     def _build_index(self, repair):
         self.fp.seek(0)
         if read(self.fp, len(self.MAGIC)) != self.MAGIC:
-            raise OSError("invalid storage (missing magic in %r)" % self.fp)
+            raise OSError(f"invalid storage (missing magic in {self.fp!r})")
         index_offset = read_int8(self.fp)
         assert index_offset > 0
         self.fp.seek(index_offset)

@@ -6,8 +6,6 @@ that contain references to the old 'durus' package name.
 """
 
 # Alias old Durus 4.x class names to new dhruva classes
-from dhruva.collections import PersistentDict, PersistentList, PersistentSet
-from dhruva.core import Persistent
 
 # Create a fake 'durus' module for backward compatibility
 import sys

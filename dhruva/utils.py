@@ -47,7 +47,7 @@ if sys.version < "3":
         from pickle import Pickler, Unpickler, dumps, loads
 else:
     xrange = range
-    from builtins import bytearray, bytes, next
+    from builtins import bytearray, next
 
     byte_string = (bytearray, bytes)
 
@@ -84,7 +84,7 @@ TRACE = False
 
 def read(f, n):
     if TRACE:
-        sys.stdout.write("read(%r, %r)" % (f, n))
+        sys.stdout.write(f"read({f!r}, {n!r})")
     read = getattr(f, "read", None)
     if read is not None:
         result = read(n)
@@ -101,14 +101,14 @@ def read(f, n):
             data.append(hunk)
         result = join_bytes(data)
     if TRACE:
-        sys.stdout.write("-> %r\n" % result)
+        sys.stdout.write(f"-> {result!r}\n")
     return result
 
 
 def write(f, s):
     s_bytes = as_bytes(s)
     if TRACE:
-        sys.stdout.write("write(%r, %r)\n" % (f, s_bytes))
+        sys.stdout.write(f"write({f!r}, {s_bytes!r})\n")
     f_write = getattr(f, "write", None)
     if f_write is not None:
         f_write(s_bytes)
@@ -421,10 +421,9 @@ class WordArray:
         write(file, int8_to_str(bytes_per_word))
         write(file, int8_to_str(number_of_words))
         byte_array = ByteArray(size=0, file=file)
-        for step in byte_array.gen_set_size(
+        yield from byte_array.gen_set_size(
             bytes_per_word * number_of_words, init_byte=init_byte
-        ):
-            yield step
+        )
         file.seek(start)
 
     def __len__(self):
@@ -496,10 +495,9 @@ class IntArray:
             bytes_per_word = 8
         else:
             bytes_per_word = len(int8_to_str(maximum_int + 1).lstrip(as_bytes("\0")))
-        for step in WordArray.generate(
+        yield from WordArray.generate(
             file, bytes_per_word, number_of_ints, as_bytes("\xff")
-        ):
-            yield step
+        )
         file.seek(start)
 
     def get_blank_value(self):

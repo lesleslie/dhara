@@ -15,7 +15,7 @@ Security Model:
 
 import logging
 import warnings
-from typing import Any, Set
+from typing import Any
 
 from dhruva.serialize.base import DEFAULT_MAX_SIZE, Serializer
 from dhruva.serialize.dill import DillSerializer
@@ -31,7 +31,7 @@ SERIALIZER_DILL = 2
 
 # Default whitelist of types allowed to use pickle/dill
 # These are commonly used types that msgspec cannot serialize
-DEFAULT_PICKLE_WHITELIST: Set[str] = {
+DEFAULT_PICKLE_WHITELIST: set[str] = {
     # NumPy types (need pickle or custom encoder)
     "numpy.ndarray",
     "numpy.matrix",
@@ -92,7 +92,7 @@ class FallbackSerializer(Serializer):
 
     def __init__(
         self,
-        pickle_whitelist: Set[str] | None = None,
+        pickle_whitelist: set[str] | None = None,
         allow_dill: bool = False,
         msgspec_kwargs: dict | None = None,
         pickle_kwargs: dict | None = None,

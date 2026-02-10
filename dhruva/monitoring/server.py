@@ -5,11 +5,10 @@ exposes metrics and health endpoints for monitoring.
 """
 
 import socket
-from http.server import HTTPServer, BaseHTTPRequestHandler
-from typing import Callable
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from dhruva.monitoring.health import get_health_checker, get_health_status
-from dhruva.monitoring.metrics import get_metrics_collector, get_server_metrics
+from dhruva.monitoring.metrics import get_server_metrics
 
 
 class MetricsHandler(BaseHTTPRequestHandler):
@@ -34,7 +33,9 @@ class MetricsHandler(BaseHTTPRequestHandler):
             if isinstance(metrics, str):
                 # Prometheus format
                 self.send_response(200)
-                self.send_header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+                self.send_header(
+                    "Content-Type", "text/plain; version=0.0.4; charset=utf-8"
+                )
                 self.end_headers()
                 self.wfile.write(metrics.encode("utf-8"))
             else:
@@ -165,7 +166,9 @@ class MetricsServer:
             self.server.serve_forever()
 
 
-def start_metrics_server(host: str = "127.0.0.1", port: int | None = None) -> MetricsServer:
+def start_metrics_server(
+    host: str = "127.0.0.1", port: int | None = None
+) -> MetricsServer:
     """Start a metrics server and return it.
 
     Args:

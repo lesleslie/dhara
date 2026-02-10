@@ -13,7 +13,7 @@ from dhruva.file import File
 from dhruva.utils import as_bytes
 
 
-class FileTest:
+class file test:
     def a(self):
         f = File()
         f.rename(f.get_name())

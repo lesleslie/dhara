@@ -132,7 +132,7 @@ class SqliteStorage(Storage):
     def end(self, handle_invalidations=None):
         self._store_records(self.pending_records)
         if is_logging(20):
-            log(20, "Transaction at [%s]" % datetime.now())
+            log(20, f"Transaction at [{datetime.now()}]")
         self.begin()
 
     def sync(self):
@@ -155,8 +155,7 @@ class SqliteStorage(Storage):
 
     def gen_oid_record(self, start_oid=None, **other):
         if start_oid is None:
-            for item in iteritems(self._gen_records()):
-                yield item
+            yield from iteritems(self._gen_records())
         else:
             todo = [start_oid]
             seen = set()  # This eventually contains them all.
@@ -211,7 +210,7 @@ class SqliteStorage(Storage):
         alive = set()  # will contain OIDs of all reachable from root
 
         def packer():
-            yield "started %s" % datetime.now()
+            yield f"started {datetime.now()}"
             n = 0
             # find all reachable objects.  Note that when we yield, new
             # commits may happen and pack_extra will contain new or modified
@@ -260,7 +259,7 @@ class SqliteStorage(Storage):
         self._conn.close()
 
     def __str__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.get_filename())
+        return f"{self.__class__.__name__}({self.get_filename()!r})"
 
     def create_from_records(self, oid_records):
         assert self._last_oid == 0, "db not empty"

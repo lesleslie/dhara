@@ -9,7 +9,7 @@ file, with data converted to a form that is compatible with Python 3.
 This modifies the unpickler so all that values that would be binary strings
 are actually unpickled as unicode strings, and everything is repickled for
 placement in the new storage file.  Note that this conversion is not
-reversable, so please be especially careful to keep a backup of your storage
+reversible, so please be especially careful to keep a backup of your storage
 file.
 
 This converts all binary strings except _p_oid attribute values and

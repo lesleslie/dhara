@@ -18,10 +18,10 @@ class PersistentSet(PersistentObject, collections.abc.MutableSet):
 
     def __repr__(self):
         if self._p_oid is None:
-            identifier = "@%x" % id(self)
+            identifier = f"@{id(self):x}"
         else:
             identifier = self._p_format_oid()
-        return "<%s %s %r>" % (self.__class__.__name__, identifier, list(self.s))
+        return f"<{self.__class__.__name__} {identifier} {list(self.s)!r}>"
 
     def __and__(self, other):
         if isinstance(other, PersistentSet):
@@ -72,8 +72,7 @@ class PersistentSet(PersistentObject, collections.abc.MutableSet):
         return self
 
     def __iter__(self):
-        for x in self.s:
-            yield x
+        yield from self.s
 
     def __ixor__(self, other):
         self._p_note_change()

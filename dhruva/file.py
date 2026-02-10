@@ -33,7 +33,7 @@ class File:
                     self.file = open(name, "r+b")
             else:
                 if readonly:
-                    raise OSError('No "%s" found.' % name)
+                    raise OSError(f'No "{name}" found.')
                 self.file = open(name, "w+b")
         if readonly:
             assert self.is_readonly()

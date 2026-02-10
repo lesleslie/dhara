@@ -374,16 +374,19 @@ for info in list_modes():
 To switch between modes:
 
 1. **Stop current instance**:
+
    ```bash
    dhruva-mcp stop
    ```
 
-2. **Set new mode**:
+1. **Set new mode**:
+
    ```bash
    export DHRUVA_MODE=standard  # or lite
    ```
 
-3. **Start new instance**:
+1. **Start new instance**:
+
    ```bash
    dhruva-mcp start
    ```
@@ -585,9 +588,9 @@ storage:
 If you encounter issues:
 
 1. Check mode: `python -c "from dhruva.modes import get_mode; print(get_mode().get_info())"`
-2. Check logs: `tail -f ~/.oneiric_cache/dhruva.log`
-3. Verify configuration: `python -c "from dhruva.core.config import DhruvaSettings; print(DhruvaSettings.load())"`
-4. Check health: `dhruva-mcp health --probe`
+1. Check logs: `tail -f ~/.oneiric_cache/dhruva.log`
+1. Verify configuration: `python -c "from dhruva.core.config import DhruvaSettings; print(DhruvaSettings.load())"`
+1. Check health: `dhruva-mcp health --probe`
 
 ## Summary
 

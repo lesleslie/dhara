@@ -31,19 +31,19 @@ def create_serializer(
 
     Examples:
         >>> # Create default msgspec serializer (safe, fast)
-        >>> ser = create_serializer()  # Uses msgspec by default
+        >>> set = create_serializer()  # Uses msgspec by default
         >>>
         >>> # Create msgspec serializer with JSON format
-        >>> ser = create_serializer("msgspec", format="json", use_builtins=True)
+        >>> set = create_serializer("msgspec", format="json", use_builtins=True)
         >>>
         >>> # Create fallback serializer with whitelist
-        >>> ser = create_serializer("fallback", pickle_whitelist={"numpy.ndarray"})
+        >>> set = create_serializer("fallback", pickle_whitelist={"numpy.ndarray"})
         >>>
         >>> # Create pickle serializer (WARNING: use only with trusted data)
-        >>> ser = create_serializer("pickle", protocol=2)
+        >>> set = create_serializer("pickle", protocol=2)
         >>>
         >>> # Create dill serializer (WARNING: use only with trusted data)
-        >>> ser = create_serializer("dill", protocol=4)
+        >>> set = create_serializer("dill", protocol=4)
 
     Backend-specific arguments:
 

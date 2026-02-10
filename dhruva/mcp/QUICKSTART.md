@@ -76,6 +76,7 @@ python deployment/scripts/generate_token.py --token-id myapp --export-env
 ## 5. Common Patterns
 
 ### Read-Only Token (Safe for clients)
+
 ```bash
 python deployment/scripts/generate_token.py \
   --token-id client_app \
@@ -84,6 +85,7 @@ python deployment/scripts/generate_token.py \
 ```
 
 ### Read-Write Token (For data operations)
+
 ```bash
 python deployment/scripts/generate_token.py \
   --token-id data_service \
@@ -92,6 +94,7 @@ python deployment/scripts/generate_token.py \
 ```
 
 ### Admin Token (For maintenance)
+
 ```bash
 python deployment/scripts/generate_token.py \
   --token-id admin \
@@ -100,6 +103,7 @@ python deployment/scripts/generate_token.py \
 ```
 
 ### Service Token (No expiration)
+
 ```bash
 python deployment/scripts/generate_token.py \
   --token-id background_worker \
@@ -110,16 +114,19 @@ python deployment/scripts/generate_token.py \
 ## 6. Troubleshooting
 
 ### "Authentication failed"
+
 - Check token is correct: `--list`
 - Verify token file path
 - Ensure `authentication.enabled: true`
 
 ### "Permission denied"
+
 - Check token role: `--list`
 - Verify role has required permission
 - Upgrade role if needed: revoke and recreate
 
 ### "Rate limit exceeded"
+
 - Wait 1 minute for window to reset
 - Increase rate limit: revoke and recreate with higher `--rate-limit`
 - Use multiple tokens for high throughput

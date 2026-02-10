@@ -5,15 +5,15 @@ This guide provides comprehensive instructions for backing up and restoring Duru
 ## Table of Contents
 
 1. [Overview](#overview)
-2. [Quick Start](#quick-start)
-3. [Backup Types](#backup-types)
-4. [Configuration](#configuration)
-5. [Automated Backups](#automated-backups)
-6. [Restore Operations](#restore-operations)
-7. [Verification and Testing](#verification-and-testing)
-8. [Cloud Storage Integration](#cloud-storage-integration)
-9. [Security Considerations](#security-considerations)
-10. [Troubleshooting](#troubleshooting)
+1. [Quick Start](#quick-start)
+1. [Backup Types](#backup-types)
+1. [Configuration](#configuration)
+1. [Automated Backups](#automated-backups)
+1. [Restore Operations](#restore-operations)
+1. [Verification and Testing](#verification-and-testing)
+1. [Cloud Storage Integration](#cloud-storage-integration)
+1. [Security Considerations](#security-considerations)
+1. [Troubleshooting](#troubleshooting)
 
 ## Overview
 
@@ -73,15 +73,18 @@ print(f"Database restored to: {restored_path}")
 Complete snapshots of the entire database.
 
 **Pros:**
+
 - Simple to restore
 - No dependency on previous backups
 - Can be used as standalone recovery points
 
 **Cons:**
+
 - Large storage requirements
 - Longer backup times
 
 When to use:
+
 - Initial backup
 - Weekly/monthly backups
 - Recovery from major failures
@@ -91,15 +94,18 @@ When to use:
 Only store changes since the last backup (of any type).
 
 **Pros:**
+
 - Minimal storage space
 - Faster backup times
 - Good for frequent backups
 
 **Cons:**
+
 - Restore requires base backup + all incrementals
 - More complex recovery process
 
 When to use:
+
 - Hourly backups
 - Frequent backups for busy systems
 
@@ -108,15 +114,18 @@ When to use:
 Store changes since the last full backup.
 
 **Pros:**
+
 - Faster than full backups
 - Simpler restore than incremental chains
 - Less storage than full backups
 
 **Cons:**
+
 - Larger than incrementals
 - Still growing in size
 
 When to use:
+
 - Daily backups
 - Balance between full and incremental approaches
 
@@ -443,29 +452,33 @@ azure = AzureBlobStorage(
 ### Encryption
 
 1. **Use strong encryption**:
+
    ```python
    from cryptography.fernet import Fernet
    key = Fernet.generate_key()
    ```
 
-2. **Store keys securely**:
+1. **Store keys securely**:
+
    - Use environment variables
    - Use secret management systems
    - Never commit keys to version control
 
-3. **Rotate encryption keys** periodically**
+1. **Rotate encryption keys** periodically\*\*
 
 ### Access Control
 
 1. **Restrict file permissions**:
+
    ```bash
    chmod 600 backups/*.durus
    chmod 700 backups/
    ```
 
-2. **Use file system encryption** (LUKS, BitLocker, FileVault)
+1. **Use file system encryption** (LUKS, BitLocker, FileVault)
 
-3. **Cloud storage security**:
+1. **Cloud storage security**:
+
    - Use IAM roles instead of long-term credentials
    - Enable bucket encryption
    - Set proper bucket policies
@@ -473,14 +486,14 @@ azure = AzureBlobStorage(
 ### Network Security
 
 1. **Use HTTPS** for cloud transfers
-2. **Implement VPN** for remote access
-3. **Firewall rules** to restrict access to backup servers
+1. **Implement VPN** for remote access
+1. **Firewall rules** to restrict access to backup servers
 
 ### Backup Protection
 
 1. **Regular access audits**
-2. **Change management procedures**
-3. **Incident response plan**
+1. **Change management procedures**
+1. **Incident response plan**
 
 ## Troubleshooting
 
@@ -489,18 +502,21 @@ azure = AzureBlobStorage(
 #### Backup Failures
 
 **Issue**: Permission denied
+
 ```python
 # Fix: Ensure proper permissions
 os.chmod(backup_dir, 0o700)
 ```
 
 **Issue**: Storage space full
+
 ```python
 # Fix: Clean old backups or increase storage
 backup_manager.cleanup_old_backups()
 ```
 
 **Issue**: Compression failed
+
 ```python
 # Fix: Check zstd installation
 pip install zstandard
@@ -509,6 +525,7 @@ pip install zstandard
 #### Restore Failures
 
 **Issue**: Missing backup file
+
 ```python
 # Fix: Check cloud connectivity or local path
 if not Path(backup_metadata.source_path).exists():
@@ -517,6 +534,7 @@ if not Path(backup_metadata.source_path).exists():
 ```
 
 **Issue**: Checksum mismatch
+
 ```python
 # Fix: Verify file integrity
 result = verification.check_backup_integrity(backup_metadata)
@@ -527,6 +545,7 @@ if result.status == "failed":
 #### Performance Issues
 
 **Issue**: Slow backups
+
 ```python
 # Fix: Adjust compression level
 backup_manager = BackupManager(
@@ -536,6 +555,7 @@ backup_manager = BackupManager(
 ```
 
 **Issue**: High CPU usage
+
 ```python
 # Fix: Limit concurrent operations
 import threading
@@ -545,12 +565,14 @@ max_threads = 2
 ### Debugging Tips
 
 1. **Enable logging**:
+
    ```python
    import logging
    logging.basicConfig(level=logging.INFO)
    ```
 
-2. **Check catalog integrity**:
+1. **Check catalog integrity**:
+
    ```python
    catalog = BackupCatalog("./backups")
    issues = catalog.validate_catalog_integrity()
@@ -558,7 +580,8 @@ max_threads = 2
        logger.warning(f"Catalog issue: {issue}")
    ```
 
-3. **Monitor backup health**:
+1. **Monitor backup health**:
+
    ```python
    # Get backup statistics
    stats = catalog.get_backup_statistics()
@@ -569,43 +592,43 @@ max_threads = 2
 ### Disaster Recovery Checklist
 
 1. ✅ Verify backups exist and are accessible
-2. ✅ Test restore process
-3. ✅ Confirm encryption keys are available
-4. ✅ Check cloud connectivity
-5. ✅ Validate retention policies
-6. ✅ Run verification tests
-7. ✅ Document recovery procedures
-8. ✅ Conduct DR drills
+1. ✅ Test restore process
+1. ✅ Confirm encryption keys are available
+1. ✅ Check cloud connectivity
+1. ✅ Validate retention policies
+1. ✅ Run verification tests
+1. ✅ Document recovery procedures
+1. ✅ Conduct DR drills
 
 ## Best Practices
 
 ### Regular Operations
 
 1. **Daily**: Run verification checks
-2. **Weekly**: Test restore procedures
-3. **Monthly**: Review retention policies
-4. **Quarterly**: Conduct DR drills
+1. **Weekly**: Test restore procedures
+1. **Monthly**: Review retention policies
+1. **Quarterly**: Conduct DR drills
 
 ### Performance Optimization
 
 1. **Schedule during off-peak hours**
-2. **Use appropriate compression levels**
-3. **Monitor storage usage**
-4. **Test performance regularly**
+1. **Use appropriate compression levels**
+1. **Monitor storage usage**
+1. **Test performance regularly**
 
 ### Security
 
 1. **Regular key rotation**
-2. **Access reviews**
-3. **Vulnerability scanning**
-4. **Backup offsite storage**
+1. **Access reviews**
+1. **Vulnerability scanning**
+1. **Backup offsite storage**
 
 ### Monitoring
 
 1. **Track success rates**
-2. **Monitor storage costs**
-3. **Alert on failures**
-4. **Log all operations**
+1. **Monitor storage costs**
+1. **Alert on failures**
+1. **Log all operations**
 
 ## API Reference
 

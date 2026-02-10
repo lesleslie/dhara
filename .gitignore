@@ -2,3 +2,7 @@
 *.pyc
 *.durus
 dist
+
+# Oneiric runtime cache (should not be tracked)
+.oneiric_cache/
+~/.oneiric_cache/

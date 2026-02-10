@@ -32,7 +32,7 @@ installation.
 
 Review the installed.txt file to see where the install script made
 changes.  You should make sure that the script files installed to the python
-bin directory are on your command shell's path.  
+bin directory are on your command shell's path.
 
 
 * Customized Installation:

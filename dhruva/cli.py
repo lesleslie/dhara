@@ -20,13 +20,10 @@ Usage:
 from __future__ import annotations
 
 import time
-from typing import Any
 
 import typer
-
 from mcp_common.cli import (
     MCPServerCLIFactory,
-    MCPServerSettings,
     RuntimeHealthSnapshot,
 )
 from mcp_common.cli.health import load_runtime_health, write_runtime_health
@@ -196,8 +193,8 @@ def _create_adapters_command(app: typer.Typer, settings: DhruvaSettings) -> None
     ) -> None:
         """List registered adapters in Dhruva."""
         from dhruva.core.connection import Connection
-        from dhruva.storage.file import FileStorage
         from dhruva.mcp.adapter_tools import AdapterRegistry
+        from dhruva.storage.file import FileStorage
 
         # Open connection with context manager for automatic cleanup
         with FileStorage(str(settings.storage.path), readonly=True) as storage:
@@ -211,7 +208,9 @@ def _create_adapters_command(app: typer.Typer, settings: DhruvaSettings) -> None
 
             for adapter in adapters:
                 typer.echo(f"  {adapter['adapter_id']} @ {adapter['version']}")
-                typer.echo(f"    {adapter['metadata'].get('description', 'No description')}")
+                typer.echo(
+                    f"    {adapter['metadata'].get('description', 'No description')}"
+                )
 
 
 def _create_storage_command(app: typer.Typer, settings: DhruvaSettings) -> None:
@@ -233,10 +232,12 @@ def _create_storage_command(app: typer.Typer, settings: DhruvaSettings) -> None:
 
             root = connection.get_root()
 
-            typer.echo(f"\n💾 Storage Information:")
+            typer.echo("\n💾 Storage Information:")
             typer.echo(f"  Path: {settings.storage.path}")
             typer.echo(f"  Exists: {settings.storage.path.exists()}")
-            typer.echo(f"  Size: {settings.storage.path.stat().st_size if settings.storage.path.exists() else 0} bytes")
+            typer.echo(
+                f"  Size: {settings.storage.path.stat().st_size if settings.storage.path.exists() else 0} bytes"
+            )
             typer.echo(f"  Root keys: {len(list(root.keys()))}")
 
 
@@ -252,8 +253,8 @@ def _create_admin_command(app: typer.Typer, settings: DhruvaSettings) -> None:
     def admin() -> None:
         """Launch Dhruva admin shell with IPython."""
         from dhruva.core.connection import Connection
-        from dhruva.storage.file import FileStorage
         from dhruva.shell import DhruvaShell
+        from dhruva.storage.file import FileStorage
 
         # Open connection
         storage = FileStorage(str(settings.storage.path))

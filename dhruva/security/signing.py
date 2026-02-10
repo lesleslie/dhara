@@ -8,11 +8,10 @@ Uses cryptography.hazmat for HMAC-SHA256 signing.
 """
 
 import os
-from typing import BinaryIO
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes, hmac, serialization
+from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 
@@ -51,7 +50,9 @@ class ObjectSigner:
         self._backend = default_backend()
 
     @classmethod
-    def from_password(cls, password: bytes, salt: bytes | None = None) -> "ObjectSigner":
+    def from_password(
+        cls, password: bytes, salt: bytes | None = None
+    ) -> "ObjectSigner":
         """Create signer from password using PBKDF2 key derivation.
 
         This is the recommended way to create a signer from a user-provided
@@ -123,7 +124,9 @@ class ObjectSigner:
         key = cls.generate_key()
 
         # Create parent directories if needed
-        os.makedirs(os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True)
+        os.makedirs(
+            os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True
+        )
 
         with open(path, "wb") as f:
             f.write(key)
@@ -174,7 +177,9 @@ class ObjectSigner:
         try:
             h.verify(signature)
         except InvalidSignature:
-            raise InvalidSignature("HMAC verification failed. Data may have been tampered with.")
+            raise InvalidSignature(
+                "HMAC verification failed. Data may have been tampered with."
+            )
 
         return data
 

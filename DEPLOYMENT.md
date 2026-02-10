@@ -18,16 +18,19 @@ This guide covers deploying dhruva 5.0 using native Python installation and Clou
 ## Prerequisites
 
 ### For Native Installation
+
 - Python 3.13 or later
 - pip (Python package installer)
 - Virtual environment (recommended)
 
 ### For Buildpack Deployment
+
 - [pack CLI](https://buildpacks.io/docs/install-pack/) (for local builds)
 - Docker daemon (for running buildpack images)
 - Container registry (for production deployment)
 
 ### For Kubernetes Deployment
+
 - kubectl configured for your cluster
 - Container registry access
 
@@ -298,6 +301,7 @@ config = load_config("config.yaml")  # Detects YAML/JSON
 ### Kubernetes Probes
 
 The Kubernetes deployment includes:
+
 - **Liveness Probe**: Checks if server is running
 - **Readiness Probe**: Checks if server can accept connections
 - **Startup Probe**: Checks if server started successfully
@@ -415,6 +419,7 @@ cp /backup/dhruva-20250107.dhruva /data/dhruva.dhruva
 By default, dhruva uses **msgspec** for secure serialization. Pickle is only used when explicitly configured.
 
 **Recommendations:**
+
 - Use msgspec serializer in production (default)
 - Avoid pickle for untrusted data sources
 - Set size limits on deserialization
@@ -444,6 +449,7 @@ export DHRUVA_SECRET_KEY=$(openssl rand -hex 32)
 ### Container Security (Buildpack Images)
 
 Buildpack images are secure by default:
+
 - Non-root user execution
 - Read-only root filesystem
 - Minimal attack surface
@@ -454,6 +460,7 @@ Buildpack images are secure by default:
 ### Common Issues
 
 **Issue:** Server won't start
+
 ```bash
 # Check port availability
 netstat -tuln | grep 2972
@@ -464,6 +471,7 @@ python -c "from dhruva.config.loader import load_config; print(load_config('depl
 ```
 
 **Issue:** High memory usage
+
 ```bash
 # Check cache size
 python -c "
@@ -479,6 +487,7 @@ cache:
 ```
 
 **Issue:** Slow performance
+
 ```bash
 # Check serialization method
 python -c "

@@ -1,32 +1,32 @@
 {
-  "timestamp": "2026-02-10T01:29:46.081918",
-  "project": "dhruva",
-  "quality_score": 100,
   "breakdown": {
-    "maturity": {
-      "score": 30,
-      "max": 25
-    },
     "code_quality": {
-      "score": 10,
-      "max": 15
-    },
-    "session_opt": {
-      "score": 10,
-      "max": 25
+      "max": 15,
+      "score": 10
     },
     "git_history": {
-      "score": 10,
-      "max": 15
+      "max": 15,
+      "score": 10
+    },
+    "maturity": {
+      "max": 25,
+      "score": 30
+    },
+    "session_opt": {
+      "max": 25,
+      "score": 10
     }
   },
   "context_info": {
+    "recommendation": "Context size healthy",
     "session_files": 4,
-    "total_size_mb": 17.01,
     "total_lines": 14686,
-    "recommendation": "Context size healthy"
+    "total_size_mb": 17.01
   },
+  "project": "dhruva",
+  "quality_score": 100,
   "recommendations": [
-    "\ud83c\udf89 Excellent workflow! Continue current practices."
-  ]
+    "🎉 Excellent workflow! Continue current practices."
+  ],
+  "timestamp": "2026-02-10T01:29:46.081918"
 }

@@ -3,10 +3,11 @@
 Provides health status monitoring and readiness checks for dhruva servers.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Any, Callable
+from typing import Any
 
 from dhruva.monitoring.metrics import get_metrics_collector
 
@@ -142,7 +143,9 @@ class HealthChecker:
                     message = f"Low cache hit rate: {hit_rate:.1%}"
                 else:
                     status = HealthStatus.HEALTHY
-                    message = f"Cache healthy (size: {cache_size}, hit rate: {hit_rate:.1%})"
+                    message = (
+                        f"Cache healthy (size: {cache_size}, hit rate: {hit_rate:.1%})"
+                    )
 
                 return HealthCheck(
                     name="cache",
@@ -163,7 +166,6 @@ class HealthChecker:
         def check_memory():
             """Check memory usage."""
             import gc
-            import sys
 
             try:
                 # Get memory info
@@ -252,9 +254,15 @@ class HealthChecker:
             if check.status == HealthStatus.UNHEALTHY:
                 overall_status = HealthStatus.UNHEALTHY
                 break
-            elif check.status == HealthStatus.DEGRADED and overall_status != HealthStatus.UNHEALTHY:
+            elif (
+                check.status == HealthStatus.DEGRADED
+                and overall_status != HealthStatus.UNHEALTHY
+            ):
                 overall_status = HealthStatus.DEGRADED
-            elif check.status == HealthStatus.UNKNOWN and overall_status == HealthStatus.HEALTHY:
+            elif (
+                check.status == HealthStatus.UNKNOWN
+                and overall_status == HealthStatus.HEALTHY
+            ):
                 overall_status = HealthStatus.UNKNOWN
 
         # Calculate uptime

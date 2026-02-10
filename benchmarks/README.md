@@ -26,12 +26,15 @@ pytest benchmarks/ --benchmark-only --benchmark-compare
 ### Key Metrics
 
 1. **Serialization Speed**: Lower is better
+
    - msgspec should be 2-5x faster than pickle
 
-2. **Serialized Size**: Smaller is better
+1. **Serialized Size**: Smaller is better
+
    - msgspec typically 20-40% smaller than pickle
 
-3. **Operation Latency**: Lower is better
-   - Memory storage: <1ms
+1. **Operation Latency**: Lower is better
+
+   - Memory storage: \<1ms
    - File storage: 1-5ms
    - SQLite storage: 2-10ms

@@ -3,6 +3,7 @@
 ## Quick Start
 
 ### Lite Mode (Development)
+
 ```bash
 # Zero configuration startup
 export DHRUVA_MODE=lite
@@ -13,6 +14,7 @@ dhruva-mcp start
 ```
 
 ### Standard Mode (Production)
+
 ```bash
 # Production startup
 export DHRUVA_MODE=standard
@@ -28,6 +30,7 @@ dhruva-mcp start
 ## Command Reference
 
 ### Mode Selection
+
 ```bash
 # Environment variable (recommended)
 export DHRUVA_MODE=lite          # or standard
@@ -43,6 +46,7 @@ mode.initialize()
 ```
 
 ### CLI Commands
+
 ```bash
 # Start server
 dhruva-mcp start
@@ -60,12 +64,14 @@ dhruva-mcp stop
 ## Configuration Locations
 
 ### Lite Mode
+
 - **Config**: `settings/lite.yaml`
 - **Storage**: `~/.local/share/dhruva/lite.dhruva`
 - **Host**: `127.0.0.1:8683`
 - **Logging**: DEBUG, text format
 
 ### Standard Mode
+
 - **Config**: `settings/standard.yaml`
 - **Storage**: `/data/dhruva/production.dhruva` (default)
 - **Host**: `0.0.0.0:8683`
@@ -75,26 +81,29 @@ dhruva-mcp stop
 
 | Backend | Lite Mode | Standard Mode | Configuration |
 |---------|-----------|---------------|---------------|
-| File    | ✅ Default | ✅ | `DHRUVA_STORAGE_BACKEND=file` |
-| SQLite  | ❌ | ✅ | `DHRUVA_STORAGE_BACKEND=sqlite` |
-| S3      | ❌ | ✅ | `DHRUVA_STORAGE_BACKEND=s3` + AWS creds |
-| GCS     | ❌ | ✅ | `DHRUVA_STORAGE_BACKEND=gcs` + GCS creds |
-| Azure   | ❌ | ✅ | `DHRUVA_STORAGE_BACKEND=azure` + Azure creds |
+| File | ✅ Default | ✅ | `DHRUVA_STORAGE_BACKEND=file` |
+| SQLite | ❌ | ✅ | `DHRUVA_STORAGE_BACKEND=sqlite` |
+| S3 | ❌ | ✅ | `DHRUVA_STORAGE_BACKEND=s3` + AWS creds |
+| GCS | ❌ | ✅ | `DHRUVA_STORAGE_BACKEND=gcs` + GCS creds |
+| Azure | ❌ | ✅ | `DHRUVA_STORAGE_BACKEND=azure` + Azure creds |
 
 ## Environment Variables
 
 ### Mode Selection
+
 ```bash
 DHRUVA_MODE=lite|standard
 ```
 
 ### Storage Configuration
+
 ```bash
 DHRUVA_STORAGE_BACKEND=file|sqlite|s3|gcs|azure
 DHRUVA_STORAGE_PATH=/path/to/storage
 ```
 
 ### S3 Storage
+
 ```bash
 DHRUVA_S3_BUCKET=my-bucket
 DHRUVA_S3_PREFIX=dhruva/
@@ -104,6 +113,7 @@ AWS_REGION=us-east-1
 ```
 
 ### GCS Storage
+
 ```bash
 DHRUVA_GCS_BUCKET=my-bucket
 DHRUVA_GCS_PREFIX=dhruva/
@@ -111,6 +121,7 @@ GOOGLE_APPLICATION_CREDENTIALS=/path/to/keyfile.json
 ```
 
 ### Azure Storage
+
 ```bash
 DHRUVA_AZURE_CONTAINER=my-container
 DHRUVA_AZURE_PREFIX=dhruva/
@@ -118,6 +129,7 @@ AZURE_STORAGE_CONNECTION_STRING=xxx
 ```
 
 ### Server Configuration
+
 ```bash
 DHRUVA_HOST=0.0.0.0
 DHRUVA_PORT=8683
@@ -126,6 +138,7 @@ DHRUVA_PORT=8683
 ## Python API
 
 ### Mode Management
+
 ```python
 # Create specific mode
 from dhruva.modes import LiteMode, StandardMode
@@ -148,6 +161,7 @@ for info in list_modes():
 ```
 
 ### Direct Configuration
+
 ```python
 from dhruva.core.config import DhruvaSettings
 
@@ -167,6 +181,7 @@ print(f"Config: {config_path}")
 ## Troubleshooting
 
 ### Check Current Mode
+
 ```python
 from dhruva.modes import get_mode
 mode = get_mode()
@@ -174,6 +189,7 @@ print(mode.get_info())
 ```
 
 ### Check Configuration
+
 ```python
 from dhruva.core.config import DhruvaSettings
 settings = DhruvaSettings.load("dhruva")
@@ -181,6 +197,7 @@ print(settings.model_dump_json(indent=2))
 ```
 
 ### Validate Environment
+
 ```python
 from dhruva.modes import LiteMode
 mode = LiteMode()
@@ -194,6 +211,7 @@ except Exception as e:
 ## Migration Steps
 
 ### Lite → Standard
+
 ```bash
 # 1. Export data from lite mode
 # (See documentation for export script)
@@ -256,6 +274,7 @@ python -c "from dhruva.modes import list_modes; import pprint; pprint.pprint(lis
 ## Common Patterns
 
 ### Development Workflow
+
 ```bash
 # 1. Start in lite mode
 ./scripts/dev-start.sh lite
@@ -268,6 +287,7 @@ dhruva-mcp stop
 ```
 
 ### Production Deployment
+
 ```bash
 # 1. Configure environment
 export DHRUVA_MODE=standard

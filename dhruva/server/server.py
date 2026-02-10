@@ -2,18 +2,10 @@
 $URL$
 $Id$
 
-⚠️ SECURITY WARNING:
-This StorageServer implementation does NOT use TLS/SSL encryption.
-All communication between client and server is sent in plaintext.
+StorageServer for dhruva persistent object storage.
 
-DO NOT use this over untrusted networks (Internet, public WiFi) without
-adding TLS/SSL encryption. Data can be intercepted, modified, or stolen.
-
-TODO: Implement TLS/SSL encryption using:
-  - ssl.wrap_socket() for basic TLS support
-  - Server certificates for authentication
-  - Client certificate validation for mutual authentication
-  - Secure cipher suites and TLS version configuration
+This implementation supports TLS/SSL encryption for secure communication
+over untrusted networks. Use tls_config parameter to enable encryption.
 """
 
 import errno
@@ -27,6 +19,11 @@ from time import sleep
 
 from dhruva.error import ConflictError, ReadConflictError
 from dhruva.logger import is_logging, log
+from dhruva.security.tls import (
+    TLSConfig,
+    get_env_tls_config,
+    wrap_server_socket,
+)
 from dhruva.serialize.adapter import extract_class_name, split_oids
 from dhruva.server.socket import get_systemd_socket
 from dhruva.utils import (
@@ -139,9 +136,9 @@ class HostPortAddress(SocketAddress):
 
     def __str__(self):
         if ":" in self.host:
-            return "[%s]:%s" % (self.host, self.port)
+            return f"[{self.host}]:{self.port}"
         else:
-            return "%s:%s" % (self.host, self.port)
+            return f"{self.host}:{self.port}"
 
     def get_address_family(self):
         if ":" in self.host:
@@ -223,13 +220,7 @@ class UnixDomainSocketAddress(UnixAbstractAddress):
             rwx = ["---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"]
             owner = getpwuid(uid).pw_name
             group = getgrgid(gid).gr_name
-            result += " (%s%s%s %s %s)" % (
-                rwx[filestat.st_mode >> 6 & 7],
-                rwx[filestat.st_mode >> 3 & 7],
-                rwx[filestat.st_mode & 7],
-                owner,
-                group,
-            )
+            result += f" ({rwx[filestat.st_mode >> 6 & 7]}{rwx[filestat.st_mode >> 3 & 7]}{rwx[filestat.st_mode & 7]} {owner} {group})"
         return result
 
     def bind_socket(self, s):
@@ -295,9 +286,9 @@ class InheritedSocket(SocketAddress):
             addr = self.name[0]
             port = self.name[1]
             if ":" in addr:
-                return "[%s]:%s" % (addr, port)
+                return f"[{addr}]:{port}"
             else:
-                return "%s:%s" % (addr, port)
+                return f"{addr}:{port}"
 
     def set_connection_options(self, s):
         if s.family in [socket.AF_INET, socket.AF_INET6]:
@@ -318,7 +309,21 @@ class StorageServer:
         port=DEFAULT_PORT,
         address=None,
         gcbytes=DEFAULT_GCBYTES,
+        tls_config: TLSConfig | None = None,
+        tls_enabled: bool | None = None,
     ):
+        """
+        Initialize StorageServer.
+
+        Args:
+            storage: Storage backend to use
+            host: Server hostname or IP address
+            port: Server port
+            address: SocketAddress instance (overrides host/port)
+            gcbytes: Bytes written before triggering automatic pack
+            tls_config: TLS configuration (if None, loads from environment)
+            tls_enabled: Explicitly enable/disable TLS (None=auto-detect)
+        """
         self.storage = storage
         self.clients = []
         self.sockets = []
@@ -328,6 +333,30 @@ class StorageServer:
         self.bytes_since_pack = 0
         self.gcbytes = gcbytes  # Trigger a pack after this many bytes.
         assert isinstance(gcbytes, (int, float))
+
+        # Determine TLS configuration
+        if tls_config is None:
+            tls_config = get_env_tls_config()
+
+        # Auto-detect TLS if config is provided but tls_enabled is not set
+        if tls_enabled is None and tls_config is not None:
+            tls_enabled = True
+
+        self.tls_config = tls_config
+        self.tls_enabled = tls_enabled and tls_config is not None
+
+        # Validate TLS configuration for server
+        if self.tls_enabled:
+            if (
+                not self.tls_config
+                or not self.tls_config.certfile
+                or not self.tls_config.keyfile
+            ):
+                raise ValueError(
+                    "Server TLS requires both certfile and keyfile in tls_config. "
+                    "Set DHRUVA_TLS_CERTFILE and DHRUVA_TLS_KEYFILE environment variables, "
+                    "or provide a TLSConfig with certfile and keyfile."
+                )
 
     def serve(self):
         sock = get_systemd_socket()
@@ -348,6 +377,16 @@ class StorageServer:
                     if s is sock:
                         # new connection
                         conn, addr = s.accept()
+
+                        # Wrap with TLS if enabled
+                        if self.tls_enabled and self.tls_config:
+                            try:
+                                conn = wrap_server_socket(conn, self.tls_config)
+                            except Exception as e:
+                                log(20, "TLS handshake failed for %s: %s", addr, e)
+                                conn.close()
+                                continue
+
                         self.address.set_connection_options(conn)
                         self.clients.append(_Client(conn, addr))
                         self.sockets.append(conn)
@@ -364,14 +403,14 @@ class StorageServer:
                 if self.packer is None and 0 < self.gcbytes <= self.bytes_since_pack:
                     self.packer = self.storage.get_packer()
                     if self.packer is not None:
-                        log(20, "gc started at %s" % datetime.now())
+                        log(20, f"gc started at {datetime.now()}")
                 if not r and self.packer is not None:
                     try:
                         pack_step = next(self.packer)
                         if isinstance(pack_step, str):
                             log(15, "gc " + pack_step)
                     except StopIteration:
-                        log(20, "gc at %s" % datetime.now())
+                        log(20, f"gc at {datetime.now()}")
                         self.packer = None  # done packing
                         self.bytes_since_pack = 0  # reset
         finally:
@@ -383,9 +422,9 @@ class StorageServer:
             command_code = chr(command_byte)
         else:
             command_code = command_byte
-        handler = getattr(self, "handle_%s" % command_code, None)
+        handler = getattr(self, f"handle_{command_code}", None)
         if handler is None:
-            raise ClientError("No such command code: %r" % command_code)
+            raise ClientError(f"No such command code: {command_code!r}")
         handler(s)
 
     def _find_client(self, s):
@@ -475,7 +514,7 @@ class StorageServer:
         for other_client in self.clients:
             if other_client is not client:
                 if oid_set.intersection(other_client.unused_oids):
-                    raise ClientError("invalid oid: %r" % oid)
+                    raise ClientError(f"invalid oid: {oid!r}")
         try:
             self.storage.end(handle_invalidations=self._handle_invalidations)
         except ConflictError:
@@ -501,7 +540,7 @@ class StorageServer:
         if self.load_record and is_logging(5):
             log(
                 5,
-                "[%s]\n" % getpid()
+                f"[{getpid()}]\n"
                 + "\n".join(
                     "%8s: %s" % (item[1], item[0])
                     for item in sorted(self.load_record.items())
@@ -528,13 +567,13 @@ class StorageServer:
     def handle_P(self, s):
         # pack
         if self.packer is None:
-            log(20, "Pack started at %s" % datetime.now())
+            log(20, f"Pack started at {datetime.now()}")
             self.packer = self.storage.get_packer()
             if self.packer is None:
                 self.storage.pack()
-                log(20, "Pack completed at %s" % datetime.now())
+                log(20, f"Pack completed at {datetime.now()}")
         else:
-            log(20, "Pack already in progress at %s" % datetime.now())
+            log(20, f"Pack already in progress at {datetime.now()}")
         write(s, STATUS_OKAY)
 
     def handle_B(self, s):
@@ -574,4 +613,4 @@ def wait_for_server(
             return
         sleep(sleeptime)
         attempt += 1
-    raise SystemExit("Timeout waiting for address: %s." % server_address)
+    raise SystemExit(f"Timeout waiting for address: {server_address}.")

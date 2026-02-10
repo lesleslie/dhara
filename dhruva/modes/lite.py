@@ -23,8 +23,8 @@ from typing import Any
 
 from oneiric.core.logging import get_logger
 
-from dhruva.core.config import DhruvaSettings, StorageConfig
-from dhruva.modes.base import OperationalMode, ModeValidationError
+from dhruva.core.config import StorageConfig
+from dhruva.modes.base import ModeValidationError, OperationalMode
 
 logger = get_logger(__name__)
 
@@ -114,8 +114,8 @@ class LiteMode(OperationalMode):
                     mode_name=self.name,
                     details={
                         "storage_dir": str(storage_dir),
-                        "fix": "Check directory permissions or run with appropriate user"
-                    }
+                        "fix": "Check directory permissions or run with appropriate user",
+                    },
                 )
 
             # Check if port is available (warning only)
@@ -135,7 +135,7 @@ class LiteMode(OperationalMode):
             raise ModeValidationError(
                 f"Environment validation failed: {e}",
                 mode_name=self.name,
-                details={"error": str(e)}
+                details={"error": str(e)},
             ) from e
 
     def configure_storage(self, config: StorageConfig) -> StorageConfig:
@@ -200,18 +200,20 @@ class LiteMode(OperationalMode):
     def get_info(self) -> dict[str, Any]:
         """Get comprehensive lite mode information."""
         info = super().get_info()
-        info.update({
-            "startup_command": "dhruva start --mode=lite",
-            "storage_location": str(self.DEFAULT_STORAGE_PATH),
-            "access_url": f"http://{self.DEFAULT_HOST}:{self.DEFAULT_PORT}",
-            "configuration_required": False,
-            "ideal_for": [
-                "Local development",
-                "Quick prototyping",
-                "Testing and experimentation",
-                "Learning Dhruva",
-            ],
-        })
+        info.update(
+            {
+                "startup_command": "dhruva start --mode=lite",
+                "storage_location": str(self.DEFAULT_STORAGE_PATH),
+                "access_url": f"http://{self.DEFAULT_HOST}:{self.DEFAULT_PORT}",
+                "configuration_required": False,
+                "ideal_for": [
+                    "Local development",
+                    "Quick prototyping",
+                    "Testing and experimentation",
+                    "Learning Dhruva",
+                ],
+            }
+        )
         return info
 
     def _is_port_available(self, host: str, port: int) -> bool:
@@ -226,6 +228,7 @@ class LiteMode(OperationalMode):
         """
         try:
             import socket
+
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(1)
             result = sock.connect_ex((host, port))

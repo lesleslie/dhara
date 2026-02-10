@@ -173,7 +173,7 @@ class TestPerformanceIntegration:
                     _ = root[f"item_{i}"]
 
             elapsed = time.time() - start
-            
+
             total_reads = iterations * 100
             avg_us = (elapsed / total_reads) * 1_000_000
 
@@ -233,7 +233,7 @@ class TestMultipleCommits:
             connection = Connection(storage)
 
             root = connection.get_root()
-            
+
             # Add data and commit
             root["committed"] = {"value": 1}
             connection.commit()
@@ -244,7 +244,7 @@ class TestMultipleCommits:
 
             # Committed data should be present
             assert root["committed"]["value"] == 1
-            
+
             # Uncommitted data should not be present (abort discards it)
             # Note: The object might still be in memory but not persisted
             # This is expected behavior for abort

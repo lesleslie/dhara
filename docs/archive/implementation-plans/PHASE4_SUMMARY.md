@@ -140,16 +140,16 @@ result = serializer.deserialize(data)
 ### Format Selection
 ```python
 # MessagePack (binary, fast, compact)
-ser = create_serializer("msgspec", format="msgpack")
+set = create_serializer("msgspec", format="msgpack")
 
 # JSON (text, interoperable)
-ser = create_serializer("msgspec", format="json")
+set = create_serializer("msgspec", format="json")
 
 # Pickle (compatibility)
-ser = create_serializer("pickle", protocol=4)
+set = create_serializer("pickle", protocol=4)
 
 # Dill (extended)
-ser = create_serializer("dill", protocol=4)
+set = create_serializer("dill", protocol=4)
 ```
 
 ## Deliverables Checklist
@@ -237,9 +237,9 @@ python -m pytest test/test_serialize.py test/test_serializers.py -v
 # Integration test
 python -c "
 from durus.serialize import create_serializer
-ser = create_serializer('msgspec')
-data = ser.serialize({'test': 'value'})
-result = ser.deserialize(data)
+set = create_serializer('msgspec')
+data = set.serialize({'test': 'value'})
+result = set.deserialize(data)
 assert result == {'test': 'value'}
 print('Integration test passed!')
 "

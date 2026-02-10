@@ -9,7 +9,7 @@ as persistent Python objects in Dhruva with version history and health monitorin
 import importlib
 import logging
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from dhruva.collections.dict import PersistentDict
 from dhruva.core.connection import Connection
@@ -83,17 +83,19 @@ class Adapter(Persistent):
             **updates: Fields to update (config, capabilities, etc.)
         """
         # Store current version in history
-        self.version_history.append({
-            "version": self.version,
-            "updated_at": self.updated_at.isoformat(),
-            "changelog": changelog,
-            "state": {
-                "factory_path": self.factory_path,
-                "config": self.config.copy(),
-                "capabilities": self.capabilities.copy(),
-                "dependencies": self.dependencies.copy(),
-            },
-        })
+        self.version_history.append(
+            {
+                "version": self.version,
+                "updated_at": self.updated_at.isoformat(),
+                "changelog": changelog,
+                "state": {
+                    "factory_path": self.factory_path,
+                    "config": self.config.copy(),
+                    "capabilities": self.capabilities.copy(),
+                    "dependencies": self.dependencies.copy(),
+                },
+            }
+        )
 
         # Limit history size (configurable)
         if len(self.version_history) > 10:
@@ -177,7 +179,7 @@ class AdapterRegistry:
         try:
             # Try to access storage to check if it's readonly
             storage = self.connection.storage
-            is_readonly = hasattr(storage, 'shelf') and storage.shelf.file.is_readonly()
+            is_readonly = hasattr(storage, "shelf") and storage.shelf.file.is_readonly()
         except Exception:
             is_readonly = False
 
@@ -382,11 +384,13 @@ class AdapterRegistry:
         ]
 
         # Add current version
-        history.append({
-            "version": adapter.version,
-            "updated_at": adapter.updated_at.isoformat(),
-            "changelog": "Current version",
-        })
+        history.append(
+            {
+                "version": adapter.version,
+                "updated_at": adapter.updated_at.isoformat(),
+                "changelog": "Current version",
+            }
+        )
 
         # Sort by timestamp descending
         history.sort(key=lambda x: x["updated_at"], reverse=True)
@@ -499,7 +503,7 @@ class AdapterRegistry:
         try:
             module_path, class_name = adapter.factory_path.rsplit(".", 1)
             module = importlib.import_module(module_path)
-            factory_class = getattr(module, class_name)
+            getattr(module, class_name)
 
             # Check if factory can be instantiated
             # (This is a basic check - could be enhanced)
@@ -550,6 +554,7 @@ class AdapterRegistry:
 
 
 # Tool implementations (async wrappers for FastMCP)
+
 
 async def store_adapter_impl(
     registry: AdapterRegistry,

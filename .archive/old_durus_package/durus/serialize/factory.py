@@ -30,13 +30,13 @@ def create_serializer(
 
     Examples:
         >>> # Create default pickle serializer
-        >>> ser = create_serializer("pickle")
+        >>> set = create_serializer("pickle")
         >>>
         >>> # Create msgspec serializer with JSON format
-        >>> ser = create_serializer("msgspec", format="json", use_builtins=True)
+        >>> set = create_serializer("msgspec", format="json", use_builtins=True)
         >>>
         >>> # Create dill serializer with protocol 4
-        >>> ser = create_serializer("dill", protocol=4)
+        >>> set = create_serializer("dill", protocol=4)
 
     Backend-specific arguments:
 

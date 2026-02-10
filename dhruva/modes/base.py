@@ -22,7 +22,12 @@ logger = get_logger(__name__)
 class OperationalModeError(Exception):
     """Base exception for operational mode errors."""
 
-    def __init__(self, message: str, mode_name: str | None = None, details: dict[str, Any] | None = None):
+    def __init__(
+        self,
+        message: str,
+        mode_name: str | None = None,
+        details: dict[str, Any] | None = None,
+    ):
         self.message = message
         self.mode_name = mode_name
         self.details = details or {}
@@ -132,7 +137,7 @@ class OperationalMode(ABC):
                 raise ModeValidationError(
                     f"Cannot write to storage directory: {storage_dir}",
                     mode_name=self.name,
-                    details={"storage_dir": str(storage_dir)}
+                    details={"storage_dir": str(storage_dir)},
                 )
 
             self._validated = True
@@ -145,7 +150,7 @@ class OperationalMode(ABC):
             raise ModeValidationError(
                 f"Environment validation failed: {e}",
                 mode_name=self.name,
-                details={"error": str(e)}
+                details={"error": str(e)},
             ) from e
 
     @abstractmethod
@@ -295,7 +300,9 @@ class StandardMode(OperationalMode):
         }
 
 
-def create_mode(mode_name: str, settings: DhruvaSettings | None = None) -> OperationalMode:
+def create_mode(
+    mode_name: str, settings: DhruvaSettings | None = None
+) -> OperationalMode:
     """Create operational mode instance by name.
 
     Args:
@@ -324,8 +331,7 @@ def create_mode(mode_name: str, settings: DhruvaSettings | None = None) -> Opera
 
     if mode_name not in mode_classes:
         raise ValueError(
-            f"Invalid mode: {mode_name}. "
-            f"Valid modes: {', '.join(mode_classes.keys())}"
+            f"Invalid mode: {mode_name}. Valid modes: {', '.join(mode_classes.keys())}"
         )
 
     mode_class = mode_classes[mode_name]
@@ -377,7 +383,9 @@ def get_mode(settings: DhruvaSettings | None = None) -> OperationalMode:
 
         # If storage backend is not file, assume standard mode
         if settings.storage.backend != "file":
-            logger.debug(f"Detected standard mode from storage backend: {settings.storage.backend}")
+            logger.debug(
+                f"Detected standard mode from storage backend: {settings.storage.backend}"
+            )
             return create_mode("standard", settings=settings)
 
     # 4. Default to lite mode (safest for new users)

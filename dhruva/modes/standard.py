@@ -25,7 +25,7 @@ from typing import Any
 from oneiric.core.logging import get_logger
 
 from dhruva.core.config import DhruvaSettings, StorageConfig
-from dhruva.modes.base import OperationalMode, ModeValidationError
+from dhruva.modes.base import ModeValidationError, OperationalMode
 
 logger = get_logger(__name__)
 
@@ -66,7 +66,9 @@ class StandardMode(OperationalMode):
 
     # Default paths
     DEFAULT_STORAGE_PATH = Path("/data/dhruva/production.dhruva")
-    DEFAULT_CONFIG_PATH = Path(__file__).parent.parent.parent / "settings" / "standard.yaml"
+    DEFAULT_CONFIG_PATH = (
+        Path(__file__).parent.parent.parent / "settings" / "standard.yaml"
+    )
 
     # Default server settings
     DEFAULT_HOST = "0.0.0.0"
@@ -136,8 +138,8 @@ class StandardMode(OperationalMode):
                     details={
                         "backend": backend,
                         "supported": self.SUPPORTED_BACKENDS,
-                        "fix": f"Use one of: {', '.join(self.SUPPORTED_BACKENDS)}"
-                    }
+                        "fix": f"Use one of: {', '.join(self.SUPPORTED_BACKENDS)}",
+                    },
                 )
 
             # Check network access
@@ -153,7 +155,7 @@ class StandardMode(OperationalMode):
             raise ModeValidationError(
                 f"Environment validation failed: {e}",
                 mode_name=self.name,
-                details={"error": str(e)}
+                details={"error": str(e)},
             ) from e
 
     def configure_storage(self, config: StorageConfig) -> StorageConfig:
@@ -235,31 +237,35 @@ class StandardMode(OperationalMode):
     def get_info(self) -> dict[str, Any]:
         """Get comprehensive standard mode information."""
         info = super().get_info()
-        info.update({
-            "startup_command": "dhruva start --mode=standard",
-            "supported_backends": self.SUPPORTED_BACKENDS,
-            "access_url": f"http://{self.DEFAULT_HOST}:{self.DEFAULT_PORT}",
-            "configuration_required": True,
-            "ideal_for": [
-                "Production deployments",
-                "Multi-server setups",
-                "Cloud-native applications",
-                "High availability requirements",
-            ],
-        })
+        info.update(
+            {
+                "startup_command": "dhruva start --mode=standard",
+                "supported_backends": self.SUPPORTED_BACKENDS,
+                "access_url": f"http://{self.DEFAULT_HOST}:{self.DEFAULT_PORT}",
+                "configuration_required": True,
+                "ideal_for": [
+                    "Production deployments",
+                    "Multi-server setups",
+                    "Cloud-native applications",
+                    "High availability requirements",
+                ],
+            }
+        )
         return info
 
     # Private helper methods
 
     def _validate_file_storage(self) -> None:
         """Validate file/sqlite storage requirements."""
-        storage_path = self.settings.storage.path if self.settings else self.DEFAULT_STORAGE_PATH
+        storage_path = (
+            self.settings.storage.path if self.settings else self.DEFAULT_STORAGE_PATH
+        )
 
         if not storage_path:
             raise ModeValidationError(
                 "Storage path not configured",
                 mode_name=self.name,
-                details={"fix": "Set DHRUVA_STORAGE_PATH or configure in YAML"}
+                details={"fix": "Set DHRUVA_STORAGE_PATH or configure in YAML"},
             )
 
         storage_dir = Path(storage_path).parent
@@ -273,7 +279,7 @@ class StandardMode(OperationalMode):
                 raise ModeValidationError(
                     f"Cannot create storage directory: {storage_dir}",
                     mode_name=self.name,
-                    details={"error": str(e), "storage_dir": str(storage_dir)}
+                    details={"error": str(e), "storage_dir": str(storage_dir)},
                 ) from e
 
         # Check write permissions
@@ -281,13 +287,15 @@ class StandardMode(OperationalMode):
             raise ModeValidationError(
                 f"Cannot write to storage directory: {storage_dir}",
                 mode_name=self.name,
-                details={"storage_dir": str(storage_dir)}
+                details={"storage_dir": str(storage_dir)},
             )
 
     def _validate_s3_storage(self) -> None:
         """Validate AWS S3 storage requirements."""
         # Check for AWS credentials
-        if not os.getenv("AWS_ACCESS_KEY_ID") and not os.getenv("AWS_SHARED_CREDENTIALS_FILE"):
+        if not os.getenv("AWS_ACCESS_KEY_ID") and not os.getenv(
+            "AWS_SHARED_CREDENTIALS_FILE"
+        ):
             logger.warning("AWS credentials not found in environment")
 
         # Check for bucket configuration
@@ -296,7 +304,7 @@ class StandardMode(OperationalMode):
                 raise ModeValidationError(
                     "S3 bucket not configured",
                     mode_name=self.name,
-                    details={"fix": "Set DHRUVA_S3_BUCKET or configure in YAML"}
+                    details={"fix": "Set DHRUVA_S3_BUCKET or configure in YAML"},
                 )
         else:
             logger.warning("S3 bucket not configured, may fail at runtime")
@@ -304,7 +312,9 @@ class StandardMode(OperationalMode):
     def _validate_gcs_storage(self) -> None:
         """Validate Google Cloud Storage requirements."""
         # Check for GCS credentials
-        if not os.getenv("GOOGLE_APPLICATION_CREDENTIALS") and not os.getenv("GCS_KEYFILE"):
+        if not os.getenv("GOOGLE_APPLICATION_CREDENTIALS") and not os.getenv(
+            "GCS_KEYFILE"
+        ):
             logger.warning("GCS credentials not found in environment")
 
         # Check for bucket configuration
@@ -313,7 +323,7 @@ class StandardMode(OperationalMode):
                 raise ModeValidationError(
                     "GCS bucket not configured",
                     mode_name=self.name,
-                    details={"fix": "Set DHRUVA_GCS_BUCKET or configure in YAML"}
+                    details={"fix": "Set DHRUVA_GCS_BUCKET or configure in YAML"},
                 )
         else:
             logger.warning("GCS bucket not configured, may fail at runtime")
@@ -321,7 +331,9 @@ class StandardMode(OperationalMode):
     def _validate_azure_storage(self) -> None:
         """Validate Azure Blob Storage requirements."""
         # Check for Azure credentials
-        if not os.getenv("AZURE_STORAGE_CONNECTION_STRING") and not os.getenv("AZURE_STORAGE_KEY"):
+        if not os.getenv("AZURE_STORAGE_CONNECTION_STRING") and not os.getenv(
+            "AZURE_STORAGE_KEY"
+        ):
             logger.warning("Azure credentials not found in environment")
 
         # Check for container configuration
@@ -330,7 +342,7 @@ class StandardMode(OperationalMode):
                 raise ModeValidationError(
                     "Azure container not configured",
                     mode_name=self.name,
-                    details={"fix": "Set DHRUVA_AZURE_CONTAINER or configure in YAML"}
+                    details={"fix": "Set DHRUVA_AZURE_CONTAINER or configure in YAML"},
                 )
         else:
             logger.warning("Azure container not configured, may fail at runtime")
@@ -350,6 +362,7 @@ class StandardMode(OperationalMode):
         """Check if port is available."""
         try:
             import socket
+
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(1)
             result = sock.connect_ex((host, port))

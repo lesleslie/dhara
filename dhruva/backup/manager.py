@@ -227,7 +227,7 @@ class BackupManager:
         # Update compression ratio in metadata
         original_size = os.path.getsize(backup_path)
         compressed_size = os.path.getsize(compressed_path)
-        compression_ratio = 1.0 - (compressed_size / original_size)
+        1.0 - (compressed_size / original_size)
 
         return compressed_path
 

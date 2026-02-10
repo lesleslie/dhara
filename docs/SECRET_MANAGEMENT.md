@@ -193,9 +193,9 @@ The secret management system is fully thread-safe:
 If migrating from HashiCorp Vault to Oneiric:
 
 1. **Update dependencies**: Remove Vault client, install Oneiric SDK
-2. **Change configuration**: Update secret prefix and initialization
-3. **No code changes**: The API remains the same
-4. **Enable fallback**: Use during migration for zero downtime
+1. **Change configuration**: Update secret prefix and initialization
+1. **No code changes**: The API remains the same
+1. **Enable fallback**: Use during migration for zero downtime
 
 ### Example Migration
 
@@ -219,14 +219,17 @@ config = SecurityConfig(
 ### Common Issues
 
 **"Oneiric secrets library is not available"**
+
 - Install Oneiric SDK: `pip install oneiric`
 - Enable fallback mode for development/testing
 
 **"Key has expired"**
+
 - Keys are automatically rotated, but manual rotation can be triggered with `rotate_keys()`
 - Check key status with `get_security_status()`
 
 **"Failed to load secrets from Oneiric"**
+
 - Verify Oneiric connection and permissions
 - Check secret prefix is correct
 - Enable fallback mode temporarily

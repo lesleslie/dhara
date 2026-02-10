@@ -130,7 +130,7 @@ class Shelf:
         """
         file.seek_end()
         if not file.tell() == 0:
-            raise ValueError("Expected %s to be empty." % file)
+            raise ValueError(f"Expected {file} to be empty.")
         write(file, klass.prefix)
         if not items:
             # Just write an empty transaction.
@@ -161,8 +161,7 @@ class Shelf:
             write_int8(file, transaction_end - transaction_start - 8)
             # Write the empty array with the calculated dimensions.
             file.seek(transaction_end)
-            for step in OffsetMap.generate(file, max_key, max_offset):
-                yield step
+            yield from OffsetMap.generate(file, max_key, max_offset)
             offset_map = OffsetMap(file)
             # Now read through the records and record the offsets in the array.
             file.seek(transaction_start + 8)
@@ -175,8 +174,7 @@ class Shelf:
                 file.seek(position + 8 + record_length)
                 n -= 1
                 yield n
-        for index in offset_map.gen_stitch():
-            yield index
+        yield from offset_map.gen_stitch()
 
     def next_name(self):
         """() -> str
@@ -272,8 +270,7 @@ class Shelf:
                 name = int8_to_str(n)
                 if name not in self.memory_index:
                     yield name, position
-        for item in list(self.memory_index.items()):
-            yield item
+        yield from list(self.memory_index.items())
 
     def __iter__(self):
         for name, position in self.iterindex():
@@ -288,7 +285,7 @@ class Shelf:
     items = iteritems
 
     def __contains__(self, name):
-        return self.get_position(name) != None
+        return self.get_position(name) is not None
 
     def get_offset_map(self):
         return self.offset_map
@@ -365,10 +362,9 @@ class OffsetMap:
     def generate(file, max_oid=-2, max_offset=0):
         start = file.tell()
         assert max_offset < start
-        for step in IntArray.generate(
+        yield from IntArray.generate(
             file=file, number_of_ints=max_oid + 2, maximum_int=start + max_oid + 2
-        ):
-            yield step
+        )
         file.seek(start)
 
     def get_start(self):

@@ -336,10 +336,10 @@ def cmd_restore(args):
             if not backup:
                 logger.error(f"Backup not found: {args.backup_id}")
                 return 1
-            restore_path = restore_manager._restore_from_backup(backup)
+            restore_manager._restore_from_backup(backup)
         elif args.timestamp:
             target_time = datetime.strptime(args.timestamp, "%Y-%m-%d %H:%M:%S")
-            restore_path = restore_manager.restore_point_in_time(target_time)
+            restore_manager.restore_point_in_time(target_time)
         else:
             # Use latest backup
             catalog = BackupCatalog(args.backup_dir)
@@ -347,7 +347,7 @@ def cmd_restore(args):
             if not backup:
                 logger.error("No backups found")
                 return 1
-            restore_path = restore_manager._restore_from_backup(backup)
+            restore_manager._restore_from_backup(backup)
 
         logger.info(f"Database restored to: {args.target}")
 

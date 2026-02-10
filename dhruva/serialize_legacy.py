@@ -131,7 +131,7 @@ class ObjectWriter:
             obj._p_connection = self.connection
             self.objects_found.append(obj)
         elif obj._p_connection is not self.connection:
-            raise ValueError("Reference to %r has a different connection." % obj)
+            raise ValueError(f"Reference to {obj!r} has a different connection.")
         self.refs.add(obj._p_oid)
         return obj._p_oid, type(obj)
 
@@ -197,7 +197,7 @@ class ObjectReader:
         s.write(data)
         s.seek(0)
         unpickler = self._get_unpickler(s)
-        klass = unpickler.load()
+        unpickler.load()
         position = s.tell()
         if data[s.tell()] == COMPRESSED_START_BYTE:
             # This is almost certainly a compressed pickle.

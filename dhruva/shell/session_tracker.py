@@ -7,7 +7,6 @@ Dhruva admin shell sessions.
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from oneiric.shell.session_tracker import SessionEventEmitter
 

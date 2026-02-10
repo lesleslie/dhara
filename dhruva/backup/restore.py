@@ -307,7 +307,7 @@ class RestoreManager:
                 try:
                     storage = FileStorage(str(self.target_path))
                     connection = storage.open()
-                    root = connection.get_root()
+                    connection.get_root()
                     # Basic verification - can access root
                     connection.close()
                     return True

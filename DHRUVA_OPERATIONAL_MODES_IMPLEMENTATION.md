@@ -7,6 +7,7 @@
 #### 1. Mode System Architecture (`dhruva/modes/`)
 
 **Base Mode Interface** (`dhruva/modes/base.py`):
+
 - `OperationalMode` abstract base class
 - `OperationalModeError`, `ModeValidationError`, `ModeConfigurationError` exceptions
 - `create_mode(mode_name)` - Factory function for creating mode instances
@@ -14,6 +15,7 @@
 - `list_modes()` - List all available modes with metadata
 
 **Lite Mode** (`dhruva/modes/lite.py`):
+
 - Zero-configuration development mode
 - Local filesystem storage in `~/.local/share/dhruva/lite.dhruva`
 - Default host: `127.0.0.1:8683` (localhost only)
@@ -21,6 +23,7 @@
 - No cloud dependencies
 
 **Standard Mode** (`dhruva/modes/standard.py`):
+
 - Full-featured production mode
 - Configurable storage backends (file, sqlite, s3, gcs, azure)
 - Default host: `0.0.0.0:8683` (all interfaces)
@@ -31,6 +34,7 @@
 #### 2. Configuration System (`dhruva/core/config.py`)
 
 **Enhanced DhruvaSettings**:
+
 - Added `mode` field (lite/standard)
 - Added `cloud_storage` configuration (CloudStorageConfig)
 - Mode-aware `load()` method - loads correct config based on `DHRUVA_MODE`
@@ -40,6 +44,7 @@
 #### 3. Configuration Files
 
 **`settings/lite.yaml`**:
+
 ```yaml
 mode: lite
 storage:
@@ -54,6 +59,7 @@ cloud_storage:
 ```
 
 **`settings/standard.yaml`**:
+
 ```yaml
 mode: standard
 storage:
@@ -124,10 +130,11 @@ for mode_info in list_modes():
 ## Architecture Highlights
 
 ### Mode Detection Priority
+
 1. `DHRUVA_MODE` environment variable (highest priority)
-2. `settings.dhruva.yaml` mode field
-3. Auto-detect based on storage configuration
-4. Default to lite mode (safest for new users)
+1. `settings.dhruva.yaml` mode field
+1. Auto-detect based on storage configuration
+1. Default to lite mode (safest for new users)
 
 ### Storage Backend Support
 
@@ -163,21 +170,25 @@ Return DhruvaSettings instance
 ## Key Design Decisions
 
 ### 1. Environment Variable First
+
 - `DHRUVA_MODE` environment variable is the primary way to select mode
 - Enables consistent mode selection across all interfaces
 - Aligns with 12-factor app principles
 
 ### 2. Sensible Defaults
+
 - Lite mode is the default (safest for new users)
 - Auto-creates storage directories
 - Clear error messages with fix suggestions
 
 ### 3. Mode Validation
+
 - Each mode validates its own environment
 - Clear error messages if prerequisites not met
 - Port availability checks with helpful warnings
 
 ### 4. Backward Compatibility
+
 - Existing `settings/dhruva.yaml` still works
 - Mode system is opt-in via `DHRUVA_MODE`
 - No breaking changes to existing deployments
@@ -185,29 +196,34 @@ Return DhruvaSettings instance
 ## Next Steps (Remaining Phases)
 
 ### Phase 3: CLI Integration (Remaining)
+
 - [ ] Add `--mode` parameter to start command
 - [ ] Add `mode` subcommand group
 - [ ] Implement mode-specific commands (status, switch, validate, diff)
 - [ ] Update help text and documentation
 
 ### Phase 4: Startup Script
+
 - [ ] Create `scripts/dev-start.sh`
 - [ ] Add mode detection and validation
 - [ ] Implement auto-configuration logic
 
 ### Phase 5: Documentation
+
 - [ ] Create `docs/guides/operational-modes.md`
 - [ ] Update README.md with mode information
 - [ ] Create migration guide (lite → standard)
 - [ ] Add examples and tutorials
 
 ### Phase 6: Testing
+
 - [ ] Unit tests for mode system
 - [ ] Integration tests for each mode
 - [ ] Test mode switching and migration
 - [ ] Test configuration loading
 
 ### Phase 7: Examples
+
 - [ ] Create `examples/lite_mode_demo.py`
 - [ ] Create `examples/standard_mode_demo.py`
 - [ ] Create `examples/mode_migration_demo.py`
@@ -283,10 +299,10 @@ for info in list_modes():
 The operational mode system is now **functionally complete** for the core implementation. The system provides:
 
 1. **Zero-configuration startup** for lite mode
-2. **Full production capabilities** for standard mode
-3. **Automatic mode detection** from environment
-4. **Flexible configuration** via YAML + environment variables
-5. **Clear separation** between development and production concerns
-6. **Backward compatibility** with existing deployments
+1. **Full production capabilities** for standard mode
+1. **Automatic mode detection** from environment
+1. **Flexible configuration** via YAML + environment variables
+1. **Clear separation** between development and production concerns
+1. **Backward compatibility** with existing deployments
 
 The remaining work focuses on CLI integration, documentation, testing, and examples to make the system user-friendly and production-ready.

@@ -182,10 +182,10 @@ class PersistentObject(PersistentBase):
 
     def __repr__(self) -> str:
         if self._p_oid is None:
-            identifier = "@%x" % id(self)
+            identifier = f"@{id(self):x}"
         else:
             identifier = self._p_format_oid()
-        return "<%s %s>" % (self.__class__.__name__, identifier)
+        return f"<{self.__class__.__name__} {identifier}>"
 
     def __delattr__(self, name: str) -> None:
         self._p_note_change()

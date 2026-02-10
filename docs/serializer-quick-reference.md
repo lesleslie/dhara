@@ -3,16 +3,17 @@
 ## Available Serializers
 
 ### 1. MsgspecSerializer (Recommended)
+
 **Best for:** New databases, performance-critical applications
 
 ```python
 from durus.serialize import MsgspecSerializer
 
 # MessagePack format (binary, fast, compact)
-ser = MsgspecSerializer(format="msgpack", use_builtins=True)
+set = MsgspecSerializer(format="msgpack", use_builtins=True)
 
 # JSON format (text, interoperable)
-ser = MsgspecSerializer(format="json", use_builtins=True)
+set = MsgspecSerializer(format="json", use_builtins=True)
 ```
 
 **Performance:** 5-10x faster than pickle
@@ -20,13 +21,14 @@ ser = MsgspecSerializer(format="json", use_builtins=True)
 **Size:** 30-50% smaller than pickle
 
 ### 2. PickleSerializer (Compatibility)
+
 **Best for:** Backward compatibility with Durus 4.x
 
 ```python
 from durus.serialize import PickleSerializer
 
-ser = PickleSerializer(protocol=2)  # Durus 4.x default
-ser = PickleSerializer(protocol=4)  # Better performance
+set = PickleSerializer(protocol=2)  # Durus 4.x default
+set = PickleSerializer(protocol=4)  # Better performance
 ```
 
 **Performance:** Baseline
@@ -34,13 +36,14 @@ ser = PickleSerializer(protocol=4)  # Better performance
 **Compatibility:** 100% compatible with Durus 4.x
 
 ### 3. DillSerializer (Extended)
+
 **Best for:** Serializing functions, lambdas, complex objects
 
 ```python
 from durus.serialize import DillSerializer
 
 try:
-    ser = DillSerializer(protocol=4)
+    set = DillSerializer(protocol=4)
 except ImportError:
     # Install dill first: pip install dill
     pass
@@ -56,9 +59,9 @@ except ImportError:
 from durus.serialize import create_serializer
 
 # Create any serializer by name
-ser = create_serializer("msgspec", format="json")
-ser = create_serializer("pickle", protocol=4)
-ser = create_serializer("dill", protocol=4)
+set = create_serializer("msgspec", format="json")
+set = create_serializer("pickle", protocol=4)
+set = create_serializer("dill", protocol=4)
 ```
 
 ## Basic Usage
@@ -92,9 +95,9 @@ state = serializer.get_state(persistent_obj)
 ## Security Guidelines
 
 1. **Always use msgspec for new databases** - Safest option
-2. **Never deserialize untrusted data with pickle/dill** - Code execution risk
-3. **Use pickle only for trusted data** - Backward compatibility only
-4. **Consider msgspec JSON format** - If you need text serialization
+1. **Never deserialize untrusted data with pickle/dill** - Code execution risk
+1. **Use pickle only for trusted data** - Backward compatibility only
+1. **Consider msgspec JSON format** - If you need text serialization
 
 ## Performance Comparison
 
@@ -145,20 +148,20 @@ from durus.serialize import create_serializer
 
 # Handle invalid serializer name
 try:
-    ser = create_serializer("invalid")
+    set = create_serializer("invalid")
 except ValueError as e:
     print(f"Unknown serializer: {e}")
 
 # Handle missing dependencies
 try:
-    ser = create_serializer("dill")
+    set = create_serializer("dill")
 except ImportError as e:
     print(f"Dependency missing: {e}")
     print("Install with: pip install dill")
 
 # Handle invalid arguments
 try:
-    ser = create_serializer("pickle", invalid_arg=123)
+    set = create_serializer("pickle", invalid_arg=123)
 except TypeError as e:
     print(f"Invalid arguments: {e}")
 ```
@@ -202,37 +205,41 @@ serializer = MsgspecSerializer()
 
 ```python
 # Protocol 2: Python 2 compatible (Durus 4.x default)
-ser = create_serializer("pickle", protocol=2)
+set = create_serializer("pickle", protocol=2)
 
 # Protocol 4: Python 3.4+ (better performance)
-ser = create_serializer("pickle", protocol=4)
+set = create_serializer("pickle", protocol=4)
 
 # Protocol 5: Python 3.8+ (best performance)
-ser = create_serializer("pickle", protocol=5)
+set = create_serializer("pickle", protocol=5)
 ```
 
 ## Troubleshooting
 
 ### Problem: ImportError with dill
+
 **Solution:** Install dill: `pip install dill`
 
 ### Problem: msgspec can't serialize my object
+
 **Solution:** Use pickle or dill instead, or implement `__getstate__`
 
 ### Problem: Deserialization is slow
+
 **Solution:** Use msgspec instead of pickle
 
 ### Problem: Need to serialize a lambda
+
 **Solution:** Use dill serializer
 
 ## Best Practices
 
 1. **Use msgspec for all new databases**
-2. **Specify protocol explicitly for pickle/dill**
-3. **Test round-trip serialization for custom objects**
-4. **Handle ImportError for optional dependencies**
-5. **Document which serializer your database uses**
-6. **Never trust untrusted serialized data**
+1. **Specify protocol explicitly for pickle/dill**
+1. **Test round-trip serialization for custom objects**
+1. **Handle ImportError for optional dependencies**
+1. **Document which serializer your database uses**
+1. **Never trust untrusted serialized data**
 
 ## Further Reading
 

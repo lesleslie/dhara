@@ -10,8 +10,8 @@ import logging
 import os
 from pathlib import Path
 
-from pydantic import BaseModel, Field
 from mcp_common import MCPServerSettings
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +101,7 @@ class DhruvaSettings(MCPServerSettings):
     )
 
     @classmethod
-    def load(cls, config_name: str = "dhruva") -> "DhruvaSettings":
+    def load(cls, config_name: str = "dhruva") -> DhruvaSettings:
         """Load settings with mode-aware configuration.
 
         Detects mode from environment and loads appropriate config file:

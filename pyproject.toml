@@ -9,8 +9,8 @@ dev = [
 
 [tool.uv]
 override-dependencies = [
-    # Skip onnxruntime on Intel Mac (no wheels available)
-    "onnxruntime>=1.20.0; sys_platform == 'darwin' and platform_machine == 'arm64' or sys_platform == 'linux'",
+    # Skip onnxruntime on macOS (no universal wheels available)
+    "onnxruntime>=1.20.0; sys_platform == 'linux'",
 ]
 
 # Full-Featured Library Template

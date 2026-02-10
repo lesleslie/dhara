@@ -5,11 +5,16 @@ and server health.
 """
 
 import time
-from collections import defaultdict
-from typing import Callable
 
 try:
-    from prometheus_client import Counter, Gauge, Histogram, CollectorRegistry, generate_latest
+    from prometheus_client import (
+        CollectorRegistry,
+        Counter,
+        Gauge,
+        Histogram,
+        generate_latest,
+    )
+
     PROMETHEUS_AVAILABLE = True
 except ImportError:
     PROMETHEUS_AVAILABLE = False

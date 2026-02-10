@@ -8,7 +8,7 @@ msgspec is a fast and safe serialization library that supports:
 """
 
 import logging
-from typing import Any, Literal, Set
+from typing import Any, Literal
 
 from msgspec import json, msgpack, to_builtins
 
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 # Default whitelist of safe modules for class deserialization
 # This prevents arbitrary code execution via __import__
-DEFAULT_ALLOWED_MODULES: Set[str] = {
+DEFAULT_ALLOWED_MODULES: set[str] = {
     # dhruva core modules
     "dhruva",
     "dhruva.collections",
@@ -58,7 +58,7 @@ class MsgspecSerializer(Serializer):
         self,
         format: Literal["msgpack", "json"] = "msgpack",
         use_builtins: bool = True,
-        allowed_modules: Set[str] | None = None,
+        allowed_modules: set[str] | None = None,
     ):
         """Initialize msgspec serializer.
 

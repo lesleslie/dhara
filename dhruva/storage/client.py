@@ -2,17 +2,10 @@
 $URL$
 $Id$
 
-⚠️ SECURITY WARNING:
-This ClientStorage implementation does NOT use TLS/SSL encryption.
-All communication between client and server is sent in plaintext.
+ClientStorage for network-based dhruva storage.
 
-DO NOT use this over untrusted networks (Internet, public WiFi) without
-adding TLS/SSL encryption. Data can be intercepted, modified, or stolen.
-
-TODO: Implement TLS/SSL encryption using:
-  - ssl.wrap_socket() for basic TLS support
-  - Certificate validation for server authentication
-  - Client certificates for mutual authentication
+This implementation supports TLS/SSL encryption for secure communication
+over untrusted networks. Use tls_config parameter to enable encryption.
 """
 
 from dhruva.error import (
@@ -21,6 +14,11 @@ from dhruva.error import (
     ProtocolError,
     ReadConflictError,
     WriteConflictError,
+)
+from dhruva.security.tls import (
+    TLSConfig,
+    get_env_tls_config,
+    wrap_client_socket,
 )
 from dhruva.serialize.adapter import split_oids
 from dhruva.server.server import (
@@ -48,10 +46,57 @@ from dhruva.utils import (
 
 
 class ClientStorage(Storage):
-    def __init__(self, host=DEFAULT_HOST, port=DEFAULT_PORT, address=None):
+    def __init__(
+        self,
+        host=DEFAULT_HOST,
+        port=DEFAULT_PORT,
+        address=None,
+        tls_config: TLSConfig | None = None,
+        tls_enabled: bool | None = None,
+    ):
+        """
+        Initialize ClientStorage.
+
+        Args:
+            host: Server hostname or IP address
+            port: Server port
+            address: SocketAddress instance (overrides host/port)
+            tls_config: TLS configuration (if None, loads from environment)
+            tls_enabled: Explicitly enable/disable TLS (None=auto-detect from config)
+        """
         self.address = SocketAddress.new(address or (host, port))
+
+        # Determine TLS configuration
+        if tls_config is None:
+            tls_config = get_env_tls_config()
+
+        # Auto-detect TLS if config is provided but tls_enabled is not set
+        if tls_enabled is None and tls_config is not None:
+            tls_enabled = True
+
+        self.tls_config = tls_config
+        self.tls_enabled = tls_enabled and tls_config is not None
+
+        # Connect to server
         self.s = self.address.get_connected_socket()
-        assert self.s, "Could not connect to %s" % self.address
+        if not self.s:
+            raise ConnectionError(f"Could not connect to {self.address}")
+
+        # Wrap socket with TLS if enabled
+        if self.tls_enabled and self.tls_config:
+            try:
+                server_hostname = (
+                    host if isinstance(address, (type(None), tuple)) else None
+                )
+                self.s = wrap_client_socket(
+                    self.s,
+                    self.tls_config,
+                    server_hostname=server_hostname,
+                )
+            except Exception as e:
+                self.s.close()
+                raise ConnectionError(f"TLS handshake failed: {e}") from e
+
         self.oid_pool = []
         self.oid_pool_size = 32
         self.begin()
@@ -63,12 +108,12 @@ class ClientStorage(Storage):
             raise ProtocolError("Protocol version mismatch.")
 
     def __str__(self):
-        return "ClientStorage(%s)" % self.address
+        return f"ClientStorage({self.address})"
 
     def new_oid(self):
         if not self.oid_pool:
             batch = self.oid_pool_size
-            write(self.s, "M%s" % chr(batch))
+            write(self.s, f"M{chr(batch)}")
             self.oid_pool = split_oids(read(self.s, 8 * batch))
             self.oid_pool.reverse()
             assert len(self.oid_pool) == len(set(self.oid_pool))
@@ -90,7 +135,7 @@ class ClientStorage(Storage):
         elif status == STATUS_KEYERROR:
             raise DhruvaKeyError(oid)
         else:
-            raise ProtocolError("status=%r, oid=%r" % (status, oid))
+            raise ProtocolError(f"status={status!r}, oid={oid!r}")
         n = read_int4(self.s)
         record = read(self.s, n)
         return record
@@ -135,7 +180,7 @@ class ClientStorage(Storage):
             elif status == STATUS_INVALID:
                 raise WriteConflictError()
             else:
-                raise ProtocolError("server returned invalid status %r" % status)
+                raise ProtocolError(f"server returned invalid status {status!r}")
 
     def sync(self):
         write(self.s, "S")
@@ -150,7 +195,7 @@ class ClientStorage(Storage):
         write(self.s, "P")
         status = read(self.s, 1)
         if status != STATUS_OKAY:
-            raise ProtocolError("server returned invalid status %r" % status)
+            raise ProtocolError(f"server returned invalid status {status!r}")
 
     def bulk_load(self, oids):
         oid_str = join_bytes(oids)
@@ -158,8 +203,7 @@ class ClientStorage(Storage):
         assert remainder == 0, remainder
         write_all(self.s, "B", int4_to_str(num_oids), oid_str)
         records = [self._get_load_response(oid) for oid in oids]
-        for record in records:
-            yield record
+        yield from records
 
     def close(self):
         write(self.s, ".")  # Closes the server side.

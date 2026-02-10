@@ -164,7 +164,7 @@ class DistributedConsensus:
 **Cloud Integration:**
 - AWS: Use DynamoDB for leader election
 - GCP: Use Cloud Firestore or etcd on GKE
-- Azure: Use Azure App Configuration or etcd on AKS
+- Azure: Use Azure App Configuration or etcd on ASK
 
 ### 2. Design Data Sharding Architecture (HIGH PRIORITY)
 **Implementation:**

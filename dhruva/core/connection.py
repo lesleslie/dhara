@@ -4,7 +4,6 @@ $Id$
 """
 
 from collections import OrderedDict
-from itertools import chain, islice
 from os import getpid
 from time import time
 from weakref import KeyedRef, ref
@@ -331,7 +330,7 @@ class Connection(ConnectionBase):
                 raise ReadConflictError([read_oid])
 
     def pack(self):
-        """Clear any uncommited changes and pack the storage."""
+        """Clear any uncommitted changes and pack the storage."""
         self.abort()
         self.storage.pack()
 

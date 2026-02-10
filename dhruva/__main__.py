@@ -7,7 +7,6 @@ $Id$
 import os
 import socket
 import sys
-from code import InteractiveConsole
 from optparse import OptionParser
 from pprint import pprint
 from time import sleep
@@ -17,10 +16,16 @@ from warnings import warn
 
 class SecurityWarning(UserWarning):
     """Warning raised for security-sensitive operations."""
+
     pass
+
 
 from dhruva.core import Connection
 from dhruva.logger import direct_output, log, logger
+from dhruva.security.tls import (
+    TLSConfig,
+    generate_self_signed_cert,
+)
 from dhruva.server.server import (
     DEFAULT_GCBYTES,
     DEFAULT_HOST,
@@ -53,7 +58,14 @@ def configure_readline(namespace, history_path):
 
 
 def interactive_client(
-    file, address, cache_size, readonly, repair, startup, storage_class=None
+    file,
+    address,
+    cache_size,
+    readonly,
+    repair,
+    startup,
+    storage_class=None,
+    tls_config=None,
 ):
     if file:
         storage = get_storage(
@@ -63,13 +75,14 @@ def interactive_client(
     else:
         socket_address = SocketAddress.new(address)
         wait_for_server(address=socket_address)
-        storage = ClientStorage(address=socket_address)
+        storage = ClientStorage(address=socket_address, tls_config=tls_config)
         description = socket_address
     connection = Connection(storage, cache_size=cache_size)
 
     # Import adapter registry for new adapter distribution features
     try:
         from dhruva.mcp.adapter_tools import AdapterRegistry
+
         registry = AdapterRegistry(connection)
         has_adapters = True
     except ImportError:
@@ -80,9 +93,11 @@ def interactive_client(
     try:
         from IPython.terminal.embed import InteractiveShellEmbed
         from IPython.terminal.ipapp import load_default_config
+
         use_ipython = True
     except ImportError:
         from code import InteractiveConsole
+
         use_ipython = False
 
     # Build namespace with adapter management if available
@@ -99,18 +114,20 @@ def interactive_client(
 
     # Add adapter management if available
     if has_adapters and registry:
-        namespace.update({
-            "registry": registry,
-            "adapters": registry,
-            # Convenience methods
-            "store_adapter": registry.store_adapter,
-            "get_adapter": registry.get_adapter,
-            "list_adapters": registry.list_adapters,
-            "list_versions": registry.list_adapter_versions,
-            "validate_adapter": registry.validate_adapter,
-            "check_health": registry.check_adapter_health,
-            "adapter_count": registry.count,
-        })
+        namespace.update(
+            {
+                "registry": registry,
+                "adapters": registry,
+                # Convenience methods
+                "store_adapter": registry.store_adapter,
+                "get_adapter": registry.get_adapter,
+                "list_adapters": registry.list_adapters,
+                "list_versions": registry.list_adapter_versions,
+                "validate_adapter": registry.validate_adapter,
+                "check_health": registry.check_adapter_health,
+                "adapter_count": registry.count,
+            }
+        )
 
     # Build help text
     help_text = "    connection -> the Connection\n    root       -> the root instance"
@@ -146,10 +163,10 @@ def interactive_client(
                 "This can execute arbitrary Python code. "
                 "Only use trusted files from secure locations.",
                 SecurityWarning,
-                stacklevel=2
+                stacklevel=2,
             )
-            console.runsource('execfile("%s")' % os.path.expanduser(startup))
-        console.interact("Dhruva %s\n%s" % (description, help_text))
+            console.runsource(f'execfile("{os.path.expanduser(startup)}")')
+        console.interact(f"Dhruva {description}\n{help_text}")
 
 
 def client_main():
@@ -168,13 +185,13 @@ def client_main():
         dest="port",
         default=DEFAULT_PORT,
         type="int",
-        help="Port the server is on. (default=%s)" % DEFAULT_PORT,
+        help=f"Port the server is on. (default={DEFAULT_PORT})",
     )
     parser.add_option(
         "--host",
         dest="host",
         default=DEFAULT_HOST,
-        help="Host of the server. (default=%s)" % DEFAULT_HOST,
+        help=f"Host of the server. (default={DEFAULT_HOST})",
     )
     parser.add_option(
         "--address",
@@ -227,7 +244,77 @@ def client_main():
             "(default=DURUSSTARTUP from environment, if set)"
         ),
     )
+
+    # TLS/SSL client options
+    parser.add_option(
+        "--tls-cafile",
+        dest="tls_cafile",
+        default=None,
+        help=(
+            "Path to CA certificate file for server verification.\n"
+            "Required for TLS connections unless system certificates are used."
+        ),
+    )
+    parser.add_option(
+        "--tls-capath",
+        dest="tls_capath",
+        default=None,
+        help=(
+            "Path to CA certificate directory for server verification.\n"
+            "Alternative to --tls-cafile."
+        ),
+    )
+    parser.add_option(
+        "--tls-certfile",
+        dest="tls_certfile",
+        default=None,
+        help=(
+            "Path to client certificate file for mutual TLS authentication.\n"
+            "Optional, enables client authentication."
+        ),
+    )
+    parser.add_option(
+        "--tls-keyfile",
+        dest="tls_keyfile",
+        default=None,
+        help=(
+            "Path to client private key file for mutual TLS authentication.\n"
+            "Required if --tls-certfile is specified."
+        ),
+    )
+    parser.add_option(
+        "--tls-no-verify",
+        dest="tls_no_verify",
+        action="store_true",
+        help=(
+            "Disable TLS certificate verification.\n"
+            "⚠️ SECURITY WARNING: This is insecure and should only be used for testing."
+        ),
+    )
     (options, args) = parser.parse_args()
+
+    # Create TLS config if TLS options are provided
+    tls_config = None
+    if (
+        options.tls_cafile
+        or options.tls_capath
+        or options.tls_certfile
+        or options.tls_keyfile
+    ):
+        try:
+            import ssl
+
+            verify_mode = ssl.CERT_NONE if options.tls_no_verify else ssl.CERT_REQUIRED
+            tls_config = TLSConfig(
+                cafile=options.tls_cafile,
+                capath=options.tls_capath,
+                client_certfile=options.tls_certfile,
+                client_keyfile=options.tls_keyfile,
+                verify_mode=verify_mode,
+            )
+        except (ValueError, FileNotFoundError) as e:
+            log(20, "TLS configuration error: %s", e)
+            return
     if options.address is None:
         address = (options.host, options.port)
     else:
@@ -240,6 +327,7 @@ def client_main():
         options.repair,
         options.startup,
         options.storage,
+        tls_config,
     )
 
 
@@ -288,7 +376,7 @@ def get_storage(file, storage_class=None, **kwargs):
     return storage_class(file, **kwargs)
 
 
-def start_durus(logfile, logginglevel, address, storage, gcbytes):
+def start_durus(logfile, logginglevel, address, storage, gcbytes, tls_config=None):
     if logfile is None:
         logfile = sys.stderr
     else:
@@ -298,14 +386,16 @@ def start_durus(logfile, logginglevel, address, storage, gcbytes):
     socket_address = SocketAddress.new(address)
     if hasattr(storage, "get_filename"):
         log(20, "Storage file=%s address=%s", storage.get_filename(), socket_address)
-    StorageServer(storage, address=socket_address, gcbytes=gcbytes).serve()
+    StorageServer(
+        storage, address=socket_address, gcbytes=gcbytes, tls_config=tls_config
+    ).serve()
 
 
 def stop_durus(address):
     socket_address = SocketAddress.new(address)
     sock = socket_address.get_connected_socket()
     if sock is None:
-        log(20, "Durus server %s doesn't seem to be running." % str(address))
+        log(20, f"Durus server {str(address)} doesn't seem to be running.")
         return False
     write(sock, "Q")  # graceful exit message
     sock.close()
@@ -327,7 +417,7 @@ def run_durus_main():
         dest="port",
         default=DEFAULT_PORT,
         type="int",
-        help="Port to listen on. (default=%s)" % DEFAULT_PORT,
+        help=f"Port to listen on. (default={DEFAULT_PORT})",
     )
     parser.add_option(
         "--file",
@@ -339,7 +429,7 @@ def run_durus_main():
         "--host",
         dest="host",
         default=DEFAULT_HOST,
-        help="Host to listen on. (default=%s)" % DEFAULT_HOST,
+        help=f"Host to listen on. (default={DEFAULT_HOST})",
     )
     parser.add_option(
         "--storage-class",
@@ -353,8 +443,7 @@ def run_durus_main():
         default=DEFAULT_GCBYTES,
         type="int",
         help=(
-            "Trigger garbage collection after this many commits. (default=%s)"
-            % DEFAULT_GCBYTES
+            f"Trigger garbage collection after this many commits. (default={DEFAULT_GCBYTES})"
         ),
     )
     if hasattr(socket, "AF_UNIX"):
@@ -394,8 +483,7 @@ def run_durus_main():
         default=logginglevel,
         type="int",
         help=(
-            "Logging level. Lower positive numbers log more. (default=%s)"
-            % logginglevel
+            f"Logging level. Lower positive numbers log more. (default={logginglevel})"
         ),
     )
     parser.add_option(
@@ -424,7 +512,99 @@ def run_durus_main():
         action="store_true",
         help="Instead of starting the server, try to stop a running one.",
     )
+
+    # TLS/SSL options
+    parser.add_option(
+        "--tls-certfile",
+        dest="tls_certfile",
+        default=None,
+        help=(
+            "Path to server certificate file for TLS/SSL (PEM format).\n"
+            "Required for TLS. Use --generate-tls-cert to create a self-signed cert for testing."
+        ),
+    )
+    parser.add_option(
+        "--tls-keyfile",
+        dest="tls_keyfile",
+        default=None,
+        help=(
+            "Path to server private key file for TLS/SSL (PEM format).\n"
+            "Required for TLS. Use --generate-tls-cert to create a self-signed key for testing."
+        ),
+    )
+    parser.add_option(
+        "--tls-cafile",
+        dest="tls_cafile",
+        default=None,
+        help=(
+            "Path to CA certificate file for client verification.\n"
+            "Enables mutual TLS if specified."
+        ),
+    )
+    parser.add_option(
+        "--tls-capath",
+        dest="tls_capath",
+        default=None,
+        help=(
+            "Path to CA certificate directory for client verification.\n"
+            "Enables mutual TLS if specified."
+        ),
+    )
+    parser.add_option(
+        "--generate-tls-cert",
+        dest="generate_tls_cert",
+        default=None,
+        metavar="HOSTNAME",
+        help=(
+            "Generate a self-signed certificate for testing/development.\n"
+            "Creates server.crt and server.key in the current directory.\n"
+            "WARNING: Self-signed certificates should ONLY be used for development/testing.\n"
+            "Argument: hostname for certificate (default: localhost)"
+        ),
+    )
     (options, args) = parser.parse_args()
+
+    # Handle TLS certificate generation
+    if options.generate_tls_cert:
+        hostname = options.generate_tls_cert
+        certfile = "server.crt"
+        keyfile = "server.key"
+        log(20, "Generating self-signed certificate for %s...", hostname)
+        log(20, "Certificate: %s", certfile)
+        log(20, "Private key: %s", keyfile)
+        log(20, "WARNING: Self-signed certificates are for testing only!")
+        try:
+            generate_self_signed_cert(certfile, keyfile, hostname=hostname)
+            log(20, "Certificate generated successfully.")
+            log(
+                20,
+                "Use: dhruva -s --tls-certfile %s --tls-keyfile %s",
+                certfile,
+                keyfile,
+            )
+            return
+        except ImportError as e:
+            log(20, "Error: %s", e)
+            log(20, "Install cryptography module: pip install cryptography")
+            return
+        except Exception as e:
+            log(20, "Failed to generate certificate: %s", e)
+            return
+
+    # Create TLS config if certificates are provided
+    tls_config = None
+    if options.tls_certfile or options.tls_keyfile:
+        try:
+            tls_config = TLSConfig(
+                certfile=options.tls_certfile,
+                keyfile=options.tls_keyfile,
+                cafile=options.tls_cafile,
+                capath=options.tls_capath,
+            )
+            log(20, "TLS/SSL enabled on server")
+        except (ValueError, FileNotFoundError) as e:
+            log(20, "TLS configuration error: %s", e)
+            return
     if getattr(options, "address", None) is None:
         address = SocketAddress.new((options.host, options.port))
     elif options.address.startswith("@"):
@@ -446,7 +626,12 @@ def run_durus_main():
             readonly=options.readonly,
         )
         start_durus(
-            options.logfile, options.logginglevel, address, storage, options.gcbytes
+            options.logfile,
+            options.logginglevel,
+            address,
+            storage,
+            options.gcbytes,
+            tls_config,
         )
     else:
         stop_durus(address)
@@ -466,18 +651,53 @@ def pack_storage_main():
         dest="port",
         default=DEFAULT_PORT,
         type="int",
-        help="Port the server is on. (default=%s)" % DEFAULT_PORT,
+        help=f"Port the server is on. (default={DEFAULT_PORT})",
     )
     parser.add_option(
         "--host",
         dest="host",
         default=DEFAULT_HOST,
-        help="Host of the server. (default=%s)" % DEFAULT_HOST,
+        help=f"Host of the server. (default={DEFAULT_HOST})",
+    )
+    # TLS client options for pack
+    parser.add_option(
+        "--tls-cafile",
+        dest="tls_cafile",
+        default=None,
+        help="Path to CA certificate file for server verification.",
+    )
+    parser.add_option(
+        "--tls-certfile",
+        dest="tls_certfile",
+        default=None,
+        help="Path to client certificate for mutual TLS.",
+    )
+    parser.add_option(
+        "--tls-keyfile",
+        dest="tls_keyfile",
+        default=None,
+        help="Path to client private key for mutual TLS.",
     )
     (options, args) = parser.parse_args()
+
+    # Create TLS config if TLS options provided
+    tls_config = None
+    if options.tls_cafile or options.tls_certfile:
+        try:
+            tls_config = TLSConfig(
+                cafile=options.tls_cafile,
+                client_certfile=options.tls_certfile,
+                client_keyfile=options.tls_keyfile,
+            )
+        except (ValueError, FileNotFoundError) as e:
+            log(20, "TLS configuration error: %s", e)
+            return
+
     if options.file is None:
         wait_for_server(options.host, options.port)
-        storage = ClientStorage(host=options.host, port=options.port)
+        storage = ClientStorage(
+            host=options.host, port=options.port, tls_config=tls_config
+        )
     else:
         storage = get_storage(options.file)
     connection = Connection(storage)

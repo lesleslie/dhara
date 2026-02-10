@@ -434,8 +434,7 @@ class BTree(PersistentObject, MutableMapping[Any, Any]):
     __bool__ = __nonzero__
 
     def iteritems(self) -> Iterator[tuple[Any, Any]]:
-        for item in self.root:
-            yield item
+        yield from self.root
 
     def iterkeys(self) -> Iterator[Any]:
         for item in self.root:
@@ -455,8 +454,7 @@ class BTree(PersistentObject, MutableMapping[Any, Any]):
         return list(self.itervalues())
 
     def __iter__(self) -> Iterator[Any]:
-        for key in self.iterkeys():
-            yield key
+        yield from self.iterkeys()
 
     def __reversed__(self) -> Iterator[Any]:
         for item in reversed(self.root):
@@ -481,9 +479,7 @@ class BTree(PersistentObject, MutableMapping[Any, Any]):
     def update(self, *args, **kwargs):
         if args:
             if len(args) > 1:
-                raise TypeError(
-                    "update expected at most 1 argument, got %s" % len(args)
-                )
+                raise TypeError(f"update expected at most 1 argument, got {len(args)}")
             items = args[0]
             if hasattr(items, "iteritems"):
                 item_sequence = items.iteritems()
@@ -554,8 +550,7 @@ class BTree(PersistentObject, MutableMapping[Any, Any]):
         """() -> generator
         Generate all items in reverse order.
         """
-        for item in reversed(self.root):
-            yield item
+        yield from reversed(self.root)
 
     def items_from(self, key: Any, closed: bool = True) -> Iterator[tuple[Any, Any]]:
         """(key, closed=True) -> generator

@@ -15,7 +15,7 @@ from dhruva.serialize.dill import DillSerializer
 
 class TestPersistent(Persistent):
     """Test persistent object."""
-    
+
     def __init__(self):
         self.data = {}
         self.timestamp = 0
@@ -101,10 +101,10 @@ def test_serialized_size_comparison_simple(benchmark):
     """Compare serialized sizes for simple dict."""
     pickle_size = len(PickleSerializer().serialize(SIMPLE_DICT))
     msgspec_size = len(MsgspecSerializer().serialize(SIMPLE_DICT))
-    
+
     assert msgspec_size < pickle_size, "msgspec should be smaller"
     reduction = (1 - msgspec_size / pickle_size) * 100
-    
+
     # Return for benchmark output
     return {
         'pickle_size': pickle_size,
@@ -117,10 +117,10 @@ def test_serialized_size_comparison_large(benchmark):
     """Compare serialized sizes for large dict."""
     pickle_size = len(PickleSerializer().serialize(LARGE_DICT))
     msgspec_size = len(MsgspecSerializer().serialize(LARGE_DICT))
-    
+
     assert msgspec_size < pickle_size, "msgspec should be smaller"
     reduction = (1 - msgspec_size / pickle_size) * 100
-    
+
     return {
         'pickle_size': pickle_size,
         'msgspec_size': msgspec_size,

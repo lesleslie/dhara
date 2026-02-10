@@ -79,7 +79,7 @@ class FileStorage(Storage):
             and oid != int8_to_str(0)
         ):
             self.begin()
-            raise ValueError("oid %r is a surprise" % oid)
+            raise ValueError(f"oid {oid!r} is a surprise")
 
     def end(self, handle_invalidations=None):
         self.shelf.store(iteritems(self.pending_records))
@@ -87,7 +87,7 @@ class FileStorage(Storage):
             shelf_file = self.shelf.get_file()
             shelf_file.seek_end()
             pos = shelf_file.tell()
-            log(20, "Transaction at [%s] end=%s" % (datetime.now(), pos))
+            log(20, f"Transaction at [{datetime.now()}] end={pos}")
         if self.pack_extra is not None:
             self.pack_extra.update(self.pending_records)
         self.allocated_unused_oids -= set(self.pending_records)
@@ -101,8 +101,7 @@ class FileStorage(Storage):
 
     def gen_oid_record(self, start_oid=None, seen=None, **other):
         if start_oid is None:
-            for item in iteritems(self.shelf):
-                yield item
+            yield from iteritems(self.shelf)
         else:
             todo = [start_oid]
             if seen is None:
@@ -144,15 +143,14 @@ class FileStorage(Storage):
         assert file.tell() == 0
 
         def packer():
-            yield "started %s" % datetime.now()
+            yield f"started {datetime.now()}"
             seen = IntSet()
             items = self.gen_oid_record(start_oid=int8_to_str(0), seen=seen)
-            for step in Shelf.generate_shelf(file, items):
-                yield step
+            yield from Shelf.generate_shelf(file, items)
             file.flush()
             file.fsync()
             shelf = Shelf(file)
-            yield "base written %s" % datetime.now()
+            yield f"base written {datetime.now()}"
             # Invalidate oids that have been removed.
             for hole in shelf.get_offset_map().gen_holes():
                 yield hole
@@ -160,7 +158,7 @@ class FileStorage(Storage):
                 if self.shelf.get_position(oid) is not None:
                     assert shelf.get_position(oid) is None
                     self.invalid.add(oid)
-            yield "invalidations identified %s" % datetime.now()
+            yield f"invalidations identified {datetime.now()}"
             for oid in self.pack_extra:
                 seen.discard(str_to_int8(oid))
             for oid in self.pack_extra:
@@ -173,7 +171,7 @@ class FileStorage(Storage):
             shelf.get_file().rename(file_path)
             self.shelf = shelf
             self.pack_extra = None
-            yield "finished %s" % datetime.now()
+            yield f"finished {datetime.now()}"
 
         return packer()
 
@@ -209,7 +207,7 @@ class FileStorage(Storage):
         return False  # Don't suppress exceptions
 
     def __str__(self):
-        return "%s(%r)" % (self.__class__.__name__, self.get_filename())
+        return f"{self.__class__.__name__}({self.get_filename()!r})"
 
 
 def TempFileStorage():

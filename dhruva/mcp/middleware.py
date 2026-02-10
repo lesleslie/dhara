@@ -123,7 +123,7 @@ class MCPMiddleware:
         Returns:
             Tuple of (processed_request, auth_result)
         """
-        start_time = time.time()
+        time.time()
 
         # Extract authentication context
         auth_context = AuthContext(
