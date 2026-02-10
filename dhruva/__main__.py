@@ -66,8 +66,26 @@ def interactive_client(
         storage = ClientStorage(address=socket_address)
         description = socket_address
     connection = Connection(storage, cache_size=cache_size)
-    console_module = ModuleType("__console__")
-    sys.modules["__console__"] = console_module
+
+    # Import adapter registry for new adapter distribution features
+    try:
+        from dhruva.mcp.adapter_tools import AdapterRegistry
+        registry = AdapterRegistry(connection)
+        has_adapters = True
+    except ImportError:
+        registry = None
+        has_adapters = False
+
+    # Try to use IPython if available, fall back to InteractiveConsole
+    try:
+        from IPython.terminal.embed import InteractiveShellEmbed
+        from IPython.terminal.ipapp import load_default_config
+        use_ipython = True
+    except ImportError:
+        from code import InteractiveConsole
+        use_ipython = False
+
+    # Build namespace with adapter management if available
     namespace = {
         "connection": connection,
         "root": connection.get_root(),
@@ -78,20 +96,60 @@ def interactive_client(
         "str_to_int8": str_to_int8,
         "pp": pprint,
     }
-    vars(console_module).update(namespace)
-    configure_readline(vars(console_module), os.path.expanduser("~/.durushistory"))
-    console = InteractiveConsole(vars(console_module))
-    if startup:
-        warn(
-            f"Executing startup file: {startup}. "
-            "This can execute arbitrary Python code. "
-            "Only use trusted files from secure locations.",
-            SecurityWarning,
-            stacklevel=2
+
+    # Add adapter management if available
+    if has_adapters and registry:
+        namespace.update({
+            "registry": registry,
+            "adapters": registry,
+            # Convenience methods
+            "store_adapter": registry.store_adapter,
+            "get_adapter": registry.get_adapter,
+            "list_adapters": registry.list_adapters,
+            "list_versions": registry.list_adapter_versions,
+            "validate_adapter": registry.validate_adapter,
+            "check_health": registry.check_adapter_health,
+            "adapter_count": registry.count,
+        })
+
+    # Build help text
+    help_text = "    connection -> the Connection\n    root       -> the root instance"
+    if has_adapters:
+        help_text += "\n\nAdapter Management:\n"
+        help_text += "    registry/adapters -> AdapterRegistry instance\n"
+        help_text += "    store_adapter()    -> Store an adapter\n"
+        help_text += "    get_adapter()      -> Retrieve an adapter\n"
+        help_text += "    list_adapters()    -> List all adapters\n"
+        help_text += "    list_versions()    -> List adapter versions\n"
+        help_text += "    validate_adapter()  -> Validate adapter config\n"
+        help_text += "    check_health()     -> Check adapter health\n"
+        help_text += "    adapter_count()    -> Count total adapters"
+
+    if use_ipython:
+        # Use IPython with enhanced features
+        ipshell = InteractiveShellEmbed(
+            banner1=f"🦀 Dhruva Admin Shell - {description}\n{help_text}\n",
+            exit_msg="Exiting Dhruva Admin Shell",
+            user_ns=namespace,
         )
-        console.runsource('execfile("%s")' % os.path.expanduser(startup))
-    help = "    connection -> the Connection\n    root       -> the root instance"
-    console.interact("Durus %s\n%s" % (description, help))
+        ipshell()
+    else:
+        # Fall back to InteractiveConsole
+        console_module = ModuleType("__console__")
+        sys.modules["__console__"] = console_module
+        vars(console_module).update(namespace)
+        configure_readline(vars(console_module), os.path.expanduser("~/.durushistory"))
+        console = InteractiveConsole(vars(console_module))
+        if startup:
+            warn(
+                f"Executing startup file: {startup}. "
+                "This can execute arbitrary Python code. "
+                "Only use trusted files from secure locations.",
+                SecurityWarning,
+                stacklevel=2
+            )
+            console.runsource('execfile("%s")' % os.path.expanduser(startup))
+        console.interact("Dhruva %s\n%s" % (description, help_text))
 
 
 def client_main():

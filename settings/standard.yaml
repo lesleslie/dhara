@@ -1,0 +1,57 @@
+# Dhruva Standard Mode Configuration
+# Full-featured production mode with configurable storage
+
+mode: standard
+server_name: "Dhruva (Production)"
+
+# Storage configuration (configurable backend)
+storage:
+  path: /data/dhruva/production.dhruva
+  backend: file  # Options: file, sqlite, s3, gcs, azure
+  read_only: false
+
+# Server configuration (all interfaces for production)
+host: 0.0.0.0
+port: 8683
+
+# Adapter distribution configuration
+adapters:
+  enable_versioning: true
+  enable_health_checks: true
+  max_versions_per_adapter: 10
+  auto_push_on_startup: true
+
+# Logging configuration (production format)
+logging:
+  level: INFO
+  format: json
+
+# Cloud storage (enabled in standard mode)
+cloud_storage:
+  enabled: true
+  provider: s3  # Options: s3, gcs, azure
+  bucket: dhruva-production
+  prefix: backups/
+  # Backup schedule (cron format)
+  schedule: "0 2 * * *"  # Daily at 2 AM
+
+# Cache configuration
+cache:
+  size: 100000
+  shrink_threshold: 2.0
+
+# S3-specific configuration (when backend=s3)
+s3:
+  bucket: dhruva-production
+  region: us-east-1
+  prefix: dhruva/
+
+# GCS-specific configuration (when backend=gcs)
+gcs:
+  bucket: dhruva-production
+  prefix: dhruva/
+
+# Azure-specific configuration (when backend=azure)
+azure:
+  container: dhruva-production
+  prefix: dhruva/

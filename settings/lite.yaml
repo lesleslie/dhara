@@ -1,0 +1,36 @@
+# Dhruva Lite Mode Configuration
+# Zero-configuration development mode for local development and testing
+
+mode: lite
+server_name: "Dhruva Lite (Development)"
+
+# Storage configuration (local filesystem only)
+storage:
+  path: ~/.local/share/dhruva/lite.dhruva
+  backend: file
+  read_only: false
+
+# Server configuration (localhost only for security)
+host: 127.0.0.1
+port: 8683
+
+# Adapter distribution configuration
+adapters:
+  enable_versioning: true
+  enable_health_checks: true
+  max_versions_per_adapter: 10
+  auto_push_on_startup: true
+
+# Logging configuration (debug for development)
+logging:
+  level: DEBUG
+  format: text
+
+# Cloud storage (disabled in lite mode)
+cloud_storage:
+  enabled: false
+
+# Cache configuration
+cache:
+  size: 10000
+  shrink_threshold: 2.0

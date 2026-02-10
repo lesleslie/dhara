@@ -9,7 +9,8 @@ dev = [
 
 [tool.uv]
 override-dependencies = [
-    "onnxruntime>=1.20.0",
+    # Skip onnxruntime on Intel Mac (no wheels available)
+    "onnxruntime>=1.20.0; sys_platform == 'darwin' and platform_machine == 'arm64' or sys_platform == 'linux'",
 ]
 
 # Full-Featured Library Template
@@ -21,7 +22,7 @@ name = "dhruva"
 version = "0.5.0"
 description = "A Python Object Database"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.13"
 license = {text = "MIT"}
 authors = [
     {name = "CNRI and others", email = "nas-dhruva@arctrix.com"},
@@ -35,14 +36,25 @@ classifiers = [
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Topic :: Database",
     "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+dependencies = [
+    # MCP server framework (ecosystem standard)
+    "fastmcp>=2.14.0",
+    "mcp-common>=0.7.0",
+
+    # Configuration and logging (ecosystem standard)
+    "oneiric>=0.5.0",
+
+    # ASGI server for FastMCP
+    "uvicorn>=0.30.0",
+
+    # Admin shell with IPython (ecosystem standard)
+    "ipython>=8.0.0",
+    "rich>=13.0.0",  # For pretty tables and console output
 ]
 
 [project.urls]
@@ -54,6 +66,7 @@ Repository = "https://github.com/lesleslie/dhruva"
 
 [project.scripts]
 dhruva = "dhruva.__main__:main"
+dhruva-mcp = "dhruva.cli:main"
 
 [tool.setuptools]
 packages = ["dhruva"]

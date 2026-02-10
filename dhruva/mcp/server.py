@@ -62,7 +62,7 @@ class DhruvaMCPServer:
         self.read_only = read_only
 
         # Initialize storage
-        self.storage = FileStorage(storage_path, read_only=read_only)
+        self.storage = FileStorage(storage_path, readonly=read_only)
         self.connection = Connection(self.storage)
 
         # Setup middleware

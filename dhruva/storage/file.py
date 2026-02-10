@@ -184,6 +184,30 @@ class FileStorage(Storage):
     def close(self):
         self.shelf.close()
 
+    def __enter__(self):
+        """Context manager entry - returns self for use in with statements.
+
+        Example:
+            with FileStorage("data.dhruva") as storage:
+                conn = Connection(storage)
+                # Lock automatically released when exiting with block
+        """
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit - automatically closes storage and releases lock.
+
+        Args:
+            exc_type: Exception type if an exception occurred
+            exc_val: Exception value if an exception occurred
+            exc_tb: Exception traceback if an exception occurred
+
+        Returns:
+            None (exceptions are propagated normally)
+        """
+        self.close()
+        return False  # Don't suppress exceptions
+
     def __str__(self):
         return "%s(%r)" % (self.__class__.__name__, self.get_filename())
 

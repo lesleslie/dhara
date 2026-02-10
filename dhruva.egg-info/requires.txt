@@ -1,0 +1,6 @@
+fastmcp>=2.14.0
+mcp-common>=0.7.0
+oneiric>=0.5.0
+uvicorn>=0.30.0
+ipython>=8.0.0
+rich>=13.0.0
