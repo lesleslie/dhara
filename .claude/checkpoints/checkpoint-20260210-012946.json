@@ -1,0 +1,32 @@
+{
+  "timestamp": "2026-02-10T01:29:46.081918",
+  "project": "dhruva",
+  "quality_score": 100,
+  "breakdown": {
+    "maturity": {
+      "score": 30,
+      "max": 25
+    },
+    "code_quality": {
+      "score": 10,
+      "max": 15
+    },
+    "session_opt": {
+      "score": 10,
+      "max": 25
+    },
+    "git_history": {
+      "score": 10,
+      "max": 15
+    }
+  },
+  "context_info": {
+    "session_files": 4,
+    "total_size_mb": 17.01,
+    "total_lines": 14686,
+    "recommendation": "Context size healthy"
+  },
+  "recommendations": [
+    "\ud83c\udf89 Excellent workflow! Continue current practices."
+  ]
+}
