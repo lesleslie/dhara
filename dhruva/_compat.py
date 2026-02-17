@@ -47,9 +47,3 @@ class _DurusCompatModule:
 # Inject fake durus module into sys.modules for backward compatibility
 if "durus" not in sys.modules:
     sys.modules["durus"] = _DurusCompatModule()
-
-# Add specific submodules
-sys.modules["durus.persistent"] = sys.modules["dhruva.core.persistent"]
-sys.modules["durus.persistent_dict"] = sys.modules["dhruva.collections.dict"]
-sys.modules["durus.persistent_list"] = sys.modules["dhruva.collections.list"]
-sys.modules["durus.persistent_set"] = sys.modules["dhruva.collections.set"]

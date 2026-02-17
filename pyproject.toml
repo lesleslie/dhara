@@ -45,16 +45,14 @@ dependencies = [
     # MCP server framework (ecosystem standard)
     "fastmcp>=2.14.0",
     "mcp-common>=0.7.0",
-
     # Configuration and logging (ecosystem standard)
     "oneiric>=0.5.0",
-
     # ASGI server for FastMCP
     "uvicorn>=0.30.0",
-
     # Admin shell with IPython (ecosystem standard)
     "ipython>=8.0.0",
     "rich>=13.0.0",  # For pretty tables and console output
+    "msgspec>=0.20.0",
 ]
 
 [project.urls]

@@ -15,7 +15,6 @@ MCP_HOOKS_SETUP_COMPLETE.md
 OPERATIONAL_MODES_COMPLETE.md
 OPERATIONAL_MODES_PROGRESS.md
 README.md
-SESSION_CHECKPOINT_SUMMARY.md
 TEST_AUTOMATION_COMPLETE.md
 TEST_COVERAGE_EXPANSION_SUMMARY.md
 TEST_QUICK_REFERENCE.md
@@ -159,6 +158,7 @@ dhruva/monitoring/server.py
 dhruva/security/__init__.py
 dhruva/security/oneiric_secrets.py
 dhruva/security/signing.py
+dhruva/security/tls.py
 dhruva/serialize/__init__.py
 dhruva/serialize/adapter.py
 dhruva/serialize/base.py
@@ -210,6 +210,7 @@ test/test_shelf.py
 test/test_signing.py
 test/test_storage.py
 test/test_storage_server.py
+test/test_tls.py
 test/test_utils.py
 test/unit/test_adapter_registry.py
 test/unit/test_cli.py

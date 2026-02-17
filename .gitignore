@@ -6,3 +6,20 @@ dist
 # Oneiric runtime cache (should not be tracked)
 .oneiric_cache/
 ~/.oneiric_cache/
+
+# XDG - Cache directories
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.oneiric_cache/
+.complexipy_cache/
+.cache/
+
+# XDG - State directories
+.claude/
+.session-buddy/
+.crackerjack/
+
+# XDG - DELETE candidates
+.obsidian/
+
