@@ -1,12 +1,12 @@
-"""Tests for Dhruva configuration management."""
+"""Tests for Druva configuration management."""
 
 import pytest
 from pathlib import Path
 from tempfile import mktemp
 import yaml
 
-from dhruva.config import (
-    DhruvaConfig,
+from druva.config import (
+    DruvaConfig,
     StorageConfig,
     CacheConfig,
     ConnectionConfig,
@@ -17,7 +17,7 @@ from dhruva.config import (
 )
 
 # Backward compatibility alias
-DurusConfig = DhruvaConfig
+DurusConfig = DruvaConfig
 
 
 class TestStorageConfig:
@@ -133,22 +133,22 @@ class TestConnectionConfig:
             ConnectionConfig(max_retries=-1)
 
 
-class TestDhruvaConfig:
-    """Tests for DhruvaConfig."""
+class TestDruvaConfig:
+    """Tests for DruvaConfig."""
 
-    def test_default_dhruva_config(self):
-        """Test default Dhruva configuration."""
-        config = DhruvaConfig()
+    def test_default_druva_config(self):
+        """Test default Druva configuration."""
+        config = DruvaConfig()
         assert config.storage.backend == "memory"
         assert config.cache.size == 100000
         assert config.connection.timeout == 30.0
         assert config.debug_mode is False
 
-    def test_custom_dhruva_config(self):
-        """Test custom Dhruva configuration."""
+    def test_custom_druva_config(self):
+        """Test custom Druva configuration."""
         storage = StorageConfig(backend="memory")
         cache = CacheConfig(size=50000)
-        config = DhruvaConfig(storage=storage, cache=cache, debug_mode=True)
+        config = DruvaConfig(storage=storage, cache=cache, debug_mode=True)
 
         assert config.storage.backend == "memory"
         assert config.cache.size == 50000
@@ -158,12 +158,12 @@ class TestDhruvaConfig:
     def test_durus_config_alias(self):
         """Test that DurusConfig alias works for backward compatibility."""
         config = DurusConfig()
-        assert isinstance(config, DhruvaConfig)
+        assert isinstance(config, DruvaConfig)
         assert config.storage.backend == "memory"
 
     def test_to_dict(self):
         """Test converting configuration to dictionary."""
-        config = DhruvaConfig(
+        config = DruvaConfig(
             storage=StorageConfig(backend="memory"),
             cache=CacheConfig(size=50000),
         )
@@ -181,7 +181,7 @@ class TestDhruvaConfig:
             "connection": {"timeout": 30.0, "max_retries": 3, "retry_delay": 1.0},
             "debug_mode": False,
         }
-        config = DhruvaConfig.from_dict(data)
+        config = DruvaConfig.from_dict(data)
 
         assert config.storage.backend == "memory"
         assert config.cache.size == 75000
@@ -189,12 +189,12 @@ class TestDhruvaConfig:
     def test_from_dict_with_path_string(self):
         """Test creating configuration from dictionary with path string."""
         data = {
-            "storage": {"backend": "file", "path": "/tmp/test.dhruva"},
+            "storage": {"backend": "file", "path": "/tmp/test.druva"},
         }
-        config = DhruvaConfig.from_dict(data)
+        config = DruvaConfig.from_dict(data)
 
         assert isinstance(config.storage.path, Path)
-        assert str(config.storage.path) == "/tmp/test.dhruva"
+        assert str(config.storage.path) == "/tmp/test.druva"
 
 
 class TestLoadConfig:
@@ -341,7 +341,7 @@ class TestSaveConfig:
 
     def test_save_config_yaml(self):
         """Test saving configuration to YAML file."""
-        config = DhruvaConfig(
+        config = DruvaConfig(
             storage=StorageConfig(backend="memory"),
             cache=CacheConfig(size=50000),
         )
@@ -368,7 +368,7 @@ class TestSaveConfig:
         config_file = Path(temp_dir) / "subdir" / "config.yaml"
 
         try:
-            config = DhruvaConfig()
+            config = DruvaConfig()
             save_config(config, config_file)
             assert config_file.exists()
         finally:
@@ -382,22 +382,22 @@ class TestMergeConfigs:
     def test_merge_empty_configs(self):
         """Test merging no configs returns default."""
         config = merge_configs()
-        assert isinstance(config, DhruvaConfig)
+        assert isinstance(config, DruvaConfig)
         assert config.storage.backend == "memory"
 
     def test_merge_single_config(self):
         """Test merging single config."""
-        config1 = DhruvaConfig(storage=StorageConfig(backend="memory"))
+        config1 = DruvaConfig(storage=StorageConfig(backend="memory"))
         result = merge_configs(config1)
         assert result.storage.backend == "memory"
 
     def test_merge_multiple_configs(self):
         """Test merging multiple configs."""
-        config1 = DhruvaConfig(
-            storage=StorageConfig(backend="file", path="/tmp/test.dhruva"),
+        config1 = DruvaConfig(
+            storage=StorageConfig(backend="file", path="/tmp/test.druva"),
             cache=CacheConfig(size=100000),
         )
-        config2 = DhruvaConfig(
+        config2 = DruvaConfig(
             storage=StorageConfig(backend="client"),
             cache=CacheConfig(size=50000),
         )
@@ -408,11 +408,11 @@ class TestMergeConfigs:
 
     def test_merge_partial_override(self):
         """Test merging with partial overrides."""
-        config1 = DhruvaConfig(
-            storage=StorageConfig(backend="file", path="/tmp/test.dhruva"),
+        config1 = DruvaConfig(
+            storage=StorageConfig(backend="file", path="/tmp/test.druva"),
             cache=CacheConfig(size=100000),
         )
-        config2 = DhruvaConfig(
+        config2 = DruvaConfig(
             cache=CacheConfig(size=50000),
         )
 
@@ -422,16 +422,16 @@ class TestMergeConfigs:
 
     def test_merge_debug_mode(self):
         """Test merging debug mode."""
-        config1 = DhruvaConfig(debug_mode=False)
-        config2 = DhruvaConfig(debug_mode=True)
+        config1 = DruvaConfig(debug_mode=False)
+        config2 = DruvaConfig(debug_mode=True)
 
         result = merge_configs(config1, config2)
         assert result.debug_mode is True
 
     def test_merge_preserves_original(self):
         """Test that merge doesn't modify original configs."""
-        config1 = DhruvaConfig(cache=CacheConfig(size=100000))
-        config2 = DhruvaConfig(cache=CacheConfig(size=50000))
+        config1 = DruvaConfig(cache=CacheConfig(size=100000))
+        config2 = DruvaConfig(cache=CacheConfig(size=50000))
 
         result = merge_configs(config1, config2)
 

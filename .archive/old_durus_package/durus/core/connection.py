@@ -10,26 +10,26 @@ from time import time
 from weakref import KeyedRef, ref
 
 import durus.storage.base as durus_storage
-from dhruva.error import (
+from druva.error import (
     ConflictError,
     DurusKeyError,
     ReadConflictError,
     WriteConflictError,
 )
-from dhruva.logger import log
-from dhruva.core.persistent import ConnectionBase
-from dhruva.collections.dict import PersistentDict
-from dhruva.serialize import (
+from druva.logger import log
+from druva.core.persistent import ConnectionBase
+from druva.collections.dict import PersistentDict
+from druva.serialize import (
     ObjectReader,
     ObjectWriter,
     pack_record,
     persistent_load,
     unpack_record,
 )
-from dhruva.utils import as_bytes, byte_string, int8_to_str, iteritems, loads
+from druva.utils import as_bytes, byte_string, int8_to_str, iteritems, loads
 
 try:
-    from dhruva._persistent import _setattribute
+    from druva._persistent import _setattribute
 except ImportError:
     _setattribute = object.__setattr__
 
@@ -66,7 +66,7 @@ class Connection(ConnectionBase):
         class of the root object.
         """
         if isinstance(storage, str):
-            from dhruva.storage.file import FileStorage
+            from druva.storage.file import FileStorage
 
             storage = FileStorage(storage)
         assert isinstance(storage, durus_storage.Storage)

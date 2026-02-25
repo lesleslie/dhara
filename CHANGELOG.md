@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to dhruva will be documented in this file.
+All notable changes to druva will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -52,8 +52,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **BREAKING**: Package renamed from `durus` to `dhruva`
-- **BREAKING**: Imports changed from `durus.*` to `dhruva.*`
+- **BREAKING**: Package renamed from `durus` to `druva`
+- **BREAKING**: Imports changed from `durus.*` to `druva.*`
 - **BREAKING**: Default serialization changed from pickle to msgspec
 - Storage backends now use adapter pattern for pluggability
 - Connection API improved with better cache management
@@ -68,10 +68,10 @@ from durus.connection import Connection
 from durus.file_storage import FileStorage
 from durus.persistent import Persistent
 
-# New (dhruva 5.0)
+# New (druva 5.0)
 
-from dhruva import Connection, Persistent
-from dhruva.storage import FileStorage
+from druva import Connection, Persistent
+from druva.storage import FileStorage
 \`\`\`
 
 See [CLAUDE.md](CLAUDE.md) for comprehensive migration guide.
@@ -115,7 +115,7 @@ For versions prior to 0.4.2, please refer to the git history.
 
 ## Migration Notes
 
-### From Durus 4.x to dhruva 5.0
+### From Durus 4.x to druva 5.0
 
 1. **Update imports**:
    \`\`\`python
@@ -127,7 +127,7 @@ For versions prior to 0.4.2, please refer to the git history.
 
    # After
 
-   from dhruva import Connection, Persistent
+   from druva import Connection, Persistent
    \`\`\`
 
 1. **Serialization**:
@@ -194,7 +194,7 @@ See [CLAUDE.md](CLAUDE.md) for development guidelines.
 
 ## Security
 
-For security issues, email: nas-dhruva@arctrix.com
+For security issues, email: nas-druva@arctrix.com
 
 ## License
 

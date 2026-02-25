@@ -5,7 +5,7 @@ to work with the new Serializer adapter pattern. This provides backward compatib
 during the transition from Durus 4.x to Durus 5.0.
 """
 
-from dhruva.serialize_legacy import (
+from druva.serialize_legacy import (
     ObjectReader as OldObjectReader,
     ObjectWriter as OldObjectWriter,
     pack_record,
@@ -14,7 +14,7 @@ from dhruva.serialize_legacy import (
     persistent_load,
     extract_class_name,
 )
-from dhruva.serialize.base import Serializer
+from druva.serialize.base import Serializer
 
 
 class ObjectReader(OldObjectReader):
@@ -33,7 +33,7 @@ class ObjectReader(OldObjectReader):
         """
         if serializer is None:
             # Use pickle for backward compatibility with Durus 4.x databases
-            from dhruva.serialize.pickle import PickleSerializer
+            from druva.serialize.pickle import PickleSerializer
             serializer = PickleSerializer()
 
         self._new_serializer = serializer
@@ -80,7 +80,7 @@ class ObjectWriter(OldObjectWriter):
         """
         if serializer is None:
             # Use pickle for backward compatibility with Durus 4.x databases
-            from dhruva.serialize.pickle import PickleSerializer
+            from druva.serialize.pickle import PickleSerializer
             serializer = PickleSerializer()
 
         self._new_serializer = serializer

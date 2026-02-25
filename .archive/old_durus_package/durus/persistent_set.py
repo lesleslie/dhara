@@ -4,6 +4,6 @@ Redirects imports to new location (durus.collections.set)
 for backward compatibility with pickled data from Durus 4.x.
 """
 
-from dhruva.collections.set import *
+from druva.collections.set import *
 
 __all__ = ['PersistentSet']

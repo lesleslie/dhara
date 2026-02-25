@@ -4,10 +4,10 @@ Allows easy instantiation of different serializer backends with
 proper error handling and validation.
 """
 
-from dhruva.serialize.base import Serializer
-from dhruva.serialize.pickle import PickleSerializer
-from dhruva.serialize.msgspec import MsgspecSerializer
-from dhruva.serialize.dill import DillSerializer
+from druva.serialize.base import Serializer
+from druva.serialize.pickle import PickleSerializer
+from druva.serialize.msgspec import MsgspecSerializer
+from druva.serialize.dill import DillSerializer
 from typing import Literal, Any
 
 

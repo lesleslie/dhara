@@ -5,7 +5,7 @@ for backward compatibility with pickled data from Durus 4.x.
 """
 
 # Import everything from new location and re-export
-from dhruva.collections.dict import *
+from druva.collections.dict import *
 
 # Re-export all public classes and functions
 __all__ = ['PersistentDict']

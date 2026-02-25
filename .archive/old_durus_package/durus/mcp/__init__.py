@@ -10,7 +10,7 @@ Components:
 - oneiric_server: Oneiric-compatible MCP server
 """
 
-from dhruva.mcp.auth import (
+from druva.mcp.auth import (
     AuthMiddleware,
     TokenAuth,
     HMACAuth,

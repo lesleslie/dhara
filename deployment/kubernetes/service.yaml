@@ -1,12 +1,12 @@
 ---
-# Service for dhruva server
+# Service for druva server
 apiVersion: v1
 kind: Service
 metadata:
-  name: dhruva-server
+  name: druva-server
   namespace: ${NAMESPACE}
   labels:
-    app: dhruva
+    app: druva
     component: server
   annotations:
     # Optional: Add service annotations for cloud providers
@@ -15,13 +15,13 @@ spec:
   type: ClusterIP  # Use LoadBalancer or NodePort for external access
   sessionAffinity: None  # Could use ClientIP for sticky sessions
   ports:
-  - name: dhruva
+  - name: druva
     port: 2972
     targetPort: 2972
     protocol: TCP
     # nodePort: 32972  # Required if type=NodePort (30000-32767 range)
   selector:
-    app: dhruva
+    app: druva
     component: server
 
 ---
@@ -30,21 +30,21 @@ spec:
 # apiVersion: v1
 # kind: Service
 # metadata:
-#   name: dhruva-server-headless
+#   name: druva-server-headless
 #   namespace: ${NAMESPACE}
 #   labels:
-#     app: dhruva
+#     app: druva
 #     component: server
 # spec:
 #   type: ClusterIP
 #   clusterIP: None
 #   ports:
-#   - name: dhruva
+#   - name: druva
 #     port: 2972
 #     targetPort: 2972
 #     protocol: TCP
 #   selector:
-#     app: dhruva
+#     app: druva
 #     component: server
 
 ---
@@ -53,17 +53,17 @@ spec:
 # apiVersion: monitoring.coreos.com/v1
 # kind: ServiceMonitor
 # metadata:
-#   name: dhruva-server
+#   name: druva-server
 #   namespace: ${NAMESPACE}
 #   labels:
-#     app: dhruva
+#     app: druva
 # spec:
 #   selector:
 #     matchLabels:
-#       app: dhruva
+#       app: druva
 #       component: server
 #   endpoints:
-#   - port: dhruva
+#   - port: druva
 #     interval: 30s
 #     scrapeTimeout: 10s
 #     path: /metrics
@@ -75,10 +75,10 @@ spec:
 # apiVersion: networking.k8s.io/v1
 # kind: Ingress
 # metadata:
-#   name: dhruva-server
+#   name: druva-server
 #   namespace: ${NAMESPACE}
 #   labels:
-#     app: dhruva
+#     app: druva
 #   annotations:
 #     # Example annotations for NGINX Ingress Controller
 #     nginx.ingress.kubernetes.io/backend-protocol: "TCP"
@@ -86,13 +86,13 @@ spec:
 # spec:
 #   ingressClassName: nginx
 #   rules:
-#   - host: dhruva.example.com
+#   - host: druva.example.com
 #     http:
 #       paths:
 #       - path: /
 #         pathType: Prefix
 #         backend:
 #           service:
-#             name: dhruva-server
+#             name: druva-server
 #             port:
 #               number: 2972

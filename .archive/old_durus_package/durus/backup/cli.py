@@ -18,13 +18,13 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
-from dhruva.file_storage import FileStorage
-from dhruva.backup.manager import BackupManager, BackupType
-from dhruva.backup.restore import RestoreManager
-from dhruva.backup.catalog import BackupCatalog
-from dhruva.backup.scheduler import BackupScheduler
-from dhruva.backup.verification import BackupVerification
-from dhruva.backup.storage import StorageFactory
+from druva.file_storage import FileStorage
+from druva.backup.manager import BackupManager, BackupType
+from druva.backup.restore import RestoreManager
+from druva.backup.catalog import BackupCatalog
+from druva.backup.scheduler import BackupScheduler
+from druva.backup.verification import BackupVerification
+from druva.backup.storage import StorageFactory
 
 # Configure logging
 logging.basicConfig(

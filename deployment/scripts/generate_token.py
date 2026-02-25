@@ -34,7 +34,7 @@ from pathlib import Path
 # Add parent directory to path to import durus
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from dhruva.mcp.auth import Role, TokenInfo, generate_token
+from druva.mcp.auth import Role, TokenInfo, generate_token
 
 
 # Default paths

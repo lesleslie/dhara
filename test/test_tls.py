@@ -1,5 +1,5 @@
 """
-Tests for TLS/SSL support in dhruva.
+Tests for TLS/SSL support in druva.
 
 These tests verify that TLS configuration and socket wrapping work correctly.
 """
@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from dhruva.security.tls import (
+from druva.security.tls import (
     TLSConfig,
     generate_self_signed_cert,
     get_env_tls_config,
@@ -137,7 +137,7 @@ class TestEnvTLSConfig:
         """Test that no TLS environment vars returns None."""
         # Clear any existing TLS env vars
         for key in list(os.environ.keys()):
-            if key.startswith("DHRUVA_TLS_"):
+            if key.startswith("DRUVA_TLS_"):
                 del os.environ[key]
 
         config = get_env_tls_config()
@@ -153,8 +153,8 @@ class TestEnvTLSConfig:
             generate_self_signed_cert(certfile, keyfile)
 
             # Set environment variables
-            os.environ["DHRUVA_TLS_CERTFILE"] = str(certfile)
-            os.environ["DHRUVA_TLS_KEYFILE"] = str(keyfile)
+            os.environ["DRUVA_TLS_CERTFILE"] = str(certfile)
+            os.environ["DRUVA_TLS_KEYFILE"] = str(keyfile)
 
             try:
                 config = get_env_tls_config()
@@ -163,8 +163,8 @@ class TestEnvTLSConfig:
                 assert config.keyfile == keyfile
             finally:
                 # Clean up
-                del os.environ["DHRUVA_TLS_CERTFILE"]
-                del os.environ["DHRUVA_TLS_KEYFILE"]
+                del os.environ["DRUVA_TLS_CERTFILE"]
+                del os.environ["DRUVA_TLS_KEYFILE"]
 
     def test_verify_mode_from_env(self):
         """Test that verify mode can be set from environment."""
@@ -174,25 +174,25 @@ class TestEnvTLSConfig:
 
             generate_self_signed_cert(certfile, keyfile)
 
-            os.environ["DHRUVA_TLS_CERTFILE"] = str(certfile)
-            os.environ["DHRUVA_TLS_KEYFILE"] = str(keyfile)
+            os.environ["DRUVA_TLS_CERTFILE"] = str(certfile)
+            os.environ["DRUVA_TLS_KEYFILE"] = str(keyfile)
 
             for mode, expected in [
                 ("none", ssl.CERT_NONE),
                 ("optional", ssl.CERT_OPTIONAL),
                 ("required", ssl.CERT_REQUIRED),
             ]:
-                os.environ["DHRUVA_TLS_VERIFY_MODE"] = mode
+                os.environ["DRUVA_TLS_VERIFY_MODE"] = mode
                 try:
                     config = get_env_tls_config()
                     assert config.verify_mode == expected
                 finally:
-                    if "DHRUVA_TLS_VERIFY_MODE" in os.environ:
-                        del os.environ["DHRUVA_TLS_VERIFY_MODE"]
+                    if "DRUVA_TLS_VERIFY_MODE" in os.environ:
+                        del os.environ["DRUVA_TLS_VERIFY_MODE"]
 
             # Clean up
-            del os.environ["DHRUVA_TLS_CERTFILE"]
-            del os.environ["DHRUVA_TLS_KEYFILE"]
+            del os.environ["DRUVA_TLS_CERTFILE"]
+            del os.environ["DRUVA_TLS_KEYFILE"]
 
 
 @pytest.mark.integration

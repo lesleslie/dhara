@@ -9,8 +9,8 @@ import os
 
 import pytest
 
-from dhruva import Connection, Persistent
-from dhruva.storage import FileStorage
+from druva import Connection, Persistent
+from druva.storage import FileStorage
 
 
 class TestClass(Persistent):
@@ -25,7 +25,7 @@ class TestFallbackWithStorage:
 
     def test_file_storage_round_trip(self):
         """Test that data can be stored and retrieved correctly."""
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".dhruva") as f:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".druva") as f:
             temp_file = f.name
 
         try:
@@ -49,7 +49,7 @@ class TestFallbackWithStorage:
 
     def test_persistent_objects_storage(self):
         """Test persistent objects are stored correctly."""
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".dhruva") as f:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".druva") as f:
             temp_file = f.name
 
         try:
@@ -79,7 +79,7 @@ class TestFallbackWithStorage:
 
     def test_mixed_data_types(self):
         """Test mix of different data types."""
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".dhruva") as f:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".druva") as f:
             temp_file = f.name
 
         try:
@@ -115,7 +115,7 @@ class TestPerformanceIntegration:
 
     def test_batch_operations_performance(self):
         """Test that batch operations perform well."""
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".dhruva") as f:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".druva") as f:
             temp_file = f.name
 
         try:
@@ -148,7 +148,7 @@ class TestPerformanceIntegration:
 
     def test_read_performance(self):
         """Test read performance after storing data."""
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".dhruva") as f:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".druva") as f:
             temp_file = f.name
 
         try:
@@ -193,7 +193,7 @@ class TestMultipleCommits:
 
     def test_multiple_commits(self):
         """Test multiple commits accumulate correctly."""
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".dhruva") as f:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".druva") as f:
             temp_file = f.name
 
         try:
@@ -225,7 +225,7 @@ class TestMultipleCommits:
 
     def test_abort_discards_changes(self):
         """Test that abort discards uncommitted changes."""
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".dhruva") as f:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".druva") as f:
             temp_file = f.name
 
         try:
@@ -262,7 +262,7 @@ class TestNumpyIntegration:
         pytest.importorskip("numpy")
         import numpy as np
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".dhruva") as f:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".druva") as f:
             temp_file = f.name
 
         try:
@@ -296,7 +296,7 @@ class TestNumpyIntegration:
         pytest.importorskip("numpy")
         import numpy as np
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".dhruva") as f:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".druva") as f:
             temp_file = f.name
 
         try:

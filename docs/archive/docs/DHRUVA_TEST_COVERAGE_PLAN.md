@@ -1,8 +1,8 @@
-# Dhruva Test Coverage Expansion Plan
+# Druva Test Coverage Expansion Plan
 
 ## Project Overview
 
-**Dhruva** is a persistent object database for Python with MCP server capabilities for adapter distribution. It's a modern continuation of Durus with Python 3.13+ support.
+**Druva** is a persistent object database for Python with MCP server capabilities for adapter distribution. It's a modern continuation of Durus with Python 3.13+ support.
 
 **Current Status:** Need to audit existing test coverage
 
@@ -17,27 +17,27 @@
 
 ### Core Modules to Test
 
-1. **dhruva/core/**
+1. **druva/core/**
    - `connection.py` - Connection management, transactions, caching
    - `persistent.py` - Persistent object base classes
    - `config.py` - Configuration management
 
-2. **dhruva/collections/**
+2. **druva/collections/**
    - `dict.py` - PersistentDict
    - `list.py` - PersistentList
    - `set.py` - PersistentSet
    - `btree.py` - BTree implementation
 
-3. **dhruva/storage/**
+3. **druva/storage/**
    - `file.py` - FileStorage backend
    - `sqlite.py` - SqliteStorage backend
    - `client.py` - ClientStorage for server mode
 
-4. **dhruva/mcp/**
+4. **druva/mcp/**
    - `server_core.py` - FastMCP server implementation
    - `adapter_tools.py` - Adapter registry and management
 
-5. **dhruva/cli.py** - CLI commands
+5. **druva/cli.py** - CLI commands
 
 ## Phase 1: Audit Test Coverage (Day 1)
 
@@ -45,8 +45,8 @@
 
 1. **Run coverage report**
    ```bash
-   cd /Users/les/Projects/dhruva
-   pytest --cov=dhruva --cov-report=html
+   cd /Users/les/Projects/druva
+   pytest --cov=druva --cov-report=html
    open htmlcov/index.html
    ```
 
@@ -132,8 +132,8 @@ class TestSqliteStorage:
 #### 3.1 MCP Server Core (`test/test_mcp_server.py`)
 
 ```python
-class TestDhruvaMCPServer:
-    """Test DhruvaMCPServer with FastMCP."""
+class TestDruvaMCPServer:
+    """Test DruvaMCPServer with FastMCP."""
 
     @pytest.fixture
     def server(self):
@@ -197,8 +197,8 @@ class TestAdapterRegistry:
 #### 4.1 CLI Commands (`test/test_cli.py`)
 
 ```python
-class TestDhruvaCLI:
-    """Test Dhruva CLI commands."""
+class TestDruvaCLI:
+    """Test Druva CLI commands."""
 
     @pytest.fixture
     def temp_config(self):
@@ -275,7 +275,7 @@ def connection(temp_storage):
 
 @pytest.fixture
 def mcp_server(temp_storage):
-    """Create DhruvaMCPServer for testing."""
+    """Create DruvaMCPServer for testing."""
     # Return server instance
 
 @pytest.fixture

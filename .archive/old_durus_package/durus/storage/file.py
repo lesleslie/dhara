@@ -6,13 +6,13 @@ $Id$
 import heapq
 from datetime import datetime
 
-from dhruva.error import DurusKeyError
-from dhruva.file import File
-from dhruva.logger import is_logging, log
-from dhruva.serialize import split_oids, unpack_record
-from dhruva.shelf import Shelf
-from dhruva.storage.base import Storage
-from dhruva.utils import IntSet, int8_to_str, iteritems, str_to_int8
+from druva.error import DurusKeyError
+from druva.file import File
+from druva.logger import is_logging, log
+from druva.serialize import split_oids, unpack_record
+from druva.shelf import Shelf
+from druva.storage.base import Storage
+from druva.utils import IntSet, int8_to_str, iteritems, str_to_int8
 
 
 class FileStorage(Storage):

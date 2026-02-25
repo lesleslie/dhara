@@ -3,7 +3,7 @@ $URL$
 $Id$
 """
 
-from dhruva.utils import str_to_int8
+from druva.utils import str_to_int8
 
 
 class DurusError(Exception):

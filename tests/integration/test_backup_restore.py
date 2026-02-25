@@ -22,14 +22,14 @@ import pytest
 # Add durus to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from dhruva.backup.manager import BackupManager, BackupType
-from dhruva.backup.restore import RestoreManager
-from dhruva.backup.catalog import BackupCatalog
-from dhruva.backup.scheduler import BackupScheduler, BackupJob
-from dhruva.backup.storage import StorageFactory
-from dhruva.backup.verification import BackupVerification
-from dhruva.file_storage import FileStorage
-from dhruva.persistent_dict import PersistentDict
+from druva.backup.manager import BackupManager, BackupType
+from druva.backup.restore import RestoreManager
+from druva.backup.catalog import BackupCatalog
+from druva.backup.scheduler import BackupScheduler, BackupJob
+from druva.backup.storage import StorageFactory
+from druva.backup.verification import BackupVerification
+from druva.file_storage import FileStorage
+from druva.persistent_dict import PersistentDict
 
 
 class TestBackupManager:
@@ -279,7 +279,7 @@ class TestBackupCatalog:
 
     def test_add_and_get_backup(self):
         """Test adding and retrieving backups."""
-        from dhruva.backup.manager import BackupMetadata, BackupType
+        from druva.backup.manager import BackupMetadata, BackupType
 
         # Create test metadata
         metadata = BackupMetadata(
@@ -302,7 +302,7 @@ class TestBackupCatalog:
 
     def test_get_last_backup(self):
         """Test getting last backup."""
-        from dhruva.backup.manager import BackupMetadata, BackupType
+        from druva.backup.manager import BackupMetadata, BackupType
 
         # Add multiple backups
         now = datetime.now()
@@ -334,7 +334,7 @@ class TestBackupCatalog:
 
     def test_get_incremental_chain(self):
         """Test getting incremental backup chain."""
-        from dhruva.backup.manager import BackupMetadata, BackupType
+        from druva.backup.manager import BackupMetadata, BackupType
 
         # Create a chain
         now = datetime.now()
@@ -379,7 +379,7 @@ class TestBackupCatalog:
 
     def test_search_backups(self):
         """Test searching backups."""
-        from dhruva.backup.manager import BackupMetadata, BackupType
+        from druva.backup.manager import BackupMetadata, BackupType
 
         # Add test backups
         now = datetime.now()
@@ -655,7 +655,7 @@ class TestStorageAdapters:
         mock_client = Mock()
         mock_boto3.return_value = mock_client
 
-        from dhruva.backup.storage import S3Storage
+        from druva.backup.storage import S3Storage
 
         # Create adapter
         adapter = S3Storage(
@@ -688,7 +688,7 @@ class TestStorageAdapters:
         mock_container.blob.return_value = mock_blob
         mock_client.return_value.bucket.return_value = mock_container
 
-        from dhruva.backup.storage import GCSStorage
+        from druva.backup.storage import GCSStorage
 
         # Create adapter
         adapter = GCSStorage(bucket_name="test-bucket")
@@ -712,7 +712,7 @@ class TestStorageAdapters:
         mock_container.get_blob_client.return_value = mock_blob_client
         mock_client.return_value.get_container_client.return_value = mock_container
 
-        from dhruva.backup.storage import AzureBlobStorage
+        from druva.backup.storage import AzureBlobStorage
 
         # Create adapter
         adapter = AzureBlobStorage(
@@ -808,7 +808,7 @@ class TestIntegrationScenarios:
 
     def test_encrypted_backup_restore(self):
         """Test encrypted backup and restore."""
-        from dhruva.backup.manager import EncryptionEngine
+        from druva.backup.manager import EncryptionEngine
 
         # Create initial database
         storage = FileStorage(self.test_db)

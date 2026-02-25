@@ -6,7 +6,7 @@ Provides network-accessible object storage:
 - protocol: Client/server protocol
 """
 
-from dhruva.server.server import StorageServer, wait_for_server
+from druva.server.server import StorageServer, wait_for_server
 
 __all__ = [
     'StorageServer',

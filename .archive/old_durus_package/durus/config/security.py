@@ -24,7 +24,7 @@ verify_hmac_signature = None
 initialize_secrets = None
 
 try:
-    from dhruva.security.oneiric_secrets import (
+    from druva.security.oneiric_secrets import (
         OneiricSecretsAdapter,
         create_hmac_signature,
         verify_hmac_signature,

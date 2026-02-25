@@ -1,3 +1,0 @@
-[console_scripts]
-dhruva = dhruva.__main__:main
-dhruva-mcp = dhruva.cli:main

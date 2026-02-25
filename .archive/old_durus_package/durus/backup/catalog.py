@@ -14,8 +14,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
-from dhruva.file_storage import FileStorage
-from dhruva.persistent_dict import PersistentDict
+from druva.file_storage import FileStorage
+from druva.persistent_dict import PersistentDict
 
 from .manager import BackupMetadata, BackupType
 

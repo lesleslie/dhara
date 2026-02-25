@@ -10,11 +10,11 @@ import sys
 import time
 from optparse import OptionParser
 
-from dhruva.storage.client import ClientStorage
-from dhruva.core import Connection
-from dhruva.error import ConflictError
-from dhruva.core.persistent import Persistent
-from dhruva.storage_server import DEFAULT_HOST, DEFAULT_PORT
+from druva.storage.client import ClientStorage
+from druva.core import Connection
+from druva.error import ConflictError
+from druva.core.persistent import Persistent
+from druva.storage_server import DEFAULT_HOST, DEFAULT_PORT
 
 if sys.version < "2.6":
     from md5 import new as md5_new
@@ -86,7 +86,7 @@ class Container(Persistent):
 
 
 # make pickle happy
-from dhruva.test.stress import Container
+from druva.test.stress import Container
 
 
 def init_db(connection):
@@ -160,7 +160,7 @@ def main():
     )
 
     (options, args) = parser.parse_args()
-    from dhruva.logger import logger
+    from druva.logger import logger
 
     logger.setLevel(5)
     storage = ClientStorage(host=options.host, port=options.port)

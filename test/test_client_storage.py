@@ -12,20 +12,20 @@ from time import sleep
 
 import pytest
 
-from dhruva import __main__
-from dhruva.storage.client import ClientStorage
-from dhruva.core import Connection
-from dhruva.error import (
-    DhruvaKeyError,
+from druva import __main__
+from druva.storage.client import ClientStorage
+from druva.core import Connection
+from druva.error import (
+    DruvaKeyError,
     ProtocolError,
     ReadConflictError,
     WriteConflictError,
 )
-from dhruva.core.persistent import Persistent
-from dhruva.collections.dict import PersistentDict
-from dhruva.serialize.adapter import pack_record
-from dhruva.storage_server import STATUS_INVALID, wait_for_server
-from dhruva.utils import BytesIO, as_bytes, int8_to_str, join_bytes
+from druva.core.persistent import Persistent
+from druva.collections.dict import PersistentDict
+from druva.serialize.adapter import pack_record
+from druva.storage_server import STATUS_INVALID, wait_for_server
+from druva.utils import BytesIO, as_bytes, int8_to_str, join_bytes
 
 
 class FakeSocket:

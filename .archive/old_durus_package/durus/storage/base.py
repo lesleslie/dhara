@@ -7,12 +7,12 @@ import heapq
 from collections.abc import Iterator
 from typing import Any, TYPE_CHECKING
 
-from dhruva.core import connection
-from dhruva.serialize import extract_class_name, split_oids, unpack_record
-from dhruva.utils import int8_to_str
+from druva.core import connection
+from druva.serialize import extract_class_name, split_oids, unpack_record
+from druva.utils import int8_to_str
 
 if TYPE_CHECKING:
-    from dhruva.serialize import ObjectReader
+    from druva.serialize import ObjectReader
 
 # Type alias for Object IDs
 OID = str

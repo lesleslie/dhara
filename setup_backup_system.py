@@ -67,8 +67,8 @@ def create_test_database(path: str):
     # Import durus and create database
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-    from dhruva.file_storage import FileStorage
-    from dhruva.persistent_dict import PersistentDict
+    from druva.file_storage import FileStorage
+    from druva.persistent_dict import PersistentDict
     from datetime import datetime
 
     # Create storage

@@ -14,12 +14,12 @@ Security Recommendations:
 - Never deserialize untrusted data with pickle or dill
 """
 
-from dhruva.serialize.base import Serializer, SerializerProtocol
-from dhruva.serialize.msgspec import MsgspecSerializer
-from dhruva.serialize.pickle import PickleSerializer
-from dhruva.serialize.dill import DillSerializer
-from dhruva.serialize.factory import create_serializer
-from dhruva.serialize.adapter import (
+from druva.serialize.base import Serializer, SerializerProtocol
+from druva.serialize.msgspec import MsgspecSerializer
+from druva.serialize.pickle import PickleSerializer
+from druva.serialize.dill import DillSerializer
+from druva.serialize.factory import create_serializer
+from druva.serialize.adapter import (
     ObjectReader,
     ObjectWriter,
     pack_record,

@@ -12,11 +12,11 @@ import os
 import sqlite3
 from datetime import datetime
 
-from dhruva.core import connection
-from dhruva.logger import is_logging, log
-from dhruva.serialize.adapter import pack_record, split_oids, unpack_record
-from dhruva.storage.base import Storage
-from dhruva.utils import as_bytes, int8_to_str, iteritems, str_to_int8
+from druva.core import connection
+from druva.logger import is_logging, log
+from druva.serialize.adapter import pack_record, split_oids, unpack_record
+from druva.storage.base import Storage
+from druva.utils import as_bytes, int8_to_str, iteritems, str_to_int8
 
 _DB_SCHEMA = """\
 BEGIN TRANSACTION;

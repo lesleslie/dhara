@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 
-from dhruva.file_storage import FileStorage
+from druva.file_storage import FileStorage
 
 from .manager import BackupMetadata, BackupType, CompressionEngine, EncryptionEngine
 from .catalog import BackupCatalog

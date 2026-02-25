@@ -8,9 +8,9 @@ from random import randint
 
 import pytest
 
-from dhruva.collections.btree import BNode, BTree
-from dhruva.core import Connection
-from dhruva.storage.base import MemoryStorage
+from druva.collections.btree import BNode, BTree
+from druva.core import Connection
+from druva.storage.base import MemoryStorage
 
 
 class CoverageTest:

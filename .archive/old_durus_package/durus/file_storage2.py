@@ -8,11 +8,11 @@ from datetime import datetime
 from zlib import compress, decompress
 
 import durus.connection
-from dhruva.file import File
-from dhruva.logger import is_logging, log
-from dhruva.serialize import split_oids, unpack_record
-from dhruva.storage import Storage
-from dhruva.utils import (
+from druva.file import File
+from druva.logger import is_logging, log
+from druva.serialize import split_oids, unpack_record
+from druva.storage import Storage
+from druva.utils import (
     ShortRead,
     as_bytes,
     byte_string,

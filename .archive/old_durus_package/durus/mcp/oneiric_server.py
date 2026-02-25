@@ -21,14 +21,14 @@ import asyncio
 import logging
 from typing import Any, Dict, List, Optional
 
-from dhruva.mcp.auth import (
+from druva.mcp.auth import (
     AuthContext,
     AuthMiddleware,
     Permission,
     Role,
     TokenAuth,
 )
-from dhruva.mcp.middleware import MCPMiddleware, MCPRequest, MCPResponse
+from druva.mcp.middleware import MCPMiddleware, MCPRequest, MCPResponse
 
 logger = logging.getLogger(__name__)
 

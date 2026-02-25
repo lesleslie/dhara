@@ -8,10 +8,10 @@ Provides adapter pattern for multiple storage implementations:
 - memory: MemoryStorage (in-memory for testing)
 """
 
-from dhruva.storage.base import Storage, MemoryStorage, gen_referring_oid_record, get_census, get_reference_index
-from dhruva.storage.file import FileStorage
-from dhruva.storage.sqlite import SqliteStorage
-from dhruva.storage.client import ClientStorage
+from druva.storage.base import Storage, MemoryStorage, gen_referring_oid_record, get_census, get_reference_index
+from druva.storage.file import FileStorage
+from druva.storage.sqlite import SqliteStorage
+from druva.storage.client import ClientStorage
 
 __all__ = [
     'Storage',

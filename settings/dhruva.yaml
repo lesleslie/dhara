@@ -1,7 +1,7 @@
-# Dhruva MCP Server Configuration
+# Druva MCP Server Configuration
 
 storage:
-  path: ~/.local/share/dhruva/dhruva.dhruva
+  path: ~/.local/share/druva/druva.druva
   read_only: false
   backend: file
 

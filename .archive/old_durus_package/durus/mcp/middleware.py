@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from dhruva.mcp.auth import (
+from druva.mcp.auth import (
     AuthContext,
     AuthMiddleware,
     AuthResult,

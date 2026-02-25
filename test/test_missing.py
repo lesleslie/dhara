@@ -2,7 +2,7 @@
 """Test __missing__ support for PersistentDict"""
 
 
-from dhruva.collections.dict import PersistentDict
+from druva.collections.dict import PersistentDict
 
 
 class DefaultDict(PersistentDict):

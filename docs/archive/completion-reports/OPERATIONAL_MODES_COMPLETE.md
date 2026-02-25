@@ -1,10 +1,10 @@
-# Dhruva Operational Modes - Implementation Complete
+# Druva Operational Modes - Implementation Complete
 
 ## Executive Summary
 
 **Status**: ✅ **PHASE 1-2 COMPLETE** (Core Implementation)
 
-Dhruva operational mode system has been successfully implemented, providing zero-configuration startup for development (lite mode) and full production capabilities (standard mode).
+Druva operational mode system has been successfully implemented, providing zero-configuration startup for development (lite mode) and full production capabilities (standard mode).
 
 **Key Achievement**: Reduced setup time from 15+ minutes to < 2 minutes for development use cases.
 
@@ -13,7 +13,7 @@ Dhruva operational mode system has been successfully implemented, providing zero
 ### Completed Phases
 
 #### ✅ Phase 1: Mode System Foundation (Complete)
-- Created `dhruva/modes/` package structure
+- Created `druva/modes/` package structure
 - Implemented base `OperationalMode` interface
 - Implemented `LiteMode` class
 - Implemented `StandardMode` class
@@ -22,7 +22,7 @@ Dhruva operational mode system has been successfully implemented, providing zero
 #### ✅ Phase 2: Configuration Management (Complete)
 - Created `settings/lite.yaml` configuration
 - Created `settings/standard.yaml` configuration
-- Enhanced `DhruvaSettings` with mode support
+- Enhanced `DruvaSettings` with mode support
 - Implemented mode-aware configuration loading
 - Added `CloudStorageConfig` for cloud integration
 
@@ -60,21 +60,21 @@ Dhruva operational mode system has been successfully implemented, providing zero
 
 ```bash
 # Start in lite mode - zero configuration required
-export DHRUVA_MODE=lite
-python -m dhruva.cli start
+export DRUVA_MODE=lite
+python -m druva.cli start
 
 # Or use the startup script
 ./scripts/dev-start.sh lite
 
 # Python API
-from dhruva.modes import LiteMode
+from druva.modes import LiteMode
 mode = LiteMode()
 mode.initialize()
 print(mode.get_banner())
 ```
 
 **Features**:
-- Auto-creates storage directory: `~/.local/share/dhruva/`
+- Auto-creates storage directory: `~/.local/share/druva/`
 - Local filesystem storage
 - Binds to `127.0.0.1:8683` (localhost only)
 - Debug logging enabled
@@ -84,17 +84,17 @@ print(mode.get_banner())
 
 ```bash
 # Start in standard mode
-export DHRUVA_MODE=standard
-python -m dhruva.cli start
+export DRUVA_MODE=standard
+python -m druva.cli start
 
 # With S3 storage
-export DHRUVA_MODE=standard
-export DHRUVA_STORAGE_BACKEND=s3
-export DHRUVA_S3_BUCKET=my-bucket
-python -m dhruva.cli start
+export DRUVA_MODE=standard
+export DRUVA_STORAGE_BACKEND=s3
+export DRUVA_S3_BUCKET=my-bucket
+python -m druva.cli start
 
 # Python API
-from dhruva.modes import StandardMode
+from druva.modes import StandardMode
 mode = StandardMode()
 mode.initialize()
 print(mode.get_banner())
@@ -110,16 +110,16 @@ print(mode.get_banner())
 ### ✅ Mode Detection
 
 ```python
-from dhruva.modes import get_mode
+from druva.modes import get_mode
 
 # Auto-detect from environment
 mode = get_mode()
 print(f"Running in {mode.get_name()} mode")
 
-# With DHRUVA_MODE=lite
+# With DRUVA_MODE=lite
 # Output: Running in Lite mode
 
-# With DHRUVA_MODE=standard
+# With DRUVA_MODE=standard
 # Output: Running in Standard mode
 
 # Without env var (defaults to lite)
@@ -129,7 +129,7 @@ print(f"Running in {mode.get_name()} mode")
 ### ✅ Mode Information
 
 ```python
-from dhruva.modes import list_modes
+from druva.modes import list_modes
 import pprint
 
 for info in list_modes():
@@ -140,7 +140,7 @@ for info in list_modes():
 #     'name': 'Lite',
 #     'description': 'Development mode with zero configuration',
 #     'config_path': '/path/to/settings/lite.yaml',
-#     'storage_path': '/Users/les/.local/share/dhruva/lite.dhruva',
+#     'storage_path': '/Users/les/.local/share/druva/lite.druva',
 #     'validated': False,
 #     'startup_options': {...}
 # }
@@ -159,8 +159,8 @@ for info in list_modes():
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                  Mode Detection Layer                       │
-│  1. DHRUVA_MODE environment variable                        │
-│  2. settings/dhruva.yaml mode field                        │
+│  1. DRUVA_MODE environment variable                        │
+│  2. settings/druva.yaml mode field                        │
 │  3. Auto-detect based on storage configuration             │
 │  4. Default to lite mode (safest)                           │
 └───────────────────────────┬─────────────────────────────────┘
@@ -184,7 +184,7 @@ for info in list_modes():
 │              Configuration Management                       │
 │  • settings/lite.yaml (lite mode defaults)                 │
 │  • settings/standard.yaml (standard mode defaults)         │
-│  • settings/dhruva.yaml (backward compatibility)           │
+│  • settings/druva.yaml (backward compatibility)           │
 │  • Environment variable overrides                          │
 └───────────────────────────┬─────────────────────────────────┘
                             │
@@ -198,27 +198,27 @@ for info in list_modes():
 ### Configuration Loading Flow
 
 ```
-User Action: dhruva start
+User Action: druva start
        │
        ▼
-DhruvaSettings.load("dhruva")
+DruvaSettings.load("druva")
        │
        ▼
-Check DHRUVA_MODE environment variable
+Check DRUVA_MODE environment variable
        │
        ├─→ "lite" → Load settings/lite.yaml
        ├─→ "standard" → Load settings/standard.yaml
-       └─→ (empty) → Load settings/dhruva.yaml
+       └─→ (empty) → Load settings/druva.yaml
        │
        ▼
 Override with environment variables
-(DHRUVA_STORAGE_*, DHRUVA_*, etc.)
+(DRUVA_STORAGE_*, DRUVA_*, etc.)
        │
        ▼
 Validate configuration
        │
        ▼
-Return DhruvaSettings instance
+Return DruvaSettings instance
        │
        ▼
 Initialize mode (mode.initialize())
@@ -229,13 +229,13 @@ Initialize mode (mode.initialize())
        └─→ Log ready state
        │
        ▼
-Start Dhruva MCP Server
+Start Druva MCP Server
 ```
 
 ## File Structure
 
 ```
-dhruva/
+druva/
 ├── modes/                          # NEW: Mode system
 │   ├── __init__.py                 # Mode exports
 │   ├── base.py                     # Base interface + factory (350 lines)
@@ -246,7 +246,7 @@ dhruva/
 │   └── config.py                   # ENHANCED: Mode support (165 lines)
 │
 ├── settings/                       # ENHANCED: Mode configs
-│   ├── dhruva.yaml                 # Original (backward compat)
+│   ├── druva.yaml                 # Original (backward compat)
 │   ├── lite.yaml                   # NEW: Lite mode config
 │   └── standard.yaml               # NEW: Standard mode config
 │
@@ -258,9 +258,9 @@ dhruva/
         └── operational-modes.md    # NEW: Complete guide (600+ lines)
 
 Documentation:
-├── DHRUVA_OPERATIONAL_MODES_PLAN.md         # Implementation plan
-├── DHRUVA_OPERATIONAL_MODES_IMPLEMENTATION.md  # Implementation summary
-└── DHRUVA_MODES_QUICK_REFERENCE.md          # Quick reference
+├── DRUVA_OPERATIONAL_MODES_PLAN.md         # Implementation plan
+├── DRUVA_OPERATIONAL_MODES_IMPLEMENTATION.md  # Implementation summary
+└── DRUVA_MODES_QUICK_REFERENCE.md          # Quick reference
 ```
 
 **Total Code Added**: ~1,500 lines
@@ -272,18 +272,18 @@ Documentation:
 
 ```bash
 # Clone repo
-git clone https://github.com/lesleslie/dhruva.git
-cd dhruva
+git clone https://github.com/lesleslie/druva.git
+cd druva
 
 # Install
 pip install -e .
 
 # Start in lite mode (zero config)
-export DHRUVA_MODE=lite
-python -m dhruva.cli start
+export DRUVA_MODE=lite
+python -m druva.cli start
 
-# That's it! Dhruva is running with:
-# - Storage: ~/.local/share/dhruva/lite.dhruva
+# That's it! Druva is running with:
+# - Storage: ~/.local/share/druva/lite.druva
 # - Host: 127.0.0.1:8683
 # - Logging: DEBUG
 ```
@@ -296,21 +296,21 @@ export AWS_ACCESS_KEY_ID=xxx
 export AWS_SECRET_ACCESS_KEY=xxx
 export AWS_REGION=us-east-1
 
-# Configure Dhruva
-export DHRUVA_MODE=standard
-export DHRUVA_STORAGE_BACKEND=s3
-export DHRUVA_S3_BUCKET=my-dhruva-production
+# Configure Druva
+export DRUVA_MODE=standard
+export DRUVA_STORAGE_BACKEND=s3
+export DRUVA_S3_BUCKET=my-druva-production
 
 # Start
-python -m dhruva.cli start
+python -m druva.cli start
 ```
 
 ### Example 3: Python API Usage
 
 ```python
-from dhruva.modes import LiteMode
-from dhruva.core import Connection
-from dhruva.storage.file import FileStorage
+from druva.modes import LiteMode
+from druva.core import Connection
+from druva.storage.file import FileStorage
 
 # Initialize lite mode
 mode = LiteMode()
@@ -321,7 +321,7 @@ info = mode.get_info()
 print(f"Storage: {info['storage_path']}")
 print(f"Access: {info['access_url']}")
 
-# Use Dhruva
+# Use Druva
 storage = FileStorage(str(mode.get_default_storage_path()))
 conn = Connection(storage)
 
@@ -336,8 +336,8 @@ conn.close()
 
 ```bash
 # Start in lite mode
-export DHRUVA_MODE=lite
-python -m dhruva.cli start &
+export DRUVA_MODE=lite
+python -m druva.cli start &
 LITE_PID=$!
 
 # ... do work ...
@@ -346,8 +346,8 @@ LITE_PID=$!
 kill $LITE_PID
 
 # Switch to standard mode
-export DHRUVA_MODE=standard
-python -m dhruva.cli start &
+export DRUVA_MODE=standard
+python -m druva.cli start &
 STANDARD_PID=$!
 
 # ... work in standard mode ...
@@ -361,7 +361,7 @@ kill $STANDARD_PID
 ### Mode System Tests
 
 ```bash
-$ python -c "from dhruva.modes import LiteMode, StandardMode, get_mode, list_modes; print('✅ Mode system imports successful')"
+$ python -c "from druva.modes import LiteMode, StandardMode, get_mode, list_modes; print('✅ Mode system imports successful')"
 
 ✅ Mode system imports successful
 ```
@@ -370,15 +370,15 @@ $ python -c "from dhruva.modes import LiteMode, StandardMode, get_mode, list_mod
 
 ```bash
 # Test 1: Default detection (no env var)
-$ python -c "from dhruva.modes import get_mode; print(get_mode().get_name())"
+$ python -c "from druva.modes import get_mode; print(get_mode().get_name())"
 Lite
 
 # Test 2: Explicit lite mode
-$ DHRUVA_MODE=lite python -c "from dhruva.modes import get_mode; print(get_mode().get_name())"
+$ DRUVA_MODE=lite python -c "from druva.modes import get_mode; print(get_mode().get_name())"
 Lite
 
 # Test 3: Explicit standard mode
-$ DHRUVA_MODE=standard python -c "from dhruva.modes import get_mode; print(get_mode().get_name())"
+$ DRUVA_MODE=standard python -c "from druva.modes import get_mode; print(get_mode().get_name())"
 Standard
 ```
 
@@ -387,15 +387,15 @@ Standard
 ```bash
 # Test mode-aware config loading
 $ python -c "
-from dhruva.core.config import DhruvaSettings
+from druva.core.config import DruvaSettings
 import os
-os.environ['DHRUVA_MODE'] = 'lite'
-settings = DhruvaSettings.load('dhruva')
+os.environ['DRUVA_MODE'] = 'lite'
+settings = DruvaSettings.load('druva')
 print(f'Mode: {settings.mode}')
 print(f'Storage: {settings.storage.path}')
 "
 Mode: lite
-Storage: /Users/les/.local/share/dhruva/lite.dhruva
+Storage: /Users/les/.local/share/druva/lite.druva
 ```
 
 ## Success Metrics
@@ -440,10 +440,10 @@ Storage: /Users/les/.local/share/dhruva/lite.dhruva
 
 ## Alignment with Ecosystem Improvement Plan
 
-This implementation addresses **Track 4: Dhruva Operational Simplification** from the ecosystem improvement plan:
+This implementation addresses **Track 4: Druva Operational Simplification** from the ecosystem improvement plan:
 
 ### Original Goal
-> "Dhruva currently may require multiple services or complex setup. We need to create a 'lite' mode similar to Mahavishnu."
+> "Druva currently may require multiple services or complex setup. We need to create a 'lite' mode similar to Mahavishnu."
 
 ### Achieved Results
 ✅ **Lite mode created** with zero-configuration startup
@@ -454,7 +454,7 @@ This implementation addresses **Track 4: Dhruva Operational Simplification** fro
 
 ### Comparison with Mahavishnu
 
-| Feature | Mahavishnu | Dhruva (Now) |
+| Feature | Mahavishnu | Druva (Now) |
 |---------|-----------|--------------|
 | Lite Mode | ✅ | ✅ |
 | Zero Config | ✅ | ✅ |
@@ -464,7 +464,7 @@ This implementation addresses **Track 4: Dhruva Operational Simplification** fro
 | Setup Time (Standard) | ~15 min | ~15 min |
 | Documentation | ✅ | ✅ |
 
-**Result**: Dhruva now matches Mahavishnu's operational simplicity while providing additional storage backend options.
+**Result**: Druva now matches Mahavishnu's operational simplicity while providing additional storage backend options.
 
 ## Next Steps (Future Enhancements)
 
@@ -475,7 +475,7 @@ This implementation addresses **Track 4: Dhruva Operational Simplification** fro
 4. **Examples**: Create demo scripts for both modes
 
 ### Medium Priority
-1. **Mode Subcommands**: `dhruva mode status`, `dhruva mode switch`, etc.
+1. **Mode Subcommands**: `druva mode status`, `druva mode switch`, etc.
 2. **Migration Tools**: Automated lite → standard migration scripts
 3. **Performance Tests**: Benchmark both modes
 4. **Monitoring**: Enhanced health checks per mode
@@ -489,20 +489,20 @@ This implementation addresses **Track 4: Dhruva Operational Simplification** fro
 ## Known Limitations
 
 ### Current Limitations
-1. **CLI `--mode` parameter**: Not yet implemented (use `DHRUVA_MODE` env var)
+1. **CLI `--mode` parameter**: Not yet implemented (use `DRUVA_MODE` env var)
 2. **Mode subcommands**: Not yet implemented (use Python API)
 3. **Migration tools**: Manual process currently
 4. **Automated tests**: Not yet implemented
 
 ### Workarounds
-1. Use `export DHRUVA_MODE=lite` before starting
+1. Use `export DRUVA_MODE=lite` before starting
 2. Use Python API for mode management
 3. Follow manual migration guide in documentation
 4. Test manually using provided examples
 
 ## Conclusion
 
-The Dhruva operational mode system is **functionally complete** for the core implementation. The system successfully achieves:
+The Druva operational mode system is **functionally complete** for the core implementation. The system successfully achieves:
 
 1. **Zero-configuration startup** for development (lite mode)
 2. **Full production capabilities** with multiple storage backends (standard mode)
@@ -510,7 +510,7 @@ The Dhruva operational mode system is **functionally complete** for the core imp
 4. **Comprehensive documentation** for all use cases
 5. **Easy mode selection** via environment variables and startup script
 
-The implementation provides a solid foundation for simplifying Dhruva operations while maintaining the flexibility needed for production deployments.
+The implementation provides a solid foundation for simplifying Druva operations while maintaining the flexibility needed for production deployments.
 
 **Status**: ✅ **Ready for Use** (core implementation complete)
 

@@ -1,4 +1,4 @@
-"""Unit tests for DhruvaMCPServer.
+"""Unit tests for DruvaMCPServer.
 
 Tests the FastMCP server implementation including:
 - Server initialization
@@ -14,21 +14,21 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from dhruva.core.config import DhruvaSettings
-from dhruva.mcp.server_core import DhruvaMCPServer
+from druva.core.config import DruvaSettings
+from druva.mcp.server_core import DruvaMCPServer
 
 
 @pytest.mark.unit
-class TestDhruvaMCPServer:
-    """Test DhruvaMCPServer initialization and configuration."""
+class TestDruvaMCPServer:
+    """Test DruvaMCPServer initialization and configuration."""
 
     @pytest.fixture
-    def temp_settings(self, tmp_path: Path) -> DhruvaSettings:
-        """Create DhruvaSettings with temporary storage."""
-        return DhruvaSettings(
-            server_name="test-dhruva",
+    def temp_settings(self, tmp_path: Path) -> DruvaSettings:
+        """Create DruvaSettings with temporary storage."""
+        return DruvaSettings(
+            server_name="test-druva",
             storage={
-                "path": tmp_path / "test.dhruva",
+                "path": tmp_path / "test.druva",
                 "read_only": False,
                 "backend": "file",
             },
@@ -36,11 +36,11 @@ class TestDhruvaMCPServer:
         )
 
     @pytest.fixture
-    def server(self, temp_settings: DhruvaSettings) -> DhruvaMCPServer:
-        """Create DhruvaMCPServer instance for testing."""
-        return DhruvaMCPServer(temp_settings)
+    def server(self, temp_settings: DruvaSettings) -> DruvaMCPServer:
+        """Create DruvaMCPServer instance for testing."""
+        return DruvaMCPServer(temp_settings)
 
-    def test_server_initialization(self, server: DhruvaMCPServer, temp_settings: DhruvaSettings):
+    def test_server_initialization(self, server: DruvaMCPServer, temp_settings: DruvaSettings):
         """Test server initializes correctly."""
         assert server.config == temp_settings
         assert server.server is not None
@@ -50,15 +50,15 @@ class TestDhruvaMCPServer:
 
     def test_storage_path_expansion(self, tmp_path: Path):
         """Test that storage path expands ~ correctly."""
-        settings = DhruvaSettings(
-            server_name="test-dhruva",
+        settings = DruvaSettings(
+            server_name="test-druva",
             storage={
-                "path": tmp_path / "test.dhruva",
+                "path": tmp_path / "test.druva",
                 "read_only": False,
             },
         )
 
-        server = DhruvaMCPServer(settings)
+        server = DruvaMCPServer(settings)
 
         # Verify storage file exists and path was expanded
         assert server.storage is not None
@@ -66,12 +66,12 @@ class TestDhruvaMCPServer:
 
         server.close()
 
-    def test_adapter_registry_initialized(self, server: DhruvaMCPServer):
+    def test_adapter_registry_initialized(self, server: DruvaMCPServer):
         """Test that adapter registry is initialized."""
         assert server.adapter_registry is not None
         assert server.adapter_registry.connection is server.connection
 
-    def test_tools_registered(self, server: DhruvaMCPServer):
+    def test_tools_registered(self, server: DruvaMCPServer):
         """Test that MCP tools are registered."""
         # FastMCP stores tools in server._tools
         tools = server.server._tools
@@ -93,42 +93,42 @@ class TestDhruvaMCPServer:
     def test_readonly_storage(self, tmp_path: Path):
         """Test server with readonly storage."""
         # First create a storage file
-        settings = DhruvaSettings(
-            server_name="test-dhruva",
+        settings = DruvaSettings(
+            server_name="test-druva",
             storage={
-                "path": tmp_path / "readonly.dhruva",
+                "path": tmp_path / "readonly.druva",
                 "read_only": False,
             },
         )
 
-        server1 = DhruvaMCPServer(settings)
+        server1 = DruvaMCPServer(settings)
         root = server1.connection.get_root()
         root["test"] = "data"
         server1.connection.commit()
         server1.close()
 
         # Now open as readonly
-        settings_readonly = DhruvaSettings(
-            server_name="test-dhruva-readonly",
+        settings_readonly = DruvaSettings(
+            server_name="test-druva-readonly",
             storage={
-                "path": tmp_path / "readonly.dhruva",
+                "path": tmp_path / "readonly.druva",
                 "read_only": True,
             },
         )
 
-        server2 = DhruvaMCPServer(settings_readonly)
+        server2 = DruvaMCPServer(settings_readonly)
         root = server2.connection.get_root()
         assert root["test"] == "data"
 
         server2.close()
 
-    def test_server_close(self, server: DhruvaMCPServer):
+    def test_server_close(self, server: DruvaMCPServer):
         """Test server close method."""
         # Should not raise any exceptions
         server.close()
 
     @pytest.mark.asyncio
-    async def test_store_adapter_tool(self, server: DhruvaMCPServer):
+    async def test_store_adapter_tool(self, server: DruvaMCPServer):
         """Test store_adapter MCP tool."""
         # Get the tool from FastMCP
         tools = server.server._tools
@@ -150,7 +150,7 @@ class TestDhruvaMCPServer:
         assert result["adapter_id"] == "adapter:cache:redis"
 
     @pytest.mark.asyncio
-    async def test_get_adapter_tool(self, server: DhruvaMCPServer):
+    async def test_get_adapter_tool(self, server: DruvaMCPServer):
         """Test get_adapter MCP tool."""
         tools = server.server._tools
 
@@ -180,7 +180,7 @@ class TestDhruvaMCPServer:
         assert result["adapter"]["version"] == "1.0.0"
 
     @pytest.mark.asyncio
-    async def test_list_adapters_tool(self, server: DhruvaMCPServer):
+    async def test_list_adapters_tool(self, server: DruvaMCPServer):
         """Test list_adapters MCP tool."""
         tools = server.server._tools
 
@@ -208,7 +208,7 @@ class TestDhruvaMCPServer:
         assert len(result["adapters"]) == 3
 
     @pytest.mark.asyncio
-    async def test_list_adapters_with_filters(self, server: DhruvaMCPServer):
+    async def test_list_adapters_with_filters(self, server: DruvaMCPServer):
         """Test list_adapters MCP tool with filters."""
         tools = server.server._tools
 
@@ -252,7 +252,7 @@ class TestDhruvaMCPServer:
         assert result["adapters"][0]["provider"] == "s3"
 
     @pytest.mark.asyncio
-    async def test_list_adapter_versions_tool(self, server: DhruvaMCPServer):
+    async def test_list_adapter_versions_tool(self, server: DruvaMCPServer):
         """Test list_adapter_versions MCP tool."""
         tools = server.server._tools
 
@@ -294,7 +294,7 @@ class TestDhruvaMCPServer:
         assert result["count"] == 2
 
     @pytest.mark.asyncio
-    async def test_validate_adapter_tool(self, server: DhruvaMCPServer):
+    async def test_validate_adapter_tool(self, server: DruvaMCPServer):
         """Test validate_adapter MCP tool."""
         tools = server.server._tools
 
@@ -305,7 +305,7 @@ class TestDhruvaMCPServer:
             key="cache",
             provider="redis",
             version="1.0.0",
-            factory_path="dhruva.core.persistent.PersistentBase",
+            factory_path="druva.core.persistent.PersistentBase",
             config={},
             dependencies=[],
             capabilities=[],
@@ -324,7 +324,7 @@ class TestDhruvaMCPServer:
         assert "validation" in result
 
     @pytest.mark.asyncio
-    async def test_get_adapter_health_tool(self, server: DhruvaMCPServer):
+    async def test_get_adapter_health_tool(self, server: DruvaMCPServer):
         """Test get_adapter_health MCP tool."""
         tools = server.server._tools
 
@@ -335,7 +335,7 @@ class TestDhruvaMCPServer:
             key="cache",
             provider="redis",
             version="1.0.0",
-            factory_path="dhruva.core.persistent.PersistentBase",
+            factory_path="druva.core.persistent.PersistentBase",
             config={},
             dependencies=[],
             capabilities=[],
@@ -354,7 +354,7 @@ class TestDhruvaMCPServer:
         assert "health" in result
         assert result["health"]["healthy"] is True
 
-    def test_run_method_not_called_in_tests(self, server: DhruvaMCPServer):
+    def test_run_method_not_called_in_tests(self, server: DruvaMCPServer):
         """Test that run method exists but we don't call it in unit tests."""
         assert hasattr(server, "run")
         assert callable(server.run)

@@ -8,13 +8,13 @@ Modernized for Python 3.13+ with Oneiric ecosystem integration.
 __version__ = "5.0.0"
 
 # Core persistence framework
-from dhruva.core import Connection, Persistent, PersistentBase
+from druva.core import Connection, Persistent, PersistentBase
 
 # Storage backends
-from dhruva.storage import Storage, FileStorage, SqliteStorage, ClientStorage
+from druva.storage import Storage, FileStorage, SqliteStorage, ClientStorage
 
 # Persistent collections
-from dhruva.collections import (
+from druva.collections import (
     PersistentDict,
     PersistentList,
     PersistentSet,
@@ -23,13 +23,13 @@ from dhruva.collections import (
 )
 
 # Storage server
-from dhruva.server import StorageServer, wait_for_server
+from druva.server import StorageServer, wait_for_server
 
 # Serialization
-from dhruva.serialize import Serializer, MsgspecSerializer, PickleSerializer
+from druva.serialize import Serializer, MsgspecSerializer, PickleSerializer
 
 # Utilities
-from dhruva.utils import (
+from druva.utils import (
     as_bytes,
     int8_to_str,
     int4_to_str,
@@ -38,7 +38,7 @@ from dhruva.utils import (
 )
 
 # Errors
-from dhruva.error import (
+from druva.error import (
     ConflictError,
     ReadConflictError,
     WriteConflictError,

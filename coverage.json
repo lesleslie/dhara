@@ -1,6 +1,6 @@
 {
   "files": {
-    "dhruva/__main__.py": {
+    "druva/__main__.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -1994,7 +1994,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/_compat.py": {
+    "druva/_compat.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -2388,7 +2388,7 @@
         "percent_statements_covered_display": "48"
       }
     },
-    "dhruva/backup/catalog.py": {
+    "druva/backup/catalog.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -4162,7 +4162,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/backup/cli.py": {
+    "druva/backup/cli.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -6513,7 +6513,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/backup/manager.py": {
+    "druva/backup/manager.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -8386,7 +8386,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/backup/restore.py": {
+    "druva/backup/restore.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -9911,7 +9911,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/backup/scheduler.py": {
+    "druva/backup/scheduler.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -11731,7 +11731,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/backup/storage.py": {
+    "druva/backup/storage.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -13711,7 +13711,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/backup/verification.py": {
+    "druva/backup/verification.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -15310,7 +15310,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/btree.py": {
+    "druva/btree.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -15394,7 +15394,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/cli.py": {
+    "druva/cli.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -16109,7 +16109,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/collections/btree.py": {
+    "druva/collections/btree.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -20978,7 +20978,7 @@
         "percent_statements_covered_display": "22"
       }
     },
-    "dhruva/collections/dict.py": {
+    "druva/collections/dict.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -22299,7 +22299,7 @@
         "percent_statements_covered_display": "35"
       }
     },
-    "dhruva/collections/list.py": {
+    "druva/collections/list.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -23674,7 +23674,7 @@
         "percent_statements_covered_display": "36"
       }
     },
-    "dhruva/collections/set.py": {
+    "druva/collections/set.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -25533,7 +25533,7 @@
         "percent_statements_covered_display": "34"
       }
     },
-    "dhruva/config/defaults.py": {
+    "druva/config/defaults.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -25695,7 +25695,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaConfig": {
+        "DruvaConfig": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -25986,7 +25986,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaConfig.__post_init__": {
+        "DruvaConfig.__post_init__": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -26042,7 +26042,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaConfig.from_dict": {
+        "DruvaConfig.from_dict": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -26081,7 +26081,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaConfig.to_dict": {
+        "DruvaConfig.to_dict": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -26342,7 +26342,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/config/loader.py": {
+    "druva/config/loader.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -27900,7 +27900,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/config/security.py": {
+    "druva/config/security.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -29939,7 +29939,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/connection.py": {
+    "druva/connection.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -30023,7 +30023,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/core/config.py": {
+    "druva/core/config.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -30133,7 +30133,7 @@
             "percent_statements_covered_display": "100"
           }
         },
-        "DhruvaSettings": {
+        "DruvaSettings": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -30311,7 +30311,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaSettings.get_mode_config_path": {
+        "DruvaSettings.get_mode_config_path": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -30358,7 +30358,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaSettings.health_snapshot_path": {
+        "DruvaSettings.health_snapshot_path": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -30385,7 +30385,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaSettings.load": {
+        "DruvaSettings.load": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -30571,7 +30571,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/core/connection.py": {
+    "druva/core/connection.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -33915,7 +33915,7 @@
         "percent_statements_covered_display": "21"
       }
     },
-    "dhruva/core/persistent.py": {
+    "druva/core/persistent.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -35563,7 +35563,7 @@
         "percent_statements_covered_display": "38"
       }
     },
-    "dhruva/error.py": {
+    "druva/error.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -35638,7 +35638,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaError": {
+        "DruvaError": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -35662,7 +35662,7 @@
             "percent_statements_covered_display": "100"
           }
         },
-        "DhruvaKeyError": {
+        "DruvaKeyError": {
           "excluded_lines": [
             17,
             18
@@ -35887,7 +35887,7 @@
             "percent_statements_covered_display": "100"
           }
         },
-        "DhruvaKeyError.__str__": {
+        "DruvaKeyError.__str__": {
           "excluded_lines": [
             17,
             18
@@ -35936,7 +35936,7 @@
         "percent_statements_covered_display": "90"
       }
     },
-    "dhruva/file.py": {
+    "druva/file.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -37161,7 +37161,7 @@
         "percent_statements_covered_display": "28"
       }
     },
-    "dhruva/file_storage.py": {
+    "druva/file_storage.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -37245,7 +37245,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/file_storage2.py": {
+    "druva/file_storage2.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -39347,7 +39347,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/logger.py": {
+    "druva/logger.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -39651,7 +39651,7 @@
         "percent_statements_covered_display": "83"
       }
     },
-    "dhruva/logging/logger.py": {
+    "druva/logging/logger.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -40231,7 +40231,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/mcp/adapter_tools.py": {
+    "druva/mcp/adapter_tools.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -42147,7 +42147,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/mcp/auth.py": {
+    "druva/mcp/auth.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -45382,7 +45382,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/mcp/middleware.py": {
+    "druva/mcp/middleware.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -46924,7 +46924,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/mcp/oneiric_server.py": {
+    "druva/mcp/oneiric_server.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -47899,7 +47899,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/mcp/server.py": {
+    "druva/mcp/server.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -47996,7 +47996,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaMCPServer": {
+        "DruvaMCPServer": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -48301,7 +48301,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaMCPServer.__init__": {
+        "DruvaMCPServer.__init__": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -48334,7 +48334,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaMCPServer.call_tool": {
+        "DruvaMCPServer.call_tool": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -48426,7 +48426,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaMCPServer.close": {
+        "DruvaMCPServer.close": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -48463,7 +48463,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaMCPServer.durus_checkpoint": {
+        "DruvaMCPServer.durus_checkpoint": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -48502,7 +48502,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaMCPServer.durus_connect": {
+        "DruvaMCPServer.durus_connect": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -48552,7 +48552,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaMCPServer.durus_delete": {
+        "DruvaMCPServer.durus_delete": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -48602,7 +48602,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaMCPServer.durus_get": {
+        "DruvaMCPServer.durus_get": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -48641,7 +48641,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaMCPServer.durus_list": {
+        "DruvaMCPServer.durus_list": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -48680,7 +48680,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaMCPServer.durus_restore_checkpoint": {
+        "DruvaMCPServer.durus_restore_checkpoint": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -48721,7 +48721,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaMCPServer.durus_set": {
+        "DruvaMCPServer.durus_set": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -48761,7 +48761,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaMCPServer.get_metrics": {
+        "DruvaMCPServer.get_metrics": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -48788,7 +48788,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaMCPServer.get_tool_list": {
+        "DruvaMCPServer.get_tool_list": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -49162,7 +49162,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/mcp/server_core.py": {
+    "druva/mcp/server_core.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -49204,7 +49204,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaMCPServer": {
+        "DruvaMCPServer": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -49304,7 +49304,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaMCPServer.__init__": {
+        "DruvaMCPServer.__init__": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -49338,7 +49338,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaMCPServer._register_tools": {
+        "DruvaMCPServer._register_tools": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -49375,7 +49375,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaMCPServer._register_tools.get_adapter": {
+        "DruvaMCPServer._register_tools.get_adapter": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -49401,7 +49401,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaMCPServer._register_tools.get_adapter_health": {
+        "DruvaMCPServer._register_tools.get_adapter_health": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -49427,7 +49427,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaMCPServer._register_tools.list_adapter_versions": {
+        "DruvaMCPServer._register_tools.list_adapter_versions": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -49453,7 +49453,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaMCPServer._register_tools.list_adapters": {
+        "DruvaMCPServer._register_tools.list_adapters": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -49479,7 +49479,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaMCPServer._register_tools.store_adapter": {
+        "DruvaMCPServer._register_tools.store_adapter": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -49505,7 +49505,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaMCPServer._register_tools.validate_adapter": {
+        "DruvaMCPServer._register_tools.validate_adapter": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -49531,7 +49531,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaMCPServer.close": {
+        "DruvaMCPServer.close": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -49557,7 +49557,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaMCPServer.run": {
+        "DruvaMCPServer.run": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -49650,7 +49650,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/modes/base.py": {
+    "druva/modes/base.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -51374,7 +51374,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/modes/lite.py": {
+    "druva/modes/lite.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -51988,7 +51988,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/modes/standard.py": {
+    "druva/modes/standard.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -53733,7 +53733,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/monitoring/health.py": {
+    "druva/monitoring/health.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -54816,7 +54816,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/monitoring/metrics.py": {
+    "druva/monitoring/metrics.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -56216,7 +56216,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/monitoring/server.py": {
+    "druva/monitoring/server.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -57130,7 +57130,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/persistent.py": {
+    "druva/persistent.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -57214,7 +57214,7 @@
         "percent_statements_covered_display": "100"
       }
     },
-    "dhruva/persistent_dict.py": {
+    "druva/persistent_dict.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -57298,7 +57298,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/persistent_list.py": {
+    "druva/persistent_list.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -57382,7 +57382,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/persistent_set.py": {
+    "druva/persistent_set.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -57466,7 +57466,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/security/oneiric_secrets.py": {
+    "druva/security/oneiric_secrets.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -59302,7 +59302,7 @@
         "percent_statements_covered_display": "23"
       }
     },
-    "dhruva/security/signing.py": {
+    "druva/security/signing.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -60249,7 +60249,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/security/tls.py": {
+    "druva/security/tls.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -61428,7 +61428,7 @@
         "percent_statements_covered_display": "14"
       }
     },
-    "dhruva/serialize/adapter.py": {
+    "druva/serialize/adapter.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -61844,7 +61844,7 @@
         "percent_statements_covered_display": "46"
       }
     },
-    "dhruva/serialize/base.py": {
+    "druva/serialize/base.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -62285,7 +62285,7 @@
         "percent_statements_covered_display": "100"
       }
     },
-    "dhruva/serialize/dill.py": {
+    "druva/serialize/dill.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -62713,7 +62713,7 @@
         "percent_statements_covered_display": "39"
       }
     },
-    "dhruva/serialize/factory.py": {
+    "druva/serialize/factory.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -62899,7 +62899,7 @@
         "percent_statements_covered_display": "40"
       }
     },
-    "dhruva/serialize/fallback.py": {
+    "druva/serialize/fallback.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -63701,7 +63701,7 @@
         "percent_statements_covered_display": "23"
       }
     },
-    "dhruva/serialize/msgspec.py": {
+    "druva/serialize/msgspec.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -64286,7 +64286,7 @@
         "percent_statements_covered_display": "23"
       }
     },
-    "dhruva/serialize/pickle.py": {
+    "druva/serialize/pickle.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -64650,7 +64650,7 @@
         "percent_statements_covered_display": "40"
       }
     },
-    "dhruva/serialize_legacy.py": {
+    "druva/serialize_legacy.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -66053,7 +66053,7 @@
         "percent_statements_covered_display": "27"
       }
     },
-    "dhruva/server/server.py": {
+    "druva/server/server.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -70150,7 +70150,7 @@
         "percent_statements_covered_display": "20"
       }
     },
-    "dhruva/server/socket.py": {
+    "druva/server/socket.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -70642,7 +70642,7 @@
         "percent_statements_covered_display": "16"
       }
     },
-    "dhruva/shelf.py": {
+    "druva/shelf.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -73270,7 +73270,7 @@
         "percent_statements_covered_display": "15"
       }
     },
-    "dhruva/shell/session_tracker.py": {
+    "druva/shell/session_tracker.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -73305,7 +73305,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaSessionTracker": {
+        "DruvaSessionTracker": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -73369,7 +73369,7 @@
             "percent_statements_covered_display": "0"
           }
         },
-        "DhruvaSessionTracker.__init__": {
+        "DruvaSessionTracker.__init__": {
           "excluded_lines": [],
           "executed_branches": [],
           "executed_lines": [],
@@ -73425,7 +73425,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/storage/base.py": {
+    "druva/storage/base.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -74775,7 +74775,7 @@
         "percent_statements_covered_display": "39"
       }
     },
-    "dhruva/storage/client.py": {
+    "druva/storage/client.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -75932,7 +75932,7 @@
         "percent_statements_covered_display": "17"
       }
     },
-    "dhruva/storage/file.py": {
+    "druva/storage/file.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -77341,7 +77341,7 @@
         "percent_statements_covered_display": "22"
       }
     },
-    "dhruva/storage/sqlite.py": {
+    "druva/storage/sqlite.py": {
       "classes": {
         "": {
           "excluded_lines": [
@@ -79180,7 +79180,7 @@
         "percent_statements_covered_display": "23"
       }
     },
-    "dhruva/storage_server.py": {
+    "druva/storage_server.py": {
       "classes": {
         "": {
           "excluded_lines": [],
@@ -79264,7 +79264,7 @@
         "percent_statements_covered_display": "0"
       }
     },
-    "dhruva/utils.py": {
+    "druva/utils.py": {
       "classes": {
         "": {
           "excluded_lines": [

@@ -10,7 +10,7 @@ from typing import Literal, Union, Optional
 from copy import deepcopy
 import yaml
 
-from dhruva.config.defaults import DurusConfig, StorageConfig, CacheConfig, ConnectionConfig
+from druva.config.defaults import DurusConfig, StorageConfig, CacheConfig, ConnectionConfig
 
 # Maximum configuration file size to prevent DoS attacks (10MB)
 MAX_CONFIG_SIZE = 10 * 1024 * 1024

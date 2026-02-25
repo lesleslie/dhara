@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# dhruva 5.0 Health Check Script
+# druva 5.0 Health Check Script
 # Used by orchestrators (Kubernetes, Docker, systemd) to check service health
 
 set -euo pipefail
 
 # Configuration
-HOST="${DHRUVA_HOST:-localhost}"
-PORT="${DHRUVA_PORT:-2972}"
+HOST="${DRUVA_HOST:-localhost}"
+PORT="${DRUVA_PORT:-2972}"
 TIMEOUT="${HEALTH_CHECK_TIMEOUT:-5}"
 ATTEMPTS="${HEALTH_CHECK_ATTEMPTS:-3}"
 DELAY="${HEALTH_CHECK_DELAY:-2}"
@@ -61,7 +61,7 @@ check_tcp_connection() {
     fi
 }
 
-check_dhruva_protocol() {
+check_druva_protocol() {
     local host="$1"
     local port="$2"
     local timeout="$3"
@@ -96,7 +96,7 @@ perform_health_check() {
         if check_tcp_connection "$HOST" "$PORT" "$TIMEOUT"; then
             log_info "TCP connection successful"
 
-            if check_dhruva_protocol "$HOST" "$PORT" "$TIMEOUT"; then
+            if check_druva_protocol "$HOST" "$PORT" "$TIMEOUT"; then
                 log_info "Duru server is healthy"
                 return 0
             else
@@ -123,16 +123,16 @@ show_usage() {
 Usage: $0 [options]
 
 Options:
-    -h, --host HOST        dhruva server host (default: localhost)
-    -p, --port PORT        dhruva server port (default: 2972)
+    -h, --host HOST        druva server host (default: localhost)
+    -p, --port PORT        druva server port (default: 2972)
     -t, --timeout SECONDS  Connection timeout (default: 5)
     -a, --attempts NUM     Number of attempts (default: 3)
     -d, --delay SECONDS    Delay between attempts (default: 2)
     --help                 Show this help message
 
 Environment Variables:
-    DHRUVA_HOST             Server host
-    DHRUVA_PORT             Server port
+    DRUVA_HOST             Server host
+    DRUVA_PORT             Server port
     HEALTH_CHECK_TIMEOUT   Connection timeout
     HEALTH_CHECK_ATTEMPTS  Number of attempts
     HEALTH_CHECK_DELAY     Delay between attempts
@@ -147,7 +147,7 @@ Examples:
     $0
 
     # Check remote host
-    $0 --host dhruva.example.com --port 2972
+    $0 --host druva.example.com --port 2972
 
     # With custom timeout and attempts
     $0 --timeout 10 --attempts 5

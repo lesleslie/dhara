@@ -9,7 +9,7 @@ SECURITY WARNING: Like pickle, dill can execute arbitrary code when
 deserializing untrusted data. Only use with trusted data sources.
 """
 
-from dhruva.serialize.base import Serializer, DEFAULT_MAX_SIZE
+from druva.serialize.base import Serializer, DEFAULT_MAX_SIZE
 from typing import Any
 
 try:

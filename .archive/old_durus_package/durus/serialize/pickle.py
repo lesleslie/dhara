@@ -8,7 +8,7 @@ For new databases, use MsgspecSerializer instead.
 """
 
 import pickle
-from dhruva.serialize.base import Serializer, DEFAULT_MAX_SIZE
+from druva.serialize.base import Serializer, DEFAULT_MAX_SIZE
 from typing import Any
 
 

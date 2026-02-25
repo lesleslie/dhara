@@ -15,8 +15,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from dhruva.core import Connection
-from dhruva.mcp.adapter_tools import (
+from druva.core import Connection
+from druva.mcp.adapter_tools import (
     Adapter,
     AdapterRegistry,
     get_adapter_health_impl,
@@ -26,7 +26,7 @@ from dhruva.mcp.adapter_tools import (
     store_adapter_impl,
     validate_adapter_impl,
 )
-from dhruva.storage.file import FileStorage
+from druva.storage.file import FileStorage
 
 
 @pytest.mark.unit
@@ -397,7 +397,7 @@ class TestAdapterRegistry:
     def test_validate_adapter_success(self, registry: AdapterRegistry, sample_adapter_dict: dict):
         """Test validating a valid adapter configuration."""
         # Use a real factory path that exists
-        sample_adapter_dict["factory_path"] = "dhruva.core.persistent.PersistentBase"
+        sample_adapter_dict["factory_path"] = "druva.core.persistent.PersistentBase"
 
         registry.store_adapter(**sample_adapter_dict)
 
@@ -421,7 +421,7 @@ class TestAdapterRegistry:
         assert result["valid"] is False
         assert "not found" in result["errors"][0].lower()
 
-    @patch("dhruva.mcp.adapter_tools.importlib")
+    @patch("druva.mcp.adapter_tools.importlib")
     def test_validate_adapter_import_error(
         self, mock_importlib: Mock, registry: AdapterRegistry, sample_adapter_dict: dict
     ):
@@ -444,7 +444,7 @@ class TestAdapterRegistry:
     def test_check_adapter_health_healthy(self, registry: AdapterRegistry, sample_adapter_dict: dict):
         """Test health check for healthy adapter."""
         # Use a real factory path
-        sample_adapter_dict["factory_path"] = "dhruva.core.persistent.PersistentBase"
+        sample_adapter_dict["factory_path"] = "druva.core.persistent.PersistentBase"
         registry.store_adapter(**sample_adapter_dict)
 
         result = registry.check_adapter_health(
@@ -644,7 +644,7 @@ class TestAdapterImpls:
             key="cache",
             provider="redis",
             version="1.0.0",
-            factory_path="dhruva.core.persistent.PersistentBase",
+            factory_path="druva.core.persistent.PersistentBase",
             config={},
             dependencies=[],
             capabilities=[],
@@ -670,7 +670,7 @@ class TestAdapterImpls:
             key="cache",
             provider="redis",
             version="1.0.0",
-            factory_path="dhruva.core.persistent.PersistentBase",
+            factory_path="druva.core.persistent.PersistentBase",
             config={},
             dependencies=[],
             capabilities=[],

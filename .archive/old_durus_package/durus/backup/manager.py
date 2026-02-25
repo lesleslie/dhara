@@ -24,8 +24,8 @@ from typing import Dict, List, Optional, Tuple, Any
 import zstandard as zstd
 from cryptography.fernet import Fernet
 
-from dhruva.file_storage import FileStorage
-from dhruva.storage import Storage
+from druva.file_storage import FileStorage
+from druva.storage import Storage
 
 logger = logging.getLogger(__name__)
 

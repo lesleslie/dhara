@@ -1,12 +1,12 @@
 #!/bin/bash
-# Dhruva Development Startup Script
+# Druva Development Startup Script
 #
-# This script provides easy startup of Dhruva in different operational modes.
-# Mode is detected from the first argument or DHRUVA_MODE environment variable.
+# This script provides easy startup of Druva in different operational modes.
+# Mode is detected from the first argument or DRUVA_MODE environment variable.
 #
 # Usage:
 #   ./scripts/dev-start.sh [lite|standard]
-#   DHRUVA_MODE=lite ./scripts/dev-start.sh
+#   DRUVA_MODE=lite ./scripts/dev-start.sh
 #   ./scripts/dev-start.sh          # defaults to lite mode
 
 set -e  # Exit on error
@@ -23,7 +23,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Default mode
-MODE="${1:-${DHRUVA_MODE:-lite}}"
+MODE="${1:-${DRUVA_MODE:-lite}}"
 
 # Function to print colored output
 print_info() {
@@ -60,10 +60,10 @@ show_banner() {
         echo ""
         echo "╔═══════════════════════════════════════════════════════════════════╗"
         echo "║                                                                   ║"
-        echo "║   🦀 Dhruva Lite Mode - Development & Testing                    ║"
+        echo "║   🦀 Druva Lite Mode - Development & Testing                    ║"
         echo "║                                                                   ║"
         echo "║   ✓ Zero configuration required                                  ║"
-        echo "║   ✓ Local storage in ~/.local/share/dhruva/                      ║"
+        echo "║   ✓ Local storage in ~/.local/share/druva/                      ║"
         echo "║   ✓ Host: 127.0.0.1:8683                                         ║"
         echo "║   ✓ Ideal for development and testing                            ║"
         echo "║                                                                   ║"
@@ -73,7 +73,7 @@ show_banner() {
         echo ""
         echo "╔═══════════════════════════════════════════════════════════════════╗"
         echo "║                                                                   ║"
-        echo "║   🦀 Dhruva Standard Mode - Production Ready                     ║"
+        echo "║   🦀 Druva Standard Mode - Production Ready                     ║"
         echo "║                                                                   ║"
         echo "║   ✓ Full configuration control                                   ║"
         echo "║   ✓ Configurable storage backends                                ║"
@@ -97,16 +97,16 @@ check_prerequisites() {
         exit 1
     fi
 
-    # Check if dhruva is installed
-    if ! python -c "import dhruva" 2>/dev/null; then
-        print_error "Dhruva is not installed"
+    # Check if druva is installed
+    if ! python -c "import druva" 2>/dev/null; then
+        print_error "Druva is not installed"
         echo "Install with: pip install -e \"$PROJECT_DIR\""
         exit 1
     fi
 
-    # Check if dhruva-mcp CLI is available
-    if ! command -v dhruva-mcp &> /dev/null; then
-        print_warning "dhruva-mcp CLI not found, using python -m dhruva.cli"
+    # Check if druva-mcp CLI is available
+    if ! command -v druva-mcp &> /dev/null; then
+        print_warning "druva-mcp CLI not found, using python -m druva.cli"
     fi
 
     # Mode-specific checks
@@ -127,11 +127,11 @@ setup_environment() {
     print_info "Setting up $mode mode environment..."
 
     # Set mode environment variable
-    export DHRUVA_MODE="$mode"
+    export DRUVA_MODE="$mode"
 
     # Create storage directory for lite mode
     if [[ "$mode" == "lite" ]]; then
-        STORAGE_DIR="$HOME/.local/share/dhruva"
+        STORAGE_DIR="$HOME/.local/share/druva"
         if [[ ! -d "$STORAGE_DIR" ]]; then
             print_info "Creating storage directory: $STORAGE_DIR"
             mkdir -p "$STORAGE_DIR"
@@ -141,21 +141,21 @@ setup_environment() {
     print_success "Environment setup complete"
 }
 
-# Function to start Dhruva
-start_dhruva() {
+# Function to start Druva
+start_druva() {
     local mode="$1"
 
-    print_info "Starting Dhruva in $mode mode..."
+    print_info "Starting Druva in $mode mode..."
     echo ""
 
     # Change to project directory
     cd "$PROJECT_DIR"
 
-    # Start Dhruva MCP server
-    if command -v dhruva-mcp &> /dev/null; then
-        exec dhruva-mcp start
+    # Start Druva MCP server
+    if command -v druva-mcp &> /dev/null; then
+        exec druva-mcp start
     else
-        exec python -m dhruva.cli start
+        exec python -m druva.cli start
     fi
 }
 
@@ -173,8 +173,8 @@ main() {
     # Setup environment
     setup_environment "$MODE"
 
-    # Start Dhruva
-    start_dhruva "$MODE"
+    # Start Druva
+    start_druva "$MODE"
 }
 
 # Run main function

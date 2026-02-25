@@ -6,26 +6,26 @@ Successfully implemented fixes for CLI import paths and added context manager su
 
 ## Changes Made
 
-### 1. Fixed CLI Import Paths (dhruva/cli.py)
+### 1. Fixed CLI Import Paths (druva/cli.py)
 
-**Problem**: CLI was importing from non-existent module `dhruva.storage.file_storage`
+**Problem**: CLI was importing from non-existent module `druva.storage.file_storage`
 
-**Solution**: Updated 3 import statements to use correct path `dhruva.storage.file`
+**Solution**: Updated 3 import statements to use correct path `druva.storage.file`
 
 ```python
 # Lines 199, 231, 259
 # Before:
-from dhruva.storage.file_storage import FileStorage  # ❌ Module doesn't exist
+from druva.storage.file_storage import FileStorage  # ❌ Module doesn't exist
 
 # After:
-from dhruva.storage.file import FileStorage  # ✅ Correct path
+from druva.storage.file import FileStorage  # ✅ Correct path
 ```
 
 **Impact**:
 - Fixed ImportError in CLI commands
 - Tests can now import and use FileStorage correctly
 
-### 2. Fixed Command Registration (dhruva/cli.py)
+### 2. Fixed Command Registration (druva/cli.py)
 
 **Problem**: Typer commands were registered with `None` as their name
 
@@ -51,20 +51,20 @@ def adapters(...):  # Name is "adapters"
 - Lifecycle: `start`, `stop`, `restart`, `status`, `health`
 - Custom: `adapters`, `storage`, `admin`
 
-### 3. Added Context Manager Support (dhruva/storage/file.py)
+### 3. Added Context Manager Support (druva/storage/file.py)
 
 **Problem**: FileStorage required manual `close()` calls, causing file locks to persist
 
 **Solution**: Implemented `__enter__` and `__exit__` methods
 
 ```python
-# Added after line 188 in dhruva/storage/file.py
+# Added after line 188 in druva/storage/file.py
 
 def __enter__(self):
     """Context manager entry - returns self for use in with statements.
 
     Example:
-        with FileStorage("data.dhruva") as storage:
+        with FileStorage("data.druva") as storage:
             conn = Connection(storage)
             # Lock automatically released when exiting with block
     """
@@ -96,11 +96,11 @@ def __exit__(self, exc_type, exc_val, exc_tb):
 ### Test 1: Context Manager Functionality
 
 ```python
-from dhruva.storage.file import FileStorage
-from dhruva.core.connection import Connection
+from druva.storage.file import FileStorage
+from druva.core.connection import Connection
 
 # Works correctly
-with FileStorage("data.dhruva") as storage:
+with FileStorage("data.druva") as storage:
     conn = Connection(storage)
     root = conn.get_root()
     root['test'] = 'data'
@@ -108,7 +108,7 @@ with FileStorage("data.dhruva") as storage:
 # Lock automatically released here
 
 # Can reopen immediately (no BlockingIOError)
-with FileStorage("data.dhruva") as storage:
+with FileStorage("data.druva") as storage:
     conn = Connection(storage)
     # Works!
 ```
@@ -117,7 +117,7 @@ with FileStorage("data.dhruva") as storage:
 
 ```python
 try:
-    with FileStorage("data.dhruva") as storage:
+    with FileStorage("data.druva") as storage:
         conn = Connection(storage)
         # ... do work ...
         raise ValueError("Error!")
@@ -125,15 +125,15 @@ except ValueError:
     pass  # Error handled
 
 # File lock still released, can reopen
-with FileStorage("data.dhruva") as storage:
+with FileStorage("data.druva") as storage:
     # Works! Lock was released despite exception
 ```
 
 ### Test 3: CLI Commands
 
 ```bash
-$ python -m dhruva.cli --help
-Usage: dhruva [OPTIONS] COMMAND [ARGS]...
+$ python -m druva.cli --help
+Usage: druva [OPTIONS] COMMAND [ARGS]...
 
 Options:
   --install-completion  Install completion for the current shell.
@@ -141,8 +141,8 @@ Options:
   --help                Show this message and exit.
 
 Commands:
-  adapters     List registered adapters in Dhruva.
-  admin        Launch Dhruva admin shell with IPython.
+  adapters     List registered adapters in Druva.
+  admin        Launch Druva admin shell with IPython.
   health       Health check and diagnostics
   restart      Restart the server
   start        Start the server
@@ -155,7 +155,7 @@ Commands:
 
 **Before Implementation**:
 - 46 failing unit tests
-- ImportError on `dhruva.storage.file_storage`
+- ImportError on `druva.storage.file_storage`
 - Commands not discoverable (named `None`)
 - File locks not released automatically
 
@@ -175,7 +175,7 @@ Commands:
 ### Before
 ```python
 # Manual cleanup required
-storage = FileStorage("data.dhruva")
+storage = FileStorage("data.druva")
 try:
     conn = Connection(storage)
     # ... do work ...
@@ -187,7 +187,7 @@ finally:
 ### After
 ```python
 # Automatic cleanup
-with FileStorage("data.dhruva") as storage:
+with FileStorage("data.druva") as storage:
     conn = Connection(storage)
     # ... do work ...
     conn.commit()
@@ -204,11 +204,11 @@ All changes are **100% backward compatible**:
 
 ## Files Modified
 
-1. **dhruva/cli.py**
+1. **druva/cli.py**
    - Fixed 3 import paths (lines 199, 231, 259)
    - Added explicit names to 3 command decorators (lines 192, 227, 255)
 
-2. **dhruva/storage/file.py**
+2. **druva/storage/file.py**
    - Added `__enter__` method (after line 188)
    - Added `__exit__` method (after line 188)
 
@@ -217,7 +217,7 @@ All changes are **100% backward compatible**:
 ### For New Code
 Use context manager pattern for automatic cleanup:
 ```python
-with FileStorage("data.dhruva") as storage:
+with FileStorage("data.druva") as storage:
     # ... work ...
 ```
 
@@ -228,7 +228,7 @@ Manual `close()` calls still work, but consider migrating to context manager for
 
 - Python Context Managers: https://docs.python.org/3/reference/datamodel.html#context-managers
 - Typer CLI: https://typer.tiangolo.com/
-- Dhruva Storage: See `CLAUDE.md` for storage architecture
+- Druva Storage: See `CLAUDE.md` for storage architecture
 
 ---
 

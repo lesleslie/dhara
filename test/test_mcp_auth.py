@@ -22,7 +22,7 @@ from pathlib import Path
 
 import pytest
 
-from dhruva.mcp.auth import (
+from druva.mcp.auth import (
     AuthContext,
     AuthMiddleware,
     AuthResult,
@@ -35,7 +35,7 @@ from dhruva.mcp.auth import (
     generate_api_token,
     generate_token,
 )
-from dhruva.mcp.middleware import MCPMiddleware, MCPRequest, MCPResponse
+from druva.mcp.middleware import MCPMiddleware, MCPRequest, MCPResponse
 
 
 class TestTokenGeneration:

@@ -4,6 +4,6 @@ Redirects imports to new location (durus.storage.file)
 for backward compatibility with pickled data from Durus 4.x.
 """
 
-from dhruva.storage.file import *
+from druva.storage.file import *
 
 __all__ = ['FileStorage']

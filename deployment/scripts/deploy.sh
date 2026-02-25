@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# dhruva 5.0 Deployment Script
+# druva 5.0 Deployment Script
 # Supports native Python, buildpack, and Kubernetes deployment
 
 set -euo pipefail
@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-VERSION="${DHRUVA_VERSION:-5.0.0}"
+VERSION="${DRUVA_VERSION:-5.0.0}"
 REGISTRY="${DOCKER_REGISTRY:-ghcr.io}"
 NAMESPACE="${KUBERNETES_NAMESPACE:-default}"
 BUILDPACK_BUILDER="${BUILDPACK_BUILDER:-paketobuildpacks/builder:base}"
@@ -73,7 +73,7 @@ check_kubectl() {
 
 # Native installation
 install_native() {
-    log_step "Installing dhruva natively..."
+    log_step "Installing druva natively..."
 
     check_python
     check_pip
@@ -89,8 +89,8 @@ install_native() {
         pip install .
     fi
 
-    log_info "dhruva installed successfully"
-    log_info "Run: dhruva-server --help"
+    log_info "druva installed successfully"
+    log_info "Run: druva-server --help"
 }
 
 install_from_wheel() {
@@ -107,7 +107,7 @@ install_from_wheel() {
     python3 -m build
 
     # Install wheel
-    local wheel=$(ls dist/dhruva-${VERSION}-*.whl 2>/dev/null | head -1)
+    local wheel=$(ls dist/druva-${VERSION}-*.whl 2>/dev/null | head -1)
     if [ -z "${wheel}" ]; then
         log_error "Failed to build wheel"
         exit 1
@@ -116,20 +116,20 @@ install_from_wheel() {
     log_info "Installing wheel: ${wheel}"
     pip install "${wheel}"
 
-    log_info "dhruva installed from wheel successfully"
+    log_info "druva installed from wheel successfully"
 }
 
 run_server() {
-    log_step "Starting dhruva server..."
+    log_step "Starting druva server..."
 
     check_python
 
     cd "${PROJECT_ROOT}"
 
     # Set defaults
-    local host="${DHRUVA_HOST:-127.0.0.1}"
-    local port="${DHRUVA_PORT:-2972}"
-    local config="${DHRUVA_CONFIG:-deployment/config/production.yaml}"
+    local host="${DRUVA_HOST:-127.0.0.1}"
+    local port="${DRUVA_PORT:-2972}"
+    local config="${DRUVA_CONFIG:-deployment/config/production.yaml}"
 
     # Check if config exists
     if [ ! -f "${config}" ]; then
@@ -138,13 +138,13 @@ run_server() {
         config=""
     fi
 
-    log_info "Starting dhruva server on ${host}:${port}..."
+    log_info "Starting druva server on ${host}:${port}..."
 
     # Start server
     if [ -n "${config}" ]; then
-        python3 -m dhruva.cli.server --host="${host}" --port="${port}" --config="${config}"
+        python3 -m druva.cli.server --host="${host}" --port="${port}" --config="${config}"
     else
-        python3 -m dhruva.cli.server --host="${host}" --port="${port}"
+        python3 -m druva.cli.server --host="${host}" --port="${port}"
     fi
 }
 
@@ -156,7 +156,7 @@ build_buildpack() {
 
     cd "${PROJECT_ROOT}"
 
-    local image_name="${REGISTRY}/dhruva:${VERSION}"
+    local image_name="${REGISTRY}/druva:${VERSION}"
 
     log_info "Building image: ${image_name}"
     log_info "Builder: ${BUILDPACK_BUILDER}"
@@ -167,7 +167,7 @@ build_buildpack() {
         --env BP_LIVE_RELOAD_ENABLED="false"
 
     # Tag as latest
-    docker tag "${image_name}" "${REGISTRY}/dhruva:latest"
+    docker tag "${image_name}" "${REGISTRY}/druva:latest"
 
     log_info "Buildpack image built successfully"
     log_info "Image: ${image_name}"
@@ -176,7 +176,7 @@ build_buildpack() {
 push_buildpack() {
     log_step "Pushing buildpack image..."
 
-    local image_name="${REGISTRY}/dhruva:${VERSION}"
+    local image_name="${REGISTRY}/druva:${VERSION}"
 
     if ! docker images "${image_name}" --format "{{.Repository}}:{{.Tag}}" | grep -q "${image_name}"; then
         log_error "Image not found: ${image_name}"
@@ -185,7 +185,7 @@ push_buildpack() {
     fi
 
     docker push "${image_name}"
-    docker push "${REGISTRY}/dhruva:latest"
+    docker push "${REGISTRY}/druva:latest"
 
     log_info "Image pushed successfully"
 }
@@ -193,7 +193,7 @@ push_buildpack() {
 deploy_buildpack_local() {
     log_step "Deploying buildpack image locally..."
 
-    local image_name="${REGISTRY}/dhruva:${VERSION}"
+    local image_name="${REGISTRY}/druva:${VERSION}"
 
     if ! docker images "${image_name}" --format "{{.Repository}}:{{.Tag}}" | grep -q "${image_name}"; then
         log_error "Image not found: ${image_name}"
@@ -202,24 +202,24 @@ deploy_buildpack_local() {
     fi
 
     # Stop existing container
-    if docker ps -a --format '{{.Names}}' | grep -q '^dhruva-server$'; then
+    if docker ps -a --format '{{.Names}}' | grep -q '^druva-server$'; then
         log_info "Stopping existing container..."
-        docker stop dhruva-server 2>/dev/null || true
-        docker rm dhruva-server 2>/dev/null || true
+        docker stop druva-server 2>/dev/null || true
+        docker rm druva-server 2>/dev/null || true
     fi
 
     # Start new container
     log_info "Starting container from buildpack image..."
     docker run -d \
-        --name dhruva-server \
+        --name druva-server \
         --restart unless-stopped \
         -p 2972:2972 \
-        -v dhruva-data:/data \
+        -v druva-data:/data \
         -e PORT=2972 \
         "${image_name}"
 
-    log_info "dhruva server started from buildpack image"
-    log_info "Logs: docker logs -f dhruva-server"
+    log_info "druva server started from buildpack image"
+    log_info "Logs: docker logs -f druva-server"
 }
 
 
@@ -229,7 +229,7 @@ deploy_kubernetes() {
 
     check_kubectl
 
-    local image_name="${REGISTRY}/dhruva:${VERSION}"
+    local image_name="${REGISTRY}/druva:${VERSION}"
 
     # Create namespace
     if ! kubectl get namespace "${NAMESPACE}" &> /dev/null; then
@@ -239,7 +239,7 @@ deploy_kubernetes() {
 
     # Create ConfigMap
     log_info "Creating ConfigMap..."
-    kubectl create configmap dhruva-config \
+    kubectl create configmap druva-config \
         --from-file="${PROJECT_ROOT}/deployment/config/production.yaml" \
         --namespace="${NAMESPACE}" \
         --dry-run=client -o yaml | kubectl apply -f -
@@ -256,11 +256,11 @@ deploy_kubernetes() {
 
     # Wait for rollout
     log_info "Waiting for rollout..."
-    kubectl rollout status deployment/dhruva-server --namespace="${NAMESPACE}" --timeout=120s
+    kubectl rollout status deployment/druva-server --namespace="${NAMESPACE}" --timeout=120s
 
     log_info "Deployed to Kubernetes successfully"
     log_info "Status: kubectl get pods -n ${NAMESPACE}"
-    log_info "Logs: kubectl logs -f deployment/dhruva-server -n ${NAMESPACE}"
+    log_info "Logs: kubectl logs -f deployment/druva-server -n ${NAMESPACE}"
 }
 
 # Development server
@@ -272,14 +272,14 @@ run_dev_server() {
     cd "${PROJECT_ROOT}"
 
     # Install in dev mode if not already
-    if ! pip show dhruva &> /dev/null; then
-        log_info "Installing dhruva in development mode..."
+    if ! pip show druva &> /dev/null; then
+        log_info "Installing druva in development mode..."
         pip install -e ".[dev]"
     fi
 
     # Run dev server
     log_info "Starting dev server with auto-reload..."
-    python3 -m dhruva.cli.server \
+    python3 -m druva.cli.server \
         --host=127.0.0.1 \
         --port=2972 \
         --reload \
@@ -291,9 +291,9 @@ show_usage() {
 Usage: $0 <command> [options]
 
 Native Installation Commands:
-    install              Install dhruva natively with pip
+    install              Install druva natively with pip
     wheel                Build and install from wheel
-    run                  Run dhruva server natively
+    run                  Run druva server natively
     dev                  Run development server with auto-reload
 
 Buildpack Commands:
@@ -305,10 +305,10 @@ Cloud Deployment Commands:
     kubernetes|k8s       Deploy to Kubernetes
 
 Environment Variables:
-    DHRUVA_VERSION        Version tag (default: 5.0.0)
-    DHRUVA_HOST           Server host (default: 127.0.0.1)
-    DHRUVA_PORT           Server port (default: 2972)
-    DHRUVA_CONFIG         Config file path
+    DRUVA_VERSION        Version tag (default: 5.0.0)
+    DRUVA_HOST           Server host (default: 127.0.0.1)
+    DRUVA_PORT           Server port (default: 2972)
+    DRUVA_CONFIG         Config file path
     DOCKER_REGISTRY      Container registry (default: ghcr.io)
     KUBERNETES_NAMESPACE K8s namespace (default: default)
     BUILDPACK_BUILDER    Buildpack builder (default: paketobuildpacks/builder:base)

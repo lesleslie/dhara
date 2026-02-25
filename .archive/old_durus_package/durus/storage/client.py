@@ -3,16 +3,16 @@ $URL$
 $Id$
 """
 
-from dhruva.error import (
+from druva.error import (
     ConflictError,
     DurusKeyError,
     ProtocolError,
     ReadConflictError,
     WriteConflictError,
 )
-from dhruva.serialize.adapter import split_oids
-from dhruva.storage.base import Storage
-from dhruva.server.server import (
+from druva.serialize.adapter import split_oids
+from druva.storage.base import Storage
+from druva.server.server import (
     DEFAULT_HOST,
     DEFAULT_PORT,
     STATUS_INVALID,
@@ -21,7 +21,7 @@ from dhruva.server.server import (
     SocketAddress,
     StorageServer,
 )
-from dhruva.utils import (
+from druva.utils import (
     as_bytes,
     int4_to_str,
     iteritems,

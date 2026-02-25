@@ -2,10 +2,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: dhruva-server
+  name: druva-server
   namespace: ${NAMESPACE}
   labels:
-    app: dhruva
+    app: druva
     component: server
     version: v5.0.0
 spec:
@@ -17,12 +17,12 @@ spec:
       maxUnavailable: 0
   selector:
     matchLabels:
-      app: dhruva
+      app: druva
       component: server
   template:
     metadata:
       labels:
-        app: dhruva
+        app: druva
         component: server
         version: v5.0.0
       annotations:
@@ -56,7 +56,7 @@ spec:
           runAsGroup: 0
 
       containers:
-      - name: dhruva-server
+      - name: druva-server
         image: ${IMAGE_NAME}:${IMAGE_TAG}
         imagePullPolicy: IfNotPresent
 
@@ -71,24 +71,24 @@ spec:
           runAsUser: 999
 
         ports:
-        - name: dhruva
+        - name: druva
           containerPort: 2972
           protocol: TCP
 
         env:
-        - name: DHRUVA_HOST
+        - name: DRUVA_HOST
           value: "0.0.0.0"
-        - name: DHRUVA_PORT
+        - name: DRUVA_PORT
           value: "2972"
-        - name: DHRUVA_STORAGE_BACKEND
+        - name: DRUVA_STORAGE_BACKEND
           value: "file"
-        - name: DHRUVA_STORAGE_PATH
-          value: "/data/dhruva.dhruva"
-        - name: DHRUVA_CACHE_SIZE
+        - name: DRUVA_STORAGE_PATH
+          value: "/data/druva.druva"
+        - name: DRUVA_CACHE_SIZE
           value: "100000"
-        - name: DHRUVA_CONFIG
-          value: "/etc/dhruva/config.yaml"
-        - name: DHRUVA_DEBUG
+        - name: DRUVA_CONFIG
+          value: "/etc/druva/config.yaml"
+        - name: DRUVA_DEBUG
           value: "false"
         - name: PYTHONUNBUFFERED
           value: "1"
@@ -98,12 +98,12 @@ spec:
         # Mount configuration from ConfigMap
         volumeMounts:
         - name: config
-          mountPath: /etc/dhruva
+          mountPath: /etc/druva
           readOnly: true
         - name: data
           mountPath: /data
         - name: logs
-          mountPath: /var/log/dhruva
+          mountPath: /var/log/druva
 
         # Resource limits
         resources:
@@ -157,7 +157,7 @@ spec:
       # Configuration from ConfigMap
       - name: config
         configMap:
-          name: dhruva-config
+          name: druva-config
           items:
           - key: production.yaml
             path: config.yaml
@@ -165,7 +165,7 @@ spec:
       # Persistent data volume
       - name: data
         persistentVolumeClaim:
-          claimName: dhruva-data-pvc
+          claimName: druva-data-pvc
 
       # Logs volume (could be mounted by log aggregation sidecar)
       - name: logs
@@ -182,7 +182,7 @@ spec:
       #           - key: app
       #             operator: In
       #             values:
-      #             - dhruva
+      #             - druva
       #         topologyKey: kubernetes.io/hostname
 
       # Tolerations (optional - uncomment if running on control plane nodes)
@@ -194,10 +194,10 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: dhruva-data-pvc
+  name: druva-data-pvc
   namespace: ${NAMESPACE}
   labels:
-    app: dhruva
+    app: druva
     component: server
 spec:
   accessModes:

@@ -7,10 +7,10 @@ from collections.abc import Iterator
 from sys import stderr
 from typing import Any, TYPE_CHECKING
 
-from dhruva.utils import IS_PYPY, as_bytes, iteritems, str_to_int8
+from druva.utils import IS_PYPY, as_bytes, iteritems, str_to_int8
 
 if TYPE_CHECKING:
-    from dhruva.core.connection import Connection
+    from druva.core.connection import Connection
 
 # these must match the constants in _persistent.c
 UNSAVED: int = 1
@@ -22,7 +22,7 @@ try:
     if IS_PYPY:
         # C extensions are slower than pure Python on PyPy
         raise ImportError("Use pure Python implementation on PyPy")
-    from dhruva._persistent import (
+    from druva._persistent import (
         ConnectionBase,
         PersistentBase,
         _delattribute,

@@ -1,15 +1,15 @@
-# Dhruva Test Quick Reference
+# Druva Test Quick Reference
 
 ## Quick Start
 
 ```bash
-cd /Users/les/Projects/dhruva
+cd /Users/les/Projects/druva
 
 # Run all new tests
 pytest test/unit/test_adapter_registry.py test/unit/test_mcp_server.py test/unit/test_config.py test/unit/test_cli.py -v
 
 # Run with coverage
-pytest test/unit/ --cov=dhruva --cov-report=html --cov-report=term-missing
+pytest test/unit/ --cov=druva --cov-report=html --cov-report=term-missing
 
 # Run specific test file
 pytest test/unit/test_adapter_registry.py -v
@@ -96,27 +96,27 @@ pytest test/unit/test_cli.py -k "adapters_command" -v
 
 ### Generate HTML Report
 ```bash
-pytest test/unit/ --cov=dhruva --cov-report=html
+pytest test/unit/ --cov=druva --cov-report=html
 open htmlcov/index.html
 ```
 
 ### Generate JSON Report
 ```bash
-pytest test/unit/ --cov=dhruva --cov-report=json
+pytest test/unit/ --cov=druva --cov-report=json
 cat coverage.json | python -m json.tool
 ```
 
 ### Terminal Report
 ```bash
-pytest test/unit/ --cov=dhruva --cov-report=term-missing:skip-covered
+pytest test/unit/ --cov=druva --cov-report=term-missing:skip-covered
 ```
 
 ## Troubleshooting
 
 ### Import Errors
 ```bash
-# Ensure dhruva is installed in development mode
-cd /Users/les/Projects/dhruva
+# Ensure druva is installed in development mode
+cd /Users/les/Projects/druva
 pip install -e .
 ```
 
@@ -129,7 +129,7 @@ pip install pytest pytest-asyncio pytest-cov pytest-mock
 ### Path Issues
 ```bash
 # Run from project root
-cd /Users/les/Projects/dhruva
+cd /Users/les/Projects/druva
 pytest test/unit/
 ```
 
@@ -164,7 +164,7 @@ pytest test/unit/ -n auto
 
 2. **Run New Tests**
    ```bash
-   pytest test/unit/test_adapter_registry.py test/unit/test_mcp_server.py test/unit/test_config.py test/unit/test_cli.py --cov=dhruva --cov-report=html
+   pytest test/unit/test_adapter_registry.py test/unit/test_mcp_server.py test/unit/test_config.py test/unit/test_cli.py --cov=druva --cov-report=html
    ```
 
 3. **Review Coverage**
@@ -192,7 +192,7 @@ After running tests:
 
 ## Documentation
 
-- **Test Plan**: `DHRUVA_TEST_COVERAGE_PLAN.md`
+- **Test Plan**: `DRUVA_TEST_COVERAGE_PLAN.md`
 - **Summary**: `TEST_COVERAGE_EXPANSION_SUMMARY.md`
 - **Quick Reference**: This file
 

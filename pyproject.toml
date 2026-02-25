@@ -18,17 +18,17 @@ override-dependencies = [
 # Features: Comprehensive testing, quality tools, type checking fallback
 
 [project]
-name = "dhruva"
+name = "druva"
 version = "0.6.1"
 description = "A Python Object Database"
 readme = "README.md"
 requires-python = ">=3.13"
 license = {text = "MIT"}
 authors = [
-    {name = "CNRI and others", email = "nas-dhruva@arctrix.com"},
+    {name = "CNRI and others", email = "nas-druva@arctrix.com"},
 ]
 maintainers = [
-    {name = "dhruva Development Team", email = "nas-dhruva@arctrix.com"},
+    {name = "druva Development Team", email = "nas-druva@arctrix.com"},
 ]
 keywords = ["database", "persistence", "object-database", "storage", "nosql"]
 classifiers = [
@@ -56,18 +56,18 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/lesleslie/dhruva"
-Documentation = "https://github.com/lesleslie/dhruva#readme"
-Repository = "https://github.com/lesleslie/dhruva"
-"Source Code" = "https://github.com/lesleslie/dhruva"
-"Bug Tracker" = "https://github.com/lesleslie/dhruva/issues"
+Homepage = "https://github.com/lesleslie/druva"
+Documentation = "https://github.com/lesleslie/druva#readme"
+Repository = "https://github.com/lesleslie/druva"
+"Source Code" = "https://github.com/lesleslie/druva"
+"Bug Tracker" = "https://github.com/lesleslie/druva/issues"
 
 [project.scripts]
-dhruva = "dhruva.__main__:main"
-dhruva-mcp = "dhruva.cli:main"
+druva = "druva.__main__:main"
+druva-mcp = "druva.cli:main"
 
 [tool.setuptools]
-packages = ["dhruva"]
+packages = ["druva"]
 
 [tool.ruff]
 target-version = "py313"
@@ -87,7 +87,7 @@ asyncio_mode = "auto"
 timeout = 600
 testpaths = ["test"]
 addopts = [
-    "--cov=dhruva",
+    "--cov=druva",
     "--cov-report=term-missing:skip-covered",
     "--cov-report=html:htmlcov",
     "--cov-report=json",
@@ -113,7 +113,7 @@ markers = [
 branch = true
 parallel = true  # CRITICAL for pytest-xdist
 concurrency = ["multiprocessing"]
-source = ["dhruva"]
+source = ["druva"]
 data_file = ".coverage"
 omit = [
     "*/test/*",
@@ -137,7 +137,7 @@ exclude_also = [
 ]
 
 [tool.pyright]
-include = ["dhruva"]
+include = ["druva"]
 exclude = [
     "test/*",
     "scratch",
@@ -149,7 +149,7 @@ typeCheckingMode = "strict"
 pythonVersion = "3.13"
 
 [tool.bandit]
-target = ["dhruva"]
+target = ["druva"]
 skips = ["B101", "B110", "B112", "B404", "B603", "B607"]
 exclude_dirs = ["test/"]
 
@@ -158,7 +158,7 @@ quiet-level = 3
 ignore-words-list = "crate,uptodate,nd,nin"
 
 [tool.creosote]
-paths = ["dhruva"]
+paths = ["druva"]
 deps-file = "pyproject.toml"
 exclude-deps = [
     "hatchling",

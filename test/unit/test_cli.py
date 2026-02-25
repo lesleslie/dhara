@@ -1,4 +1,4 @@
-"""Unit tests for Dhruva CLI.
+"""Unit tests for Druva CLI.
 
 Tests CLI commands including:
 - CLI creation
@@ -17,13 +17,13 @@ from typing import Generator
 import pytest
 from typer.testing import CliRunner
 
-from dhruva.cli import create_cli, health_probe_handler, start_handler, stop_handler
-from dhruva.core.config import DhruvaSettings
+from druva.cli import create_cli, health_probe_handler, start_handler, stop_handler
+from druva.core.config import DruvaSettings
 
 
 @pytest.mark.unit
-class TestDhruvaCLI:
-    """Test Dhruva CLI application."""
+class TestDruvaCLI:
+    """Test Druva CLI application."""
 
     @pytest.fixture
     def runner(self) -> CliRunner:
@@ -31,12 +31,12 @@ class TestDhruvaCLI:
         return CliRunner()
 
     @pytest.fixture
-    def temp_settings(self, tmp_path: Path) -> DhruvaSettings:
+    def temp_settings(self, tmp_path: Path) -> DruvaSettings:
         """Create temporary settings for testing."""
-        return DhruvaSettings(
-            server_name="test-dhruva",
+        return DruvaSettings(
+            server_name="test-druva",
             storage={
-                "path": tmp_path / "test.dhruva",
+                "path": tmp_path / "test.druva",
                 "read_only": False,
             },
             cache_root=tmp_path / ".cache",
@@ -47,9 +47,9 @@ class TestDhruvaCLI:
         """Clean environment variables before/after tests."""
         import os
 
-        original = {k: v for k, v in os.environ.items() if k.startswith("DHRUVA_")}
+        original = {k: v for k, v in os.environ.items() if k.startswith("DRUVA_")}
         for key in list(os.environ.keys()):
-            if key.startswith("DHRUVA_"):
+            if key.startswith("DRUVA_"):
                 del os.environ[key]
         yield
         for key, value in original.items():
@@ -79,10 +79,10 @@ class TestDhruvaCLI:
         assert "status" in result.stdout
         assert "health" in result.stdout
 
-    def test_adapters_command_empty(self, runner: CliRunner, temp_settings: DhruvaSettings):
+    def test_adapters_command_empty(self, runner: CliRunner, temp_settings: DruvaSettings):
         """Test adapters command with no adapters."""
-        from dhruva.core import Connection
-        from dhruva.storage.file import FileStorage
+        from druva.core import Connection
+        from druva.storage.file import FileStorage
 
         # Create empty storage file
         storage = FileStorage(str(temp_settings.storage.path))
@@ -91,7 +91,7 @@ class TestDhruvaCLI:
         storage.close()
 
         # Mock settings.load to return temp_settings BEFORE creating CLI
-        with patch("dhruva.cli.DhruvaSettings.load", return_value=temp_settings):
+        with patch("druva.cli.DruvaSettings.load", return_value=temp_settings):
             app = create_cli()
             result = runner.invoke(app, ["adapters"])
 
@@ -99,12 +99,12 @@ class TestDhruvaCLI:
             assert result.exit_code == 0
             assert "Found 0 adapters" in result.stdout or "adapters" in result.stdout.lower()
 
-    def test_adapters_command_with_data(self, runner: CliRunner, temp_settings: DhruvaSettings):
+    def test_adapters_command_with_data(self, runner: CliRunner, temp_settings: DruvaSettings):
         """Test adapters command with stored adapters."""
         # Create storage and add an adapter
-        from dhruva.core import Connection
-        from dhruva.storage.file import FileStorage
-        from dhruva.mcp.adapter_tools import AdapterRegistry
+        from druva.core import Connection
+        from druva.storage.file import FileStorage
+        from druva.mcp.adapter_tools import AdapterRegistry
 
         storage = FileStorage(str(temp_settings.storage.path))
         conn = Connection(storage)
@@ -127,7 +127,7 @@ class TestDhruvaCLI:
         storage.close()
 
         # Now test CLI - create CLI inside patch context
-        with patch("dhruva.cli.DhruvaSettings.load", return_value=temp_settings):
+        with patch("druva.cli.DruvaSettings.load", return_value=temp_settings):
             app = create_cli()
             result = runner.invoke(app, ["adapters"])
 
@@ -135,11 +135,11 @@ class TestDhruvaCLI:
             assert "adapter:cache:redis" in result.stdout
             assert "1.0.0" in result.stdout
 
-    def test_adapters_command_filter_domain(self, runner: CliRunner, temp_settings: DhruvaSettings):
+    def test_adapters_command_filter_domain(self, runner: CliRunner, temp_settings: DruvaSettings):
         """Test adapters command with domain filter."""
-        from dhruva.core import Connection
-        from dhruva.storage.file import FileStorage
-        from dhruva.mcp.adapter_tools import AdapterRegistry
+        from druva.core import Connection
+        from druva.storage.file import FileStorage
+        from druva.mcp.adapter_tools import AdapterRegistry
 
         storage = FileStorage(str(temp_settings.storage.path))
         conn = Connection(storage)
@@ -173,7 +173,7 @@ class TestDhruvaCLI:
         conn.commit()
         storage.close()
 
-        with patch("dhruva.cli.DhruvaSettings.load", return_value=temp_settings):
+        with patch("druva.cli.DruvaSettings.load", return_value=temp_settings):
             app = create_cli()
             result = runner.invoke(app, ["adapters", "--domain", "adapter"])
 
@@ -182,11 +182,11 @@ class TestDhruvaCLI:
             # Should not show s3 adapter
             assert "s3" not in result.stdout.lower()
 
-    def test_adapters_command_filter_category(self, runner: CliRunner, temp_settings: DhruvaSettings):
+    def test_adapters_command_filter_category(self, runner: CliRunner, temp_settings: DruvaSettings):
         """Test adapters command with category filter."""
-        from dhruva.core import Connection
-        from dhruva.storage.file import FileStorage
-        from dhruva.mcp.adapter_tools import AdapterRegistry
+        from druva.core import Connection
+        from druva.storage.file import FileStorage
+        from druva.mcp.adapter_tools import AdapterRegistry
 
         storage = FileStorage(str(temp_settings.storage.path))
         conn = Connection(storage)
@@ -220,7 +220,7 @@ class TestDhruvaCLI:
         conn.commit()
         storage.close()
 
-        with patch("dhruva.cli.DhruvaSettings.load", return_value=temp_settings):
+        with patch("druva.cli.DruvaSettings.load", return_value=temp_settings):
             app = create_cli()
             result = runner.invoke(app, ["adapters", "--category", "cache"])
 
@@ -229,10 +229,10 @@ class TestDhruvaCLI:
             # Should not show s3
             assert "s3" not in result.stdout.lower()
 
-    def test_storage_command(self, runner: CliRunner, temp_settings: DhruvaSettings):
+    def test_storage_command(self, runner: CliRunner, temp_settings: DruvaSettings):
         """Test storage info command."""
-        from dhruva.core import Connection
-        from dhruva.storage.file import FileStorage
+        from druva.core import Connection
+        from druva.storage.file import FileStorage
 
         storage = FileStorage(str(temp_settings.storage.path))
         conn = Connection(storage)
@@ -241,7 +241,7 @@ class TestDhruvaCLI:
         conn.commit()
         storage.close()
 
-        with patch("dhruva.cli.DhruvaSettings.load", return_value=temp_settings):
+        with patch("druva.cli.DruvaSettings.load", return_value=temp_settings):
             app = create_cli()
             result = runner.invoke(app, ["storage"])
 
@@ -250,10 +250,10 @@ class TestDhruvaCLI:
             assert str(temp_settings.storage.path) in result.stdout
             assert "Root keys:" in result.stdout
 
-    def test_health_probe_handler(self, temp_settings: DhruvaSettings):
+    def test_health_probe_handler(self, temp_settings: DruvaSettings):
         """Test health probe handler."""
-        from dhruva.core import Connection
-        from dhruva.storage.file import FileStorage
+        from druva.core import Connection
+        from druva.storage.file import FileStorage
 
         # Create storage
         storage = FileStorage(str(temp_settings.storage.path))
@@ -264,7 +264,7 @@ class TestDhruvaCLI:
         storage.close()
 
         # Mock settings.load
-        with patch("dhruva.cli.DhruvaSettings.load", return_value=temp_settings):
+        with patch("druva.cli.DruvaSettings.load", return_value=temp_settings):
             snapshot = health_probe_handler()
 
             assert snapshot is not None
@@ -272,22 +272,22 @@ class TestDhruvaCLI:
             assert snapshot.lifecycle_state["storage_exists"] is True
             assert "storage_status" in snapshot.activity_state
 
-    def test_health_probe_handler_no_storage(self, temp_settings: DhruvaSettings):
+    def test_health_probe_handler_no_storage(self, temp_settings: DruvaSettings):
         """Test health probe with non-existent storage."""
         # Don't create storage file
 
-        with patch("dhruva.cli.DhruvaSettings.load", return_value=temp_settings):
+        with patch("druva.cli.DruvaSettings.load", return_value=temp_settings):
             snapshot = health_probe_handler()
 
             assert snapshot is not None
             assert snapshot.lifecycle_state["storage_exists"] is False
             assert snapshot.activity_state["storage_status"] == "error"
 
-    @patch("dhruva.cli.DhruvaMCPServer")
-    @patch("dhruva.cli.write_runtime_health")
-    @patch("dhruva.cli.DhruvaSettings.load")
+    @patch("druva.cli.DruvaMCPServer")
+    @patch("druva.cli.write_runtime_health")
+    @patch("druva.cli.DruvaSettings.load")
     def test_start_handler(
-        self, mock_load: Mock, mock_write_health: Mock, mock_server: Mock, temp_settings: DhruvaSettings
+        self, mock_load: Mock, mock_write_health: Mock, mock_server: Mock, temp_settings: DruvaSettings
     ):
         """Test start handler initialization."""
         mock_load.return_value = temp_settings
@@ -304,45 +304,45 @@ class TestDhruvaCLI:
         mock_server.assert_called_once_with(temp_settings)
         mock_server_instance.run.assert_called_once()
 
-    @patch("dhruva.cli.DhruvaMCPServer")
+    @patch("druva.cli.DruvaMCPServer")
     def test_stop_handler(self, mock_server: Mock):
         """Test stop handler cleanup."""
         mock_server_instance = Mock()
-        import dhruva.cli
+        import druva.cli
 
-        dhruva.cli._server_instance = mock_server_instance
+        druva.cli._server_instance = mock_server_instance
 
         stop_handler(12345)
 
         mock_server_instance.close.assert_called_once()
-        assert dhruva.cli._server_instance is None
+        assert druva.cli._server_instance is None
 
-    def test_admin_command_requires_ipython(self, runner: CliRunner, temp_settings: DhruvaSettings):
+    def test_admin_command_requires_ipython(self, runner: CliRunner, temp_settings: DruvaSettings):
         """Test admin command (requires IPython)."""
         app = create_cli()
 
-        with patch("dhruva.cli.DhruvaSettings.load", return_value=temp_settings):
+        with patch("druva.cli.DruvaSettings.load", return_value=temp_settings):
             # Should try to import IPython
             result = runner.invoke(app, ["admin"])
 
             # May fail if IPython not installed, but command should exist
             assert "admin" in result.stdout.lower() or result.exit_code != 0
 
-    def test_cli_error_handling(self, runner: CliRunner, temp_settings: DhruvaSettings):
+    def test_cli_error_handling(self, runner: CliRunner, temp_settings: DruvaSettings):
         """Test CLI handles errors gracefully."""
         app = create_cli()
 
         # Test with invalid storage path (should handle error)
-        invalid_settings = DhruvaSettings(
-            server_name="test-dhruva",
+        invalid_settings = DruvaSettings(
+            server_name="test-druva",
             storage={
-                "path": "/nonexistent/path/test.dhruva",  # Invalid path
+                "path": "/nonexistent/path/test.druva",  # Invalid path
                 "read_only": True,
             },
             cache_root=temp_settings.cache_root,
         )
 
-        with patch("dhruva.cli.DhruvaSettings.load", return_value=invalid_settings):
+        with patch("druva.cli.DruvaSettings.load", return_value=invalid_settings):
             result = runner.invoke(app, ["storage"])
 
             # Should handle error gracefully
@@ -354,7 +354,7 @@ class TestDhruvaCLI:
 
         result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
-        assert "Dhruva" in result.stdout
+        assert "Druva" in result.stdout
 
     def test_adapters_command_help(self, runner: CliRunner):
         """Test adapters command help."""
@@ -388,20 +388,20 @@ class TestCLIIntegration:
     """Integration tests for CLI with actual storage."""
 
     @pytest.fixture
-    def populated_storage(self, tmp_path: Path) -> DhruvaSettings:
+    def populated_storage(self, tmp_path: Path) -> DruvaSettings:
         """Create storage with sample data."""
-        settings = DhruvaSettings(
-            server_name="test-dhruva",
+        settings = DruvaSettings(
+            server_name="test-druva",
             storage={
-                "path": tmp_path / "test.dhruva",
+                "path": tmp_path / "test.druva",
                 "read_only": False,
             },
             cache_root=tmp_path / ".cache",
         )
 
-        from dhruva.core import Connection
-        from dhruva.storage.file import FileStorage
-        from dhruva.mcp.adapter_tools import AdapterRegistry
+        from druva.core import Connection
+        from druva.storage.file import FileStorage
+        from druva.mcp.adapter_tools import AdapterRegistry
 
         storage = FileStorage(str(settings.storage.path))
         conn = Connection(storage)
@@ -426,11 +426,11 @@ class TestCLIIntegration:
 
         return settings
 
-    def test_full_adapters_workflow(self, populated_storage: DhruvaSettings):
+    def test_full_adapters_workflow(self, populated_storage: DruvaSettings):
         """Test full adapters listing workflow."""
-        from dhruva.core import Connection
-        from dhruva.storage.file import FileStorage
-        from dhruva.mcp.adapter_tools import AdapterRegistry
+        from druva.core import Connection
+        from druva.storage.file import FileStorage
+        from druva.mcp.adapter_tools import AdapterRegistry
 
         storage = FileStorage(str(populated_storage.storage.path), readonly=True)
         conn = Connection(storage)
@@ -445,10 +445,10 @@ class TestCLIIntegration:
 
         storage.close()
 
-    def test_storage_info_with_data(self, populated_storage: DhruvaSettings):
+    def test_storage_info_with_data(self, populated_storage: DruvaSettings):
         """Test storage info with actual data."""
-        from dhruva.core import Connection
-        from dhruva.storage.file import FileStorage
+        from druva.core import Connection
+        from druva.storage.file import FileStorage
 
         storage = FileStorage(str(populated_storage.storage.path), readonly=True)
         conn = Connection(storage)

@@ -28,7 +28,7 @@ crackerjack    :8676  ✅ healthy (4.4% CPU, 15.4 MB RAM)
 session-buddy  :8678  ✅ healthy (71.1% CPU, 601.0 MB RAM)
 oneiric        :8681  ✅ healthy (4.6% CPU, 14.9 MB RAM)
 akosha         :8682  ✅ healthy (37.0% CPU, 601.0 MB RAM)
-dhruva         :8683  ✅ healthy (67.2% CPU, 602.3 MB RAM)
+druva         :8683  ✅ healthy (67.2% CPU, 602.3 MB RAM)
 mahavishnu     :8680  ✅ healthy (3.9% CPU, 15.1 MB RAM)
 excalidraw     :3032  ✅ healthy (3.9% CPU, 14.8 MB RAM)
 mermaid        :3033  ✅ healthy (9.6% CPU, 9.6 MB RAM)
@@ -109,7 +109,7 @@ mailgun        :3039  ✅ healthy (4.0% CPU, 14.7 MB RAM)
 ⏸️  grafana     - External service (don't manage)
 ⏸️  crackerjack - Quality checks (leave running)
 ⏸️  session-buddy - Session management (leave running)
-⏸️  dhruva      - Persistent storage (leave running)
+⏸️  druva      - Persistent storage (leave running)
 ⏸️  mahavishnu  - Workflow orchestration (leave running)
 ```
 
@@ -185,7 +185,7 @@ Your `~/.claude/settings.json` now includes these hooks:
 cat ~/.claude/state/mcp-health.json | jq '.'
 
 # Check specific server status
-cat ~/.claude/state/mcp-health.json | jq '.servers[] | select(.name == "dhruva")'
+cat ~/.claude/state/mcp-health.json | jq '.servers[] | select(.name == "druva")'
 
 # View unhealthy servers only
 cat ~/.claude/state/mcp-health.json | jq '.servers[] | select(.status != "healthy")'
@@ -226,7 +226,7 @@ The health monitor generates detailed status for each server:
 
 ```json
 {
-  "name": "dhruva",
+  "name": "druva",
   "port": "8683",
   "status": "healthy",
   "pid": "12761",
@@ -275,13 +275,13 @@ Your new MCP hooks work alongside your existing hooks:
 
 ```bash
 # Check if a specific server is running
-lsof -i :8683  # Check dhruva
+lsof -i :8683  # Check druva
 
 # Restart a stopped server
-cd /Users/les/Projects/dhruva && .venv/bin/python -m dhruva.cli start --force
+cd /Users/les/Projects/druva && .venv/bin/python -m druva.cli start --force
 
 # View detailed health logs
-cat ~/.claude/logs/mcp-health.log | grep -A 5 "dhruva"
+cat ~/.claude/logs/mcp-health.log | grep -A 5 "druva"
 ```
 
 ### Cleanup Issues

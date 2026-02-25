@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Run test coverage audit for Dhruva
+# Run test coverage audit for Druva
 
 set -e
 
 echo "========================================"
-echo "Dhruva Test Coverage Audit"
+echo "Druva Test Coverage Audit"
 echo "========================================"
 echo ""
 
-cd /Users/les/Projects/dhruva
+cd /Users/les/Projects/druva
 
 echo "Step 1: Cleaning up old coverage data..."
 rm -rf htmlcov/ .coverage coverage.json
@@ -17,7 +17,7 @@ echo ""
 
 echo "Step 2: Running pytest with coverage..."
 python -m pytest \
-    --cov=dhruva \
+    --cov=druva \
     --cov-report=term-missing:skip-covered \
     --cov-report=html:htmlcov \
     --cov-report=json \
@@ -58,7 +58,7 @@ print(f"{'='*60}")
 
 modules = []
 for filename, file_data in data['files'].items():
-    if filename.startswith('dhruva/'):
+    if filename.startswith('druva/'):
         summary = file_data['summary']
         percent = summary['percent_covered']
         covered = summary['covered_lines']

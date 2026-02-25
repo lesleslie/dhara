@@ -1,12 +1,12 @@
-# Dhruva Standard Mode Configuration
+# Druva Standard Mode Configuration
 # Full-featured production mode with configurable storage
 
 mode: standard
-server_name: "Dhruva (Production)"
+server_name: "Druva (Production)"
 
 # Storage configuration (configurable backend)
 storage:
-  path: /data/dhruva/production.dhruva
+  path: /data/druva/production.druva
   backend: file  # Options: file, sqlite, s3, gcs, azure
   read_only: false
 
@@ -30,7 +30,7 @@ logging:
 cloud_storage:
   enabled: true
   provider: s3  # Options: s3, gcs, azure
-  bucket: dhruva-production
+  bucket: druva-production
   prefix: backups/
   # Backup schedule (cron format)
   schedule: "0 2 * * *"  # Daily at 2 AM
@@ -42,16 +42,16 @@ cache:
 
 # S3-specific configuration (when backend=s3)
 s3:
-  bucket: dhruva-production
+  bucket: druva-production
   region: us-east-1
-  prefix: dhruva/
+  prefix: druva/
 
 # GCS-specific configuration (when backend=gcs)
 gcs:
-  bucket: dhruva-production
-  prefix: dhruva/
+  bucket: druva-production
+  prefix: druva/
 
 # Azure-specific configuration (when backend=azure)
 azure:
-  container: dhruva-production
-  prefix: dhruva/
+  container: druva-production
+  prefix: druva/

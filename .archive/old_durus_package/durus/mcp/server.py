@@ -22,16 +22,16 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-from dhruva.connection import Connection
-from dhruva.file_storage import FileStorage
-from dhruva.mcp.auth import (
+from druva.connection import Connection
+from druva.file_storage import FileStorage
+from druva.mcp.auth import (
     AuthContext,
     AuthMiddleware,
     Permission,
     Role,
     TokenAuth,
 )
-from dhruva.mcp.middleware import MCPMiddleware, MCPRequest, MCPResponse
+from druva.mcp.middleware import MCPMiddleware, MCPRequest, MCPResponse
 
 logger = logging.getLogger(__name__)
 
@@ -398,7 +398,7 @@ class DurusMCPServer:
             }
 
         # Import checkpoint functionality
-        from dhruva.backup.checkpoint import create_checkpoint
+        from druva.backup.checkpoint import create_checkpoint
 
         checkpoint_path = create_checkpoint(self.storage, name)
 
@@ -418,7 +418,7 @@ class DurusMCPServer:
             }
 
         # Import checkpoint functionality
-        from dhruva.backup.checkpoint import restore_checkpoint
+        from druva.backup.checkpoint import restore_checkpoint
 
         restore_checkpoint(self.storage, name)
 

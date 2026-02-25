@@ -6,8 +6,8 @@ import tempfile
 import pytest
 from cryptography.exceptions import InvalidSignature
 
-from dhruva.security.signing import ObjectSigner, SignedStorage, create_signer_from_env
-from dhruva.storage import MemoryStorage
+from druva.security.signing import ObjectSigner, SignedStorage, create_signer_from_env
+from druva.storage import MemoryStorage
 
 
 class TestObjectSigner:
@@ -156,15 +156,15 @@ class TestObjectSigner:
 
     def test_create_signer_from_env_not_set(self):
         """Test that env var must be set."""
-        if "DHRUVA_SIGNING_KEY" in os.environ:
-            del os.environ["DHRUVA_SIGNING_KEY"]
+        if "DRUVA_SIGNING_KEY" in os.environ:
+            del os.environ["DRUVA_SIGNING_KEY"]
 
         with pytest.raises(ValueError):
             create_signer_from_env()
 
     def test_create_signer_from_env_with_password(self):
         """Test creating signer from env var password."""
-        os.environ["DHRUVA_SIGNING_KEY"] = "test-password"
+        os.environ["DRUVA_SIGNING_KEY"] = "test-password"
 
         try:
             signer = create_signer_from_env()
@@ -172,7 +172,7 @@ class TestObjectSigner:
             signed = signer.sign(data)
             assert signer.verify(signed) == data
         finally:
-            del os.environ["DHRUVA_SIGNING_KEY"]
+            del os.environ["DRUVA_SIGNING_KEY"]
 
 
 class TestSignedStorage:

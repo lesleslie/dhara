@@ -84,8 +84,8 @@ def main():
     # monkey patch pickler class, must be done before importing durus stuff
     patch_pickler()
 
-    from dhruva.__main__ import get_storage_class
-    from dhruva.connection import Connection
+    from druva.__main__ import get_storage_class
+    from druva.connection import Connection
 
     storage_class = get_storage_class(outfile)
     storage = storage_class(outfile)

@@ -5,16 +5,16 @@ $Id$
 
 import pytest
 
-from dhruva.core import ROOT_OID
-from dhruva.core.persistent import ConnectionBase, Persistent
-from dhruva.serialize import (
+from druva.core import ROOT_OID
+from druva.core.persistent import ConnectionBase, Persistent
+from druva.serialize import (
     ObjectReader,
     ObjectWriter,
     pack_record,
     split_oids,
     unpack_record,
 )
-from dhruva.utils import as_bytes, join_bytes
+from druva.utils import as_bytes, join_bytes
 
 
 class Test:

@@ -8,8 +8,8 @@ import threading
 from unittest.mock import Mock, patch, MagicMock, mock_open
 from datetime import datetime, timedelta
 
-from dhruva.config.security import SecurityConfig, initialize_security, get_security_config
-from dhruva.security.oneiric_secrets import OneiricSecretsAdapter, SecretKey
+from druva.config.security import SecurityConfig, initialize_security, get_security_config
+from druva.security.oneiric_secrets import OneiricSecretsAdapter, SecretKey
 
 
 class TestSecurityConfig:
@@ -38,7 +38,7 @@ class TestSecurityConfig:
         with pytest.raises(ValueError, match="Minimum key length must be at least 32 bytes"):
             SecurityConfig(key_length_minimum_bytes=31)
 
-    @patch('dhruva.config.security.ONEIRIC_AVAILABLE', False)
+    @patch('druva.config.security.ONEIRIC_AVAILABLE', False)
     def test_config_with_fallback(self):
         """Test configuration initialization with fallback"""
         config = SecurityConfig(fallback_enabled=True)
@@ -48,7 +48,7 @@ class TestSecurityConfig:
             assert security_config.fallback_enabled is True
             assert security_config.fallback_signing_key is not None
 
-    @patch('dhruva.config.security.ONEIRIC_AVAILABLE', False)
+    @patch('druva.config.security.ONEIRIC_AVAILABLE', False)
     def test_config_without_fallback_fails(self):
         """Test configuration initialization fails without fallback and Oneiric"""
         config = SecurityConfig(fallback_enabled=False)
@@ -57,15 +57,15 @@ class TestSecurityConfig:
             with config:
                 pass
 
-    @patch('dhruva.security.oneiric_secrets.ONEIRIC_AVAILABLE', True)
-    @patch('dhruva.config.security.ONEIRIC_AVAILABLE', True)
+    @patch('druva.security.oneiric_secrets.ONEIRIC_AVAILABLE', True)
+    @patch('druva.config.security.ONEIRIC_AVAILABLE', True)
     @pytest.mark.skip(reason="Oneiric library not installed - complex mocking required")
     def test_signature_creation_and_verification_with_oneiric(self):
         """Test signature creation and verification with Oneiric"""
         # SKIPPED: Requires Oneiric library to be installed
         pass
 
-    @patch('dhruva.config.security.ONEIRIC_AVAILABLE', False)
+    @patch('druva.config.security.ONEIRIC_AVAILABLE', False)
     def test_signature_creation_and_verification_with_fallback(self):
         """Test signature creation and verification with fallback"""
         config = SecurityConfig(
@@ -87,7 +87,7 @@ class TestSecurityConfig:
             is_valid_wrong = security_config.verify_signature(wrong_message, signature, "sha256")
             assert is_valid_wrong is False
 
-    @patch('dhruva.config.security.ONEIRIC_AVAILABLE', False)
+    @patch('druva.config.security.ONEIRIC_AVAILABLE', False)
     def test_signature_with_invalid_algorithm(self):
         """Test signature creation with invalid algorithm"""
         config = SecurityConfig(
@@ -102,7 +102,7 @@ class TestSecurityConfig:
             with pytest.raises(ValueError, match="not in allowed algorithms"):
                 security_config.create_signature(message, "md5")
 
-    @patch('dhruva.config.security.ONEIRIC_AVAILABLE', False)
+    @patch('druva.config.security.ONEIRIC_AVAILABLE', False)
     def test_signature_with_invalid_message(self):
         """Test signature creation with invalid message type"""
         config = SecurityConfig(fallback_enabled=True)
@@ -112,7 +112,7 @@ class TestSecurityConfig:
             with pytest.raises(ValueError, match="Message must be bytes"):
                 security_config.create_signature("not bytes", "sha256")
 
-    @patch('dhruva.config.security.ONEIRIC_AVAILABLE', False)
+    @patch('druva.config.security.ONEIRIC_AVAILABLE', False)
     def test_security_status(self):
         """Test security status reporting"""
         config = SecurityConfig(fallback_enabled=True)
@@ -125,15 +125,15 @@ class TestSecurityConfig:
             assert status["fallback_mode"] is True
             assert status["secret_prefix"] == "durus/hmac"  # Default value from SecurityConfig
 
-    @patch('dhruva.security.oneiric_secrets.ONEIRIC_AVAILABLE', True)
-    @patch('dhruva.config.security.ONEIRIC_AVAILABLE', True)
+    @patch('druva.security.oneiric_secrets.ONEIRIC_AVAILABLE', True)
+    @patch('druva.config.security.ONEIRIC_AVAILABLE', True)
     @pytest.mark.skip(reason="Oneiric library not installed - complex mocking required")
     def test_key_rotation_with_mock(self):
         """Test key rotation with mock Oneiric"""
         # SKIPPED: Requires Oneiric library to be installed
         pass
 
-    @patch('dhruva.config.security.ONEIRIC_AVAILABLE', False)
+    @patch('druva.config.security.ONEIRIC_AVAILABLE', False)
     def test_key_rotation_fallback_mode(self):
         """Test key rotation fails in fallback mode"""
         config = SecurityConfig(fallback_enabled=True)
@@ -171,7 +171,7 @@ class TestSecretKey:
 
         assert expired_key.is_expired is True
 
-    @patch('dhruva.security.oneiric_secrets.secrets')
+    @patch('druva.security.oneiric_secrets.secrets')
     def test_key_rotation(self, mock_secrets):
         """Test key rotation"""
         # Mock secrets.token_bytes to return a predictable value
@@ -194,34 +194,34 @@ class TestSecretKey:
 class TestOneiricSecretsAdapter:
     """Test cases for OneiricSecretsAdapter class"""
 
-    @patch('dhruva.security.oneiric_secrets.ONEIRIC_AVAILABLE', False)
+    @patch('druva.security.oneiric_secrets.ONEIRIC_AVAILABLE', False)
     def test_adapter_initialization_without_oneiric(self):
         """Test adapter initialization without Oneiric"""
         with pytest.raises(RuntimeError, match="Oneiric secrets library is not available"):
             OneiricSecretsAdapter()
 
-    @patch('dhruva.security.oneiric_secrets.ONEIRIC_AVAILABLE', True)
-    @patch('dhruva.security.oneiric_secrets.secrets')
+    @patch('druva.security.oneiric_secrets.ONEIRIC_AVAILABLE', True)
+    @patch('druva.security.oneiric_secrets.secrets')
     def test_adapter_initialization_with_mock(self, mock_secrets):
         """Test adapter initialization with mock Oneiric"""
         # Setup mocks - need to mock the secrets module completely
         mock_secrets.get.return_value = b"test_key"
         mock_secrets.get.side_effect = lambda key: {
-            "dhruva/hmac/signing_key": b"test_key",
-            "dhruva/hmac/signing_key_created": datetime.utcnow().isoformat(),
-            "dhruva/hmac/signing_key_expires": (datetime.utcnow() + timedelta(days=90)).isoformat()
+            "druva/hmac/signing_key": b"test_key",
+            "druva/hmac/signing_key_created": datetime.utcnow().isoformat(),
+            "druva/hmac/signing_key_expires": (datetime.utcnow() + timedelta(days=90)).isoformat()
         }.get(key, "")
 
-        mock_secrets.list.return_value = ["dhruva/hmac/signing_key"]
+        mock_secrets.list.return_value = ["druva/hmac/signing_key"]
         mock_secrets.SecretNotFoundError = Exception
 
         # Patch OneiricSecretsAdapter to bypass __init__
-        with patch('dhruva.security.oneiric_secrets.OneiricSecretsAdapter.__init__', return_value=None):
-            adapter = OneiricSecretsAdapter.__new__(OneiricSecretsAdapter, "dhruva/hmac")
-            adapter.secret_prefix = "dhruva/hmac"
+        with patch('druva.security.oneiric_secrets.OneiricSecretsAdapter.__init__', return_value=None):
+            adapter = OneiricSecretsAdapter.__new__(OneiricSecretsAdapter, "druva/hmac")
+            adapter.secret_prefix = "druva/hmac"
             adapter._initialized = True
 
-        assert adapter.secret_prefix == "dhruva/hmac"
+        assert adapter.secret_prefix == "druva/hmac"
         assert adapter._initialized is True
 
 
@@ -242,8 +242,8 @@ class TestGlobalFunctions:
     def test_get_security_config_without_initialization(self):
         """Test getting config without initialization"""
         # Reset global config
-        import dhruva.config.security
-        dhruva.config.security._global_config = None
+        import druva.config.security
+        druva.config.security._global_config = None
 
         with pytest.raises(RuntimeError, match="No global security configuration has been set"):
             get_security_config()
@@ -252,15 +252,15 @@ class TestGlobalFunctions:
 class TestThreadSafety:
     """Test cases for thread safety"""
 
-    @patch('dhruva.security.oneiric_secrets.ONEIRIC_AVAILABLE', True)
-    @patch('dhruva.config.security.ONEIRIC_AVAILABLE', True)
+    @patch('druva.security.oneiric_secrets.ONEIRIC_AVAILABLE', True)
+    @patch('druva.config.security.ONEIRIC_AVAILABLE', True)
     @pytest.mark.skip(reason="Oneiric library not installed - complex mocking required")
     def test_concurrent_signature_creation(self):
         """Test concurrent signature creation"""
         # SKIPPED: Requires Oneiric library to be installed
         pass
 
-    @patch('dhruva.config.security.ONEIRIC_AVAILABLE', False)
+    @patch('druva.config.security.ONEIRIC_AVAILABLE', False)
     def test_concurrent_signature_fallback(self):
         """Test concurrent signature creation with fallback"""
         config = SecurityConfig(fallback_enabled=True)
@@ -291,7 +291,7 @@ class TestThreadSafety:
         assert len(results) == 5
 
 
-@patch('dhruva.config.security.ONEIRIC_AVAILABLE', False)
+@patch('druva.config.security.ONEIRIC_AVAILABLE', False)
 def test_security_integration_fallback():
     """Integration test for security components with fallback"""
     config = SecurityConfig(

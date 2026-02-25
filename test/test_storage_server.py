@@ -6,9 +6,9 @@ $Id$
 
 from random import choice
 
-from dhruva.storage.file import TempFileStorage
-from dhruva.storage_server import StorageServer
-from dhruva.utils import as_bytes, read
+from druva.storage.file import TempFileStorage
+from druva.storage_server import StorageServer
+from druva.utils import as_bytes, read
 
 
 class Test:

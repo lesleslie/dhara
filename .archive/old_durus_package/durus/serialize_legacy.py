@@ -10,8 +10,8 @@ from types import MethodType
 from zlib import compress, decompress
 from zlib import error as zlib_error
 
-from dhruva.core.persistent import GHOST, call_if_persistent
-from dhruva.utils import (
+from druva.core.persistent import GHOST, call_if_persistent
+from druva.utils import (
     BytesIO,
     Pickler,
     Unpickler,
@@ -24,7 +24,7 @@ from dhruva.utils import (
 )
 
 try:
-    from dhruva._persistent import _setattribute
+    from druva._persistent import _setattribute
 except ImportError:
     _setattribute = object.__setattr__
 

@@ -4,6 +4,6 @@ Redirects imports to new location (durus.core.connection)
 for backward compatibility with pickled data from Durus 4.x.
 """
 
-from dhruva.core.connection import *
+from druva.core.connection import *
 
 __all__ = ['Connection', 'ROOT_OID']

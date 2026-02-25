@@ -5,7 +5,7 @@ $Id$
 
 import collections.abc
 
-from dhruva.core.persistent import PersistentObject
+from druva.core.persistent import PersistentObject
 
 
 class PersistentSet(PersistentObject, collections.abc.MutableSet):

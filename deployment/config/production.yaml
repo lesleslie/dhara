@@ -1,6 +1,6 @@
-# dhruva 5.0 Production Configuration
+# druva 5.0 Production Configuration
 # This file demonstrates Oneiric integration with config/loader.py
-# Usage: Set DHRUVA_CONFIG=/path/to/this/file.yaml environment variable
+# Usage: Set DRUVA_CONFIG=/path/to/this/file.yaml environment variable
 
 # Storage Configuration
 storage:
@@ -8,7 +8,7 @@ storage:
   backend: file
 
   # Storage file path (required for file/sqlite backends)
-  path: /data/dhruva.dhruva
+  path: /data/druva.druva
 
   # Client storage settings (for backend='client')
   host: localhost
@@ -44,7 +44,7 @@ connection:
 # Debug mode (set to false in production)
 debug_mode: false
 
-# Server-specific settings (used when running dhruva -s)
+# Server-specific settings (used when running druva -s)
 server:
   # Host to listen on (0.0.0.0 for all interfaces)
   host: 0.0.0.0
@@ -63,7 +63,7 @@ server:
     level: 20
 
     # Log file path (empty for stderr/stdout)
-    file: /var/log/dhruva/dhruva.log
+    file: /var/log/druva/druva.log
 
     # Log rotation (if using external log rotator)
     max_size_mb: 100
@@ -138,7 +138,7 @@ security:
     # Token-based authentication settings
     token:
       # Path to tokens file (JSON format)
-      tokens_file: /etc/dhruva/tokens.json
+      tokens_file: /etc/druva/tokens.json
 
       # Require authentication for all operations
       require_auth: true
@@ -152,7 +152,7 @@ security:
     # HMAC-based authentication settings
     hmac:
       # Path to secrets file (JSON format)
-      secrets_file: /etc/dhruva/hmac_secrets.json
+      secrets_file: /etc/druva/hmac_secrets.json
 
       # Require authentication for all operations
       require_auth: true
@@ -163,7 +163,7 @@ security:
     # Environment-based authentication (development only)
     environment:
       # Environment variable name
-      env_var: DHRUVA_AUTH_TOKEN
+      env_var: DRUVA_AUTH_TOKEN
 
       # Require authentication
       require_auth: false
@@ -177,10 +177,10 @@ security:
       enabled: false
 
       # CA certificate path
-      ca_cert: /etc/dhruva/ca.crt
+      ca_cert: /etc/druva/ca.crt
 
       # Client certificate directory
-      client_certs_dir: /etc/dhruva/client_certs
+      client_certs_dir: /etc/druva/client_certs
 
   # Authorization settings
   authorization:
@@ -215,13 +215,13 @@ security:
 
       # Tool-to-permission mapping
       tool_permissions:
-        dhruva_connect: read
-        dhruva_get: read
-        dhruva_set: write
-        dhruva_list: list
-        dhruva_delete: delete
-        dhruva_checkpoint: checkpoint
-        dhruva_restore_checkpoint: restore
+        druva_connect: read
+        druva_get: read
+        druva_set: write
+        druva_list: list
+        druva_delete: delete
+        druva_checkpoint: checkpoint
+        druva_restore_checkpoint: restore
 
         oneiric_register_adapter: write
         oneiric_get_adapter: read
@@ -234,7 +234,7 @@ security:
     enabled: true
 
     # Audit log file
-    file: /var/log/dhruva/audit.log
+    file: /var/log/druva/audit.log
 
     # Log authentication events
     log_auth_events: true
@@ -250,19 +250,19 @@ security:
 
 # MCP Server Configuration
 mcp:
-  # dhruva MCP Server
-  dhruva_server:
+  # druva MCP Server
+  druva_server:
     # Enable server
     enabled: true
 
     # Server name
-    name: "dhruva-mcp-server"
+    name: "druva-mcp-server"
 
     # Server version
     version: "5.0.0"
 
     # Description
-    description: "dhruva persistent object database MCP server"
+    description: "druva persistent object database MCP server"
 
     # Host to bind to
     host: 0.0.0.0

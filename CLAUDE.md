@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-dhruva is a modern persistent object system for Python - essentially a noSQL database with ACID properties (Atomicity, Consistency, Isolation, Durability). It provides transactional persistence for Python objects through a client/server model optimized for read-heavy workloads with aggressive caching.
+druva is a modern persistent object system for Python - essentially a noSQL database with ACID properties (Atomicity, Consistency, Isolation, Durability). It provides transactional persistence for Python objects through a client/server model optimized for read-heavy workloads with aggressive caching.
 
 **Key Modernization (v5.0):**
 
@@ -39,7 +39,7 @@ pytest
 pytest test/test_connection.py
 
 # Run with coverage
-pytest --cov=dhruva --cov-report=html
+pytest --cov=druva --cov-report=html
 
 # Run by markers
 pytest -m unit              # Unit tests only
@@ -71,7 +71,7 @@ python -m crackerjack format --fix
 
 ### Building C Extension
 
-The project includes a C extension (`dhruva/_persistent.c`) for CPython:
+The project includes a C extension (`druva/_persistent.c`) for CPython:
 
 ```bash
 # Build the extension
@@ -84,38 +84,38 @@ On PyPy, the pure Python implementation is used automatically.
 
 ```bash
 # Start storage server (uses temporary file by default)
-dhruva -s
+druva -s
 
 # Start server with specific file
-dhruva -s --file test.dhruva
+druva -s --file test.druva
 
 # Start server on custom port
-dhruva -s --port 2973
+druva -s --port 2973
 
 # Connect to server (interactive console)
-dhruva -c
+druva -c
 
 # Connect to server with specific port
-dhruva -c --port 2973
+druva -c --port 2973
 
 # Open file directly (no server)
-dhruva -c --file test.dhruva
+druva -c --file test.druva
 
 # Stop server
-dhruva -s --stop
+druva -s --stop
 
 # Pack storage (garbage collection)
-dhruva -p --file test.dhruva
+druva -p --file test.druva
 ```
 
 ## Architecture
 
 ### Modern Package Structure
 
-dhruva 5.0 uses a layered architecture with clear separation of concerns:
+druva 5.0 uses a layered architecture with clear separation of concerns:
 
 ```
-dhruva/
+druva/
 ├── __init__.py                   # Public API exports
 ├── __main__.py                   # CLI entry point
 │
@@ -164,34 +164,34 @@ dhruva/
 
 ### Core Components
 
-**Connection Layer** (`dhruva/core/connection.py`):
+**Connection Layer** (`druva/core/connection.py`):
 
 - Manages object cache (LRU with weak references)
 - Transaction management via `commit()` and `abort()`
 - Default cache size: 10,000 objects (configurable)
 - Handles object state transitions (GHOST, SAVED, UNSAVED)
 
-**Persistent Layer** (`dhruva/core/persistent.py`):
+**Persistent Layer** (`druva/core/persistent.py`):
 
 - `Persistent`: Base class using `__dict__` for state
 - Three object states: `UNSAVED`, `SAVED`, `GHOST` (unloaded)
 - C extension (`_persistent.c`) provides fast implementation on CPython
 - Automatic change tracking for attributes
 
-**Storage Backends** (`dhruva/storage/`):
+**Storage Backends** (`druva/storage/`):
 
 - `FileStorage`: Default, append-only journal with on-disk index
 - `SqliteStorage`: SQLite-based storage
 - `ClientStorage`: Network client for storage server
 - `MemoryStorage`: In-memory storage for testing
 
-**Serialization** (`dhruva/serialize/`):
+**Serialization** (`druva/serialize/`):
 
 - `MsgspecSerializer`: Default (fast, type-safe, secure)
 - `PickleSerializer`: For backward compatibility
 - `DillSerializer`: Extended capability (lambdas, nested functions)
 
-**Persistent Collections** (`dhruva/collections/`):
+**Persistent Collections** (`druva/collections/`):
 
 - `PersistentDict`: Dict-like with automatic change tracking
 - `PersistentList`: List-like container
@@ -200,7 +200,7 @@ dhruva/
 
 ### Storage Server
 
-**StorageServer** (`dhruva/server/server.py`):
+**StorageServer** (`druva/server/server.py`):
 
 - Multi-client server with concurrent read handling
 - Single-writer transaction serialization
@@ -211,7 +211,7 @@ dhruva/
 
 ### TLS/SSL Security
 
-dhruva 5.0+ includes comprehensive TLS/SSL support for securing client-server communication over untrusted networks.
+druva 5.0+ includes comprehensive TLS/SSL support for securing client-server communication over untrusted networks.
 
 **Features:**
 
@@ -225,52 +225,52 @@ dhruva 5.0+ includes comprehensive TLS/SSL support for securing client-server co
 
 ```bash
 # Server TLS
-export DHRUVA_TLS_CERTFILE=/path/to/server.crt
-export DHRUVA_TLS_KEYFILE=/path/to/server.key
-export DHRUVA_TLS_CAFILE=/path/to/ca.crt  # Optional, for mutual TLS
+export DRUVA_TLS_CERTFILE=/path/to/server.crt
+export DRUVA_TLS_KEYFILE=/path/to/server.key
+export DRUVA_TLS_CAFILE=/path/to/ca.crt  # Optional, for mutual TLS
 
 # Client TLS
-export DHRUVA_TLS_CAFILE=/path/to/ca.crt  # Required for server verification
-export DHRUVA_TLS_CLIENT_CERTFILE=/path/to/client.crt  # Optional, mutual TLS
-export DHRUVA_TLS_CLIENT_KEYFILE=/path/to/client.key    # Required with client cert
-export DHRUVA_TLS_VERIFY_MODE=required  # none, optional, or required (default)
-export DHRUVA_TLS_VERSION=1.3  # Minimum TLS version: 1.2 or 1.3 (default)
+export DRUVA_TLS_CAFILE=/path/to/ca.crt  # Required for server verification
+export DRUVA_TLS_CLIENT_CERTFILE=/path/to/client.crt  # Optional, mutual TLS
+export DRUVA_TLS_CLIENT_KEYFILE=/path/to/client.key    # Required with client cert
+export DRUVA_TLS_VERIFY_MODE=required  # none, optional, or required (default)
+export DRUVA_TLS_VERSION=1.3  # Minimum TLS version: 1.2 or 1.3 (default)
 ```
 
 **Command-Line Usage:**
 
 ```bash
 # Generate self-signed certificate for testing
-dhruva -s --generate-tls-cert localhost
+druva -s --generate-tls-cert localhost
 
 # Start server with TLS
-dhruva -s --tls-certfile server.crt --tls-keyfile server.key
+druva -s --tls-certfile server.crt --tls-keyfile server.key
 
 # Connect with TLS (server verification)
-dhruva -c --host localhost --tls-cafile server.crt
+druva -c --host localhost --tls-cafile server.crt
 
 # Connect with mutual TLS
-dhruva -c --host localhost \
+druva -c --host localhost \
   --tls-cafile server.crt \
   --tls-certfile client.crt \
   --tls-keyfile client.key
 
 # Pack storage with TLS
-dhruva -p --host localhost --tls-cafile server.crt
+druva -p --host localhost --tls-cafile server.crt
 ```
 
 **Programmatic Usage:**
 
 ```python
-from dhruva import Connection
-from dhruva.storage import ClientStorage
-from dhruva.security.tls import TLSConfig
+from druva import Connection
+from druva.storage import ClientStorage
+from druva.security.tls import TLSConfig
 
 # Server
-from dhruva.server.server import StorageServer
-from dhruva.storage import FileStorage
+from druva.server.server import StorageServer
+from druva.storage import FileStorage
 
-storage = FileStorage("data.dhruva")
+storage = FileStorage("data.druva")
 tls_config = TLSConfig(
     certfile="server.crt",
     keyfile="server.key",
@@ -294,14 +294,14 @@ connection = Connection(storage)
 1. **Production Deployment:**
 
    - Use certificates from a trusted CA (Let's Encrypt, commercial CA)
-   - Enable certificate verification (`DHRUVA_TLS_VERIFY_MODE=required`)
-   - Use TLS 1.3 or higher (`DHRUVA_TLS_VERSION=1.3`)
+   - Enable certificate verification (`DRUVA_TLS_VERIFY_MODE=required`)
+   - Use TLS 1.3 or higher (`DRUVA_TLS_VERSION=1.3`)
    - Implement mutual TLS for sensitive environments
 
 1. **Testing/Development:**
 
    - Use `--generate-tls-cert` for quick self-signed certificates
-   - Set `DHRUVA_TLS_VERIFY_MODE=none` only for testing
+   - Set `DRUVA_TLS_VERIFY_MODE=none` only for testing
    - Never disable verification in production
 
 1. **Certificate Management:**
@@ -343,7 +343,7 @@ Accessing attributes on GHOST objects triggers automatic state loading via the C
 When using regular Python containers (dict, list) as attributes of Persistent objects, changes are NOT automatically tracked. You must call `_p_note_change()`:
 
 ```python
-from dhruva import Persistent
+from druva import Persistent
 
 class MyObject(Persistent):
     def __init__(self):
@@ -358,7 +358,7 @@ Alternatively, use `PersistentDict`, `PersistentList`, or `PersistentSet` which 
 
 ### B-Tree Implementation
 
-The `BTree` class (in `dhruva/collections/btree.py`) implements a B-tree data structure:
+The `BTree` class (in `druva/collections/btree.py`) implements a B-tree data structure:
 
 - Minimum degree (t) = 2
 - Supports `collections.abc.MutableMapping` interface
@@ -376,7 +376,7 @@ The `BTree` class (in `dhruva/collections/btree.py`) implements a B-tree data st
 
 ### C Extension vs Pure Python
 
-- CPython: Uses `dhruva/_persistent.c` for `PersistentBase` and `ConnectionBase`
+- CPython: Uses `druva/_persistent.c` for `PersistentBase` and `ConnectionBase`
 - PyPy: Uses pure Python fallback (C extensions are slower on PyPy)
 - The C extension optimizes the hot path: `__getattribute__`, `__setattr__`, ghost state transitions
 
@@ -392,7 +392,7 @@ The `BTree` class (in `dhruva/collections/btree.py`) implements a B-tree data st
 ### Creating Persistent Classes
 
 ```python
-from dhruva import Persistent, Connection, FileStorage
+from druva import Persistent, Connection, FileStorage
 
 class User(Persistent):
     def __init__(self, name: str):
@@ -400,7 +400,7 @@ class User(Persistent):
         self.email = None
 
 # Usage
-connection = Connection(FileStorage("users.dhruva"))
+connection = Connection(FileStorage("users.druva"))
 root = connection.get_root()
 root["users"] = {}
 root["users"]["john"] = User("John Doe")
@@ -410,21 +410,21 @@ connection.commit()
 ### Working with Direct File Access
 
 ```python
-from dhruva import Connection
+from druva import Connection
 
 # Connection can take a string path directly
-connection = Connection("mydata.dhruva")
+connection = Connection("mydata.druva")
 root = connection.get_root()
 ```
 
 ### Using Different Storage Backends
 
 ```python
-from dhruva import Connection
-from dhruva.storage import FileStorage, SqliteStorage, ClientStorage
+from druva import Connection
+from druva.storage import FileStorage, SqliteStorage, ClientStorage
 
 # File storage (default)
-connection = Connection(FileStorage("data.dhruva"))
+connection = Connection(FileStorage("data.druva"))
 
 # SQLite storage
 connection = Connection(SqliteStorage("data.db"))
@@ -440,15 +440,15 @@ connection = Connection(ClientStorage(address=("localhost", 2972)))
 connection.pack()
 
 # Server-side automatic GC
-dhruva -s --gcbytes 1000000  # Pack after 1MB of changes
+druva -s --gcbytes 1000000  # Pack after 1MB of changes
 ```
 
 ### Using Persistent Collections
 
 ```python
-from dhruva import Connection, PersistentDict, PersistentList
+from druva import Connection, PersistentDict, PersistentList
 
-connection = Connection("data.dhruva")
+connection = Connection("data.druva")
 root = connection.get_root()
 
 # These handle change tracking automatically
@@ -467,7 +467,7 @@ Tests use pytest with shared fixtures from `test/conftest.py`:
 
 ```python
 import pytest
-from dhruva import Connection, Persistent
+from druva import Connection, Persistent
 
 def test_something(connection):
     """Uses memory_storage fixture by default."""
@@ -503,7 +503,7 @@ Tests use pytest markers:
 
 ## Configuration
 
-dhruva uses Oneiric for configuration management. Configuration is loaded from:
+druva uses Oneiric for configuration management. Configuration is loaded from:
 
 1. Environment variables
 1. Configuration files (YAML/TOML)
@@ -512,10 +512,10 @@ dhruva uses Oneiric for configuration management. Configuration is loaded from:
 ### Example Configuration
 
 ```yaml
-# dhruva.yaml
+# druva.yaml
 storage:
   backend: file
-  path: /var/lib/dhruva/data.dhruva
+  path: /var/lib/druva/data.druva
 
 server:
   host: localhost
@@ -540,11 +540,11 @@ logging:
 
 ### Secret Management
 
-dhruva integrates with Oneiric for secret management:
+druva integrates with Oneiric for secret management:
 
 - Secrets are loaded from environment variables or secret stores
 - Never hardcode secrets in configuration files
-- Use `dhruva.config.security` for secure configuration handling
+- Use `druva.config.security` for secure configuration handling
 
 ### Network Security
 
@@ -556,12 +556,12 @@ When using ClientStorage:
 
 ## MCP Integration
 
-dhruva includes an MCP (Model Context Protocol) server for AI/agent workflows:
+druva includes an MCP (Model Context Protocol) server for AI/agent workflows:
 
 ```python
-from dhruva.mcp import create_server
+from druva.mcp import create_server
 
-server = create_server(config="dhruva.yaml")
+server = create_server(config="druva.yaml")
 server.run()
 ```
 
@@ -574,10 +574,10 @@ The MCP server provides:
 
 ## Migration from Durus 4.x
 
-Key changes in dhruva 5.0:
+Key changes in druva 5.0:
 
-1. **Package structure**: Flat `durus/` → Layered `dhruva/` with subpackages
-1. **Imports**: `from durus.X` → `from dhruva.X` or `from dhruva.subpackage.X`
+1. **Package structure**: Flat `durus/` → Layered `druva/` with subpackages
+1. **Imports**: `from durus.X` → `from druva.X` or `from druva.subpackage.X`
 1. **Serialization**: Pickle-only → msgspec default (pickle still available)
 1. **Configuration**: No config → Oneiric-based configuration
 1. **Testing**: sancho.utest → pytest
@@ -591,13 +591,13 @@ from durus.connection import Connection
 from durus.file_storage import FileStorage
 from durus.persistent import Persistent
 
-# New (dhruva 5.0)
-from dhruva import Connection, Persistent
-from dhruva.storage import FileStorage
+# New (druva 5.0)
+from druva import Connection, Persistent
+from druva.storage import FileStorage
 
 # Or more explicit
-from dhruva.core import Connection, Persistent
-from dhruva.storage.file import FileStorage
+from druva.core import Connection, Persistent
+from druva.storage.file import FileStorage
 ```
 
 ## Troubleshooting
@@ -629,8 +629,8 @@ except ConflictError:
 **Performance**: Use msgspec serialization for better performance:
 
 ```python
-from dhruva.serialize import MsgspecSerializer
-storage = FileStorage("data.dhruva", serializer=MsgspecSerializer())
+from druva.serialize import MsgspecSerializer
+storage = FileStorage("data.druva", serializer=MsgspecSerializer())
 ```
 
 <!-- CRACKERJACK_START -->

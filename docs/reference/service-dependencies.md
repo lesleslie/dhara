@@ -1,14 +1,14 @@
-# Dhruva Service Dependencies
+# Druva Service Dependencies
 
 ## Overview
 
-Dhruva is a **standalone persistence service** that can operate independently or integrate with the broader Mahavishnu ecosystem.
+Druva is a **standalone persistence service** that can operate independently or integrate with the broader Mahavishnu ecosystem.
 
 ## Required Services
 
 **None**
 
-Dhruva is a self-contained persistence system that requires no external services for basic operation:
+Druva is a self-contained persistence system that requires no external services for basic operation:
 
 - No database server required (uses file-based storage by default)
 - No message broker required
@@ -20,14 +20,14 @@ Dhruva is a self-contained persistence system that requires no external services
 
 **Role**: Storage backend for orchestration workflows
 
-Dhruva can serve as the persistence layer for Mahavishnu orchestration workflows:
+Druva can serve as the persistence layer for Mahavishnu orchestration workflows:
 
 ```python
 # In Mahavishnu configuration
-from dhruva import Connection, FileStorage
+from druva import Connection, FileStorage
 
-# Dhruva provides persistent storage for workflow state
-connection = Connection(FileStorage("mahavishnu_workflows.dhruva"))
+# Druva provides persistent storage for workflow state
+connection = Connection(FileStorage("mahavishnu_workflows.druva"))
 root = connection.get_root()
 root["workflows"] = {}
 ```
@@ -41,19 +41,19 @@ root["workflows"] = {}
 
 ### Storage Backends
 
-Dhruva supports multiple storage backends:
+Druva supports multiple storage backends:
 
 **File Storage (Default)**
 
 ```bash
 # No external service needed
-dhruva -s --file data.dhruva
+druva -s --file data.druva
 ```
 
 **SQLite Storage**
 
 ```python
-from dhruva.storage import SqliteStorage
+from druva.storage import SqliteStorage
 # Uses SQLite3 (included in Python standard library)
 connection = Connection(SqliteStorage("data.db"))
 ```
@@ -62,10 +62,10 @@ connection = Connection(SqliteStorage("data.db"))
 
 ```bash
 # Server (standalone)
-dhruva -s --port 2973
+druva -s --port 2973
 
 # Client (connects to server)
-from dhruva.storage import ClientStorage
+from druva.storage import ClientStorage
 connection = Connection(ClientStorage(address=("localhost", 2973)))
 ```
 
@@ -73,12 +73,12 @@ connection = Connection(ClientStorage(address=("localhost", 2973)))
 
 **Role**: AI/agent workflow integration
 
-Dhruva includes an MCP server for modern AI/agent workflows:
+Druva includes an MCP server for modern AI/agent workflows:
 
 ```python
-from dhruva.mcp import create_server
+from druva.mcp import create_server
 
-server = create_server(config="dhruva.yaml")
+server = create_server(config="druva.yaml")
 server.run()
 ```
 
@@ -97,13 +97,13 @@ server.run()
 
 **Role**: Configuration and logging management
 
-Dhruva uses Oneiric for configuration management:
+Druva uses Oneiric for configuration management:
 
 ```yaml
-# dhruva.yaml
+# druva.yaml
 storage:
   backend: file
-  path: /var/lib/dhruva/data.dhruva
+  path: /var/lib/druva/data.druva
 
 server:
   host: localhost
@@ -127,7 +127,7 @@ logging:
 
 **Role**: Secure credential storage
 
-Dhruva integrates with Oneiric for secret management:
+Druva integrates with Oneiric for secret management:
 
 **Supported Backends**:
 
@@ -138,18 +138,18 @@ Dhruva integrates with Oneiric for secret management:
 
 ```bash
 # Environment variables (recommended)
-export DHRUVA_SECRET_KEY="your-secret-key"
-export DHRUVA_DB_PASSWORD="database-password"
+export DRUVA_SECRET_KEY="your-secret-key"
+export DRUVA_DB_PASSWORD="database-password"
 ```
 
 ### Logging Infrastructure
 
 **Role**: Structured logging and monitoring
 
-Dhruva uses structured logging via Oneiric:
+Druva uses structured logging via Oneiric:
 
 ```yaml
-# dhruva.yaml
+# druva.yaml
 logging:
   level: INFO
   format: structured
@@ -157,7 +157,7 @@ logging:
     - type: console
       format: json
     - type: file
-      path: /var/log/dhruva/dhruva.log
+      path: /var/log/druva/druva.log
 ```
 
 **Optional Integrations**:
@@ -174,7 +174,7 @@ logging:
 
 ```bash
 # Direct file access (no network)
-dhruva -c --file data.dhruva
+druva -c --file data.druva
 ```
 
 ### Client/Server Mode
@@ -186,10 +186,10 @@ dhruva -c --file data.dhruva
 
 ```bash
 # TCP server
-dhruva -s --host 0.0.0.0 --port 2973
+druva -s --host 0.0.0.0 --port 2973
 
 # Unix domain socket
-dhruva -s --socket /var/run/dhruva.sock
+druva -s --socket /var/run/druva.sock
 ```
 
 **Firewall considerations**:
@@ -249,8 +249,8 @@ python setup.py build_ext --inplace
 
 ```bash
 # Simple standalone deployment
-pip install dhruva
-dhruva -s --file /var/lib/dhruva/data.dhruva
+pip install druva
+druva -s --file /var/lib/druva/data.druva
 ```
 
 ### Client/Server Deployment
@@ -263,10 +263,10 @@ dhruva -s --file /var/lib/dhruva/data.dhruva
 
 ```bash
 # Server
-dhruva -s --host 0.0.0.0 --port 2973
+druva -s --host 0.0.0.0 --port 2973
 
 # Client (on remote machine)
-from dhruva.storage import ClientStorage
+from druva.storage import ClientStorage
 connection = Connection(ClientStorage(address=("server.example.com", 2973)))
 ```
 
@@ -277,12 +277,12 @@ connection = Connection(ClientStorage(address=("server.example.com", 2973)))
 ```dockerfile
 FROM python:3.13
 
-RUN pip install dhruva
+RUN pip install druva
 
-VOLUME /var/lib/dhruva
+VOLUME /var/lib/druva
 EXPOSE 2972
 
-CMD ["dhruva", "-s", "--file", "/var/lib/dhruva/data.dhruva"]
+CMD ["druva", "-s", "--file", "/var/lib/druva/data.druva"]
 ```
 
 **Kubernetes example**:
@@ -291,26 +291,26 @@ CMD ["dhruva", "-s", "--file", "/var/lib/dhruva/data.dhruva"]
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: dhruva
+  name: druva
 spec:
-  serviceName: dhruva
+  serviceName: druva
   replicas: 1
   selector:
     matchLabels:
-      app: dhruva
+      app: druva
   template:
     metadata:
       labels:
-        app: dhruva
+        app: druva
     spec:
       containers:
-      - name: dhruva
-        image: dhruva:latest
+      - name: druva
+        image: druva:latest
         ports:
         - containerPort: 2972
         volumeMounts:
         - name: data
-          mountPath: /var/lib/dhruva
+          mountPath: /var/lib/druva
   volumeClaimTemplates:
   - metadata:
       name: data
@@ -336,18 +336,18 @@ spec:
 
 ## Dependency-Free Operation
 
-Dhruva is designed to operate with **zero external dependencies**:
+Druva is designed to operate with **zero external dependencies**:
 
 ```python
 # Complete standalone operation
-from dhruva import Connection, Persistent
+from druva import Connection, Persistent
 
 class User(Persistent):
     def __init__(self, name):
         self.name = name
 
 # No external services needed
-connection = Connection("users.dhruva")
+connection = Connection("users.druva")
 root = connection.get_root()
 root["users"] = {}
 root["users"]["alice"] = User("Alice")
@@ -356,7 +356,7 @@ connection.commit()
 
 ## Integration Benefits
 
-When integrated with the ecosystem, Dhruva provides:
+When integrated with the ecosystem, Druva provides:
 
 1. **For Mahavishnu**:
 
@@ -416,16 +416,16 @@ When integrated with the ecosystem, Dhruva provides:
 
 ## Backup and Recovery
 
-Dhruva supports various backup strategies:
+Druva supports various backup strategies:
 
 ### File Storage
 
 ```bash
 # Hot backup (safe to copy while running)
-cp data.dhruva data.dhruva.backup
+cp data.druva data.druva.backup
 
 # Pack before backup (removes garbage)
-dhruva -p --file data.dhruva
+druva -p --file data.druva
 ```
 
 ### Point-in-Time Recovery

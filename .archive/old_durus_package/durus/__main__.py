@@ -13,10 +13,10 @@ from pprint import pprint
 from time import sleep
 from types import ModuleType
 
-from dhruva.storage.client import ClientStorage
-from dhruva.core import Connection
-from dhruva.logger import direct_output, log, logger
-from dhruva.server.server import (
+from druva.storage.client import ClientStorage
+from druva.core import Connection
+from druva.logger import direct_output, log, logger
+from druva.server.server import (
     DEFAULT_GCBYTES,
     DEFAULT_HOST,
     DEFAULT_PORT,
@@ -24,7 +24,7 @@ from dhruva.server.server import (
     StorageServer,
     wait_for_server,
 )
-from dhruva.utils import int8_to_str, str_to_int8, write
+from druva.utils import int8_to_str, str_to_int8, write
 
 
 def configure_readline(namespace, history_path):
@@ -173,22 +173,22 @@ def client_main():
 def get_storage_class(file):
     """Return the corresponding storage class based on an existing file."""
     if not os.path.exists(file):
-        from dhruva.file_storage import FileStorage
+        from druva.file_storage import FileStorage
 
         return FileStorage
     fp = open(file, "rb")
     d = fp.read(20)
     fp.close()
     if d.startswith(b"DFS20"):
-        from dhruva.file_storage2 import FileStorage2
+        from druva.file_storage2 import FileStorage2
 
         return FileStorage2
     elif d.startswith(b"SQLite format "):
-        from dhruva.sqlite_storage import SqliteStorage
+        from druva.sqlite_storage import SqliteStorage
 
         return SqliteStorage
     elif d.startswith(b"SHELF-1"):
-        from dhruva.file_storage import FileStorage
+        from druva.file_storage import FileStorage
 
         return FileStorage
     else:
@@ -206,7 +206,7 @@ def get_storage(file, storage_class=None, **kwargs):
         storage_class = import_class(storage_class)
     else:
         if file is None:
-            from dhruva.file_storage import FileStorage
+            from druva.file_storage import FileStorage
 
             # passing file=None will create temporary storage
             storage_class = FileStorage

@@ -5,8 +5,8 @@ $Id$
 
 import sys
 
-from dhruva.file import File
-from dhruva.utils import (
+from druva.file import File
+from druva.utils import (
     IntArray,
     ShortRead,
     as_bytes,

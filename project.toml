@@ -1,4 +1,4 @@
-# Paketo Buildpack Configuration for dhruva
+# Paketo Buildpack Configuration for druva
 # https://paketo.io/docs/reference/configuration
 
 [project]
@@ -35,7 +35,7 @@ value = "true"
 
 [[build.env]]
 name = "BP_LIVE_RELOAD_INTEGRATION_FILES"
-value = "dhruva/**/*.py"
+value = "druva/**/*.py"
 
 # Runtime configuration
 [[build.env]]

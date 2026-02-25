@@ -12,11 +12,11 @@ from datetime import datetime
 from os.path import exists
 from time import sleep
 
-from dhruva.error import ConflictError, ReadConflictError
-from dhruva.logger import is_logging, log
-from dhruva.serialize.adapter import extract_class_name, split_oids
-from dhruva.server.socket import get_systemd_socket
-from dhruva.utils import (
+from druva.error import ConflictError, ReadConflictError
+from druva.logger import is_logging, log
+from druva.serialize.adapter import extract_class_name, split_oids
+from druva.server.socket import get_systemd_socket
+from druva.utils import (
     as_bytes,
     int4_to_str,
     join_bytes,

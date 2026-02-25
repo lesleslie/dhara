@@ -7,10 +7,10 @@ Provides persistent versions of Python built-in collections:
 - BTree: B-Tree implementation for large datasets
 """
 
-from dhruva.collections.dict import PersistentDict
-from dhruva.collections.list import PersistentList
-from dhruva.collections.set import PersistentSet
-from dhruva.collections.btree import BTree, BNode
+from druva.collections.dict import PersistentDict
+from druva.collections.list import PersistentList
+from druva.collections.set import PersistentSet
+from druva.collections.btree import BTree, BNode
 
 __all__ = [
     'PersistentDict',

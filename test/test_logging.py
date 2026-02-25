@@ -5,7 +5,7 @@ import logging
 from io import StringIO
 from contextlib import redirect_stderr
 
-from dhruva.logging import (
+from druva.logging import (
     get_logger,
     get_connection_logger,
     get_storage_logger,

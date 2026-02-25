@@ -9,8 +9,8 @@ from tempfile import mktemp
 
 import pytest
 
-from dhruva.file import File
-from dhruva.utils import as_bytes
+from druva.file import File
+from druva.utils import as_bytes
 
 
 class file test:

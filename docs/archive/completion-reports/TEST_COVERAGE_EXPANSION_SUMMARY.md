@@ -1,17 +1,17 @@
-# Dhruva Test Coverage Expansion - Implementation Summary
+# Druva Test Coverage Expansion - Implementation Summary
 
 ## Overview
 
-This document summarizes the test coverage expansion work for **Dhruva**, a persistent object database for Python with MCP server capabilities.
+This document summarizes the test coverage expansion work for **Druva**, a persistent object database for Python with MCP server capabilities.
 
 **Date:** 2025-02-09
 **Status:** Phase 2-4 Complete - Tests Ready for Execution
 
 ## Project Understanding
 
-### What is Dhruva?
+### What is Druva?
 
-Dhruva is a modern continuation of **Durus**, a persistent object system for Python with:
+Druva is a modern continuation of **Durus**, a persistent object system for Python with:
 - ACID transaction support
 - Client/server model for concurrent access
 - Multiple storage backends (FileStorage, SqliteStorage)
@@ -19,7 +19,7 @@ Dhruva is a modern continuation of **Durus**, a persistent object system for Pyt
 - MCP server for adapter distribution
 - Oneiric configuration integration
 
-**Key distinction:** Dhruva is NOT an "adapter curator" as initially mentioned. It's an **object database** that can store adapters, but its primary purpose is general-purpose persistence.
+**Key distinction:** Druva is NOT an "adapter curator" as initially mentioned. It's an **object database** that can store adapters, but its primary purpose is general-purpose persistence.
 
 ## Test Infrastructure Created
 
@@ -73,7 +73,7 @@ The existing `test/conftest.py` already provides:
 **Purpose:** Test FastMCP server implementation
 
 **Coverage:**
-- ✅ DhruvaMCPServer
+- ✅ DruvaMCPServer
   - Server initialization
   - Storage path expansion (~ handling)
   - Adapter registry integration
@@ -105,7 +105,7 @@ The existing `test/conftest.py` already provides:
   - Custom values
   - Constraint validation (1-100 versions)
 
-- ✅ DhruvaSettings model
+- ✅ DruvaSettings model
   - Default values
   - Custom storage config
   - Custom adapter config
@@ -153,7 +153,7 @@ The existing `test/conftest.py` already provides:
 
 ### 3. Supporting Files Created
 
-#### `DHRUVA_TEST_COVERAGE_PLAN.md`
+#### `DRUVA_TEST_COVERAGE_PLAN.md`
 Comprehensive test plan with:
 - Project structure analysis
 - Phase-by-phase implementation plan
@@ -212,7 +212,7 @@ New unit tests organized in proper location
 
 ### Run All Tests
 ```bash
-cd /Users/les/Projects/dhruva
+cd /Users/les/Projects/druva
 pytest test/unit/ -v
 ```
 
@@ -223,7 +223,7 @@ pytest test/unit/test_adapter_registry.py -v
 
 ### Run with Coverage
 ```bash
-pytest test/unit/ --cov=dhruva --cov-report=html
+pytest test/unit/ --cov=druva --cov-report=html
 open htmlcov/index.html
 ```
 
@@ -278,20 +278,20 @@ bash scripts/run_coverage_audit.sh
 ## File Locations
 
 ### Test Files
-- `/Users/les/Projects/dhruva/test/unit/test_adapter_registry.py` (730 lines)
-- `/Users/les/Projects/dhruva/test/unit/test_mcp_server.py` (335 lines)
-- `/Users/les/Projects/dhruva/test/unit/test_config.py` (370 lines)
-- `/Users/les/Projects/dhruva/test/unit/test_cli.py` (390 lines)
+- `/Users/les/Projects/druva/test/unit/test_adapter_registry.py` (730 lines)
+- `/Users/les/Projects/druva/test/unit/test_mcp_server.py` (335 lines)
+- `/Users/les/Projects/druva/test/unit/test_config.py` (370 lines)
+- `/Users/les/Projects/druva/test/unit/test_cli.py` (390 lines)
 
 ### Documentation
-- `/Users/les/Projects/dhruva/DHRUVA_TEST_COVERAGE_PLAN.md` (Plan)
-- `/Users/les/Projects/dhruva/TEST_COVERAGE_EXPANSION_SUMMARY.md` (This file)
+- `/Users/les/Projects/druva/DRUVA_TEST_COVERAGE_PLAN.md` (Plan)
+- `/Users/les/Projects/druva/TEST_COVERAGE_EXPANSION_SUMMARY.md` (This file)
 
 ### Scripts
-- `/Users/les/Projects/dhruva/scripts/run_coverage_audit.sh` (Audit script)
+- `/Users/les/Projects/druva/scripts/run_coverage_audit.sh` (Audit script)
 
 ### Fixtures
-- `/Users/les/Projects/dhruva/test/conftest.py` (Existing, no changes needed)
+- `/Users/les/Projects/druva/test/conftest.py` (Existing, no changes needed)
 
 ## Success Criteria
 
@@ -330,7 +330,7 @@ Based on test file sizes and coverage targets:
 
 ## Conclusion
 
-Comprehensive test infrastructure has been created for Dhruva's modern features:
+Comprehensive test infrastructure has been created for Druva's modern features:
 - ✅ Adapter distribution system (730 lines of tests)
 - ✅ MCP server with FastMCP (335 lines of tests)
 - ✅ Configuration management (370 lines of tests)

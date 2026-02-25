@@ -10,8 +10,8 @@ from os.path import exists
 
 import pytest
 
-from dhruva.core import Connection
-from dhruva.storage import FileStorage, MemoryStorage
+from druva.core import Connection
+from druva.storage import FileStorage, MemoryStorage
 
 
 @pytest.fixture
@@ -95,7 +95,7 @@ def msgspec_serializer():
             data = msgspec_serializer.serialize(obj)
             # test serialization
     """
-    from dhruva.serialize import MsgspecSerializer
+    from druva.serialize import MsgspecSerializer
     return MsgspecSerializer()
 
 
@@ -112,7 +112,7 @@ def fallback_serializer():
             data = fallback_serializer.serialize(obj)
             # test serialization with fallback
     """
-    from dhruva.serialize import FallbackSerializer
+    from druva.serialize import FallbackSerializer
     return FallbackSerializer()
 
 
@@ -125,7 +125,7 @@ def temp_storage_dir():
 
     Usage:
         def test_something(temp_storage_dir):
-            storage = FileStorage(f"{temp_storage_dir}/test.dhruva")
+            storage = FileStorage(f"{temp_storage_dir}/test.druva")
             # use storage
             # directory is automatically cleaned up
     """
@@ -196,7 +196,7 @@ def persistent_class():
             obj = persistent_class()
             # test persistent object
     """
-    from dhruva import Persistent
+    from druva import Persistent
 
     class TestObject(Persistent):
         def __init__(self, value):

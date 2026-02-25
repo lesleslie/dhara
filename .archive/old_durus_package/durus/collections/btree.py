@@ -7,7 +7,7 @@ import collections.abc
 from collections.abc import Iterator, MutableMapping
 from typing import Any, Self, TYPE_CHECKING
 
-from dhruva.persistent import PersistentObject
+from druva.persistent import PersistentObject
 
 if TYPE_CHECKING:
     pass

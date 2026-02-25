@@ -7,8 +7,8 @@ This module contains the fundamental persistence abstractions:
 - Cache: LRU cache for loaded objects
 """
 
-from dhruva.core.connection import Connection, ROOT_OID, ObjectDictionary, touch_every_reference
-from dhruva.core.persistent import Persistent, PersistentBase
+from druva.core.connection import Connection, ROOT_OID, ObjectDictionary, touch_every_reference
+from druva.core.persistent import Persistent, PersistentBase
 
 __all__ = [
     'Connection',

@@ -8,9 +8,9 @@ msgspec is a fast and safe serialization library that supports:
 """
 
 from msgspec import msgpack, json, to_builtins
-from dhruva.serialize.base import Serializer, DEFAULT_MAX_SIZE
+from druva.serialize.base import Serializer, DEFAULT_MAX_SIZE
 from typing import Any, Literal
-from dhruva.core.persistent import Persistent, _getattribute, _setattribute
+from druva.core.persistent import Persistent, _getattribute, _setattribute
 
 
 class MsgspecSerializer(Serializer):
