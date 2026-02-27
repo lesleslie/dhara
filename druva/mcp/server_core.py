@@ -8,13 +8,19 @@ Migration Notes:
 - Preserves existing security (Token, HMAC, mTLS) from auth module
 - Integrates with DruvaSettings from mcp-common
 - Adds adapter distribution tools via AdapterRegistry
+- Adds health check tools via mcp-common
 """
 
 from __future__ import annotations
 
+import time
 from typing import Any
 
 from fastmcp import FastMCP
+from mcp_common.health import (
+    DependencyConfig,
+    register_health_tools,
+)
 from oneiric.core.logging import get_logger
 
 from druva.core.config import DruvaSettings
@@ -79,8 +85,14 @@ class DruvaMCPServer:
         # Initialize adapter registry
         self.adapter_registry = AdapterRegistry(self.connection)
 
+        # Track server start time for health checks
+        self._start_time = time.time()
+
         # Register tools using FastMCP decorators
         self._register_tools()
+
+        # Register health check tools from mcp-common
+        self._register_health_tools()
 
         logger.info(
             f"Druva MCP Server initialized: {config.server_name} "
@@ -276,6 +288,46 @@ class DruvaMCPServer:
                 key=key,
                 provider=provider,
             )
+
+    def _register_health_tools(self) -> None:
+        """Register health check tools using mcp-common.
+
+        Adds standardized health check endpoints for:
+        - Liveness probes (is process running)
+        - Readiness probes (can accept work)
+        - Dependency health checking
+        """
+        # Default dependencies for Druva
+        dependencies = {
+            "session_buddy": DependencyConfig(
+                host="localhost",
+                port=8678,
+                required=False,  # Optional - for session context
+                timeout_seconds=10,
+            ),
+            "mahavishnu": DependencyConfig(
+                host="localhost",
+                port=8680,
+                required=False,  # Optional - for orchestration
+                timeout_seconds=10,
+            ),
+            "akosha": DependencyConfig(
+                host="localhost",
+                port=8682,
+                required=False,  # Optional - for cross-system intelligence
+                timeout_seconds=10,
+            ),
+        }
+
+        register_health_tools(
+            mcp=self.server,
+            service_name="druva",
+            version="0.1.0",
+            start_time=self._start_time,
+            dependencies=dependencies,
+        )
+
+        logger.info("Registered health check tools")
 
     def run(self, host: str = "127.0.0.1", port: int = 8683) -> None:
         """Run the MCP server (synchronous - manages its own event loop).
