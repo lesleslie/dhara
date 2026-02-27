@@ -1,5 +1,7 @@
 # Druva MCP Server Configuration
 
+server_name: "druva"
+
 storage:
   path: ~/.local/share/druva/druva.druva
   read_only: false
