@@ -336,11 +336,12 @@ class DruvaMCPServer:
             host: Host to bind to
             port: Port to bind to
         """
+        import asyncio
+
         logger.info(f"Starting Druva MCP server on {host}:{port}")
 
-        # FastMCP.run() is synchronous and manages its own event loop
-        # Use "streamable-http" transport for HTTP streaming at /mcp endpoint
-        self.server.run(transport="streamable-http", host=host, port=port, path="/mcp")
+        # FastMCP 3.x uses run_http_async() for HTTP transport
+        asyncio.run(self.server.run_http_async(host=host, port=port))
 
     def close(self) -> None:
         """Close the server and cleanup resources."""
