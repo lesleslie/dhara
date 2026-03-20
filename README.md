@@ -27,46 +27,85 @@ of a persistent instances is managed through a cached Connection
 instance which includes `commit()` and `abort()` methods so that changes
 are transactional.
 
+## CLI Commands
+
+Druva provides a unified CLI with three command groups:
+
+### MCP Server Commands (for AI/Agent Workflows)
+
+```bash
+druva mcp start              # Start MCP server
+druva mcp stop               # Stop MCP server
+druva mcp status             # Check server status
+druva mcp health             # Health check
+```
+
+### Database Commands (Durus Operations)
+
+```bash
+druva db start               # Start Durus storage server
+druva db client              # Connect to server (interactive)
+druva db pack                # Reclaim storage space
+```
+
+Common options for database commands:
+- `--file PATH` or `-f PATH` - Database file path
+- `--host HOST` or `-h HOST` - Server host (default: 127.0.0.1)
+- `--port PORT` or `-p PORT` - Server port (default: 2972)
+- `--readonly` - Open in read-only mode
+
+### Druva-Specific Commands
+
+```bash
+druva adapters               # List registered adapters
+druva storage                # Display storage information
+druva admin                  # Launch admin shell (IPython)
+```
+
 ## Quick Demo
 
-Run `druva -s` in one window. This starts a druva storage server using
-a temporary file and listening for clients on localhost port 2972. Run
-`druva -c` in another window. This connects to the storage server on
-the port 2972 on the localhost. When you start, you have access to only
-one dictionary-like persistent object, `root`. If you make changes to
-items of `root` and run `connection.commit()`, the changes are written
-to the (in this case, temporary) file. If you make changes to
-attributes of `root`, and then run `connection.abort()`, the attributes
-revert back to the values they had at the last commit.
+**Start a Druva server:**
+```bash
+druva db start
+```
 
-Run another `druva -c` in a third window, and you can see how
-committed changes to `root` in the first client are available in the
-second client when it starts. Subsequent changes committed in any
-client are visible in any other client that synchronizes by calling
-either `connection.abort()` or `connection.commit()`.
+This starts a Druva storage server using a temporary file and listening for clients on localhost port 2972.
 
-You can stop the server by *Control-C* or by running `druva -s --stop`.
-You can stop the clients by *Control-D* or by your usual method of
-terminating a Python interaction.
+**Connect as a client:**
+```bash
+druva db client
+```
 
-This demonstrates simple transactional behavior, but not persistence,
-since the temporary file is removed as soon as the druva server is
-stopped.
+This opens an interactive IPython shell connected to the storage server. You have access to a dictionary-like persistent object, `root`. If you make changes to items of `root` and run `connection.commit()`, the changes are written to the file. If you make changes and then run `connection.abort()`, the attributes revert back to the values they had at the last commit.
 
-To see how persistence works, follow the same procedure again, except
-add `--file test.druva` to the command that starts the server. Make
-changes to attributes of root, run `connection.commit()`, and
-`druva -s --stop`, and the changes to root will be stored in test.druva,
-so that you'll see the changes again if you restart again with the
-`--file test.druva` option.
+**Multiple clients:** Run `druva db client` in another terminal to see how committed changes to `root` in one client are available in other clients when they synchronize via `connection.abort()` or `connection.commit()`.
 
-Finally, note that you can run `druva -c --file test.druva` (after
-stopping the druva server) to use the file storage directly and
-exclusively. Everything works the same way as before, except that no
-server is involved.
+**Stop the server:** Press *Control-C* in the server terminal.
 
-Both the `druva -s` and `druva -c` commands accept `--help` command
-line options that explain more about their usage.
+**Persistence example:**
+```bash
+# Start server with a persistent file
+druva db server --file test.druva
+
+# Connect, make changes, commit
+druva db client --file test.druva
+# In the shell:
+# >>> root["hello"] = "world"
+# >>> connection.commit()
+
+# Stop and restart - data persists
+druva db server --file test.druva
+druva db client --file test.druva
+# >>> root["hello"]
+# 'world'
+```
+
+**Direct file access (no server):**
+```bash
+druva db client --file test.druva
+```
+
+All commands accept `--help` for more options.
 
 ## Using druva in a Program
 

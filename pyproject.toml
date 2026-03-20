@@ -63,8 +63,7 @@ Repository = "https://github.com/lesleslie/druva"
 "Bug Tracker" = "https://github.com/lesleslie/druva/issues"
 
 [project.scripts]
-druva = "druva.__main__:main"
-druva-mcp = "druva.cli:main"
+druva = "druva.cli:main"
 
 [tool.setuptools]
 packages = ["druva"]

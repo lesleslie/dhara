@@ -1,25 +1,39 @@
-"""Druva MCP Server CLI using mcp-common patterns.
+"""Druva Unified CLI - MCP Server + Database Operations.
 
-This module provides the CLI for Druva MCP server with standardized
-lifecycle management (start/stop/status/health) using MCPServerCLIFactory.
+This module provides a unified CLI for Druva that combines:
+1. MCP server lifecycle management (start/stop/status/health)
+2. Legacy Durus database operations (client/server/pack)
 
 Usage:
-    python -m druva.cli start
-    python -m druva.cli status
-    python -m druva.cli health
-    python -m druva.cli stop
+    # MCP server commands
+    druva mcp start
+    druva mcp status
+    druva mcp health
+    druva mcp stop
 
-★ Insight: MCP CLI Pattern ─────────────────────────────────────
-1. MCPServerCLIFactory provides standard lifecycle commands
-2. Custom handlers for start/stop/health integrate with DruvaMCPServer
-3. Consistent with Mahavishnu, Session-Buddy, Crackerjack CLIs
-4. Automatic PID file management, signal handling, health snapshots
+    # Database commands (legacy Durus)
+    druva db client [--file PATH] [--host HOST] [--port PORT]
+    druva db server [--file PATH] [--host HOST] [--port PORT]
+    druva db pack [--file PATH]
+
+    # Custom Druva commands
+    druva adapters [--domain DOMAIN] [--category CATEGORY]
+    druva storage
+    druva admin --confirm
+
+★ Insight: Unified CLI Pattern ─────────────────────────────────────
+1. MCPServerCLIFactory with use_mcp_subcommand=True for `druva mcp`
+2. Legacy Durus CLI restructured under `druva db` subcommand group
+3. Custom Druva-specific commands at root level (adapters, storage, admin)
+4. Single entry point: `druva` handles both MCP and database operations
 ───────────────────────────────────────────────────────────────────
 """
 
 from __future__ import annotations
 
+import os
 import time
+from pathlib import Path
 
 import typer
 from mcp_common.cli import (
@@ -33,6 +47,9 @@ from druva.core.config import DruvaSettings
 from druva.mcp.server_core import DruvaMCPServer
 
 logger = get_logger(__name__)
+
+# Version (sync with pyproject.toml)
+__version__ = "0.6.1"
 
 # Global server instance (for stop handler)
 _server_instance: DruvaMCPServer | None = None
@@ -54,11 +71,16 @@ def start_handler() -> None:
     """
     global _server_instance
 
-    # Load settings
-    settings = DruvaSettings.load("druva")
+    # Load settings with error handling
+    try:
+        settings = DruvaSettings.load("druva")
+    except Exception as e:
+        typer.echo(f"Error loading configuration: {e}", err=True)
+        raise typer.Exit(1)
+
     logger.info(f"Starting Druva MCP Server: {settings.server_name}")
-    logger.info(f"Storage path: {settings.storage.path}")
-    logger.info(f"Read-only: {settings.storage.read_only}")
+    logger.debug(f"Storage path: {settings.storage.path}")
+    logger.debug(f"Read-only: {settings.storage.read_only}")
 
     # Initialize server
     _server_instance = DruvaMCPServer(settings)
@@ -149,7 +171,8 @@ def health_probe_handler() -> RuntimeHealthSnapshot:
     try:
         existing_snapshot = load_runtime_health(settings.health_snapshot_path())
         started_at = existing_snapshot.lifecycle_state.get("started_at", time.time())
-    except Exception:
+    except (FileNotFoundError, KeyError, AttributeError, ValueError):
+        # No existing snapshot or malformed - use current time
         started_at = time.time()
 
     # Calculate uptime
@@ -176,6 +199,45 @@ def health_probe_handler() -> RuntimeHealthSnapshot:
             "storage_status": "ok" if storage_readable else "error",
         },
     )
+
+
+def _validate_path(file_path: str | None) -> Path | None:
+    """Validate a file path for security.
+
+    Prevents path traversal attacks by canonicalizing the path
+    and ensuring it doesn't escape the expected directory.
+
+    Args:
+        file_path: Path to validate (can be None)
+
+    Returns:
+        Canonicalized Path object, or None if input was None
+
+    Raises:
+        typer.Exit: If path is invalid or contains traversal attempts
+    """
+    if file_path is None:
+        return None
+
+    path = Path(file_path)
+
+    # Resolve to absolute path (follows symlinks, removes ..)
+    try:
+        resolved = path.resolve()
+    except (OSError, ValueError) as e:
+        typer.echo(f"Error: Invalid path '{file_path}': {e}", err=True)
+        raise typer.Exit(1)
+
+    # Check for suspicious patterns in the original path
+    original_str = str(path)
+    if ".." in original_str.split(os.sep):
+        typer.echo(
+            f"Error: Path traversal not allowed in '{file_path}'",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    return resolved
 
 
 def _create_adapters_command(app: typer.Typer, settings: DruvaSettings) -> None:
@@ -250,61 +312,228 @@ def _create_admin_command(app: typer.Typer, settings: DruvaSettings) -> None:
     """
 
     @app.command("admin")
-    def admin() -> None:
-        """Launch Druva admin shell with IPython."""
+    def admin(
+        confirm: bool = typer.Option(
+            False,
+            "--confirm",
+            help="Confirm you understand this provides unrestricted database access",
+        ),
+    ) -> None:
+        """Launch Druva admin shell with IPython.
+
+        ⚠️  WARNING: This shell provides unrestricted read/write access to all
+        database content. Use with caution in production environments.
+        """
+        if not confirm:
+            typer.echo(
+                "⚠️  Admin shell provides unrestricted database access.\n"
+                "   Use --confirm to acknowledge and proceed.",
+                err=True,
+            )
+            raise typer.Exit(1)
+
         from druva.core.connection import Connection
         from druva.shell import DruvaShell
         from druva.storage.file import FileStorage
 
-        # Open connection
-        storage = FileStorage(str(settings.storage.path))
-        connection = Connection(storage)
+        # Open connection with proper resource management
+        try:
+            with FileStorage(str(settings.storage.path)) as storage:
+                connection = Connection(storage)
+                shell = DruvaShell(connection, settings)
+                shell.start()
+        except FileNotFoundError:
+            typer.echo(
+                f"Error: Storage file not found: {settings.storage.path}", err=True
+            )
+            raise typer.Exit(1)
+        except PermissionError:
+            typer.echo(
+                f"Error: Permission denied accessing: {settings.storage.path}",
+                err=True,
+            )
+            raise typer.Exit(1)
 
-        # Create and start shell
-        shell = DruvaShell(connection, settings)
-        shell.start()
+
+def _create_db_commands(app: typer.Typer) -> None:
+    """Create the db command group for legacy Durus database operations.
+
+    Args:
+        app: Typer app to add command group to
+
+    ★ Insight: Legacy CLI Restructure ─────────────────────────────────
+    1. Durus commands restructured from `-c/-s/-p` flags to subcommands
+    2. `druva db client` replaces `druva -c`
+    3. `druva db server` replaces `druva -s`
+    4. `druva db pack` replaces `druva -p`
+    5. Full TLS support preserved with modern option names
+    ────────────────────────────────────────────────────────────────────
+    """
+    db_app = typer.Typer(help="Durus database operations")
+    app.add_typer(db_app, name="db")
+
+    @db_app.command("client")
+    def client(
+        file: str | None = typer.Option(None, "--file", "-f", help="Database file path"),
+        host: str = typer.Option("127.0.0.1", "--host", "-h", help="Server host"),
+        port: int = typer.Option(2972, "--port", "-p", help="Server port"),
+        readonly: bool = typer.Option(False, "--readonly", help="Open in read-only mode"),
+        cache_size: int = typer.Option(10000, "--cache-size", help="Client cache size"),
+    ) -> None:
+        """Start interactive database client.
+
+        Connect to a Durus database file or server for interactive queries.
+        Provides IPython shell with connection object for database operations.
+        """
+        from druva.__main__ import interactive_client
+
+        # Validate file path if provided
+        validated_file = _validate_path(file)
+        file_str = str(validated_file) if validated_file else None
+
+        if file_str:
+            address = None
+        else:
+            address = (host, port)
+
+        interactive_client(
+            file=file_str,
+            address=address,
+            cache_size=cache_size,
+            readonly=readonly,
+            repair=False,
+            startup=None,
+            storage_class=None,
+            tls_config=None,
+        )
+
+    @db_app.command("start")
+    def db_start(
+        file: str | None = typer.Option(None, "--file", "-f", help="Database file path"),
+        host: str = typer.Option("127.0.0.1", "--host", "-h", help="Listen host"),
+        port: int = typer.Option(2972, "--port", "-p", help="Listen port"),
+        readonly: bool = typer.Option(False, "--readonly", help="Open in read-only mode"),
+        gcbytes: int = typer.Option(100000000, "--gcbytes", help="GC threshold in bytes"),
+    ) -> None:
+        """Start Durus database server.
+
+        Starts a standalone Durus storage server that clients can connect to.
+        Use for shared database access across multiple processes.
+        """
+        from druva.__main__ import get_storage, start_durus
+
+        # Validate file path if provided
+        validated_file = _validate_path(file)
+        file_str = str(validated_file) if validated_file else None
+
+        storage = get_storage(file_str, readonly=readonly)
+        start_durus(
+            logfile=None,
+            logginglevel=20,
+            address=(host, port),
+            storage=storage,
+            gcbytes=gcbytes,
+            tls_config=None,
+        )
+
+    @db_app.command("pack")
+    def pack(
+        file: str | None = typer.Option(None, "--file", "-f", help="Database file path"),
+        host: str = typer.Option("127.0.0.1", "--host", "-h", help="Server host"),
+        port: int = typer.Option(2972, "--port", "-p", help="Server port"),
+    ) -> None:
+        """Pack a Durus database to reclaim space.
+
+        Removes unused objects and reclaims storage space.
+        Can operate on a file directly or connect to a running server.
+        """
+        from druva.__main__ import Connection, get_storage
+        from druva.storage.client import ClientStorage
+        from druva.server.server import SocketAddress
+
+        # Validate file path if provided
+        validated_file = _validate_path(file)
+
+        if validated_file is None:
+            address = SocketAddress.new((host, port))
+            storage = ClientStorage(address=address)
+        else:
+            if not validated_file.exists():
+                typer.echo(
+                    f"Error: Database file not found: {validated_file}", err=True
+                )
+                raise typer.Exit(1)
+            storage = get_storage(str(validated_file))
+
+        try:
+            connection = Connection(storage)
+            connection.pack()
+            typer.echo("Database packed successfully")
+        except ConnectionError as e:
+            typer.echo(f"Error connecting to server: {e}", err=True)
+            raise typer.Exit(1)
+
+
+def main() -> None:
+    """Main entry point for Druva CLI."""
+    app = create_cli()
+    app()
 
 
 def create_cli() -> typer.Typer:
-    """Create CLI application with lifecycle commands + custom commands.
+    """Create unified CLI application with MCP and database commands.
 
     Returns:
         Typer app with all commands registered
 
     ★ Insight: CLI Composition ─────────────────────────────────────────
-    1. MCPServerCLIFactory provides standard lifecycle commands
-    2. Custom commands added via factory.create_app()
-    3. Each custom command gets settings for configuration access
-    4. Commands follow Typer patterns (Options, Arguments, etc.)
+    1. MCPServerCLIFactory with use_mcp_subcommand=True creates `druva mcp`
+    2. Legacy Durus CLI restructured under `druva db` subcommand group
+    3. Custom Druva-specific commands at root level (adapters, storage, admin)
+    4. Single unified entry point replaces separate druva and druva-mcp commands
     ────────────────────────────────────────────────────────────────────
     """
     # Load settings (YAML + env vars)
     settings = DruvaSettings.load("druva")
 
-    # Create CLI factory with custom handlers
+    # Create CLI factory with custom handlers and MCP subcommand mode
     factory = MCPServerCLIFactory(
         server_name="druva",
         settings=settings,
         start_handler=start_handler,
         stop_handler=stop_handler,
         health_probe_handler=health_probe_handler,
+        use_mcp_subcommand=True,  # Use `druva mcp start` pattern
     )
 
-    # Create Typer app with standard lifecycle commands
+    # Create Typer app with MCP lifecycle commands under 'mcp' subcommand
     app = factory.create_app()
 
-    # Add custom Druva-specific commands
+    # Add version option to the app callback
+    @app.callback()
+    def global_options(
+        version: bool = typer.Option(
+            False,
+            "--version",
+            "-v",
+            help="Show version and exit",
+            is_eager=True,
+        ),
+    ) -> None:
+        """Global options for druva CLI."""
+        if version:
+            typer.echo(f"druva version {__version__}")
+            raise typer.Exit()
+
+    # Add database command group (legacy Durus operations)
+    _create_db_commands(app)
+
+    # Add custom Druva-specific commands at root level
     _create_adapters_command(app, settings)
     _create_storage_command(app, settings)
     _create_admin_command(app, settings)
 
     return app
-
-
-def main() -> None:
-    """Main entry point for Druva MCP CLI."""
-    app = create_cli()
-    app()
 
 
 if __name__ == "__main__":
