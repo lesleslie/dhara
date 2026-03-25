@@ -5,6 +5,29 @@ All notable changes to druva will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-03-25
+
+### Added
+
+- Unified CLI with security improvements
+
+### Changed
+
+- Rename project from Dhruva to Druva
+- Update core, deps
+
+### Fixed
+
+- Remove duplicate import of time module
+- Update FastMCP HTTP transport and add MCP entry point
+
+### Internal
+
+- Add archive/backup directories to gitignore
+- Rename dhruva.yaml to druva.yaml
+- Update LICENSE copyright to 2026
+- Update mcp-common to 0.9.5
+
 ## [Unreleased]
 
 ### Added

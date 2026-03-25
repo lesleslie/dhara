@@ -1,0 +1,2 @@
+[console_scripts]
+druva = druva.cli:main

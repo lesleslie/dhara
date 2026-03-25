@@ -374,10 +374,14 @@ def _create_db_commands(app: typer.Typer) -> None:
 
     @db_app.command("client")
     def client(
-        file: str | None = typer.Option(None, "--file", "-f", help="Database file path"),
+        file: str | None = typer.Option(
+            None, "--file", "-f", help="Database file path"
+        ),
         host: str = typer.Option("127.0.0.1", "--host", "-h", help="Server host"),
         port: int = typer.Option(2972, "--port", "-p", help="Server port"),
-        readonly: bool = typer.Option(False, "--readonly", help="Open in read-only mode"),
+        readonly: bool = typer.Option(
+            False, "--readonly", help="Open in read-only mode"
+        ),
         cache_size: int = typer.Option(10000, "--cache-size", help="Client cache size"),
     ) -> None:
         """Start interactive database client.
@@ -409,11 +413,17 @@ def _create_db_commands(app: typer.Typer) -> None:
 
     @db_app.command("start")
     def db_start(
-        file: str | None = typer.Option(None, "--file", "-f", help="Database file path"),
+        file: str | None = typer.Option(
+            None, "--file", "-f", help="Database file path"
+        ),
         host: str = typer.Option("127.0.0.1", "--host", "-h", help="Listen host"),
         port: int = typer.Option(2972, "--port", "-p", help="Listen port"),
-        readonly: bool = typer.Option(False, "--readonly", help="Open in read-only mode"),
-        gcbytes: int = typer.Option(100000000, "--gcbytes", help="GC threshold in bytes"),
+        readonly: bool = typer.Option(
+            False, "--readonly", help="Open in read-only mode"
+        ),
+        gcbytes: int = typer.Option(
+            100000000, "--gcbytes", help="GC threshold in bytes"
+        ),
     ) -> None:
         """Start Durus database server.
 
@@ -438,7 +448,9 @@ def _create_db_commands(app: typer.Typer) -> None:
 
     @db_app.command("pack")
     def pack(
-        file: str | None = typer.Option(None, "--file", "-f", help="Database file path"),
+        file: str | None = typer.Option(
+            None, "--file", "-f", help="Database file path"
+        ),
         host: str = typer.Option("127.0.0.1", "--host", "-h", help="Server host"),
         port: int = typer.Option(2972, "--port", "-p", help="Server port"),
     ) -> None:
@@ -448,8 +460,8 @@ def _create_db_commands(app: typer.Typer) -> None:
         Can operate on a file directly or connect to a running server.
         """
         from druva.__main__ import Connection, get_storage
-        from druva.storage.client import ClientStorage
         from druva.server.server import SocketAddress
+        from druva.storage.client import ClientStorage
 
         # Validate file path if provided
         validated_file = _validate_path(file)

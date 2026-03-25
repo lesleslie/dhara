@@ -71,6 +71,28 @@ class DruvaMCPServer:
             ),
         )
 
+        # HTTP health endpoint for Claude Code compatibility
+        @self.server.custom_route("/health", methods=["GET"])
+        async def health_check(request: Any) -> Any:
+            """HTTP health check endpoint for Claude Code `mcp list` compatibility."""
+            from starlette.responses import JSONResponse
+
+            return JSONResponse(
+                {
+                    "status": "ok",
+                    "service": "druva",
+                    "version": "0.1.0",
+                    "adapters": self.adapter_registry.count(),
+                }
+            )
+
+        @self.server.custom_route("/healthz", methods=["GET"])
+        async def healthz_check(request: Any) -> Any:
+            """Kubernetes-style health check endpoint."""
+            from starlette.responses import JSONResponse
+
+            return JSONResponse({"status": "ok"})
+
         # Initialize storage and connection
         # Expand ~ to home directory
         storage_path = config.storage.path.expanduser()
