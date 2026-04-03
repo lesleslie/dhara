@@ -19,7 +19,7 @@ override-dependencies = [
 
 [project]
 name = "dhara"
-version = "0.8.1"
+version = "0.8.2"
 description = "A Python Persistent Object Database with ACID Transactions"
 readme = "README.md"
 requires-python = ">=3.13"

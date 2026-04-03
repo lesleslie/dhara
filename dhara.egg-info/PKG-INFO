@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: dhara
-Version: 0.8.0
+Version: 0.8.1
 Summary: A Python Persistent Object Database with ACID Transactions
 Author-email: CNRI and others <nas-dhara@arctrix.com>
 Maintainer-email: dhara Development Team <nas-dhara@arctrix.com>
@@ -32,6 +32,11 @@ Requires-Dist: msgspec>=0.20.0
 Dynamic: license-file
 
 # dhara
+
+[![Code style: crackerjack](https://img.shields.io/badge/code%20style-crackerjack-000042)](https://github.com/lesleslie/crackerjack)
+[![Runtime: oneiric](https://img.shields.io/badge/runtime-oneiric-6e5494)](https://github.com/lesleslie/oneiric)
+[![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
+[![Python: 3.13+](https://img.shields.io/badge/python-3.13%2B-green)](https://www.python.org/downloads/)
 
 **dhara** is a modern continuation of **Durus**, a persistent object system
 for applications written in the Python programming language. It could be
