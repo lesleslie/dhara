@@ -3,7 +3,7 @@
 
 import random
 
-from druva.collections.btree import BNode, BTree
+from dhara.collections.btree import BNode, BTree
 
 
 def test_comprehensive():

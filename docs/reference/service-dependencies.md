@@ -1,14 +1,14 @@
-# Druva Service Dependencies
+# Dhara Service Dependencies
 
 ## Overview
 
-Druva is a **standalone persistence service** that can operate independently or integrate with the broader Mahavishnu ecosystem.
+Dhara is a **standalone persistence service** that can operate independently or integrate with the broader Mahavishnu ecosystem.
 
 ## Required Services
 
 **None**
 
-Druva is a self-contained persistence system that requires no external services for basic operation:
+Dhara is a self-contained persistence system that requires no external services for basic operation:
 
 - No database server required (uses file-based storage by default)
 - No message broker required
@@ -20,14 +20,14 @@ Druva is a self-contained persistence system that requires no external services 
 
 **Role**: Storage backend for orchestration workflows
 
-Druva can serve as the persistence layer for Mahavishnu orchestration workflows:
+Dhara can serve as the persistence layer for Mahavishnu orchestration workflows:
 
 ```python
 # In Mahavishnu configuration
-from druva import Connection, FileStorage
+from dhara import Connection, FileStorage
 
-# Druva provides persistent storage for workflow state
-connection = Connection(FileStorage("mahavishnu_workflows.druva"))
+# Dhara provides persistent storage for workflow state
+connection = Connection(FileStorage("mahavishnu_workflows.dhara"))
 root = connection.get_root()
 root["workflows"] = {}
 ```
@@ -41,19 +41,19 @@ root["workflows"] = {}
 
 ### Storage Backends
 
-Druva supports multiple storage backends:
+Dhara supports multiple storage backends:
 
 **File Storage (Default)**
 
 ```bash
 # No external service needed
-druva -s --file data.druva
+dhara -s --file data.dhara
 ```
 
 **SQLite Storage**
 
 ```python
-from druva.storage import SqliteStorage
+from dhara.storage import SqliteStorage
 # Uses SQLite3 (included in Python standard library)
 connection = Connection(SqliteStorage("data.db"))
 ```
@@ -62,10 +62,10 @@ connection = Connection(SqliteStorage("data.db"))
 
 ```bash
 # Server (standalone)
-druva -s --port 2973
+dhara -s --port 2973
 
 # Client (connects to server)
-from druva.storage import ClientStorage
+from dhara.storage import ClientStorage
 connection = Connection(ClientStorage(address=("localhost", 2973)))
 ```
 
@@ -73,12 +73,12 @@ connection = Connection(ClientStorage(address=("localhost", 2973)))
 
 **Role**: AI/agent workflow integration
 
-Druva includes an MCP server for modern AI/agent workflows:
+Dhara includes an MCP server for modern AI/agent workflows:
 
 ```python
-from druva.mcp import create_server
+from dhara.mcp import create_server
 
-server = create_server(config="druva.yaml")
+server = create_server(config="dhara.yaml")
 server.run()
 ```
 
@@ -97,13 +97,13 @@ server.run()
 
 **Role**: Configuration and logging management
 
-Druva uses Oneiric for configuration management:
+Dhara uses Oneiric for configuration management:
 
 ```yaml
-# druva.yaml
+# dhara.yaml
 storage:
   backend: file
-  path: /var/lib/druva/data.druva
+  path: /var/lib/dhara/data.dhara
 
 server:
   host: localhost
@@ -127,7 +127,7 @@ logging:
 
 **Role**: Secure credential storage
 
-Druva integrates with Oneiric for secret management:
+Dhara integrates with Oneiric for secret management:
 
 **Supported Backends**:
 
@@ -138,18 +138,18 @@ Druva integrates with Oneiric for secret management:
 
 ```bash
 # Environment variables (recommended)
-export DRUVA_SECRET_KEY="your-secret-key"
-export DRUVA_DB_PASSWORD="database-password"
+export DHARA_SECRET_KEY="your-secret-key"
+export DHARA_DB_PASSWORD="database-password"
 ```
 
 ### Logging Infrastructure
 
 **Role**: Structured logging and monitoring
 
-Druva uses structured logging via Oneiric:
+Dhara uses structured logging via Oneiric:
 
 ```yaml
-# druva.yaml
+# dhara.yaml
 logging:
   level: INFO
   format: structured
@@ -157,7 +157,7 @@ logging:
     - type: console
       format: json
     - type: file
-      path: /var/log/druva/druva.log
+      path: /var/log/dhara/dhara.log
 ```
 
 **Optional Integrations**:
@@ -174,7 +174,7 @@ logging:
 
 ```bash
 # Direct file access (no network)
-druva -c --file data.druva
+dhara -c --file data.dhara
 ```
 
 ### Client/Server Mode
@@ -186,10 +186,10 @@ druva -c --file data.druva
 
 ```bash
 # TCP server
-druva -s --host 0.0.0.0 --port 2973
+dhara -s --host 0.0.0.0 --port 2973
 
 # Unix domain socket
-druva -s --socket /var/run/druva.sock
+dhara -s --socket /var/run/dhara.sock
 ```
 
 **Firewall considerations**:
@@ -249,8 +249,8 @@ python setup.py build_ext --inplace
 
 ```bash
 # Simple standalone deployment
-pip install druva
-druva -s --file /var/lib/druva/data.druva
+pip install dhara
+dhara -s --file /var/lib/dhara/data.dhara
 ```
 
 ### Client/Server Deployment
@@ -263,10 +263,10 @@ druva -s --file /var/lib/druva/data.druva
 
 ```bash
 # Server
-druva -s --host 0.0.0.0 --port 2973
+dhara -s --host 0.0.0.0 --port 2973
 
 # Client (on remote machine)
-from druva.storage import ClientStorage
+from dhara.storage import ClientStorage
 connection = Connection(ClientStorage(address=("server.example.com", 2973)))
 ```
 
@@ -277,12 +277,12 @@ connection = Connection(ClientStorage(address=("server.example.com", 2973)))
 ```dockerfile
 FROM python:3.13
 
-RUN pip install druva
+RUN pip install dhara
 
-VOLUME /var/lib/druva
+VOLUME /var/lib/dhara
 EXPOSE 2972
 
-CMD ["druva", "-s", "--file", "/var/lib/druva/data.druva"]
+CMD ["dhara", "-s", "--file", "/var/lib/dhara/data.dhara"]
 ```
 
 **Kubernetes example**:
@@ -291,26 +291,26 @@ CMD ["druva", "-s", "--file", "/var/lib/druva/data.druva"]
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: druva
+  name: dhara
 spec:
-  serviceName: druva
+  serviceName: dhara
   replicas: 1
   selector:
     matchLabels:
-      app: druva
+      app: dhara
   template:
     metadata:
       labels:
-        app: druva
+        app: dhara
     spec:
       containers:
-      - name: druva
-        image: druva:latest
+      - name: dhara
+        image: dhara:latest
         ports:
         - containerPort: 2972
         volumeMounts:
         - name: data
-          mountPath: /var/lib/druva
+          mountPath: /var/lib/dhara
   volumeClaimTemplates:
   - metadata:
       name: data
@@ -336,18 +336,18 @@ spec:
 
 ## Dependency-Free Operation
 
-Druva is designed to operate with **zero external dependencies**:
+Dhara is designed to operate with **zero external dependencies**:
 
 ```python
 # Complete standalone operation
-from druva import Connection, Persistent
+from dhara import Connection, Persistent
 
 class User(Persistent):
     def __init__(self, name):
         self.name = name
 
 # No external services needed
-connection = Connection("users.druva")
+connection = Connection("users.dhara")
 root = connection.get_root()
 root["users"] = {}
 root["users"]["alice"] = User("Alice")
@@ -356,7 +356,7 @@ connection.commit()
 
 ## Integration Benefits
 
-When integrated with the ecosystem, Druva provides:
+When integrated with the ecosystem, Dhara provides:
 
 1. **For Mahavishnu**:
 
@@ -416,16 +416,16 @@ When integrated with the ecosystem, Druva provides:
 
 ## Backup and Recovery
 
-Druva supports various backup strategies:
+Dhara supports various backup strategies:
 
 ### File Storage
 
 ```bash
 # Hot backup (safe to copy while running)
-cp data.druva data.druva.backup
+cp data.dhara data.dhara.backup
 
 # Pack before backup (removes garbage)
-druva -p --file data.druva
+dhara -p --file data.dhara
 ```
 
 ### Point-in-Time Recovery

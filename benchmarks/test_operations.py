@@ -2,10 +2,10 @@
 
 import time
 import pytest
-from druva.core import Connection
-from druva.storage.base import MemoryStorage
-from druva.collections.dict import PersistentDict
-from druva.core.persistent import Persistent
+from dhara.core import Connection
+from dhara.storage.base import MemoryStorage
+from dhara.collections.dict import PersistentDict
+from dhara.core.persistent import Persistent
 
 
 class Counter(Persistent):

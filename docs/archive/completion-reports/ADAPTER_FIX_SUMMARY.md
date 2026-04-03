@@ -9,21 +9,21 @@ Successfully fixed all CLI test failures by addressing three core issues:
 
 ## Changes Made
 
-### 1. Fixed Adapter Class Inheritance (`druva/mcp/adapter_tools.py`)
+### 1. Fixed Adapter Class Inheritance (`dhara/mcp/adapter_tools.py`)
 
 **Problem**: Adapter class was using `PersistentBase` instead of `Persistent`, missing the `_p_note_change()` method.
 
 **Solution**: Changed import to use the correct base class:
 ```python
 # Before (line 16-21):
-from druva.core.persistent import PersistentBase
+from dhara.core.persistent import PersistentBase
 logger = logging.getLogger(__name__)
 
 # Type alias for type checking
 Persistent = PersistentBase
 
 # After (line 16-18):
-from druva.core.persistent import Persistent
+from dhara.core.persistent import Persistent
 
 logger = logging.getLogger(__name__)
 ```
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 - ✅ Integration tests pass
 - ✅ No more `AttributeError: 'Adapter' object has no attribute '_p_note_change'`
 
-### 2. Added Context Manager Support to FileStorage (`druva/storage/file.py`)
+### 2. Added Context Manager Support to FileStorage (`dhara/storage/file.py`)
 
 **Added after line 188**:
 ```python
@@ -52,7 +52,7 @@ def __exit__(self, exc_type, exc_val, exc_tb):
 - Cleaner code with `with FileStorage(...) as storage:` pattern
 - Backward compatible (manual `close()` still works)
 
-### 3. Updated CLI Commands to Use Context Managers (`druva/cli.py`)
+### 3. Updated CLI Commands to Use Context Managers (`dhara/cli.py`)
 
 **Problem**: CLI commands were calling `connection.close()` but Connection doesn't have a close() method.
 
@@ -78,7 +78,7 @@ with FileStorage(str(settings.storage.path), readonly=True) as storage:
 - `adapters` command (line 192-214)
 - `storage` command (line 226-240)
 
-### 4. Fixed AdapterRegistry for Readonly Storage (`druva/mcp/adapter_tools.py`)
+### 4. Fixed AdapterRegistry for Readonly Storage (`dhara/mcp/adapter_tools.py`)
 
 **Problem**: `_ensure_registry_structure()` tried to write to readonly storage, causing AssertionError.
 
@@ -127,11 +127,11 @@ def list_adapters(self, ...) -> list[dict[str, Any]]:
 # Before (lines 84-88):
 app = create_cli()  # ❌ Creates CLI with real settings
 
-with patch("druva.cli.DruvaSettings.load", return_value=temp_settings):
+with patch("dhara.cli.DharaSettings.load", return_value=temp_settings):
     result = runner.invoke(app, ["adapters"])
 
 # After (lines 94-96):
-with patch("druva.cli.DruvaSettings.load", return_value=temp_settings):
+with patch("dhara.cli.DharaSettings.load", return_value=temp_settings):
     app = create_cli()  # ✅ Creates CLI with mocked settings
     result = runner.invoke(app, ["adapters"])
 ```
@@ -213,14 +213,14 @@ PersistentBase (base with __getattribute__, __setattr__)
 **Example**:
 ```python
 # Old pattern (error-prone)
-storage = FileStorage("data.druva")
+storage = FileStorage("data.dhara")
 try:
     # ... work ...
 finally:
     storage.close()  # Easy to forget!
 
 # New pattern (recommended)
-with FileStorage("data.druva") as storage:
+with FileStorage("data.dhara") as storage:
     # ... work ...
 # Lock released automatically, even on exceptions
 ```
@@ -239,16 +239,16 @@ with FileStorage("data.druva") as storage:
 
 ## Files Modified
 
-1. **druva/mcp/adapter_tools.py**
+1. **dhara/mcp/adapter_tools.py**
    - Fixed Adapter class inheritance (line 16)
    - Added readonly storage handling (lines 163-190)
    - Added missing adapters dict check (lines 324-327)
 
-2. **druva/storage/file.py**
+2. **dhara/storage/file.py**
    - Added `__enter__` method (after line 188)
    - Added `__exit__` method (after line 188)
 
-3. **druva/cli.py**
+3. **dhara/cli.py**
    - Updated `adapters` command to use context manager (lines 192-214)
    - Updated `storage` command to use context manager (lines 226-240)
 
@@ -271,8 +271,8 @@ Expected result:
 ## Related Documentation
 
 - Python Context Managers: https://docs.python.org/3/reference/datamodel.html#context-managers
-- Druva Storage Architecture: See `CLAUDE.md`
-- Persistent Object Lifecycle: See `druva/core/persistent.py`
+- Dhara Storage Architecture: See `CLAUDE.md`
+- Persistent Object Lifecycle: See `dhara/core/persistent.py`
 
 ---
 

@@ -18,17 +18,17 @@ override-dependencies = [
 # Features: Comprehensive testing, quality tools, type checking fallback
 
 [project]
-name = "druva"
-version = "0.7.0"
-description = "A Python Object Database"
+name = "dhara"
+version = "0.8.1"
+description = "A Python Persistent Object Database with ACID Transactions"
 readme = "README.md"
 requires-python = ">=3.13"
 license = {text = "MIT"}
 authors = [
-    {name = "CNRI and others", email = "nas-druva@arctrix.com"},
+    {name = "CNRI and others", email = "nas-dhara@arctrix.com"},
 ]
 maintainers = [
-    {name = "druva Development Team", email = "nas-druva@arctrix.com"},
+    {name = "dhara Development Team", email = "nas-dhara@arctrix.com"},
 ]
 keywords = ["database", "persistence", "object-database", "storage", "nosql"]
 classifiers = [
@@ -56,17 +56,17 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/lesleslie/druva"
-Documentation = "https://github.com/lesleslie/druva#readme"
-Repository = "https://github.com/lesleslie/druva"
-"Source Code" = "https://github.com/lesleslie/druva"
-"Bug Tracker" = "https://github.com/lesleslie/druva/issues"
+Homepage = "https://github.com/lesleslie/dhara"
+Documentation = "https://github.com/lesleslie/dhara#readme"
+Repository = "https://github.com/lesleslie/dhara"
+"Source Code" = "https://github.com/lesleslie/dhara"
+"Bug Tracker" = "https://github.com/lesleslie/dhara/issues"
 
 [project.scripts]
-druva = "druva.cli:main"
+dhara = "dhara.cli:main"
 
 [tool.setuptools]
-packages = ["druva"]
+packages = ["dhara"]
 
 [tool.ruff]
 target-version = "py313"
@@ -86,7 +86,7 @@ asyncio_mode = "auto"
 timeout = 600
 testpaths = ["test"]
 addopts = [
-    "--cov=druva",
+    "--cov=dhara",
     "--cov-report=term-missing:skip-covered",
     "--cov-report=html:htmlcov",
     "--cov-report=json",
@@ -112,7 +112,7 @@ markers = [
 branch = true
 parallel = true  # CRITICAL for pytest-xdist
 concurrency = ["multiprocessing"]
-source = ["druva"]
+source = ["dhara"]
 data_file = ".coverage"
 omit = [
     "*/test/*",
@@ -136,7 +136,7 @@ exclude_also = [
 ]
 
 [tool.pyright]
-include = ["druva"]
+include = ["dhara"]
 exclude = [
     "test/*",
     "scratch",
@@ -148,7 +148,7 @@ typeCheckingMode = "strict"
 pythonVersion = "3.13"
 
 [tool.bandit]
-target = ["druva"]
+target = ["dhara"]
 skips = ["B101", "B110", "B112", "B404", "B603", "B607"]
 exclude_dirs = ["test/"]
 
@@ -157,7 +157,7 @@ quiet-level = 3
 ignore-words-list = "crate,uptodate,nd,nin"
 
 [tool.creosote]
-paths = ["druva"]
+paths = ["dhara"]
 deps-file = "pyproject.toml"
 exclude-deps = [
     "hatchling",

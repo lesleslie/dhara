@@ -18,7 +18,7 @@
    - `pip check` shows no broken requirements
 
 2. **Implemented TLS/SSL Network Security**
-   - New: druva/security/tls.py (368 lines)
+   - New: dhara/security/tls.py (368 lines)
    - New: test/test_tls.py (270 lines, 12 tests)
    - Coverage: 80% for TLS module
    - Features: TLS 1.2/1.3, cert validation, mutual auth
@@ -26,17 +26,17 @@
 ## Workflow Recommendations
 
 ### 🚀 High Priority
-1. Auto-fix linting: `python -m ruff check --fix druva/`
+1. Auto-fix linting: `python -m ruff check --fix dhara/`
 2. Create git commit with TLS changes
 3. Run full test suite: `python -m pytest -xvs`
 
 ### 📊 Code Changes
 ```
 CLAUDE.md                   | +104 lines (TLS docs)
-druva/__main__.py          | +202 lines (TLS CLI)
-druva/security/tls.py      | +368 lines (NEW)
-druva/server/server.py     | +65 lines (TLS server)
-druva/storage/client.py    | +71 lines (TLS client)
+dhara/__main__.py          | +202 lines (TLS CLI)
+dhara/security/tls.py      | +368 lines (NEW)
+dhara/server/server.py     | +65 lines (TLS server)
+dhara/storage/client.py    | +71 lines (TLS client)
 test/test_tls.py            | +270 lines (NEW)
 ```
 

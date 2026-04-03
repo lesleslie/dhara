@@ -2,10 +2,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: druva-server
+  name: dhara-server
   namespace: ${NAMESPACE}
   labels:
-    app: druva
+    app: dhara
     component: server
     version: v5.0.0
 spec:
@@ -17,12 +17,12 @@ spec:
       maxUnavailable: 0
   selector:
     matchLabels:
-      app: druva
+      app: dhara
       component: server
   template:
     metadata:
       labels:
-        app: druva
+        app: dhara
         component: server
         version: v5.0.0
       annotations:
@@ -56,7 +56,7 @@ spec:
           runAsGroup: 0
 
       containers:
-      - name: druva-server
+      - name: dhara-server
         image: ${IMAGE_NAME}:${IMAGE_TAG}
         imagePullPolicy: IfNotPresent
 
@@ -71,24 +71,24 @@ spec:
           runAsUser: 999
 
         ports:
-        - name: druva
+        - name: dhara
           containerPort: 2972
           protocol: TCP
 
         env:
-        - name: DRUVA_HOST
+        - name: DHARA_HOST
           value: "0.0.0.0"
-        - name: DRUVA_PORT
+        - name: DHARA_PORT
           value: "2972"
-        - name: DRUVA_STORAGE_BACKEND
+        - name: DHARA_STORAGE_BACKEND
           value: "file"
-        - name: DRUVA_STORAGE_PATH
-          value: "/data/druva.druva"
-        - name: DRUVA_CACHE_SIZE
+        - name: DHARA_STORAGE_PATH
+          value: "/data/dhara.dhara"
+        - name: DHARA_CACHE_SIZE
           value: "100000"
-        - name: DRUVA_CONFIG
-          value: "/etc/druva/config.yaml"
-        - name: DRUVA_DEBUG
+        - name: DHARA_CONFIG
+          value: "/etc/dhara/config.yaml"
+        - name: DHARA_DEBUG
           value: "false"
         - name: PYTHONUNBUFFERED
           value: "1"
@@ -98,12 +98,12 @@ spec:
         # Mount configuration from ConfigMap
         volumeMounts:
         - name: config
-          mountPath: /etc/druva
+          mountPath: /etc/dhara
           readOnly: true
         - name: data
           mountPath: /data
         - name: logs
-          mountPath: /var/log/druva
+          mountPath: /var/log/dhara
 
         # Resource limits
         resources:
@@ -157,7 +157,7 @@ spec:
       # Configuration from ConfigMap
       - name: config
         configMap:
-          name: druva-config
+          name: dhara-config
           items:
           - key: production.yaml
             path: config.yaml
@@ -165,7 +165,7 @@ spec:
       # Persistent data volume
       - name: data
         persistentVolumeClaim:
-          claimName: druva-data-pvc
+          claimName: dhara-data-pvc
 
       # Logs volume (could be mounted by log aggregation sidecar)
       - name: logs
@@ -182,7 +182,7 @@ spec:
       #           - key: app
       #             operator: In
       #             values:
-      #             - druva
+      #             - dhara
       #         topologyKey: kubernetes.io/hostname
 
       # Tolerations (optional - uncomment if running on control plane nodes)
@@ -194,10 +194,10 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: druva-data-pvc
+  name: dhara-data-pvc
   namespace: ${NAMESPACE}
   labels:
-    app: druva
+    app: dhara
     component: server
 spec:
   accessModes:

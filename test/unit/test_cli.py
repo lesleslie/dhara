@@ -17,8 +17,8 @@ from typing import Generator
 import pytest
 from typer.testing import CliRunner
 
-from druva.cli import create_cli, health_probe_handler, start_handler, stop_handler
-from druva.core.config import DruvaSettings
+from dhara.cli import create_cli, health_probe_handler, start_handler, stop_handler
+from dhara.core.config import DruvaSettings
 
 
 @pytest.mark.unit
@@ -36,7 +36,7 @@ class TestDruvaCLI:
         return DruvaSettings(
             server_name="test-druva",
             storage={
-                "path": tmp_path / "test.druva",
+                "path": tmp_path / "test.dhara",
                 "read_only": False,
             },
             cache_root=tmp_path / ".cache",
@@ -81,8 +81,8 @@ class TestDruvaCLI:
 
     def test_adapters_command_empty(self, runner: CliRunner, temp_settings: DruvaSettings):
         """Test adapters command with no adapters."""
-        from druva.core import Connection
-        from druva.storage.file import FileStorage
+        from dhara.core import Connection
+        from dhara.storage.file import FileStorage
 
         # Create empty storage file
         storage = FileStorage(str(temp_settings.storage.path))
@@ -102,9 +102,9 @@ class TestDruvaCLI:
     def test_adapters_command_with_data(self, runner: CliRunner, temp_settings: DruvaSettings):
         """Test adapters command with stored adapters."""
         # Create storage and add an adapter
-        from druva.core import Connection
-        from druva.storage.file import FileStorage
-        from druva.mcp.adapter_tools import AdapterRegistry
+        from dhara.core import Connection
+        from dhara.storage.file import FileStorage
+        from dhara.mcp.adapter_tools import AdapterRegistry
 
         storage = FileStorage(str(temp_settings.storage.path))
         conn = Connection(storage)
@@ -137,9 +137,9 @@ class TestDruvaCLI:
 
     def test_adapters_command_filter_domain(self, runner: CliRunner, temp_settings: DruvaSettings):
         """Test adapters command with domain filter."""
-        from druva.core import Connection
-        from druva.storage.file import FileStorage
-        from druva.mcp.adapter_tools import AdapterRegistry
+        from dhara.core import Connection
+        from dhara.storage.file import FileStorage
+        from dhara.mcp.adapter_tools import AdapterRegistry
 
         storage = FileStorage(str(temp_settings.storage.path))
         conn = Connection(storage)
@@ -184,9 +184,9 @@ class TestDruvaCLI:
 
     def test_adapters_command_filter_category(self, runner: CliRunner, temp_settings: DruvaSettings):
         """Test adapters command with category filter."""
-        from druva.core import Connection
-        from druva.storage.file import FileStorage
-        from druva.mcp.adapter_tools import AdapterRegistry
+        from dhara.core import Connection
+        from dhara.storage.file import FileStorage
+        from dhara.mcp.adapter_tools import AdapterRegistry
 
         storage = FileStorage(str(temp_settings.storage.path))
         conn = Connection(storage)
@@ -231,8 +231,8 @@ class TestDruvaCLI:
 
     def test_storage_command(self, runner: CliRunner, temp_settings: DruvaSettings):
         """Test storage info command."""
-        from druva.core import Connection
-        from druva.storage.file import FileStorage
+        from dhara.core import Connection
+        from dhara.storage.file import FileStorage
 
         storage = FileStorage(str(temp_settings.storage.path))
         conn = Connection(storage)
@@ -252,8 +252,8 @@ class TestDruvaCLI:
 
     def test_health_probe_handler(self, temp_settings: DruvaSettings):
         """Test health probe handler."""
-        from druva.core import Connection
-        from druva.storage.file import FileStorage
+        from dhara.core import Connection
+        from dhara.storage.file import FileStorage
 
         # Create storage
         storage = FileStorage(str(temp_settings.storage.path))
@@ -308,7 +308,7 @@ class TestDruvaCLI:
     def test_stop_handler(self, mock_server: Mock):
         """Test stop handler cleanup."""
         mock_server_instance = Mock()
-        import druva.cli
+        import dhara.cli
 
         druva.cli._server_instance = mock_server_instance
 
@@ -336,7 +336,7 @@ class TestDruvaCLI:
         invalid_settings = DruvaSettings(
             server_name="test-druva",
             storage={
-                "path": "/nonexistent/path/test.druva",  # Invalid path
+                "path": "/nonexistent/path/test.dhara",  # Invalid path
                 "read_only": True,
             },
             cache_root=temp_settings.cache_root,
@@ -393,15 +393,15 @@ class TestCLIIntegration:
         settings = DruvaSettings(
             server_name="test-druva",
             storage={
-                "path": tmp_path / "test.druva",
+                "path": tmp_path / "test.dhara",
                 "read_only": False,
             },
             cache_root=tmp_path / ".cache",
         )
 
-        from druva.core import Connection
-        from druva.storage.file import FileStorage
-        from druva.mcp.adapter_tools import AdapterRegistry
+        from dhara.core import Connection
+        from dhara.storage.file import FileStorage
+        from dhara.mcp.adapter_tools import AdapterRegistry
 
         storage = FileStorage(str(settings.storage.path))
         conn = Connection(storage)
@@ -428,9 +428,9 @@ class TestCLIIntegration:
 
     def test_full_adapters_workflow(self, populated_storage: DruvaSettings):
         """Test full adapters listing workflow."""
-        from druva.core import Connection
-        from druva.storage.file import FileStorage
-        from druva.mcp.adapter_tools import AdapterRegistry
+        from dhara.core import Connection
+        from dhara.storage.file import FileStorage
+        from dhara.mcp.adapter_tools import AdapterRegistry
 
         storage = FileStorage(str(populated_storage.storage.path), readonly=True)
         conn = Connection(storage)
@@ -447,8 +447,8 @@ class TestCLIIntegration:
 
     def test_storage_info_with_data(self, populated_storage: DruvaSettings):
         """Test storage info with actual data."""
-        from druva.core import Connection
-        from druva.storage.file import FileStorage
+        from dhara.core import Connection
+        from dhara.storage.file import FileStorage
 
         storage = FileStorage(str(populated_storage.storage.path), readonly=True)
         conn = Connection(storage)

@@ -5,16 +5,16 @@ $Id$
 
 import pytest
 
-from druva.core import ROOT_OID
-from druva.core.persistent import ConnectionBase, Persistent
-from druva.serialize import (
+from dhara.core import ROOT_OID
+from dhara.core.persistent import ConnectionBase, Persistent
+from dhara.serialize import (
     ObjectReader,
     ObjectWriter,
     pack_record,
     split_oids,
     unpack_record,
 )
-from druva.utils import as_bytes, join_bytes
+from dhara.utils import as_bytes, join_bytes
 
 
 class Test:

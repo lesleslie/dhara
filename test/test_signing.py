@@ -6,8 +6,8 @@ import tempfile
 import pytest
 from cryptography.exceptions import InvalidSignature
 
-from druva.security.signing import ObjectSigner, SignedStorage, create_signer_from_env
-from druva.storage import MemoryStorage
+from dhara.security.signing import ObjectSigner, SignedStorage, create_signer_from_env
+from dhara.storage import MemoryStorage
 
 
 class TestObjectSigner:

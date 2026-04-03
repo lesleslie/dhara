@@ -5,9 +5,9 @@ $Id$
 
 import pytest
 
-from druva.core import Connection
-from druva.collections.list import PersistentList
-from druva.storage.base import MemoryStorage
+from dhara.core import Connection
+from dhara.collections.list import PersistentList
+from dhara.storage.base import MemoryStorage
 
 
 def interval(n):

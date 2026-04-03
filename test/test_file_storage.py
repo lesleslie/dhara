@@ -10,14 +10,14 @@ from tempfile import mktemp
 
 import pytest
 
-from druva.core import Connection
-from druva.error import ReadConflictError
-from druva.file import File
-from druva.storage.file import FileStorage, TempFileStorage
-from druva.logger import direct_output
-from druva.core.persistent import Persistent
-from druva.serialize.adapter import pack_record
-from druva.utils import ShortRead, as_bytes, int8_to_str, write_int4_str
+from dhara.core import Connection
+from dhara.error import ReadConflictError
+from dhara.file import File
+from dhara.storage.file import FileStorage, TempFileStorage
+from dhara.logger import direct_output
+from dhara.core.persistent import Persistent
+from dhara.serialize.adapter import pack_record
+from dhara.utils import ShortRead, as_bytes, int8_to_str, write_int4_str
 
 
 class FileStorageTest:

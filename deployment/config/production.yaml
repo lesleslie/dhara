@@ -1,6 +1,6 @@
-# druva 5.0 Production Configuration
+# dhara 5.0 Production Configuration
 # This file demonstrates Oneiric integration with config/loader.py
-# Usage: Set DRUVA_CONFIG=/path/to/this/file.yaml environment variable
+# Usage: Set DHARA_CONFIG=/path/to/this/file.yaml environment variable
 
 # Storage Configuration
 storage:
@@ -8,7 +8,7 @@ storage:
   backend: file
 
   # Storage file path (required for file/sqlite backends)
-  path: /data/druva.druva
+  path: /data/dhara.dhara
 
   # Client storage settings (for backend='client')
   host: localhost
@@ -44,7 +44,7 @@ connection:
 # Debug mode (set to false in production)
 debug_mode: false
 
-# Server-specific settings (used when running druva -s)
+# Server-specific settings (used when running dhara -s)
 server:
   # Host to listen on (0.0.0.0 for all interfaces)
   host: 0.0.0.0
@@ -63,7 +63,7 @@ server:
     level: 20
 
     # Log file path (empty for stderr/stdout)
-    file: /var/log/druva/druva.log
+    file: /var/log/dhara/dhara.log
 
     # Log rotation (if using external log rotator)
     max_size_mb: 100
@@ -138,7 +138,7 @@ security:
     # Token-based authentication settings
     token:
       # Path to tokens file (JSON format)
-      tokens_file: /etc/druva/tokens.json
+      tokens_file: /etc/dhara/tokens.json
 
       # Require authentication for all operations
       require_auth: true
@@ -152,7 +152,7 @@ security:
     # HMAC-based authentication settings
     hmac:
       # Path to secrets file (JSON format)
-      secrets_file: /etc/druva/hmac_secrets.json
+      secrets_file: /etc/dhara/hmac_secrets.json
 
       # Require authentication for all operations
       require_auth: true
@@ -163,7 +163,7 @@ security:
     # Environment-based authentication (development only)
     environment:
       # Environment variable name
-      env_var: DRUVA_AUTH_TOKEN
+      env_var: DHARA_AUTH_TOKEN
 
       # Require authentication
       require_auth: false
@@ -177,10 +177,10 @@ security:
       enabled: false
 
       # CA certificate path
-      ca_cert: /etc/druva/ca.crt
+      ca_cert: /etc/dhara/ca.crt
 
       # Client certificate directory
-      client_certs_dir: /etc/druva/client_certs
+      client_certs_dir: /etc/dhara/client_certs
 
   # Authorization settings
   authorization:
@@ -215,13 +215,13 @@ security:
 
       # Tool-to-permission mapping
       tool_permissions:
-        druva_connect: read
-        druva_get: read
-        druva_set: write
-        druva_list: list
-        druva_delete: delete
-        druva_checkpoint: checkpoint
-        druva_restore_checkpoint: restore
+        dhara_connect: read
+        dhara_get: read
+        dhara_set: write
+        dhara_list: list
+        dhara_delete: delete
+        dhara_checkpoint: checkpoint
+        dhara_restore_checkpoint: restore
 
         oneiric_register_adapter: write
         oneiric_get_adapter: read
@@ -234,7 +234,7 @@ security:
     enabled: true
 
     # Audit log file
-    file: /var/log/druva/audit.log
+    file: /var/log/dhara/audit.log
 
     # Log authentication events
     log_auth_events: true
@@ -250,19 +250,19 @@ security:
 
 # MCP Server Configuration
 mcp:
-  # druva MCP Server
-  druva_server:
+  # dhara MCP Server
+  dhara_server:
     # Enable server
     enabled: true
 
     # Server name
-    name: "druva-mcp-server"
+    name: "dhara-mcp-server"
 
     # Server version
     version: "5.0.0"
 
     # Description
-    description: "druva persistent object database MCP server"
+    description: "dhara persistent object database MCP server"
 
     # Host to bind to
     host: 0.0.0.0

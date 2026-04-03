@@ -1,12 +1,12 @@
-# Druva Lite Mode Configuration
+# Dhara Lite Mode Configuration
 # Zero-configuration development mode for local development and testing
 
 mode: lite
-server_name: "Druva Lite (Development)"
+server_name: "Dhara Lite (Development)"
 
 # Storage configuration (local filesystem only)
 storage:
-  path: ~/.local/share/druva/lite.druva
+  path: ~/.local/share/dhara/lite.dhara
   backend: file
   read_only: false
 

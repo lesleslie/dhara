@@ -15,8 +15,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from druva.core import Connection
-from druva.mcp.adapter_tools import (
+from dhara.core import Connection
+from dhara.mcp.adapter_tools import (
     Adapter,
     AdapterRegistry,
     get_adapter_health_impl,
@@ -26,7 +26,7 @@ from druva.mcp.adapter_tools import (
     store_adapter_impl,
     validate_adapter_impl,
 )
-from druva.storage.file import FileStorage
+from dhara.storage.file import FileStorage
 
 
 @pytest.mark.unit

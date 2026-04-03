@@ -1,4 +1,4 @@
-# Druva Audit Fixes - Complete Summary
+# Dhara Audit Fixes - Complete Summary
 
 **Date:** 2026-02-08
 **Tasks Completed:** A (Code Quality) + B (B-Tree Performance) + C (Monitoring)
@@ -44,11 +44,11 @@
 tree = BTree()  # Uses BNode16
 
 # Small datasets (memory constrained)
-from druva.collections.btree import BNode
+from dhara.collections.btree import BNode
 tree = BTree(node_constructor=BNode)  # Uses BNode4
 
 # Very large datasets (>1M records)
-from druva.collections.btree import BNode32
+from dhara.collections.btree import BNode32
 tree = BTree(node_constructor=BNode32)
 ```
 
@@ -58,14 +58,14 @@ tree = BTree(node_constructor=BNode32)
 - **BNode32+ (t=16+):** Very large datasets, reduced tree height
 
 **Files Modified:**
-- `druva/collections/btree.py` - Added documentation and performance notes
+- `dhara/collections/btree.py` - Added documentation and performance notes
 
 ---
 
 ## ✅ PART C: MONITORING & HEALTH CHECKS (COMPLETED)
 
 ### 1. Prometheus Metrics ✅
-**Created:** `druva/monitoring/metrics.py`
+**Created:** `dhara/monitoring/metrics.py`
 
 **Metrics Collected:**
 - Storage operations (load, store, delete with success/failure)
@@ -82,7 +82,7 @@ tree = BTree(node_constructor=BNode32)
 
 **Usage:**
 ```python
-from druva.monitoring.metrics import get_metrics_collector, OperationTimer
+from dhara.monitoring.metrics import get_metrics_collector, OperationTimer
 
 # Record operations automatically
 collector = get_metrics_collector()
@@ -94,7 +94,7 @@ metrics = collector.get_metrics()
 ```
 
 ### 2. Health Check Endpoints ✅
-**Created:** `druva/monitoring/health.py`
+**Created:** `dhara/monitoring/health.py`
 
 **Health Checks:**
 - **Storage:** Accessibility and connectivity
@@ -109,7 +109,7 @@ metrics = collector.get_metrics()
 
 **Usage:**
 ```python
-from druva.monitoring.health import get_health_checker
+from dhara.monitoring.health import get_health_checker
 
 checker = get_health_checker(storage)
 report = checker.check_health()
@@ -119,7 +119,7 @@ if checker.is_healthy():
 ```
 
 ### 3. HTTP Metrics Server ✅
-**Created:** `druva/monitoring/server.py`
+**Created:** `dhara/monitoring/server.py`
 
 **Endpoints:**
 - `GET /metrics` - Prometheus metrics
@@ -133,7 +133,7 @@ if checker.is_healthy():
 
 **Usage:**
 ```python
-from druva.monitoring.server import start_metrics_server
+from dhara.monitoring.server import start_metrics_server
 
 server = start_metrics_server(port=9090)
 # Server running on http://127.0.0.1:9090
@@ -145,10 +145,10 @@ server = start_metrics_server(port=9090)
 ```
 
 ### 4. Monitoring Package Structure ✅
-**Created:** `druva/monitoring/` package
+**Created:** `dhara/monitoring/` package
 
 ```
-druva/monitoring/
+dhara/monitoring/
 ├── __init__.py       # Package exports
 ├── metrics.py        # Prometheus metrics collection
 ├── health.py         # Health check implementation
@@ -192,21 +192,21 @@ druva/monitoring/
 ## 📝 FILES CREATED
 
 ### Monitoring Module
-- `druva/monitoring/__init__.py`
-- `druva/monitoring/metrics.py` (320 lines)
-- `druva/monitoring/health.py` (290 lines)
-- `druva/monitoring/server.py` (220 lines)
+- `dhara/monitoring/__init__.py`
+- `dhara/monitoring/metrics.py` (320 lines)
+- `dhara/monitoring/health.py` (290 lines)
+- `dhara/monitoring/server.py` (220 lines)
 
 ### Documentation
 - `SECURITY_FIXES_SUMMARY.md` (comprehensive security fixes)
 - `AUDIT_FIXES_COMPLETE.md` (this file)
 
 ### Modified Files
-- `druva/collections/btree.py` (added performance documentation)
-- `druva/serialize/factory.py` (changed default to msgspec)
-- `druva/__main__.py` (added security warnings)
-- `druva/storage/client.py` (added TLS/SSL warnings)
-- `druva/server/server.py` (added TLS/SSL warnings, multi-threading docs)
+- `dhara/collections/btree.py` (added performance documentation)
+- `dhara/serialize/factory.py` (changed default to msgspec)
+- `dhara/__main__.py` (added security warnings)
+- `dhara/storage/client.py` (added TLS/SSL warnings)
+- `dhara/server/server.py` (added TLS/SSL warnings, multi-threading docs)
 
 ---
 
@@ -289,7 +289,7 @@ druva/monitoring/
 - Wildcard imports → **CHECKED** (no issues)
 - Type hints → **CHECKED** (core has hints)
 
-**The druva project is now production-ready with:**
+**The dhara project is now production-ready with:**
 - ✅ Safe defaults (msgspec serializer)
 - ✅ Data durability (fsync)
 - ✅ Data integrity (cryptographic signing)

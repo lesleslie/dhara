@@ -20,13 +20,13 @@ from pathlib import Path
 # Add durus to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from druva.file_storage import FileStorage
-from druva.persistent_dict import PersistentDict
-from druva.backup.manager import BackupManager, BackupType
-from druva.backup.restore import RestoreManager
-from druva.backup.scheduler import BackupScheduler
-from druva.backup.verification import BackupVerification
-from druva.backup.storage import StorageFactory
+from dhara.file_storage import FileStorage
+from dhara.persistent_dict import PersistentDict
+from dhara.backup.manager import BackupManager, BackupType
+from dhara.backup.restore import RestoreManager
+from dhara.backup.scheduler import BackupScheduler
+from dhara.backup.verification import BackupVerification
+from dhara.backup.storage import StorageFactory
 from cryptography.fernet import Fernet
 
 # Configure logging
@@ -241,7 +241,7 @@ def demonstrate_verification(temp_dir):
     )
 
     # Get catalog
-    from druva.backup.catalog import BackupCatalog
+    from dhara.backup.catalog import BackupCatalog
     catalog = BackupCatalog(backup_dir)
     all_backups = catalog.get_all_backups()
 
@@ -349,7 +349,7 @@ def demonstrate_cloud_storage():
         )
 
         # Mock backup metadata
-        from druva.backup.manager import BackupMetadata, BackupType
+        from dhara.backup.manager import BackupMetadata, BackupType
         mock_metadata = BackupMetadata(
             backup_id="demo_cloud_backup",
             backup_type=BackupType.FULL,

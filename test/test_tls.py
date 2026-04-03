@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from druva.security.tls import (
+from dhara.security.tls import (
     TLSConfig,
     generate_self_signed_cert,
     get_env_tls_config,

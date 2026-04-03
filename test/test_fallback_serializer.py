@@ -5,8 +5,8 @@ import warnings
 
 import pytest
 
-from druva.serialize import FallbackSerializer
-from druva.serialize.base import DEFAULT_MAX_SIZE
+from dhara.serialize import FallbackSerializer
+from dhara.serialize.base import DEFAULT_MAX_SIZE
 
 
 # Define test classes at module level so they can be pickled

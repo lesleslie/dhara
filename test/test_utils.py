@@ -5,9 +5,9 @@ $Id$
 
 import pytest
 
-import druva.utils
-from druva.file import File
-from druva.utils import (
+import dhara.utils
+from dhara.file import File
+from dhara.utils import (
     BitArray,
     Byte,
     ByteArray,

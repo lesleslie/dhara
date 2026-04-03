@@ -5,12 +5,12 @@ Compares pickle vs msgspec serialization for various object types and sizes.
 
 import pytest
 import pickle
-from druva.core.persistent import Persistent
-from druva.collections.dict import PersistentDict
-from druva.collections.list import PersistentList
-from druva.serialize.pickle import PickleSerializer
-from druva.serialize.msgspec import MsgspecSerializer
-from druva.serialize.dill import DillSerializer
+from dhara.core.persistent import Persistent
+from dhara.collections.dict import PersistentDict
+from dhara.collections.list import PersistentList
+from dhara.serialize.pickle import PickleSerializer
+from dhara.serialize.msgspec import MsgspecSerializer
+from dhara.serialize.dill import DillSerializer
 
 
 class TestPersistent(Persistent):

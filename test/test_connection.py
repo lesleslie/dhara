@@ -11,20 +11,20 @@ from tempfile import mktemp
 
 import pytest
 
-from druva import __main__
-from druva.storage.client import ClientStorage
-from druva.core import Connection, ObjectDictionary, touch_every_reference
-from druva.error import ConflictError, WriteConflictError
-from druva.core.persistent import ConnectionBase, Persistent, PersistentBase
-from druva.storage import (
+from dhara import __main__
+from dhara.storage.client import ClientStorage
+from dhara.core import Connection, ObjectDictionary, touch_every_reference
+from dhara.error import ConflictError, WriteConflictError
+from dhara.core.persistent import ConnectionBase, Persistent, PersistentBase
+from dhara.storage import (
     MemoryStorage,
     Storage,
     gen_referring_oid_record,
     get_census,
     get_reference_index,
 )
-from druva.storage_server import wait_for_server
-from druva.utils import as_bytes, int8_to_str, next
+from dhara.storage_server import wait_for_server
+from dhara.utils import as_bytes, int8_to_str, next
 
 
 class TestConnection:
@@ -131,7 +131,7 @@ class TestConnection:
         root = connection.get_root()
         root["a"] = Persistent()
         root["b"] = Persistent()
-        from druva.collections.list import PersistentList
+        from dhara.collections.list import PersistentList
 
         root["b"].c = PersistentList()
         connection.commit()

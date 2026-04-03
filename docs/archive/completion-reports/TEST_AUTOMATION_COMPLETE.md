@@ -1,19 +1,19 @@
-# Druva Test Coverage Expansion - Complete Implementation
+# Dhara Test Coverage Expansion - Complete Implementation
 
 ## Executive Summary
 
-I have successfully created a comprehensive test suite for **Druva**, a persistent object database for Python with MCP server capabilities. This work establishes a solid foundation for achieving 60%+ test coverage.
+I have successfully created a comprehensive test suite for **Dhara**, a persistent object database for Python with MCP server capabilities. This work establishes a solid foundation for achieving 60%+ test coverage.
 
-### What is Druva?
+### What is Dhara?
 
-**Druva** is a modern continuation of **Durus**, providing:
+**Dhara** is a modern continuation of **Durus**, providing:
 - Persistent object storage with ACID transactions
 - Multiple storage backends (File, Sqlite, Client/Server)
 - Python 3.13+ with type hints
 - MCP server for adapter distribution
 - Oneiric configuration integration
 
-**Clarification:** Druva is an **object database** (not an adapter curator as initially mentioned). It can store adapters, but its primary purpose is general-purpose persistence.
+**Clarification:** Dhara is an **object database** (not an adapter curator as initially mentioned). It can store adapters, but its primary purpose is general-purpose persistence.
 
 ## Deliverables
 
@@ -31,7 +31,7 @@ I have successfully created a comprehensive test suite for **Druva**, a persiste
 
 | Document | Purpose | Status |
 |----------|---------|--------|
-| `DRUVA_TEST_COVERAGE_PLAN.md` | Comprehensive test plan with phases, metrics, risks | ✅ Complete |
+| `DHARA_TEST_COVERAGE_PLAN.md` | Comprehensive test plan with phases, metrics, risks | ✅ Complete |
 | `TEST_COVERAGE_EXPANSION_SUMMARY.md` | Implementation summary with file locations, coverage targets | ✅ Complete |
 | `TEST_QUICK_REFERENCE.md` | Quick reference for running tests, coverage commands | ✅ Complete |
 | `scripts/run_coverage_audit.sh` | Automated coverage audit script | ✅ Complete |
@@ -61,7 +61,7 @@ I have successfully created a comprehensive test suite for **Druva**, a persiste
 #### Configuration (370 lines)
 - ✅ StorageConfig model (path, read_only, backend)
 - ✅ AdapterConfig model (versioning, health checks)
-- ✅ DruvaSettings model (all fields)
+- ✅ DharaSettings model (all fields)
 - ✅ Type validation and constraints
 - ✅ Environment variable overrides
 - ✅ Path expansion (~ to home)
@@ -104,13 +104,13 @@ test/
 ### Quick Start
 
 ```bash
-cd /Users/les/Projects/druva
+cd /Users/les/Projects/dhara
 
 # Run all new tests
 pytest test/unit/test_adapter_registry.py test/unit/test_mcp_server.py test/unit/test_config.py test/unit/test_cli.py -v
 
 # Run with coverage
-pytest test/unit/ --cov=druva --cov-report=html --cov-report=term-missing
+pytest test/unit/ --cov=dhara --cov-report=html --cov-report=term-missing
 
 # Automated coverage audit
 bash scripts/run_coverage_audit.sh
@@ -125,7 +125,7 @@ bash scripts/run_coverage_audit.sh
 
 2. **Run new tests with coverage**
    ```bash
-   pytest test/unit/ --cov=druva --cov-report=html
+   pytest test/unit/ --cov=dhara --cov-report=html
    ```
 
 3. **Review HTML report**
@@ -151,7 +151,7 @@ bash scripts/run_coverage_audit.sh
 
 ## File Locations
 
-All files are in `/Users/les/Projects/druva/`:
+All files are in `/Users/les/Projects/dhara/`:
 
 ### Test Files
 - `test/unit/test_adapter_registry.py`
@@ -160,7 +160,7 @@ All files are in `/Users/les/Projects/druva/`:
 - `test/unit/test_cli.py`
 
 ### Documentation
-- `DRUVA_TEST_COVERAGE_PLAN.md`
+- `DHARA_TEST_COVERAGE_PLAN.md`
 - `TEST_COVERAGE_EXPANSION_SUMMARY.md`
 - `TEST_QUICK_REFERENCE.md`
 
@@ -182,13 +182,13 @@ All files are in `/Users/les/Projects/druva/`:
 
 1. **Run the tests**
    ```bash
-   cd /Users/les/Projects/druva
+   cd /Users/les/Projects/dhara
    pytest test/unit/test_adapter_registry.py test/unit/test_mcp_server.py test/unit/test_config.py test/unit/test_cli.py -v
    ```
 
 2. **Generate coverage report**
    ```bash
-   pytest test/unit/ --cov=druva --cov-report=html
+   pytest test/unit/ --cov=dhara --cov-report=html
    open htmlcov/index.html
    ```
 
@@ -225,7 +225,7 @@ If coverage is below 60%, consider:
 
 ## Conclusion
 
-I have created a comprehensive test suite for Druva consisting of:
+I have created a comprehensive test suite for Dhara consisting of:
 
 - **1,825 lines** of new test code
 - **4 test files** covering modern features
@@ -239,4 +239,4 @@ The tests are ready to run and should achieve the 60%+ overall coverage target. 
 **Prepared by:** Test Automation Engineer
 **Date:** 2025-02-09
 **Status:** ✅ Implementation complete, ready for execution and validation
-**Files:** All files in `/Users/les/Projects/druva/`
+**Files:** All files in `/Users/les/Projects/dhara/`

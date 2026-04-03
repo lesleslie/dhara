@@ -6,8 +6,8 @@ correctly implement the Serializer interface and handle various data types.
 
 import pytest
 
-from druva.core.persistent import Persistent
-from druva.serialize import (
+from dhara.core.persistent import Persistent
+from dhara.serialize import (
     Serializer,
     MsgspecSerializer,
     PickleSerializer,

@@ -5,9 +5,9 @@ $Id$
 
 import pytest
 
-from druva.serialize.adapter import pack_record
-from druva.storage.base import MemoryStorage
-from druva.utils import as_bytes, int8_to_str
+from dhara.serialize.adapter import pack_record
+from dhara.storage.base import MemoryStorage
+from dhara.utils import as_bytes, int8_to_str
 
 
 class Test:

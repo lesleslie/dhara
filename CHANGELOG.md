@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to druva will be documented in this file.
+All notable changes to dhara will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Rename project from Dhruva to Druva
+- Rename project from Dhruva to Dhara
 - Update core, deps
 
 ### Fixed
@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Internal
 
 - Add archive/backup directories to gitignore
-- Rename dhruva.yaml to druva.yaml
+- Rename dhruva.yaml to dhara.yaml
 - Update LICENSE copyright to 2026
 - Update mcp-common to 0.9.5
 
@@ -75,8 +75,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **BREAKING**: Package renamed from `durus` to `druva`
-- **BREAKING**: Imports changed from `durus.*` to `druva.*`
+- **BREAKING**: Package renamed from `durus` to `dhara`
+- **BREAKING**: Imports changed from `durus.*` to `dhara.*`
 - **BREAKING**: Default serialization changed from pickle to msgspec
 - Storage backends now use adapter pattern for pluggability
 - Connection API improved with better cache management
@@ -91,10 +91,10 @@ from durus.connection import Connection
 from durus.file_storage import FileStorage
 from durus.persistent import Persistent
 
-# New (druva 5.0)
+# New (dhara 5.0)
 
-from druva import Connection, Persistent
-from druva.storage import FileStorage
+from dhara import Connection, Persistent
+from dhara.storage import FileStorage
 \`\`\`
 
 See [CLAUDE.md](CLAUDE.md) for comprehensive migration guide.
@@ -138,7 +138,7 @@ For versions prior to 0.4.2, please refer to the git history.
 
 ## Migration Notes
 
-### From Durus 4.x to druva 5.0
+### From Durus 4.x to dhara 5.0
 
 1. **Update imports**:
    \`\`\`python
@@ -150,7 +150,7 @@ For versions prior to 0.4.2, please refer to the git history.
 
    # After
 
-   from druva import Connection, Persistent
+   from dhara import Connection, Persistent
    \`\`\`
 
 1. **Serialization**:
@@ -217,7 +217,7 @@ See [CLAUDE.md](CLAUDE.md) for development guidelines.
 
 ## Security
 
-For security issues, email: nas-druva@arctrix.com
+For security issues, email: nas-dhara@arctrix.com
 
 ## License
 

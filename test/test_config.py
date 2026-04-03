@@ -5,7 +5,7 @@ from pathlib import Path
 from tempfile import mktemp
 import yaml
 
-from druva.config import (
+from dhara.config import (
     DruvaConfig,
     StorageConfig,
     CacheConfig,
@@ -189,12 +189,12 @@ class TestDruvaConfig:
     def test_from_dict_with_path_string(self):
         """Test creating configuration from dictionary with path string."""
         data = {
-            "storage": {"backend": "file", "path": "/tmp/test.druva"},
+            "storage": {"backend": "file", "path": "/tmp/test.dhara"},
         }
         config = DruvaConfig.from_dict(data)
 
         assert isinstance(config.storage.path, Path)
-        assert str(config.storage.path) == "/tmp/test.druva"
+        assert str(config.storage.path) == "/tmp/test.dhara"
 
 
 class TestLoadConfig:
@@ -394,7 +394,7 @@ class TestMergeConfigs:
     def test_merge_multiple_configs(self):
         """Test merging multiple configs."""
         config1 = DruvaConfig(
-            storage=StorageConfig(backend="file", path="/tmp/test.druva"),
+            storage=StorageConfig(backend="file", path="/tmp/test.dhara"),
             cache=CacheConfig(size=100000),
         )
         config2 = DruvaConfig(
@@ -409,7 +409,7 @@ class TestMergeConfigs:
     def test_merge_partial_override(self):
         """Test merging with partial overrides."""
         config1 = DruvaConfig(
-            storage=StorageConfig(backend="file", path="/tmp/test.druva"),
+            storage=StorageConfig(backend="file", path="/tmp/test.dhara"),
             cache=CacheConfig(size=100000),
         )
         config2 = DruvaConfig(

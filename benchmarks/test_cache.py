@@ -1,8 +1,8 @@
 """Benchmarks for cache performance."""
 
 import pytest
-from druva.core import Connection
-from druva.storage import MemoryStorage
+from dhara.core import Connection
+from dhara.storage import MemoryStorage
 
 
 def test_cache_hit_performance(benchmark):

@@ -5,9 +5,9 @@ $Id$
 
 import pytest
 
-from druva.file import File
-from druva.shelf import Shelf
-from druva.utils import BytesIO, ShortRead, as_bytes, int8_to_str
+from dhara.file import File
+from dhara.shelf import Shelf
+from dhara.utils import BytesIO, ShortRead, as_bytes, int8_to_str
 
 
 class ShelfTest:

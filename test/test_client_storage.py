@@ -12,20 +12,20 @@ from time import sleep
 
 import pytest
 
-from druva import __main__
-from druva.storage.client import ClientStorage
-from druva.core import Connection
-from druva.error import (
+from dhara import __main__
+from dhara.storage.client import ClientStorage
+from dhara.core import Connection
+from dhara.error import (
     DruvaKeyError,
     ProtocolError,
     ReadConflictError,
     WriteConflictError,
 )
-from druva.core.persistent import Persistent
-from druva.collections.dict import PersistentDict
-from druva.serialize.adapter import pack_record
-from druva.storage_server import STATUS_INVALID, wait_for_server
-from druva.utils import BytesIO, as_bytes, int8_to_str, join_bytes
+from dhara.core.persistent import Persistent
+from dhara.collections.dict import PersistentDict
+from dhara.serialize.adapter import pack_record
+from dhara.storage_server import STATUS_INVALID, wait_for_server
+from dhara.utils import BytesIO, as_bytes, int8_to_str, join_bytes
 
 
 class FakeSocket:

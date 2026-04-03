@@ -1,15 +1,15 @@
-# Druva Project - Comprehensive Audit Report
+# Dhara Project - Comprehensive Audit Report
 
 **Audit Date:** 2026-02-08
 **Project Version:** 0.5.0
 **Audited By:** Multi-Agent Specialist Team
-**Repository:** /Users/les/Projects/druva
+**Repository:** /Users/les/Projects/dhara
 
 ---
 
 ## Executive Summary
 
-The druva project represents a **successful modernization** of the legacy Durus 4.x Python object database. The refactoring demonstrates strong architectural thinking with excellent separation of concerns, modern Python 3.13+ features, and comprehensive integration capabilities.
+The dhara project represents a **successful modernization** of the legacy Durus 4.x Python object database. The refactoring demonstrates strong architectural thinking with excellent separation of concerns, modern Python 3.13+ features, and comprehensive integration capabilities.
 
 ### Overall Assessment Scores
 
@@ -29,25 +29,25 @@ The druva project represents a **successful modernization** of the legacy Durus 
 ### 🔴 CRITICAL (Immediate Action Required)
 
 1. **Unsafe Deserialization (Security)**
-   - **File:** `druva/serialize/pickle.py:65`
+   - **File:** `dhara/serialize/pickle.py:65`
    - **Issue:** Pickle/dill deserializers can execute arbitrary code
    - **Impact:** Remote Code Execution (RCE)
    - **Fix:** Default to msgspec, add whitelist validation
 
 2. **Missing Durability (Database)**
-   - **File:** `druva/file.py:129-133`
+   - **File:** `dhara/file.py:129-133`
    - **Issue:** No `fsync()` after transaction commits
    - **Impact:** Data loss on power failure
    - **Fix:** Add `os.fsync()` after `flush()` in write path
 
 3. **No TLS/SSL Encryption (Security)**
-   - **Files:** `druva/storage/client.py`, `druva/server/server.py`
+   - **Files:** `dhara/storage/client.py`, `dhara/server/server.py`
    - **Issue:** All client-server communication is plaintext
    - **Impact:** Man-in-the-middle attacks
    - **Fix:** Implement TLS/SSL for all network connections
 
 4. **Arbitrary Code Execution (Security)**
-   - **File:** `druva/__main__.py:79`
+   - **File:** `dhara/__main__.py:79`
    - **Issue:** `--startup` flag executes untrusted Python files
    - **Impact:** System compromise
    - **Fix:** Remove or restrict startup file execution
@@ -79,15 +79,15 @@ The druva project represents a **successful modernization** of the legacy Durus 
 ```bash
 # 1. Remove legacy .old files
 mkdir -p .archive/old_durus
-mv druva/*.old .archive/old_durus/
+mv dhara/*.old .archive/old_durus/
 
 # 2. Fix default serializer
-# Edit druva/serialize/adapter.py line 37:
+# Edit dhara/serialize/adapter.py line 37:
 # Change: serializer = PickleSerializer()
 # To:     serializer = MsgspecSerializer()
 
 # 3. Add fsync to writes
-# Edit druva/file.py line 133:
+# Edit dhara/file.py line 133:
 # Add after self.file.flush():
 #     if hasattr(os, 'fsync'):
 #         os.fsync(self.file.fileno())
@@ -136,7 +136,7 @@ python -m crackerjack format --fix
 
 **Overall Verdict:** 7.3/10 - **Strong foundation requiring critical fixes before production use.**
 
-The druva project demonstrates excellent architectural modernization with clean separation of concerns and comprehensive integration capabilities. However, critical security vulnerabilities and missing database reliability features must be addressed before production deployment.
+The dhara project demonstrates excellent architectural modernization with clean separation of concerns and comprehensive integration capabilities. However, critical security vulnerabilities and missing database reliability features must be addressed before production deployment.
 
 **Path to Production:** ~6-8 weeks to address critical and high-priority issues.
 

@@ -4,7 +4,7 @@ Example usage of Durus secret management with Oneiric
 
 import sys
 import logging
-from druva.config.security import SecurityConfig, initialize_security
+from dhara.config.security import SecurityConfig, initialize_security
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

@@ -7,13 +7,13 @@ various data types and operations.
 import time
 import pytest
 
-from druva import Connection
-from druva.serialize import (
+from dhara import Connection
+from dhara.serialize import (
     FallbackSerializer,
     MsgspecSerializer,
     PickleSerializer,
 )
-from druva.storage import FileStorage
+from dhara.storage import FileStorage
 
 
 class TestMsgspecPerformance:
@@ -250,7 +250,7 @@ class TestStorageBenchmarks:
         import tempfile
         os = __import__("os")
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".druva") as f:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".dhara") as f:
             temp_file = f.name
 
         try:
@@ -286,7 +286,7 @@ class TestStorageBenchmarks:
         import tempfile
         os = __import__("os")
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".druva") as f:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".dhara") as f:
             temp_file = f.name
 
         try:

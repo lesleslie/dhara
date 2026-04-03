@@ -14,8 +14,8 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from druva.core.config import DruvaSettings
-from druva.mcp.server_core import DruvaMCPServer
+from dhara.core.config import DruvaSettings
+from dhara.mcp.server_core import DruvaMCPServer
 
 
 @pytest.mark.unit
@@ -28,7 +28,7 @@ class TestDruvaMCPServer:
         return DruvaSettings(
             server_name="test-druva",
             storage={
-                "path": tmp_path / "test.druva",
+                "path": tmp_path / "test.dhara",
                 "read_only": False,
                 "backend": "file",
             },
@@ -53,7 +53,7 @@ class TestDruvaMCPServer:
         settings = DruvaSettings(
             server_name="test-druva",
             storage={
-                "path": tmp_path / "test.druva",
+                "path": tmp_path / "test.dhara",
                 "read_only": False,
             },
         )
@@ -96,7 +96,7 @@ class TestDruvaMCPServer:
         settings = DruvaSettings(
             server_name="test-druva",
             storage={
-                "path": tmp_path / "readonly.druva",
+                "path": tmp_path / "readonly.dhara",
                 "read_only": False,
             },
         )
@@ -111,7 +111,7 @@ class TestDruvaMCPServer:
         settings_readonly = DruvaSettings(
             server_name="test-druva-readonly",
             storage={
-                "path": tmp_path / "readonly.druva",
+                "path": tmp_path / "readonly.dhara",
                 "read_only": True,
             },
         )

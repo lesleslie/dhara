@@ -3,9 +3,9 @@
 
 import sys
 
-from druva.core import Connection
-from druva.core.persistent import PersistentObject
-from druva.utils import IS_PYPY
+from dhara.core import Connection
+from dhara.core.persistent import PersistentObject
+from dhara.utils import IS_PYPY
 
 
 def test_is_pypy_detection():
@@ -32,7 +32,7 @@ def test_weakref_slot():
 
 def test_pickle_import():
     """Test that pickle imports work"""
-    from druva.utils import dumps, loads
+    from dhara.utils import dumps, loads
 
     data = {"test": [1, 2, 3]}
     pickled = dumps(data)
@@ -45,7 +45,7 @@ def test_persistence():
     """Test basic persistence operations"""
     # Skip file-based test due to locking issues
     # Just test in-memory storage
-    from druva.storage.base import MemoryStorage
+    from dhara.storage.base import MemoryStorage
 
     storage = MemoryStorage()
     connection = Connection(storage)

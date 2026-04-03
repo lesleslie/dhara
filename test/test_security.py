@@ -8,8 +8,8 @@ import threading
 from unittest.mock import Mock, patch, MagicMock, mock_open
 from datetime import datetime, timedelta
 
-from druva.config.security import SecurityConfig, initialize_security, get_security_config
-from druva.security.oneiric_secrets import OneiricSecretsAdapter, SecretKey
+from dhara.config.security import SecurityConfig, initialize_security, get_security_config
+from dhara.security.oneiric_secrets import OneiricSecretsAdapter, SecretKey
 
 
 class TestSecurityConfig:
@@ -242,7 +242,7 @@ class TestGlobalFunctions:
     def test_get_security_config_without_initialization(self):
         """Test getting config without initialization"""
         # Reset global config
-        import druva.config.security
+        import dhara.config.security
         druva.config.security._global_config = None
 
         with pytest.raises(RuntimeError, match="No global security configuration has been set"):

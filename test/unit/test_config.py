@@ -16,7 +16,7 @@ from typing import Generator
 import pytest
 from pydantic import ValidationError
 
-from druva.core.config import AdapterConfig, DruvaSettings, StorageConfig
+from dhara.core.config import AdapterConfig, DruvaSettings, StorageConfig
 
 
 @pytest.mark.unit
@@ -27,30 +27,30 @@ class TestStorageConfig:
         """Test StorageConfig has correct default values."""
         config = StorageConfig()
 
-        assert config.path == Path("/data/druva.druva")
+        assert config.path == Path("/data/druva.dhara")
         assert config.read_only is False
         assert config.backend == "file"
 
     def test_storage_config_custom_values(self):
         """Test StorageConfig with custom values."""
         config = StorageConfig(
-            path=Path("/custom/path.druva"),
+            path=Path("/custom/path.dhara"),
             read_only=True,
             backend="sqlite",
         )
 
-        assert config.path == Path("/custom/path.druva")
+        assert config.path == Path("/custom/path.dhara")
         assert config.read_only is True
         assert config.backend == "sqlite"
 
     def test_storage_config_validation(self):
         """Test StorageConfig validates types correctly."""
         # Should accept Path object
-        config = StorageConfig(path=Path("/tmp/test.druva"))
+        config = StorageConfig(path=Path("/tmp/test.dhara"))
         assert isinstance(config.path, Path)
 
         # Should convert string to Path
-        config = StorageConfig(path="/tmp/test.druva")
+        config = StorageConfig(path="/tmp/test.dhara")
         assert isinstance(config.path, Path)
 
 
@@ -107,7 +107,7 @@ class TestDruvaSettings:
         """Test DruvaSettings has correct default values."""
         settings = DruvaSettings()
 
-        assert settings.server_name == "druva"
+        assert settings.server_name == "dhara"
         assert settings.cache_root == Path("~/.oneiric_cache")
         assert isinstance(settings.storage, StorageConfig)
         assert isinstance(settings.adapters, AdapterConfig)
@@ -119,13 +119,13 @@ class TestDruvaSettings:
         """Test DruvaSettings with custom storage config."""
         settings = DruvaSettings(
             storage={
-                "path": "/custom/path.druva",
+                "path": "/custom/path.dhara",
                 "read_only": True,
                 "backend": "sqlite",
             }
         )
 
-        assert settings.storage.path == Path("/custom/path.druva")
+        assert settings.storage.path == Path("/custom/path.dhara")
         assert settings.storage.read_only is True
         assert settings.storage.backend == "sqlite"
 
@@ -190,9 +190,9 @@ class TestDruvaSettings:
 
     def test_environment_variable_override_storage_path(self, clean_env):
         """Test that DRUVA_STORAGE_PATH overrides config."""
-        os.environ["DRUVA_STORAGE_PATH"] = "/env/path.druva"
+        os.environ["DRUVA_STORAGE_PATH"] = "/env/path.dhara"
 
-        settings = DruvaSettings.load("druva")
+        settings = DruvaSettings.load("dhara")
 
         # Environment variables should override defaults
         # Note: The actual override logic depends on MCPServerSettings.load()
@@ -202,7 +202,7 @@ class TestDruvaSettings:
         """Test that DRUVA_STORAGE_READ_ONLY overrides config."""
         os.environ["DRUVA_STORAGE_READ_ONLY"] = "true"
 
-        settings = DruvaSettings.load("druva")
+        settings = DruvaSettings.load("dhara")
 
         assert isinstance(settings.storage, StorageConfig)
 
@@ -210,7 +210,7 @@ class TestDruvaSettings:
         """Test that DRUVA_HOST overrides config."""
         os.environ["DRUVA_HOST"] = "192.168.1.1"
 
-        settings = DruvaSettings.load("druva")
+        settings = DruvaSettings.load("dhara")
 
         # Note: Actual override behavior depends on MCPServerSettings
         assert isinstance(settings, DruvaSettings)
@@ -219,7 +219,7 @@ class TestDruvaSettings:
         """Test that DRUVA_PORT overrides config."""
         os.environ["DRUVA_PORT"] = "8888"
 
-        settings = DruvaSettings.load("druva")
+        settings = DruvaSettings.load("dhara")
 
         # Note: Actual override behavior depends on MCPServerSettings
         assert isinstance(settings, DruvaSettings)
@@ -228,14 +228,14 @@ class TestDruvaSettings:
         """Test that ~ is expanded in storage path."""
         settings = DruvaSettings(
             storage={
-                "path": "~/custom.druva",
+                "path": "~/custom.dhara",
             }
         )
 
         # Path should expand ~ when accessed
         expanded = settings.storage.path.expanduser()
-        assert str(expanded) != "~/custom.druva"
-        assert "custom.druva" in str(expanded)
+        assert str(expanded) != "~/custom.dhara"
+        assert "custom.dhara" in str(expanded)
 
     def test_path_expansion_in_cache_root(self):
         """Test that ~ is expanded in cache root."""
@@ -252,7 +252,7 @@ class TestDruvaSettings:
         settings = DruvaSettings(
             server_name="test-druva",
             storage={
-                "path": "/test.druva",
+                "path": "/test.dhara",
                 "read_only": True,
             },
         )
@@ -260,7 +260,7 @@ class TestDruvaSettings:
         d = settings.model_dump()
 
         assert d["server_name"] == "test-druva"
-        assert d["storage"]["path"] == "/test.druva"
+        assert d["storage"]["path"] == "/test.dhara"
         assert d["storage"]["read_only"] is True
 
     def test_settings_from_dict(self):
@@ -268,7 +268,7 @@ class TestDruvaSettings:
         data = {
             "server_name": "test-druva",
             "storage": {
-                "path": "/test.druva",
+                "path": "/test.dhara",
                 "read_only": True,
                 "backend": "file",
             },
@@ -281,7 +281,7 @@ class TestDruvaSettings:
         settings = DruvaSettings(**data)
 
         assert settings.server_name == "test-druva"
-        assert settings.storage.path == Path("/test.druva")
+        assert settings.storage.path == Path("/test.dhara")
         assert settings.storage.read_only is True
         assert settings.adapters.enable_versioning is False
         assert settings.adapters.max_versions_per_adapter == 5
@@ -293,7 +293,7 @@ class TestDruvaSettings:
         )
 
         snapshot_path = settings.health_snapshot_path()
-        assert "druva" in str(snapshot_path).lower()
+        assert "dhara" in str(snapshot_path).lower()
         assert "health" in str(snapshot_path).lower()
 
 
@@ -304,9 +304,9 @@ class TestSettingsIntegration:
     def test_load_without_config_file(self):
         """Test loading settings when no config file exists."""
         # Should use defaults when no file exists
-        settings = DruvaSettings.load("druva")
+        settings = DruvaSettings.load("dhara")
         assert isinstance(settings, DruvaSettings)
-        assert settings.server_name == "druva"
+        assert settings.server_name == "dhara"
 
     def test_model_json_schema(self):
         """Test that settings can generate JSON schema."""

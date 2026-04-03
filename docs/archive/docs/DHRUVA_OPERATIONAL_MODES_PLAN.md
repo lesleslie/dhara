@@ -1,14 +1,14 @@
-# Druva Operational Modes Implementation Plan
+# Dhara Operational Modes Implementation Plan
 
 ## Executive Summary
 
-This document outlines the implementation of operational modes for Druva, creating a "lite" mode similar to Mahavishnu's architecture. The goal is to dramatically simplify setup and operation for development use cases while maintaining full production capabilities.
+This document outlines the implementation of operational modes for Dhara, creating a "lite" mode similar to Mahavishnu's architecture. The goal is to dramatically simplify setup and operation for development use cases while maintaining full production capabilities.
 
 ## Current State Analysis
 
 ### Existing Architecture
 - **Storage Backends**: File, SQLite, Memory (currently implemented)
-- **Cloud Storage**: S3, GCS, Azure (available via `druva/backup/storage.py`)
+- **Cloud Storage**: S3, GCS, Azure (available via `dhara/backup/storage.py`)
 - **Configuration**: Oneiric-based with YAML + environment variables
 - **Server Models**: Direct file access, client/server over TCP
 - **Dependencies**: FastMCP, mcp-common, oneiric, uvicorn, IPython
@@ -27,7 +27,7 @@ Current deployment requires:
 #### Lite Mode (Development)
 - **Purpose**: Quick start for development and testing
 - **Setup Time**: < 2 minutes
-- **Services**: 1 (Druva only)
+- **Services**: 1 (Dhara only)
 - **Storage**: Local filesystem with auto-creation
 - **Configuration**: Zero config required (sensible defaults)
 - **Ideal For**:
@@ -39,7 +39,7 @@ Current deployment requires:
 #### Standard Mode (Production)
 - **Purpose**: Production deployments with cloud storage
 - **Setup Time**: 10-15 minutes
-- **Services**: 2 (Druva + cloud storage)
+- **Services**: 2 (Dhara + cloud storage)
 - **Storage**: Configurable backend (file/s3/gcs/azure)
 - **Configuration**: Full YAML + environment variables
 - **Ideal For**:
@@ -53,7 +53,7 @@ Current deployment requires:
 | Feature | Lite Mode | Standard Mode |
 |---------|-----------|---------------|
 | **Setup Time** | < 2 min | 10-15 min |
-| **Services Required** | 1 (Druva) | 2+ (Druva + Cloud) |
+| **Services Required** | 1 (Dhara) | 2+ (Dhara + Cloud) |
 | **Storage Backend** | Local filesystem | Configurable (file/S3/GCS/Azure) |
 | **Configuration** | Zero config (defaults) | YAML + env vars |
 | **Data Persistence** | Local disk | Configurable (local/cloud) |
@@ -69,16 +69,16 @@ Current deployment requires:
 **Objective**: Create mode system architecture
 
 **Tasks**:
-1. Create `druva/modes/` directory structure
+1. Create `dhara/modes/` directory structure
 2. Implement base mode interface (`base.py`)
 3. Implement lite mode (`lite.py`)
 4. Implement standard mode (`standard.py`)
 
 **Deliverables**:
-- `druva/modes/__init__.py`
-- `druva/modes/base.py` - Base mode interface
-- `druva/modes/lite.py` - Lite mode implementation
-- `druva/modes/standard.py` - Standard mode implementation
+- `dhara/modes/__init__.py`
+- `dhara/modes/base.py` - Base mode interface
+- `dhara/modes/lite.py` - Lite mode implementation
+- `dhara/modes/standard.py` - Standard mode implementation
 
 **Success Criteria**:
 - Mode system architecture complete
@@ -92,13 +92,13 @@ Current deployment requires:
 **Tasks**:
 1. Create `settings/lite.yaml` - Lite mode defaults
 2. Create `settings/standard.yaml` - Standard mode defaults
-3. Update `DruvaSettings` to support mode detection
+3. Update `DharaSettings` to support mode detection
 4. Add mode validation logic
 
 **Deliverables**:
 - `settings/lite.yaml` - Lite mode configuration
 - `settings/standard.yaml` - Standard mode configuration
-- Updated `druva/core/config.py` with mode support
+- Updated `dhara/core/config.py` with mode support
 
 **Success Criteria**:
 - Configuration files created and validated
@@ -123,8 +123,8 @@ Current deployment requires:
    - Enable all production features
 
 **Deliverables**:
-- Complete `druva/modes/lite.py` implementation
-- Complete `druva/modes/standard.py` implementation
+- Complete `dhara/modes/lite.py` implementation
+- Complete `dhara/modes/standard.py` implementation
 
 **Success Criteria**:
 - Lite mode starts without any configuration
@@ -136,14 +136,14 @@ Current deployment requires:
 **Objective**: Add mode selection to CLI
 
 **Tasks**:
-1. Update `druva/cli.py` with `--mode` parameter
+1. Update `dhara/cli.py` with `--mode` parameter
 2. Add `mode` subcommand group
 3. Implement mode-specific commands
 4. Update help text and documentation
 
 **Deliverables**:
-- Updated `druva/cli.py` with mode integration
-- New `druva mode <lite|standard>` command group
+- Updated `dhara/cli.py` with mode integration
+- New `dhara mode <lite|standard>` command group
 - Updated help documentation
 
 **Success Criteria**:
@@ -166,7 +166,7 @@ Current deployment requires:
 - Documentation for script usage
 
 **Success Criteria**:
-- Script starts Druva in specified mode
+- Script starts Dhara in specified mode
 - Auto-configuration working
 - Error handling comprehensive
 
@@ -264,16 +264,16 @@ class OperationalMode(ABC):
 ### Mode Detection Logic
 
 ```python
-def detect_mode(settings: DruvaSettings) -> OperationalMode:
+def detect_mode(settings: DharaSettings) -> OperationalMode:
     """Detect operational mode from configuration.
 
     Priority:
-    1. Explicit DRUVA_MODE environment variable
-    2. settings.druva.yaml mode field
+    1. Explicit DHARA_MODE environment variable
+    2. settings.dhara.yaml mode field
     3. Auto-detect based on storage configuration
     """
     # Check environment variable
-    mode = os.getenv("DRUVA_MODE", "").lower()
+    mode = os.getenv("DHARA_MODE", "").lower()
     if mode in ("lite", "standard"):
         return create_mode(mode)
 
@@ -293,10 +293,10 @@ def detect_mode(settings: DruvaSettings) -> OperationalMode:
 **settings/lite.yaml**:
 ```yaml
 mode: lite
-server_name: "Druva Lite (Development)"
+server_name: "Dhara Lite (Development)"
 
 storage:
-  path: ~/.local/share/druva/lite.druva
+  path: ~/.local/share/dhara/lite.dhara
   backend: file
   read_only: false
 
@@ -317,10 +317,10 @@ logging:
 **settings/standard.yaml**:
 ```yaml
 mode: standard
-server_name: "Druva (Production)"
+server_name: "Dhara (Production)"
 
 storage:
-  path: /data/druva/production.druva
+  path: /data/dhara/production.dhara
   backend: file  # or sqlite, s3, gcs, azure
   read_only: false
 
@@ -332,7 +332,7 @@ port: 8683
 cloud_storage:
   enabled: true
   provider: s3  # or gcs, azure
-  bucket: druva-production
+  bucket: dhara-production
   prefix: backups/
 
 # Logging
@@ -346,43 +346,43 @@ logging:
 ### Lite Mode (Zero Config)
 ```bash
 # Start in lite mode (no configuration required)
-druva start --mode=lite
+dhara start --mode=lite
 
 # Or use the shorthand
-druva start -m lite
+dhara start -m lite
 
 # Environment variable
-export DRUVA_MODE=lite
-druva start
+export DHARA_MODE=lite
+dhara start
 ```
 
 ### Standard Mode
 ```bash
 # Start in standard mode
-druva start --mode=standard
+dhara start --mode=standard
 
 # With custom configuration
-druva start --mode=standard --config=settings/production.yaml
+dhara start --mode=standard --config=settings/production.yaml
 
 # With S3 storage
-export DRUVA_STORAGE_BACKEND=s3
-export DRUVA_S3_BUCKET=my-bucket
-druva start --mode=standard
+export DHARA_STORAGE_BACKEND=s3
+export DHARA_S3_BUCKET=my-bucket
+dhara start --mode=standard
 ```
 
 ### Mode Management
 ```bash
 # Show current mode
-druva mode status
+dhara mode status
 
 # Switch modes (interactive)
-druva mode switch
+dhara mode switch
 
 # Validate mode configuration
-druva mode validate
+dhara mode validate
 
 # Compare modes
-druva mode diff lite standard
+dhara mode diff lite standard
 ```
 
 ## Migration Path
@@ -393,23 +393,23 @@ druva mode diff lite standard
 
 ```bash
 # 1. Export data from lite mode
-druva export --source=~/.local/share/druva/lite.druva \
-              --output=/tmp/druva-export.json
+dhara export --source=~/.local/share/dhara/lite.dhara \
+              --output=/tmp/dhara-export.json
 
 # 2. Configure standard mode
 cat > settings/production.yaml <<EOF
 mode: standard
 storage:
   backend: s3
-  bucket: druva-production
+  bucket: dhara-production
 EOF
 
 # 3. Import to standard mode
-druva import --source=/tmp/druva-export.json \
+dhara import --source=/tmp/dhara-export.json \
               --config=settings/production.yaml
 
 # 4. Start in standard mode
-druva start --mode=standard --config=settings/production.yaml
+dhara start --mode=standard --config=settings/production.yaml
 ```
 
 ## Success Metrics
@@ -438,7 +438,7 @@ druva start --mode=standard --config=settings/production.yaml
 **Risk**: Users may not understand which mode they're using
 **Mitigation**:
 - Clear mode indicator in startup banner
-- `druva mode status` command
+- `dhara mode status` command
 - Mode displayed in logs
 
 ### Risk 2: Configuration Conflicts
@@ -465,9 +465,9 @@ druva start --mode=standard --config=settings/production.yaml
 
 ## Conclusion
 
-This operational mode system will dramatically simplify Druva's development experience while maintaining full production capabilities. The lite mode enables zero-configuration startup for developers, while standard mode provides enterprise-grade features for production deployments.
+This operational mode system will dramatically simplify Dhara's development experience while maintaining full production capabilities. The lite mode enables zero-configuration startup for developers, while standard mode provides enterprise-grade features for production deployments.
 
-The implementation follows Mahavishnu's proven pattern of operational simplification, making Druva more accessible to new users while preserving power-user capabilities.
+The implementation follows Mahavishnu's proven pattern of operational simplification, making Dhara more accessible to new users while preserving power-user capabilities.
 
 ## Next Steps
 

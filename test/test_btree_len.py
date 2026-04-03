@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Test BTree _count tracking"""
 
-from druva.collections.btree import BNode, BTree
+from dhara.collections.btree import BNode, BTree
 
 
 def test_len_basic():

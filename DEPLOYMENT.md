@@ -1,6 +1,6 @@
-# druva 5.0 Deployment Guide
+# dhara 5.0 Deployment Guide
 
-This guide covers deploying druva 5.0 using native Python installation and Cloud Native Buildpacks.
+This guide covers deploying dhara 5.0 using native Python installation and Cloud Native Buildpacks.
 
 ## Table of Contents
 
@@ -38,12 +38,12 @@ This guide covers deploying druva 5.0 using native Python installation and Cloud
 
 ### Development Installation
 
-Install druva in editable mode for development:
+Install dhara in editable mode for development:
 
 ```bash
 # Clone repository
-git clone https://github.com/lesleslie/druva.git
-cd druva
+git clone https://github.com/lesleslie/dhara.git
+cd dhara
 
 # Create virtual environment
 python3 -m venv venv
@@ -58,29 +58,29 @@ pip install -e ".[dev]"
 
 ### Production Installation
 
-Install druva from wheel or directly:
+Install dhara from wheel or directly:
 
 ```bash
 # Build and install from wheel
 ./deployment/scripts/deploy.sh wheel
 
 # Or install directly from PyPI (when published)
-pip install druva
+pip install dhara
 ```
 
 ### Running the Server
 
-Start the druva server:
+Start the dhara server:
 
 ```bash
 # Using deployment script
 ./deployment/scripts/deploy.sh run
 
 # Or directly
-python -m druva.cli.server --host=127.0.0.1 --port=2972
+python -m dhara.cli.server --host=127.0.0.1 --port=2972
 
 # With custom configuration
-python -m druva.cli.server --config=deployment/config/production.yaml
+python -m dhara.cli.server --config=deployment/config/production.yaml
 ```
 
 ### Development Server
@@ -91,7 +91,7 @@ Run with auto-reload for development:
 ./deployment/scripts/deploy.sh dev
 
 # Or manually
-python -m druva.cli.server --reload --config=deployment/config/development.yaml
+python -m dhara.cli.server --reload --config=deployment/config/development.yaml
 ```
 
 ## Buildpack Deployment
@@ -105,7 +105,7 @@ Cloud Native Buildpacks automatically detect your Python application and create 
 ./deployment/scripts/deploy.sh buildpack
 
 # Or manually with pack
-pack build ghcr.io/lesleslie/druva:5.0.0 \
+pack build ghcr.io/lesleslie/dhara:5.0.0 \
     --builder paketobuildpacks/builder:base \
     --env BP_PYTHON_VERSION=3.13
 ```
@@ -128,11 +128,11 @@ The following files control buildpack behavior:
 
 # Or manually with Docker
 docker run -d \
-    --name druva-server \
+    --name dhara-server \
     -p 2972:2972 \
-    -v druva-data:/data \
+    -v dhara-data:/data \
     -e PORT=2972 \
-    ghcr.io/lesleslie/druva:5.0.0
+    ghcr.io/lesleslie/dhara:5.0.0
 ```
 
 ### Pushing to Registry
@@ -142,7 +142,7 @@ docker run -d \
 ./deployment/scripts/deploy.sh push-buildpack
 
 # Or manually
-docker push ghcr.io/lesleslie/druva:5.0.0
+docker push ghcr.io/lesleslie/dhara:5.0.0
 ```
 
 ## Cloud Platform Deployment
@@ -164,12 +164,12 @@ Deploy buildpack-built images to Kubernetes:
 
 ```bash
 # Create namespace
-kubectl create namespace druva
+kubectl create namespace dhara
 
 # Create ConfigMap
-kubectl create configmap druva-config \
+kubectl create configmap dhara-config \
     --from-file=deployment/config/production.yaml \
-    --namespace=druva
+    --namespace=dhara
 
 # Apply deployment
 envsubst < deployment/kubernetes/deployment.yaml | kubectl apply -f -
@@ -178,23 +178,23 @@ envsubst < deployment/kubernetes/deployment.yaml | kubectl apply -f -
 envsubst < deployment/kubernetes/service.yaml | kubectl apply -f -
 
 # Check status
-kubectl get pods -n druva
-kubectl logs -f deployment/druva-server -n druva
+kubectl get pods -n dhara
+kubectl logs -f deployment/dhara-server -n dhara
 ```
 
 ### Google Cloud Run
 
 ```bash
 # Build with Cloud Native Buildpacks
-pack build ghcr.io/lesleslie/druva:5.0.0 \
+pack build ghcr.io/lesleslie/dhara:5.0.0 \
     --builder=gcr.io/buildpacks/builder:v1
 
 # Push to registry
-docker push ghcr.io/lesleslie/druva:5.0.0
+docker push ghcr.io/lesleslie/dhara:5.0.0
 
 # Deploy to Cloud Run
-gcloud run deploy druva-server \
-    --image=ghcr.io/lesleslie/druva:5.0.0 \
+gcloud run deploy dhara-server \
+    --image=ghcr.io/lesleslie/dhara:5.0.0 \
     --platform=managed \
     --region=us-central1 \
     --allow-unauthenticated \
@@ -219,12 +219,12 @@ aws apprunner start-deployment \
 
 ### Configuration File
 
-druva uses Oneiric for type-safe configuration management. Example `deployment/config/production.yaml`:
+dhara uses Oneiric for type-safe configuration management. Example `deployment/config/production.yaml`:
 
 ```yaml
 storage:
   backend: file
-  path: /data/druva.druva
+  path: /data/dhara.dhara
 
 cache:
   size: 100000
@@ -255,29 +255,29 @@ Override configuration with environment variables:
 
 ```bash
 # Server configuration
-export DRUVA_HOST=0.0.0.0
-export DRUVA_PORT=2972
-export DRUVA_CONFIG=/path/to/config.yaml
+export DHARA_HOST=0.0.0.0
+export DHARA_PORT=2972
+export DHARA_CONFIG=/path/to/config.yaml
 
 # Storage configuration
-export DRUVA_STORAGE_BACKEND=file
-export DRUVA_STORAGE_PATH=/data/druva.druva
+export DHARA_STORAGE_BACKEND=file
+export DHARA_STORAGE_PATH=/data/dhara.dhara
 
 # Serialization
-export DRUVA_SERIALIZER=msgspec
-export DRUVA_MAX_SIZE=104857600
+export DHARA_SERIALIZER=msgspec
+export DHARA_MAX_SIZE=104857600
 
 # Security
-export DRUVA_SIGN_OBJECTS=true
-export DRUVA_SECRET_KEY=your-secret-key
+export DHARA_SIGN_OBJECTS=true
+export DHARA_SECRET_KEY=your-secret-key
 ```
 
 ### Loading Configuration
 
-Use `druva.config.loader.load_config()`:
+Use `dhara.config.loader.load_config()`:
 
 ```python
-from druva.config.loader import load_config
+from dhara.config.loader import load_config
 
 # Load from file
 config = load_config("config/production.yaml")
@@ -322,10 +322,10 @@ readinessProbe:
 
 ### Custom Health Checks
 
-Create custom health checks using `druva.observability.health`:
+Create custom health checks using `dhara.observability.health`:
 
 ```python
-from druva.observability.health import HealthChecker
+from dhara.observability.health import HealthChecker
 
 checker = HealthChecker(connection)
 health_status = checker.check_health()
@@ -340,10 +340,10 @@ else:
 
 ### Structured Logging
 
-druva uses structured logging with context:
+dhara uses structured logging with context:
 
 ```python
-from druva.logging.logger import get_connection_logger, log_operation
+from dhara.logging.logger import get_connection_logger, log_operation
 
 logger = get_connection_logger("conn-123")
 
@@ -364,10 +364,10 @@ View application logs:
 # Logs go to stdout/stderr or configured file
 
 # Buildpack/Docker
-docker logs -f druva-server
+docker logs -f dhara-server
 
 # Kubernetes
-kubectl logs -f deployment/druva-server -n druva
+kubectl logs -f deployment/dhara-server -n dhara
 ```
 
 ## Backup and Restore
@@ -376,16 +376,16 @@ kubectl logs -f deployment/druva-server -n druva
 
 ```bash
 # File storage backup
-cp /data/druva.druva /backup/druva-$(date +%Y%m%d).druva
+cp /data/dhara.dhara /backup/dhara-$(date +%Y%m%d).dhara
 
 # Or using Python
 python -c "
-from druva.storage.file import FileStorage
+from dhara.storage.file import FileStorage
 from shutil import copy2
 import datetime
 
-backup_path = f'/backup/druva-{datetime.datetime.now():%Y%m%d}.druva'
-copy2('/data/druva.druva', backup_path)
+backup_path = f'/backup/dhara-{datetime.datetime.now():%Y%m%d}.dhara'
+copy2('/data/dhara.dhara', backup_path)
 print(f'Backed up to {backup_path}')
 "
 ```
@@ -396,7 +396,7 @@ Use cron for automated backups:
 
 ```bash
 # Add to crontab (crontab -e)
-0 2 * * * cp /data/druva.druva /backup/druva-$(date +\%Y\%m\%d).druva
+0 2 * * * cp /data/dhara.dhara /backup/dhara-$(date +\%Y\%m\%d).dhara
 ```
 
 ### Restore from Backup
@@ -406,7 +406,7 @@ Use cron for automated backups:
 ./deployment/scripts/deploy.sh stop
 
 # Restore backup
-cp /backup/druva-20250107.druva /data/druva.druva
+cp /backup/dhara-20250107.dhara /data/dhara.dhara
 
 # Start server
 ./deployment/scripts/deploy.sh run
@@ -416,7 +416,7 @@ cp /backup/druva-20250107.druva /data/druva.druva
 
 ### Serialization Security
 
-By default, druva uses **msgspec** for secure serialization. Pickle is only used when explicitly configured.
+By default, dhara uses **msgspec** for secure serialization. Pickle is only used when explicitly configured.
 
 **Recommendations:**
 
@@ -432,11 +432,11 @@ Enable HMAC signing for additional security:
 ```yaml
 security:
   sign_objects: true
-  secret_key_env: DRUVA_SECRET_KEY
+  secret_key_env: DHARA_SECRET_KEY
 ```
 
 ```bash
-export DRUVA_SECRET_KEY=$(openssl rand -hex 32)
+export DHARA_SECRET_KEY=$(openssl rand -hex 32)
 ```
 
 ### Network Security
@@ -467,7 +467,7 @@ netstat -tuln | grep 2972
 lsof -i :2972
 
 # Check configuration
-python -c "from druva.config.loader import load_config; print(load_config('deployment/config/production.yaml'))"
+python -c "from dhara.config.loader import load_config; print(load_config('deployment/config/production.yaml'))"
 ```
 
 **Issue:** High memory usage
@@ -475,9 +475,9 @@ python -c "from druva.config.loader import load_config; print(load_config('deplo
 ```bash
 # Check cache size
 python -c "
-from druva.connection import Connection
-from druva.storage.file import FileStorage
-conn = Connection(FileStorage('/data/druva.druva'))
+from dhara.connection import Connection
+from dhara.storage.file import FileStorage
+conn = Connection(FileStorage('/data/dhara.dhara'))
 print(f'Cache size: {len(conn.get_cache())}')
 "
 
@@ -491,7 +491,7 @@ cache:
 ```bash
 # Check serialization method
 python -c "
-from druva.serialize.factory import get_serializer
+from dhara.serialize.factory import get_serializer
 s = get_serializer('msgspec')
 print(f'Serializer: {type(s).__name__}')
 "
@@ -505,8 +505,8 @@ pytest benchmarks/test_serializers.py --benchmark-only
 Enable debug logging:
 
 ```bash
-export DRUVA_LOG_LEVEL=DEBUG
-python -m druva.cli.server --reload
+export DHARA_LOG_LEVEL=DEBUG
+python -m dhara.cli.server --reload
 ```
 
 ### Health Check Failures
@@ -516,7 +516,7 @@ python -m druva.cli.server --reload
 ./deployment/scripts/healthcheck.sh --verbose
 
 # Check server logs
-kubectl logs deployment/druva-server -n druva --tail=100
+kubectl logs deployment/dhara-server -n dhara --tail=100
 ```
 
 ## Additional Resources
@@ -531,10 +531,10 @@ kubectl logs deployment/druva-server -n druva --tail=100
 
 ```bash
 # Native installation (quickest)
-git clone https://github.com/lesleslie/druva.git
-cd druva
+git clone https://github.com/lesleslie/dhara.git
+cd dhara
 pip install -e .
-python -m druva.cli.server
+python -m dhara.cli.server
 
 # Buildpack deployment
 ./deployment/scripts/deploy.sh buildpack

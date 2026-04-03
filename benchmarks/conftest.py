@@ -3,10 +3,10 @@
 import os
 import tempfile
 import pytest
-from druva.core import Connection
-from druva.storage.base import MemoryStorage
-from druva.storage import FileStorage, SqliteStorage
-from druva.core.persistent import Persistent
+from dhara.core import Connection
+from dhara.storage.base import MemoryStorage
+from dhara.storage import FileStorage, SqliteStorage
+from dhara.core.persistent import Persistent
 
 
 @pytest.fixture

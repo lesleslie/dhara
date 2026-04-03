@@ -9,11 +9,11 @@ from tempfile import mktemp
 
 import pytest
 
-from druva.file import File
-from druva.utils import as_bytes
+from dhara.file import File
+from dhara.utils import as_bytes
 
 
-class file test:
+class TestFile:
     def a(self):
         f = File()
         f.rename(f.get_name())

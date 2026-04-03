@@ -9,7 +9,7 @@
 
 ### 1. Cache Shrink Algorithm Optimization (PERFORMANCE) ✅
 
-**File:** `druva/core/connection.py`
+**File:** `dhara/core/connection.py`
 
 **Problem:**
 - Previous implementation used O(n log n) heap-based cache eviction
@@ -32,7 +32,7 @@
 
 ### 2. Msgspec `__import__` Vulnerability Fix (SECURITY) ✅
 
-**File:** `druva/serialize/msgspec.py`
+**File:** `dhara/serialize/msgspec.py`
 
 **Problem:**
 - Line 103 used `__import__(module, fromlist=[classname])` without validation
@@ -41,7 +41,7 @@
 
 **Solution:**
 - Added module whitelist validation before `__import__()`
-- Only allow druva core modules and standard library collections
+- Only allow dhara core modules and standard library collections
 - Additional safety check: verify class is Persistent subclass
 
 **Security Impact:**
@@ -57,7 +57,7 @@
 
 **Problem:**
 - Old Durus 4.x databases contain references to `durus.*` modules
-- Renamed `DruvaKeyError` broke old imports
+- Renamed `DharaKeyError` broke old imports
 
 **Solution:**
 - Created `_compat.py` module that injects fake `durus` module

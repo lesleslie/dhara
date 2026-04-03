@@ -5,9 +5,9 @@ $Id$
 
 import pytest
 
-from druva.core import Connection
-from druva.collections.dict import PersistentDict
-from druva.storage.base import MemoryStorage
+from dhara.core import Connection
+from dhara.collections.dict import PersistentDict
+from dhara.storage.base import MemoryStorage
 
 
 class PersistentDictTest:

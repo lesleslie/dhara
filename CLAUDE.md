@@ -2,9 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+For a shorter, tool-neutral bootstrap document, start with `AGENTS.md`.
+
 ## Project Overview
 
-druva is a modern persistent object system for Python - essentially a noSQL database with ACID properties (Atomicity, Consistency, Isolation, Durability). It provides transactional persistence for Python objects through a client/server model optimized for read-heavy workloads with aggressive caching.
+dhara is a modern persistent object system for Python - essentially a noSQL database with ACID properties (Atomicity, Consistency, Isolation, Durability). It provides transactional persistence for Python objects through a client/server model optimized for read-heavy workloads with aggressive caching.
 
 **Key Modernization (v5.0):**
 
@@ -39,7 +41,7 @@ pytest
 pytest test/test_connection.py
 
 # Run with coverage
-pytest --cov=druva --cov-report=html
+pytest --cov=dhara --cov-report=html
 
 # Run by markers
 pytest -m unit              # Unit tests only
@@ -71,7 +73,7 @@ python -m crackerjack format --fix
 
 ### Building C Extension
 
-The project includes a C extension (`druva/_persistent.c`) for CPython:
+The project includes a C extension (`dhara/_persistent.c`) for CPython:
 
 ```bash
 # Build the extension
@@ -84,38 +86,38 @@ On PyPy, the pure Python implementation is used automatically.
 
 ```bash
 # Start storage server (uses temporary file by default)
-druva -s
+dhara -s
 
 # Start server with specific file
-druva -s --file test.druva
+dhara -s --file test.dhara
 
 # Start server on custom port
-druva -s --port 2973
+dhara -s --port 2973
 
 # Connect to server (interactive console)
-druva -c
+dhara -c
 
 # Connect to server with specific port
-druva -c --port 2973
+dhara -c --port 2973
 
 # Open file directly (no server)
-druva -c --file test.druva
+dhara -c --file test.dhara
 
 # Stop server
-druva -s --stop
+dhara -s --stop
 
 # Pack storage (garbage collection)
-druva -p --file test.druva
+dhara -p --file test.dhara
 ```
 
 ## Architecture
 
 ### Modern Package Structure
 
-druva 5.0 uses a layered architecture with clear separation of concerns:
+dhara 5.0 uses a layered architecture with clear separation of concerns:
 
 ```
-druva/
+dhara/
 ├── __init__.py                   # Public API exports
 ├── __main__.py                   # CLI entry point
 │
@@ -164,34 +166,34 @@ druva/
 
 ### Core Components
 
-**Connection Layer** (`druva/core/connection.py`):
+**Connection Layer** (`dhara/core/connection.py`):
 
 - Manages object cache (LRU with weak references)
 - Transaction management via `commit()` and `abort()`
 - Default cache size: 10,000 objects (configurable)
 - Handles object state transitions (GHOST, SAVED, UNSAVED)
 
-**Persistent Layer** (`druva/core/persistent.py`):
+**Persistent Layer** (`dhara/core/persistent.py`):
 
 - `Persistent`: Base class using `__dict__` for state
 - Three object states: `UNSAVED`, `SAVED`, `GHOST` (unloaded)
 - C extension (`_persistent.c`) provides fast implementation on CPython
 - Automatic change tracking for attributes
 
-**Storage Backends** (`druva/storage/`):
+**Storage Backends** (`dhara/storage/`):
 
 - `FileStorage`: Default, append-only journal with on-disk index
 - `SqliteStorage`: SQLite-based storage
 - `ClientStorage`: Network client for storage server
 - `MemoryStorage`: In-memory storage for testing
 
-**Serialization** (`druva/serialize/`):
+**Serialization** (`dhara/serialize/`):
 
 - `MsgspecSerializer`: Default (fast, type-safe, secure)
 - `PickleSerializer`: For backward compatibility
 - `DillSerializer`: Extended capability (lambdas, nested functions)
 
-**Persistent Collections** (`druva/collections/`):
+**Persistent Collections** (`dhara/collections/`):
 
 - `PersistentDict`: Dict-like with automatic change tracking
 - `PersistentList`: List-like container
@@ -200,7 +202,7 @@ druva/
 
 ### Storage Server
 
-**StorageServer** (`druva/server/server.py`):
+**StorageServer** (`dhara/server/server.py`):
 
 - Multi-client server with concurrent read handling
 - Single-writer transaction serialization
@@ -211,7 +213,7 @@ druva/
 
 ### TLS/SSL Security
 
-druva 5.0+ includes comprehensive TLS/SSL support for securing client-server communication over untrusted networks.
+dhara 5.0+ includes comprehensive TLS/SSL support for securing client-server communication over untrusted networks.
 
 **Features:**
 
@@ -225,52 +227,52 @@ druva 5.0+ includes comprehensive TLS/SSL support for securing client-server com
 
 ```bash
 # Server TLS
-export DRUVA_TLS_CERTFILE=/path/to/server.crt
-export DRUVA_TLS_KEYFILE=/path/to/server.key
-export DRUVA_TLS_CAFILE=/path/to/ca.crt  # Optional, for mutual TLS
+export DHARA_TLS_CERTFILE=/path/to/server.crt
+export DHARA_TLS_KEYFILE=/path/to/server.key
+export DHARA_TLS_CAFILE=/path/to/ca.crt  # Optional, for mutual TLS
 
 # Client TLS
-export DRUVA_TLS_CAFILE=/path/to/ca.crt  # Required for server verification
-export DRUVA_TLS_CLIENT_CERTFILE=/path/to/client.crt  # Optional, mutual TLS
-export DRUVA_TLS_CLIENT_KEYFILE=/path/to/client.key    # Required with client cert
-export DRUVA_TLS_VERIFY_MODE=required  # none, optional, or required (default)
-export DRUVA_TLS_VERSION=1.3  # Minimum TLS version: 1.2 or 1.3 (default)
+export DHARA_TLS_CAFILE=/path/to/ca.crt  # Required for server verification
+export DHARA_TLS_CLIENT_CERTFILE=/path/to/client.crt  # Optional, mutual TLS
+export DHARA_TLS_CLIENT_KEYFILE=/path/to/client.key    # Required with client cert
+export DHARA_TLS_VERIFY_MODE=required  # none, optional, or required (default)
+export DHARA_TLS_VERSION=1.3  # Minimum TLS version: 1.2 or 1.3 (default)
 ```
 
 **Command-Line Usage:**
 
 ```bash
 # Generate self-signed certificate for testing
-druva -s --generate-tls-cert localhost
+dhara -s --generate-tls-cert localhost
 
 # Start server with TLS
-druva -s --tls-certfile server.crt --tls-keyfile server.key
+dhara -s --tls-certfile server.crt --tls-keyfile server.key
 
 # Connect with TLS (server verification)
-druva -c --host localhost --tls-cafile server.crt
+dhara -c --host localhost --tls-cafile server.crt
 
 # Connect with mutual TLS
-druva -c --host localhost \
+dhara -c --host localhost \
   --tls-cafile server.crt \
   --tls-certfile client.crt \
   --tls-keyfile client.key
 
 # Pack storage with TLS
-druva -p --host localhost --tls-cafile server.crt
+dhara -p --host localhost --tls-cafile server.crt
 ```
 
 **Programmatic Usage:**
 
 ```python
-from druva import Connection
-from druva.storage import ClientStorage
-from druva.security.tls import TLSConfig
+from dhara import Connection
+from dhara.storage import ClientStorage
+from dhara.security.tls import TLSConfig
 
 # Server
-from druva.server.server import StorageServer
-from druva.storage import FileStorage
+from dhara.server.server import StorageServer
+from dhara.storage import FileStorage
 
-storage = FileStorage("data.druva")
+storage = FileStorage("data.dhara")
 tls_config = TLSConfig(
     certfile="server.crt",
     keyfile="server.key",
@@ -294,14 +296,14 @@ connection = Connection(storage)
 1. **Production Deployment:**
 
    - Use certificates from a trusted CA (Let's Encrypt, commercial CA)
-   - Enable certificate verification (`DRUVA_TLS_VERIFY_MODE=required`)
-   - Use TLS 1.3 or higher (`DRUVA_TLS_VERSION=1.3`)
+   - Enable certificate verification (`DHARA_TLS_VERIFY_MODE=required`)
+   - Use TLS 1.3 or higher (`DHARA_TLS_VERSION=1.3`)
    - Implement mutual TLS for sensitive environments
 
 1. **Testing/Development:**
 
    - Use `--generate-tls-cert` for quick self-signed certificates
-   - Set `DRUVA_TLS_VERIFY_MODE=none` only for testing
+   - Set `DHARA_TLS_VERIFY_MODE=none` only for testing
    - Never disable verification in production
 
 1. **Certificate Management:**
@@ -343,7 +345,7 @@ Accessing attributes on GHOST objects triggers automatic state loading via the C
 When using regular Python containers (dict, list) as attributes of Persistent objects, changes are NOT automatically tracked. You must call `_p_note_change()`:
 
 ```python
-from druva import Persistent
+from dhara import Persistent
 
 class MyObject(Persistent):
     def __init__(self):
@@ -358,7 +360,7 @@ Alternatively, use `PersistentDict`, `PersistentList`, or `PersistentSet` which 
 
 ### B-Tree Implementation
 
-The `BTree` class (in `druva/collections/btree.py`) implements a B-tree data structure:
+The `BTree` class (in `dhara/collections/btree.py`) implements a B-tree data structure:
 
 - Minimum degree (t) = 2
 - Supports `collections.abc.MutableMapping` interface
@@ -376,7 +378,7 @@ The `BTree` class (in `druva/collections/btree.py`) implements a B-tree data str
 
 ### C Extension vs Pure Python
 
-- CPython: Uses `druva/_persistent.c` for `PersistentBase` and `ConnectionBase`
+- CPython: Uses `dhara/_persistent.c` for `PersistentBase` and `ConnectionBase`
 - PyPy: Uses pure Python fallback (C extensions are slower on PyPy)
 - The C extension optimizes the hot path: `__getattribute__`, `__setattr__`, ghost state transitions
 
@@ -392,7 +394,7 @@ The `BTree` class (in `druva/collections/btree.py`) implements a B-tree data str
 ### Creating Persistent Classes
 
 ```python
-from druva import Persistent, Connection, FileStorage
+from dhara import Persistent, Connection, FileStorage
 
 class User(Persistent):
     def __init__(self, name: str):
@@ -400,7 +402,7 @@ class User(Persistent):
         self.email = None
 
 # Usage
-connection = Connection(FileStorage("users.druva"))
+connection = Connection(FileStorage("users.dhara"))
 root = connection.get_root()
 root["users"] = {}
 root["users"]["john"] = User("John Doe")
@@ -410,21 +412,21 @@ connection.commit()
 ### Working with Direct File Access
 
 ```python
-from druva import Connection
+from dhara import Connection
 
 # Connection can take a string path directly
-connection = Connection("mydata.druva")
+connection = Connection("mydata.dhara")
 root = connection.get_root()
 ```
 
 ### Using Different Storage Backends
 
 ```python
-from druva import Connection
-from druva.storage import FileStorage, SqliteStorage, ClientStorage
+from dhara import Connection
+from dhara.storage import FileStorage, SqliteStorage, ClientStorage
 
 # File storage (default)
-connection = Connection(FileStorage("data.druva"))
+connection = Connection(FileStorage("data.dhara"))
 
 # SQLite storage
 connection = Connection(SqliteStorage("data.db"))
@@ -440,15 +442,15 @@ connection = Connection(ClientStorage(address=("localhost", 2972)))
 connection.pack()
 
 # Server-side automatic GC
-druva -s --gcbytes 1000000  # Pack after 1MB of changes
+dhara -s --gcbytes 1000000  # Pack after 1MB of changes
 ```
 
 ### Using Persistent Collections
 
 ```python
-from druva import Connection, PersistentDict, PersistentList
+from dhara import Connection, PersistentDict, PersistentList
 
-connection = Connection("data.druva")
+connection = Connection("data.dhara")
 root = connection.get_root()
 
 # These handle change tracking automatically
@@ -467,7 +469,7 @@ Tests use pytest with shared fixtures from `test/conftest.py`:
 
 ```python
 import pytest
-from druva import Connection, Persistent
+from dhara import Connection, Persistent
 
 def test_something(connection):
     """Uses memory_storage fixture by default."""
@@ -503,7 +505,7 @@ Tests use pytest markers:
 
 ## Configuration
 
-druva uses Oneiric for configuration management. Configuration is loaded from:
+dhara uses Oneiric for configuration management. Configuration is loaded from:
 
 1. Environment variables
 1. Configuration files (YAML/TOML)
@@ -512,10 +514,10 @@ druva uses Oneiric for configuration management. Configuration is loaded from:
 ### Example Configuration
 
 ```yaml
-# druva.yaml
+# dhara.yaml
 storage:
   backend: file
-  path: /var/lib/druva/data.druva
+  path: /var/lib/dhara/data.dhara
 
 server:
   host: localhost
@@ -540,11 +542,11 @@ logging:
 
 ### Secret Management
 
-druva integrates with Oneiric for secret management:
+dhara integrates with Oneiric for secret management:
 
 - Secrets are loaded from environment variables or secret stores
 - Never hardcode secrets in configuration files
-- Use `druva.config.security` for secure configuration handling
+- Use `dhara.config.security` for secure configuration handling
 
 ### Network Security
 
@@ -556,12 +558,12 @@ When using ClientStorage:
 
 ## MCP Integration
 
-druva includes an MCP (Model Context Protocol) server for AI/agent workflows:
+dhara includes an MCP (Model Context Protocol) server for AI/agent workflows:
 
 ```python
-from druva.mcp import create_server
+from dhara.mcp import create_server
 
-server = create_server(config="druva.yaml")
+server = create_server(config="dhara.yaml")
 server.run()
 ```
 
@@ -574,10 +576,10 @@ The MCP server provides:
 
 ## Migration from Durus 4.x
 
-Key changes in druva 5.0:
+Key changes in dhara 5.0:
 
-1. **Package structure**: Flat `durus/` → Layered `druva/` with subpackages
-1. **Imports**: `from durus.X` → `from druva.X` or `from druva.subpackage.X`
+1. **Package structure**: Flat `durus/` → Layered `dhara/` with subpackages
+1. **Imports**: `from durus.X` → `from dhara.X` or `from dhara.subpackage.X`
 1. **Serialization**: Pickle-only → msgspec default (pickle still available)
 1. **Configuration**: No config → Oneiric-based configuration
 1. **Testing**: sancho.utest → pytest
@@ -591,13 +593,13 @@ from durus.connection import Connection
 from durus.file_storage import FileStorage
 from durus.persistent import Persistent
 
-# New (druva 5.0)
-from druva import Connection, Persistent
-from druva.storage import FileStorage
+# New (dhara 5.0)
+from dhara import Connection, Persistent
+from dhara.storage import FileStorage
 
 # Or more explicit
-from druva.core import Connection, Persistent
-from druva.storage.file import FileStorage
+from dhara.core import Connection, Persistent
+from dhara.storage.file import FileStorage
 ```
 
 ## Troubleshooting
@@ -629,8 +631,8 @@ except ConflictError:
 **Performance**: Use msgspec serialization for better performance:
 
 ```python
-from druva.serialize import MsgspecSerializer
-storage = FileStorage("data.druva", serializer=MsgspecSerializer())
+from dhara.serialize import MsgspecSerializer
+storage = FileStorage("data.dhara", serializer=MsgspecSerializer())
 ```
 
 <!-- CRACKERJACK_START -->

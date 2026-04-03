@@ -1,12 +1,12 @@
 ---
-# Service for druva server
+# Service for dhara server
 apiVersion: v1
 kind: Service
 metadata:
-  name: druva-server
+  name: dhara-server
   namespace: ${NAMESPACE}
   labels:
-    app: druva
+    app: dhara
     component: server
   annotations:
     # Optional: Add service annotations for cloud providers
@@ -15,13 +15,13 @@ spec:
   type: ClusterIP  # Use LoadBalancer or NodePort for external access
   sessionAffinity: None  # Could use ClientIP for sticky sessions
   ports:
-  - name: druva
+  - name: dhara
     port: 2972
     targetPort: 2972
     protocol: TCP
     # nodePort: 32972  # Required if type=NodePort (30000-32767 range)
   selector:
-    app: druva
+    app: dhara
     component: server
 
 ---
@@ -30,21 +30,21 @@ spec:
 # apiVersion: v1
 # kind: Service
 # metadata:
-#   name: druva-server-headless
+#   name: dhara-server-headless
 #   namespace: ${NAMESPACE}
 #   labels:
-#     app: druva
+#     app: dhara
 #     component: server
 # spec:
 #   type: ClusterIP
 #   clusterIP: None
 #   ports:
-#   - name: druva
+#   - name: dhara
 #     port: 2972
 #     targetPort: 2972
 #     protocol: TCP
 #   selector:
-#     app: druva
+#     app: dhara
 #     component: server
 
 ---
@@ -53,17 +53,17 @@ spec:
 # apiVersion: monitoring.coreos.com/v1
 # kind: ServiceMonitor
 # metadata:
-#   name: druva-server
+#   name: dhara-server
 #   namespace: ${NAMESPACE}
 #   labels:
-#     app: druva
+#     app: dhara
 # spec:
 #   selector:
 #     matchLabels:
-#       app: druva
+#       app: dhara
 #       component: server
 #   endpoints:
-#   - port: druva
+#   - port: dhara
 #     interval: 30s
 #     scrapeTimeout: 10s
 #     path: /metrics
@@ -75,10 +75,10 @@ spec:
 # apiVersion: networking.k8s.io/v1
 # kind: Ingress
 # metadata:
-#   name: druva-server
+#   name: dhara-server
 #   namespace: ${NAMESPACE}
 #   labels:
-#     app: druva
+#     app: dhara
 #   annotations:
 #     # Example annotations for NGINX Ingress Controller
 #     nginx.ingress.kubernetes.io/backend-protocol: "TCP"
@@ -86,13 +86,13 @@ spec:
 # spec:
 #   ingressClassName: nginx
 #   rules:
-#   - host: druva.example.com
+#   - host: dhara.example.com
 #     http:
 #       paths:
 #       - path: /
 #         pathType: Prefix
 #         backend:
 #           service:
-#             name: druva-server
+#             name: dhara-server
 #             port:
 #               number: 2972
