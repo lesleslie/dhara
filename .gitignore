@@ -29,3 +29,6 @@ dist
 .archives/
 .backup/
 .backups/
+
+.coverage
+coverage.json
