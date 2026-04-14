@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Command-line interface for Durus backup and restore operations.
+Command-line interface for Dhara backup and restore operations.
 
 This CLI provides easy-to-use commands for:
 - Creating backups
@@ -21,7 +21,7 @@ from dhara.backup.catalog import BackupCatalog
 from dhara.backup.manager import BackupManager, BackupType
 from dhara.backup.restore import RestoreManager
 from dhara.backup.verification import BackupVerification
-from dhara.file_storage import FileStorage
+from dhara.storage.file import FileStorage
 
 # Configure logging
 logging.basicConfig(
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 def setup_parser():
     """Set up command-line argument parser."""
     parser = argparse.ArgumentParser(
-        description="Durus Backup and Restore CLI",
+        description="Dhara Backup and Restore CLI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:

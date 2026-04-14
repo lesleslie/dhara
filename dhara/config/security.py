@@ -1,7 +1,7 @@
 """
-Security Configuration Module
+Security configuration module.
 
-This module provides centralized security configuration for Durus applications,
+This module provides centralized security configuration for Dhara applications,
 integrating with Oneiric secrets management for HMAC signing keys.
 """
 
@@ -37,13 +37,13 @@ except ImportError:
 @dataclass
 class SecurityConfig:
     """
-    Centralized security configuration for Durus applications.
+    Centralized security configuration for Dhara applications.
 
     Handles HMAC key management, security policies, and validation.
     """
 
     # Secret management configuration
-    secret_prefix: str = "durus/hmac"
+    secret_prefix: str = "dhara/hmac"
     rotation_interval_days: int = 90
     key_length_minimum_bytes: int = 32
 

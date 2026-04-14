@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
+from typing import ClassVar
 
 from mcp_common import MCPServerSettings
 from pydantic import BaseModel, Field
@@ -49,6 +50,36 @@ class TimeSeriesConfig(BaseModel):
     retention_days: int = Field(default=60, ge=1, le=3650)
 
 
+class EcosystemStateConfig(BaseModel):
+    """Ecosystem registry and event-log configuration."""
+
+    event_retention_days: int = Field(default=30, ge=1, le=3650)
+
+
+class AuthenticationTokenConfig(BaseModel):
+    """Static token auth configuration for the canonical FastMCP runtime."""
+
+    tokens_file: Path | None = Field(default=None)
+    require_auth: bool = Field(default=True)
+    default_role: str = Field(default="readonly")
+
+
+class AuthenticationConfig(BaseModel):
+    """Canonical MCP authentication settings."""
+
+    enabled: bool = Field(default=False)
+    method: str = Field(default="token")
+    required_scopes: list[str] = Field(default_factory=list)
+    token: AuthenticationTokenConfig = Field(default_factory=AuthenticationTokenConfig)
+
+
+class BackupRuntimeConfig(BaseModel):
+    """Runtime backup/recovery observability settings."""
+
+    enabled: bool = Field(default=False)
+    directory: Path = Field(default=Path("./backups"))
+
+
 class DharaSettings(MCPServerSettings):
     """Dhara MCP Server settings extending MCPServerSettings.
 
@@ -73,6 +104,8 @@ class DharaSettings(MCPServerSettings):
         export DHARA_STORAGE_READ_ONLY=false
     """
 
+    server_name: str = Field(default="dhara")
+
     # Operational mode (lite, standard)
     mode: str = Field(
         default="lite",
@@ -90,6 +123,9 @@ class DharaSettings(MCPServerSettings):
     adapters: AdapterConfig = Field(default_factory=AdapterConfig)
     cloud_storage: CloudStorageConfig = Field(default_factory=CloudStorageConfig)
     time_series: TimeSeriesConfig = Field(default_factory=TimeSeriesConfig)
+    ecosystem_state: EcosystemStateConfig = Field(default_factory=EcosystemStateConfig)
+    authentication: AuthenticationConfig = Field(default_factory=AuthenticationConfig)
+    backups: BackupRuntimeConfig = Field(default_factory=BackupRuntimeConfig)
 
     # Oneiric integration (optional)
     oneiric_config_path: Path | None = Field(
@@ -107,6 +143,23 @@ class DharaSettings(MCPServerSettings):
         description="Server port (default: 8683)",
     )
 
+    LEGACY_ENV_PREFIXES: ClassVar[tuple[str, ...]] = ("DRUVA", "DURUS")
+
+    @classmethod
+    def _apply_legacy_env_aliases(cls) -> None:
+        """Mirror legacy environment variables into the canonical DHARA namespace.
+
+        Legacy prefixes remain supported during the rename transition, but
+        canonical `DHARA_*` values win if both are present.
+        """
+        for legacy_prefix in cls.LEGACY_ENV_PREFIXES:
+            prefix = f"{legacy_prefix}_"
+            for env_name, value in os.environ.items():
+                if not env_name.startswith(prefix):
+                    continue
+                canonical_name = "DHARA_" + env_name[len(prefix) :]
+                os.environ.setdefault(canonical_name, value)
+
     @classmethod
     def load(cls, config_name: str = "dhara") -> DharaSettings:
         """Load settings with mode-aware configuration.
@@ -122,6 +175,8 @@ class DharaSettings(MCPServerSettings):
         Returns:
             Loaded DharaSettings instance
         """
+        cls._apply_legacy_env_aliases()
+
         # Detect mode from environment
         mode = os.getenv("DHARA_MODE", "").lower().strip()
 
@@ -168,4 +223,8 @@ class DharaSettings(MCPServerSettings):
             Path to health snapshot file
         """
         snapshot_name = f"{self.mode}_dhara_health.json"
-        return self.cache_root / snapshot_name
+        return self.cache_root.expanduser() / snapshot_name
+
+
+# Backward-compatible aliases for the in-progress dhara rename.
+DruvaSettings = DharaSettings

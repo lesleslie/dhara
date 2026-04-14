@@ -1,7 +1,7 @@
-"""Session tracker for Druva admin shell.
+"""Session tracker for Dhara admin shell.
 
 This module provides Session-Buddy MCP integration for tracking
-Druva admin shell sessions.
+Dhara admin shell sessions.
 """
 
 from __future__ import annotations
@@ -13,10 +13,10 @@ from oneiric.shell.session_tracker import SessionEventEmitter
 logger = logging.getLogger(__name__)
 
 
-class DruvaSessionTracker(SessionEventEmitter):
-    """Session tracker for Druva admin shell.
+class DharaSessionTracker(SessionEventEmitter):
+    """Session tracker for Dhara admin shell.
 
-    Extends Oneiric SessionEventEmitter with Druva-specific metadata
+    Extends Oneiric SessionEventEmitter with Dhara-specific metadata
     for session tracking via Session-Buddy MCP.
     """
 
@@ -24,7 +24,7 @@ class DruvaSessionTracker(SessionEventEmitter):
         self,
         component_name: str = "dhara",
     ):
-        """Initialize Druva session tracker.
+        """Initialize Dhara session tracker.
 
         Args:
             component_name: Component name for session tracking
@@ -32,4 +32,6 @@ class DruvaSessionTracker(SessionEventEmitter):
         super().__init__(component_name=component_name)
 
 
-__all__ = ["DruvaSessionTracker"]
+DruvaSessionTracker = DharaSessionTracker
+
+__all__ = ["DharaSessionTracker", "DruvaSessionTracker"]

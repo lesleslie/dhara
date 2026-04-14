@@ -1,18 +1,18 @@
 #!/usr/bin/env python
-"""Druva MCP Server entry point.
+"""Dhara MCP Server entry point.
 
 Run with: python -m dhara.mcp
 """
 
-from dhara.core.config import DruvaSettings
-from dhara.mcp.server_core import DruvaMCPServer
+from dhara.core.config import DharaSettings
+from dhara.mcp.server_core import DharaMCPServer
 
 
 def main() -> None:
-    """Start the Druva MCP server."""
+    """Start the Dhara MCP server."""
     # Load settings from YAML config file (settings/dhara.yaml)
-    config = DruvaSettings.load()
-    server = DruvaMCPServer(config)
+    config = DharaSettings.load()
+    server = DharaMCPServer(config)
     server.run()
 
 

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-"""Adapter distribution MCP tools for Druva.
+"""Adapter distribution MCP tools for Dhara.
 
 This module provides tools for storing, retrieving, and managing Oneiric adapters
-as persistent Python objects in Druva with version history and health monitoring.
+as persistent Python objects in Dhara with version history and health monitoring.
 """
 
 import importlib
@@ -16,6 +16,26 @@ from dhara.core.connection import Connection
 from dhara.core.persistent import Persistent
 
 logger = logging.getLogger(__name__)
+
+
+def _import_factory(factory_path: str) -> tuple[Any, Any]:
+    """Import a factory path, retrying legacy druva paths via dhara."""
+    candidates = [factory_path]
+    if factory_path.startswith("druva."):
+        candidates.append(factory_path.replace("druva.", "dhara.", 1))
+
+    last_error: Exception | None = None
+    for candidate in candidates:
+        try:
+            module_path, class_name = candidate.rsplit(".", 1)
+            module = importlib.import_module(module_path)
+            return module, getattr(module, class_name)
+        except (ImportError, AttributeError) as exc:
+            last_error = exc
+
+    if last_error is not None:
+        raise last_error
+    raise ImportError(f"Unable to import factory path: {factory_path}")
 
 
 class Adapter(Persistent):
@@ -37,6 +57,8 @@ class Adapter(Persistent):
         health_status: Current health status
         last_health_check: Timestamp of last health check
     """
+
+    SCHEMA_VERSION = 1
 
     def __init__(
         self,
@@ -133,6 +155,7 @@ class Adapter(Persistent):
     def to_dict(self) -> dict[str, Any]:
         """Convert adapter to dictionary for MCP responses."""
         return {
+            "schema_version": self.SCHEMA_VERSION,
             "domain": self.domain,
             "key": self.key,
             "provider": self.provider,
@@ -163,7 +186,7 @@ class AdapterRegistry:
         """Initialize adapter registry.
 
         Args:
-            connection: Druva connection instance
+            connection: Dhara connection instance
         """
         self.connection = connection
         self._ensure_registry_structure()
@@ -435,9 +458,7 @@ class AdapterRegistry:
 
         # Validate factory path
         try:
-            module_path, class_name = adapter["factory_path"].rsplit(".", 1)
-            module = importlib.import_module(module_path)
-            getattr(module, class_name)
+            _import_factory(adapter["factory_path"])
         except ImportError as e:
             errors.append(f"Factory path not importable: {e}")
         except AttributeError as e:
@@ -501,9 +522,7 @@ class AdapterRegistry:
 
         # Perform actual health check (try to import factory)
         try:
-            module_path, class_name = adapter.factory_path.rsplit(".", 1)
-            module = importlib.import_module(module_path)
-            getattr(module, class_name)
+            _import_factory(adapter.factory_path)
 
             # Check if factory can be instantiated
             # (This is a basic check - could be enhanced)

@@ -263,11 +263,12 @@ def get_metrics_collector() -> MetricsCollector:
     return _global_collector
 
 
-def get_server_metrics() -> str | dict:
-    """Get server metrics in Prometheus format or as dict.
+def get_server_metrics() -> str:
+    """Get server metrics in Prometheus format.
 
     Returns:
-        Prometheus metrics text if available, otherwise a stats dict
+        Prometheus metrics text. When the richer collector is disabled,
+        emit a minimal health payload so /metrics still remains scrapeable.
     """
     collector = get_metrics_collector()
     metrics = collector.get_metrics()
@@ -275,7 +276,11 @@ def get_server_metrics() -> str | dict:
     if metrics is not None:
         return metrics
 
-    return collector.get_stats()
+    return (
+        "# HELP dhara_metrics_enabled Whether rich Dhara metrics collection is enabled\n"
+        "# TYPE dhara_metrics_enabled gauge\n"
+        "dhara_metrics_enabled 0\n"
+    )
 
 
 # Context manager for timing operations

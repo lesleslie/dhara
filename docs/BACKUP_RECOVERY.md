@@ -1,6 +1,6 @@
-# Durus Backup and Recovery Guide
+# Dhara Backup and Recovery Guide
 
-This guide provides comprehensive instructions for backing up and restoring Durus databases, ensuring data durability and disaster recovery capabilities.
+This guide provides comprehensive instructions for backing up and restoring Dhara databases, ensuring data durability and disaster recovery capabilities.
 
 ## Table of Contents
 
@@ -17,7 +17,7 @@ This guide provides comprehensive instructions for backing up and restoring Duru
 
 ## Overview
 
-The Durus backup and recovery system provides:
+The Dhara backup and recovery system provides:
 
 - **Multiple backup types**: Full, incremental, and differential backups
 - **Automated scheduling**: Cron-style backup scheduling
@@ -32,11 +32,11 @@ The Durus backup and recovery system provides:
 ### Basic Backup
 
 ```python
-from durus.file_storage import FileStorage
-from durus.backup import BackupManager
+from dhara.storage.file import FileStorage
+from dhara.backup.manager import BackupManager
 
 # Create storage
-storage = FileStorage("my_database.durus")
+storage = FileStorage("my_database.dhara")
 
 # Create backup manager
 backup_manager = BackupManager(
@@ -53,11 +53,11 @@ print(f"Backup created: {metadata.backup_id}")
 ### Basic Restore
 
 ```python
-from durus.backup import RestoreManager
+from dhara.backup.restore import RestoreManager
 
 # Create restore manager
 restore_manager = RestoreManager(
-    target_path="./restored_db.durus",
+    target_path="./restored_db.dhara",
     backup_dir="./backups"
 )
 
@@ -134,10 +134,11 @@ When to use:
 ### Basic Configuration
 
 ```python
-from durus.backup import BackupManager, BackupType
+from dhara.backup.manager import BackupManager
+from dhara.backup.models import BackupType
 
 backup_manager = BackupManager(
-    storage=storage,                    # Durus storage instance
+    storage=storage,                    # Dhara storage instance
     backup_dir="./backups",            # Backup directory
     compression_level=3,              # ZSTD compression level (1-19)
     encryption_key=None,               # Optional encryption key
@@ -154,7 +155,8 @@ backup_manager = BackupManager(
 
 ```python
 from cryptography.fernet import Fernet
-from durus.backup import BackupManager
+
+from dhara.backup.manager import BackupManager
 
 # Generate encryption key
 key = Fernet.generate_key()
@@ -173,12 +175,12 @@ print(f"Encryption key: {key.decode()}")
 ### Cloud Storage Configuration
 
 ```python
-from durus.backup.storage import StorageFactory
+from dhara.backup.storage import StorageFactory
 
 # S3 Configuration
 s3_adapter = StorageFactory.create_storage(
     "s3",
-    bucket_name="my-durus-backups",
+    bucket_name="my-dhara-backups",
     region="us-east-1",
     access_key="your-access-key",
     secret_key="your-secret-key"
@@ -187,7 +189,7 @@ s3_adapter = StorageFactory.create_storage(
 # GCS Configuration
 gcs_adapter = StorageFactory.create_storage(
     "gcs",
-    bucket_name="my-durus-backups",
+    bucket_name="my-dhara-backups",
     project_id="my-project",
     credentials_path="credentials.json"
 )
@@ -212,8 +214,9 @@ backup_manager = BackupManager(
 ### Scheduler Configuration
 
 ```python
-from durus.backup import BackupManager, BackupType
-from durus.backup.scheduler import BackupScheduler
+from dhara.backup.manager import BackupManager
+from dhara.backup.models import BackupType
+from dhara.backup.scheduler import BackupScheduler
 
 # Create backup manager
 backup_manager = BackupManager(storage=storage, backup_dir="./backups")
@@ -276,11 +279,11 @@ scheduler_thread.start()
 ### Point-in-Time Recovery
 
 ```python
-from durus.backup import RestoreManager
+from dhara.backup.restore import RestoreManager
 
 # Create restore manager
 restore_manager = RestoreManager(
-    target_path="./restored_db.durus",
+    target_path="./restored_db.dhara",
     backup_dir="./backups"
 )
 
@@ -335,7 +338,7 @@ print(f"Cloud storage: {summary['cloud_enabled']}")
 ### Manual Verification
 
 ```python
-from durus.backup.verification import BackupVerification
+from dhara.backup.scheduler import BackupVerification
 
 # Create verification instance
 verification = BackupVerification(
@@ -401,18 +404,19 @@ def run_verification_tests(metadata):
 
 ```python
 import boto3
-from durus.backup.storage import S3Storage
+
+from dhara.backup.storage import S3Storage
 
 # Using AWS credentials
 s3 = S3Storage(
-    bucket_name="durus-backups",
+    bucket_name="dhara-backups",
     region="us-west-2",
     access_key=os.getenv("AWS_ACCESS_KEY"),
     secret_key=os.getenv("AWS_SECRET_KEY")
 )
 
 # Upload backup
-s3.upload_file("/path/to/backup.durus", "backups/latest/backup.durus")
+s3.upload_file("/path/to/backup.dhara", "backups/latest/backup.dhara")
 
 # List backups
 backups = s3.list_files("backups/")
@@ -423,11 +427,11 @@ for backup in backups:
 ### Google Cloud Storage
 
 ```python
-from durus.backup.storage import GCSStorage
+from dhara.backup.storage import GCSStorage
 
 # Using service account
 gcs = GCSStorage(
-    bucket_name="durus-backups",
+    bucket_name="dhara-backups",
     credentials_path="service-account.json"
 )
 
@@ -438,11 +442,11 @@ gcs.upload_json(metadata.to_dict(), "backups/latest/metadata.json")
 ### Azure Blob Storage
 
 ```python
-from durus.backup.storage import AzureBlobStorage
+from dhara.backup.storage import AzureBlobStorage
 
 # Using connection string
 azure = AzureBlobStorage(
-    container_name="durus-backups",
+    container_name="dhara-backups",
     connection_string="DefaultEndpointsProtocol=https;..."
 )
 ```
@@ -715,4 +719,4 @@ class BackupVerification:
         pass
 ```
 
-This comprehensive backup and recovery system ensures data durability and provides robust disaster recovery capabilities for Durus databases.
+This comprehensive backup and recovery system ensures data durability and provides robust disaster recovery capabilities for Dhara databases.

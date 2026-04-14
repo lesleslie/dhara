@@ -1,86 +1,75 @@
-"""
-Durus - Persistent Object Database for Python
+"""Deprecated compatibility package that forwards legacy ``druva`` imports."""
 
-Copyright (c) Corporation for National Research Initiatives 2009. All Rights Reserved.
-Modernized for Python 3.13+ with Oneiric ecosystem integration.
-"""
+from __future__ import annotations
 
-__version__ = "0.5.0"
+import importlib
+import importlib.abc
+import importlib.machinery
+import sys
+import warnings
+from typing import Any
 
-# Import backward compatibility for Durus 4.x databases
-from druva import _compat  # noqa: F401 (side-effect imports for compat)
+import dhara as _dhara
 
-# Core persistence framework
-# Persistent collections
-from druva.collections import (
-    BNode,
-    BTree,
-    PersistentDict,
-    PersistentList,
-    PersistentSet,
-)
-from druva.core import Connection, Persistent, PersistentBase
-
-# Errors
-from druva.error import (
-    ConflictError,
-    DruvaKeyError,
-    ReadConflictError,
-    WriteConflictError,
+warnings.warn(
+    "The 'druva' package is deprecated; use 'dhara' instead.",
+    DeprecationWarning,
+    stacklevel=2,
 )
 
-# Serialization
-from druva.serialize import MsgspecSerializer, PickleSerializer, Serializer
 
-# Storage server
-from druva.server import StorageServer, wait_for_server
+class _DruvaAliasLoader(importlib.abc.Loader):
+    """Load ``druva.*`` modules by reusing the matching ``dhara.*`` module."""
 
-# Storage backends
-from druva.storage import ClientStorage, FileStorage, SqliteStorage, Storage
+    def __init__(self, target_name: str):
+        self.target_name = target_name
 
-# Utilities
-from druva.utils import (
-    as_bytes,
-    int4_to_str,
-    int8_to_str,
-    str_to_int4,
-    str_to_int8,
-)
+    def create_module(self, spec):  # type: ignore[override]
+        module = importlib.import_module(self.target_name)
+        sys.modules[spec.name] = module
+        return module
 
-__all__ = [
-    # Version
-    "__version__",
-    # Core
-    "Connection",
-    "Persistent",
-    "PersistentBase",
-    # Storage
-    "Storage",
-    "FileStorage",
-    "SqliteStorage",
-    "ClientStorage",
-    # Collections
-    "PersistentDict",
-    "PersistentList",
-    "PersistentSet",
-    "BTree",
-    "BNode",
-    # Server
-    "StorageServer",
-    "wait_for_server",
-    # Serialization
-    "Serializer",
-    "MsgspecSerializer",
-    "PickleSerializer",
-    # Utilities
-    "as_bytes",
-    "int8_to_str",
-    "int4_to_str",
-    "str_to_int8",
-    "str_to_int4",
-    # Errors
-    "ConflictError",
-    "ReadConflictError",
-    "WriteConflictError",
-    "DruvaKeyError",
-]
+    def exec_module(self, module):  # type: ignore[override]
+        return None
+
+
+class _DruvaAliasFinder(importlib.abc.MetaPathFinder):
+    """Resolve legacy ``druva.*`` imports through the canonical ``dhara.*`` tree."""
+
+    def find_spec(self, fullname: str, path, target=None):  # type: ignore[override]
+        if not fullname.startswith("druva."):
+            return None
+
+        target_name = "dhara." + fullname[len("druva.") :]
+        target_spec = importlib.util.find_spec(target_name)
+        if target_spec is None:
+            return None
+
+        is_package = target_spec.submodule_search_locations is not None
+        spec = importlib.machinery.ModuleSpec(
+            fullname,
+            _DruvaAliasLoader(target_name),
+            is_package=is_package,
+        )
+        if is_package:
+            spec.submodule_search_locations = list(
+                target_spec.submodule_search_locations or []
+            )
+        spec.origin = getattr(target_spec, "origin", None)
+        return spec
+
+
+if not any(isinstance(finder, _DruvaAliasFinder) for finder in sys.meta_path):
+    sys.meta_path.insert(0, _DruvaAliasFinder())
+
+
+def __getattr__(name: str) -> Any:
+    return getattr(_dhara, name)
+
+
+def __dir__() -> list[str]:
+    return sorted(set(globals()) | set(dir(_dhara)))
+
+
+__all__ = getattr(_dhara, "__all__", [])
+__version__ = getattr(_dhara, "__version__", "0.0.0")

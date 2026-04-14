@@ -1,6 +1,6 @@
 # Secret Management with Oneiric
 
-This document describes the secret management system in Durus using Oneiric secrets adapters for HMAC signing keys.
+This document describes the secret management system in Dhara using Oneiric secrets adapters for HMAC signing keys.
 
 ## Overview
 
@@ -18,7 +18,7 @@ The secret management system provides secure, automated key management with the 
 ### 1. Basic Initialization
 
 ```python
-from durus.config.security import initialize_security, get_security_config
+from dhara.config.security import initialize_security, get_security_config
 
 # Initialize security configuration
 config = initialize_security(
@@ -38,7 +38,7 @@ is_valid = config.verify_signature(message, signature, "sha256")
 ### 2. Context Manager
 
 ```python
-from durus.config.security import SecurityConfig
+from dhara.config.security import SecurityConfig
 
 with SecurityConfig(
     secret_prefix="myapp/hmac",
@@ -55,7 +55,7 @@ with SecurityConfig(
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `secret_prefix` | str | `"durus/hmac"` | Prefix for secret names in Oneiric |
+| `secret_prefix` | str | `"dhara/hmac"` | Prefix for secret names in Oneiric |
 | `rotation_interval_days` | int | `90` | Key rotation interval in days |
 | `key_length_minimum_bytes` | int | `32` | Minimum key length in bytes (256 bits) |
 | `allowed_algorithms` | List[str] | `["sha256", "sha384", "sha512"]` | Allowed HMAC algorithms |
@@ -200,13 +200,7 @@ If migrating from HashiCorp Vault to Oneiric:
 ### Example Migration
 
 ```python
-# Before (HashiCorp Vault)
-from durus.config.vault import VaultSecurityConfig
-
-config = VaultSecurityConfig(...)
-
-# After (Oneiric)
-from durus.config.security import SecurityConfig
+from dhara.config.security import SecurityConfig
 
 config = SecurityConfig(
     secret_prefix="myapp/hmac",
@@ -240,7 +234,7 @@ Enable debug logging to troubleshoot issues:
 
 ```python
 import logging
-logging.getLogger('durus.config.security').setLevel(logging.DEBUG)
+logging.getLogger('dhara.config.security').setLevel(logging.DEBUG)
 ```
 
 ## API Reference

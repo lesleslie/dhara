@@ -14,7 +14,7 @@ from typing import Any
 
 from oneiric.core.logging import get_logger
 
-from dhara.core.config import DruvaSettings, StorageConfig
+from dhara.core.config import DharaSettings, StorageConfig
 
 logger = get_logger(__name__)
 
@@ -56,11 +56,11 @@ class OperationalMode(ABC):
     ────────────────────────────────────────────────────────────────────
     """
 
-    def __init__(self, settings: DruvaSettings | None = None):
+    def __init__(self, settings: DharaSettings | None = None):
         """Initialize operational mode.
 
         Args:
-            settings: Optional DruvaSettings instance. If None, will be loaded.
+            settings: Optional DharaSettings instance. If None, will be loaded.
         """
         self.settings = settings
         self._validated = False
@@ -186,7 +186,7 @@ class OperationalMode(ABC):
         return f"""
 ╔═══════════════════════════════════════════════════════════╗
 ║                                                           ║
-║   Druva {self.get_name():<10} Mode                                 ║
+║   Dhara {self.get_name():<10} Mode                                 ║
 ║   {self.get_description():<55} ║
 ║                                                           ║
 ╚═══════════════════════════════════════════════════════════╝
@@ -213,8 +213,8 @@ class OperationalMode(ABC):
 
         # Load settings if not provided
         if self.settings is None:
-            logger.debug("Loading DruvaSettings")
-            self.settings = DruvaSettings.load("dhara")
+            logger.debug("Loading DharaSettings")
+            self.settings = DharaSettings.load("dhara")
 
         # Apply mode configuration
         logger.debug(f"Applying {self.name} mode configuration")
@@ -301,13 +301,13 @@ class StandardMode(OperationalMode):
 
 
 def create_mode(
-    mode_name: str, settings: DruvaSettings | None = None
+    mode_name: str, settings: DharaSettings | None = None
 ) -> OperationalMode:
     """Create operational mode instance by name.
 
     Args:
         mode_name: Mode name ("lite" or "standard")
-        settings: Optional DruvaSettings instance
+        settings: Optional DharaSettings instance
 
     Returns:
         OperationalMode instance
@@ -338,7 +338,7 @@ def create_mode(
     return mode_class(settings=settings)
 
 
-def get_mode(settings: DruvaSettings | None = None) -> OperationalMode:
+def get_mode(settings: DharaSettings | None = None) -> OperationalMode:
     """Detect operational mode from environment or configuration.
 
     Detection priority:
@@ -347,7 +347,7 @@ def get_mode(settings: DruvaSettings | None = None) -> OperationalMode:
     3. Auto-detect based on storage configuration
 
     Args:
-        settings: Optional DruvaSettings instance
+        settings: Optional DharaSettings instance
 
     Returns:
         Detected OperationalMode instance
@@ -368,7 +368,7 @@ def get_mode(settings: DruvaSettings | None = None) -> OperationalMode:
     # 2. Check settings file
     if settings is None:
         try:
-            settings = DruvaSettings.load("dhara")
+            settings = DharaSettings.load("dhara")
         except Exception:
             logger.debug("Could not load settings, using default detection")
             pass

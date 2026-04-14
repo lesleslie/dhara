@@ -1,8 +1,8 @@
-"""Default configuration for Durus.
+"""Default configuration for Dhara.
 
 This module provides configuration classes using dataclasses,
 following Oneiric patterns for configuration management.
-Compatible with existing Durus patterns and no external dependencies.
+Compatible with legacy Druva/Durus patterns and no external dependencies.
 """
 
 from dataclasses import dataclass, field
@@ -47,7 +47,7 @@ class StorageConfig:
 
 @dataclass
 class CacheConfig:
-    """Cache configuration for Durus connections.
+    """Cache configuration for Dhara connections.
 
     Attributes:
         size: Maximum number of objects in the cache
@@ -101,11 +101,11 @@ class ConnectionConfig:
 
 
 @dataclass
-class DruvaConfig:
-    """Main Durus configuration.
+class DharaConfig:
+    """Main Dhara configuration.
 
     This is the primary configuration class that aggregates all
-    Durus configuration settings. It follows Oneiric patterns for
+    Dhara configuration settings. It follows Oneiric patterns for
     centralized configuration management.
 
     Attributes:
@@ -158,14 +158,14 @@ class DruvaConfig:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "DruvaConfig":
+    def from_dict(cls, data: dict) -> "DharaConfig":
         """Create configuration from dictionary.
 
         Args:
             data: Dictionary containing configuration values
 
         Returns:
-            DruvaConfig instance
+            DharaConfig instance
 
         Raises:
             ValueError: If configuration is invalid
@@ -183,3 +183,7 @@ class DruvaConfig:
             connection=ConnectionConfig(**data.get("connection", {})),
             debug_mode=data.get("debug_mode", False),
         )
+
+
+# Legacy compatibility alias
+DruvaConfig = DharaConfig

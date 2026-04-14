@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-"""Minimal key/value + time-series storage for Druva MCP tools.
+"""Minimal key/value and time-series storage for Dhara MCP tools.
 
 Implements:
 - put/get with optional TTL
 - time-series append/query with retention
 
-Storage is backed by Druva persistent objects (PersistentDict/List).
+Storage is backed by Dhara persistent objects (PersistentDict/List).
 """
 
 import time
@@ -42,7 +42,7 @@ class TimeSeriesRetention:
 
 
 class KVTimeSeriesStore:
-    """Simple Druva-backed KV and time-series store."""
+    """Simple Dhara-backed KV and time-series store."""
 
     def __init__(self, connection: Connection, retention: TimeSeriesRetention | None = None):
         self.connection = connection

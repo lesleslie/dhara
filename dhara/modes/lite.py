@@ -1,6 +1,6 @@
 """Lite operational mode - Zero-configuration development mode.
 
-This mode provides the simplest possible Druva experience:
+This mode provides the simplest possible Dhara experience:
 - No configuration required
 - Local filesystem storage
 - Sensible defaults
@@ -184,7 +184,7 @@ class LiteMode(OperationalMode):
         return """
 ╔═══════════════════════════════════════════════════════════════════╗
 ║                                                                   ║
-║   🦀 Druva Lite Mode - Development & Testing                    ║
+║   Dhara Lite Mode - Development & Testing                       ║
 ║                                                                   ║
 ║   ✓ Zero configuration required                                  ║
 ║   ✓ Local storage in ~/.local/share/dhara/                      ║
@@ -210,7 +210,7 @@ class LiteMode(OperationalMode):
                     "Local development",
                     "Quick prototyping",
                     "Testing and experimentation",
-                    "Learning Druva",
+                    "Learning Dhara",
                 ],
             }
         )

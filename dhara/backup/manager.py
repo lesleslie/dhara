@@ -1,5 +1,5 @@
 """
-Backup manager for Durus databases.
+Backup manager for Dhara databases.
 
 This module implements the core backup functionality, including:
 - Full backups
@@ -24,7 +24,7 @@ from typing import Any
 import zstandard as zstd
 from cryptography.fernet import Fernet
 
-from dhara.file_storage import FileStorage
+from dhara.storage.file import FileStorage
 from dhara.storage import Storage
 
 logger = logging.getLogger(__name__)
@@ -175,7 +175,9 @@ class BackupManager:
         self.backup_dir.mkdir(parents=True, exist_ok=True)
 
         self.compression = CompressionEngine(level=compression_level)
-        self.encryption = EncryptionEngine(key=encryption_key)
+        self.encryption = (
+            EncryptionEngine(key=encryption_key) if encryption_key else None
+        )
         self.cloud_adapter = cloud_adapter
 
         # Default retention policy
@@ -248,7 +250,7 @@ class BackupManager:
             # Copy database files
             if isinstance(self.storage, FileStorage):
                 # For FileStorage, copy the entire file
-                source_path = self.storage.shelf.filename
+                source_path = self.storage.get_filename()
                 shutil.copy2(source_path, backup_path)
             else:
                 # For other storage types, serialize the database
@@ -311,7 +313,7 @@ class BackupManager:
             # Copy changes since last backup
             # This is simplified - in practice, you'd track changes
             if isinstance(self.storage, FileStorage):
-                source_path = self.storage.shelf.filename
+                source_path = self.storage.get_filename()
                 shutil.copy2(source_path, backup_path)
             else:
                 raise NotImplementedError(
@@ -367,7 +369,7 @@ class BackupManager:
 
             # Copy changes since last full backup
             if isinstance(self.storage, FileStorage):
-                source_path = self.storage.shelf.filename
+                source_path = self.storage.get_filename()
                 shutil.copy2(source_path, backup_path)
             else:
                 raise NotImplementedError(
@@ -436,13 +438,14 @@ class BackupManager:
             self.logger.error(f"Failed to upload backup: {e}")
             return False
 
-    def cleanup_old_backups(self) -> None:
+    def cleanup_old_backups(self) -> int:
         """Remove old backups based on retention policy."""
         from .catalog import BackupCatalog
 
         catalog = BackupCatalog(self.backup_dir)
 
         current_time = datetime.now()
+        removed_count = 0
 
         for backup in catalog.get_all_backups():
             # Check if backup should be retained
@@ -457,3 +460,6 @@ class BackupManager:
 
                 # Remove from catalog
                 catalog.remove_backup(backup.backup_id)
+                removed_count += 1
+
+        return removed_count

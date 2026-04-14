@@ -397,7 +397,7 @@ class TestAdapterRegistry:
     def test_validate_adapter_success(self, registry: AdapterRegistry, sample_adapter_dict: dict):
         """Test validating a valid adapter configuration."""
         # Use a real factory path that exists
-        sample_adapter_dict["factory_path"] = "druva.core.persistent.PersistentBase"
+        sample_adapter_dict["factory_path"] = "dhara.core.persistent.PersistentBase"
 
         registry.store_adapter(**sample_adapter_dict)
 
@@ -421,7 +421,7 @@ class TestAdapterRegistry:
         assert result["valid"] is False
         assert "not found" in result["errors"][0].lower()
 
-    @patch("druva.mcp.adapter_tools.importlib")
+    @patch("dhara.mcp.adapter_tools.importlib")
     def test_validate_adapter_import_error(
         self, mock_importlib: Mock, registry: AdapterRegistry, sample_adapter_dict: dict
     ):
@@ -444,7 +444,7 @@ class TestAdapterRegistry:
     def test_check_adapter_health_healthy(self, registry: AdapterRegistry, sample_adapter_dict: dict):
         """Test health check for healthy adapter."""
         # Use a real factory path
-        sample_adapter_dict["factory_path"] = "druva.core.persistent.PersistentBase"
+        sample_adapter_dict["factory_path"] = "dhara.core.persistent.PersistentBase"
         registry.store_adapter(**sample_adapter_dict)
 
         result = registry.check_adapter_health(
@@ -572,6 +572,7 @@ class TestAdapterImpls:
 
         assert result["success"] is True
         assert result["adapter"]["version"] == "1.0.0"
+        assert result["adapter"]["schema_version"] == 1
 
     async def test_list_adapters_impl(self, registry: AdapterRegistry):
         """Test list_adapters async implementation."""
@@ -644,7 +645,7 @@ class TestAdapterImpls:
             key="cache",
             provider="redis",
             version="1.0.0",
-            factory_path="druva.core.persistent.PersistentBase",
+            factory_path="dhara.core.persistent.PersistentBase",
             config={},
             dependencies=[],
             capabilities=[],
@@ -670,7 +671,7 @@ class TestAdapterImpls:
             key="cache",
             provider="redis",
             version="1.0.0",
-            factory_path="druva.core.persistent.PersistentBase",
+            factory_path="dhara.core.persistent.PersistentBase",
             config={},
             dependencies=[],
             capabilities=[],

@@ -1,8 +1,8 @@
-# Durus Backup and Retention Policy
+# Dhara Backup and Retention Policy
 
 ## Policy Overview
 
-This document outlines the official backup and retention policy for Durus databases. The policy ensures data durability, business continuity, and compliance with organizational requirements.
+This document outlines the official backup and retention policy for Dhara databases. The policy ensures data durability, business continuity, and compliance with organizational requirements.
 
 ## Table of Contents
 
@@ -28,7 +28,7 @@ This document outlines the official backup and retention policy for Durus databa
 
 ### Scope
 
-This policy applies to all Durus databases including:
+This policy applies to all Dhara databases including:
 
 - Production databases
 - Staging databases

@@ -23,6 +23,11 @@ DEFAULT_VERIFY_MODE = ssl.CERT_REQUIRED
 DEFAULT_CIPHER_SUITES = None  # Use system defaults for TLS 1.3
 
 
+def _get_tls_env(name: str, default: str | None = None) -> str | None:
+    """Read canonical DHARA TLS env vars with DRUVA fallback."""
+    return os.getenv(f"DHARA_TLS_{name}", os.getenv(f"DRUVA_TLS_{name}", default))
+
+
 class TLSConfig:
     """Configuration for TLS/SSL connections."""
 
@@ -341,19 +346,19 @@ def get_env_tls_config() -> TLSConfig | None:
     Returns:
         TLSConfig if any TLS environment variables are set, None otherwise
     """
-    certfile = os.getenv("DHARA_TLS_CERTFILE")
-    keyfile = os.getenv("DHARA_TLS_KEYFILE")
-    cafile = os.getenv("DHARA_TLS_CAFILE")
-    capath = os.getenv("DHARA_TLS_CAPATH")
-    client_certfile = os.getenv("DHARA_TLS_CLIENT_CERTFILE")
-    client_keyfile = os.getenv("DHARA_TLS_CLIENT_KEYFILE")
+    certfile = _get_tls_env("CERTFILE")
+    keyfile = _get_tls_env("KEYFILE")
+    cafile = _get_tls_env("CAFILE")
+    capath = _get_tls_env("CAPATH")
+    client_certfile = _get_tls_env("CLIENT_CERTFILE")
+    client_keyfile = _get_tls_env("CLIENT_KEYFILE")
 
     # If no TLS config is set, return None
     if not any([certfile, keyfile, cafile, capath, client_certfile, client_keyfile]):
         return None
 
     # Parse verify mode
-    verify_mode_str = os.getenv("DHARA_TLS_VERIFY_MODE", "required").lower()
+    verify_mode_str = _get_tls_env("VERIFY_MODE", "required").lower()
     verify_mode_map = {
         "none": ssl.CERT_NONE,
         "optional": ssl.CERT_OPTIONAL,
@@ -362,7 +367,7 @@ def get_env_tls_config() -> TLSConfig | None:
     verify_mode = verify_mode_map.get(verify_mode_str, ssl.CERT_REQUIRED)
 
     # Parse TLS version
-    tls_version_str = os.getenv("DHARA_TLS_VERSION", "1.3")
+    tls_version_str = _get_tls_env("VERSION", "1.3")
     tls_version_map = {
         "1.2": ssl.TLSVersion.TLSv1_2,
         "1.3": ssl.TLSVersion.TLSv1_3,
@@ -370,7 +375,7 @@ def get_env_tls_config() -> TLSConfig | None:
     tls_version = tls_version_map.get(tls_version_str, ssl.TLSVersion.TLSv1_3)
 
     # Parse hostname check
-    check_hostname = os.getenv("DHARA_TLS_CHECK_HOSTNAME", "true").lower() == "true"
+    check_hostname = _get_tls_env("CHECK_HOSTNAME", "true").lower() == "true"
 
     return TLSConfig(
         certfile=certfile,

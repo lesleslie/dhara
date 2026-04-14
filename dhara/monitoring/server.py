@@ -1,5 +1,9 @@
 """HTTP server for exposing metrics and health endpoints.
 
+Deprecated: HTTP services in the Bodai ecosystem now standardize on exposing
+`/metrics` from the main service port. This standalone metrics server remains
+only as a temporary migration aid and should be removed after main-port cutover.
+
 Provides a simple HTTP server on top of prometheus_client and
 exposes metrics and health endpoints for monitoring.
 """

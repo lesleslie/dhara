@@ -1,9 +1,19 @@
-"""Compatibility shim for durus.file_storage
+"""Deprecated compatibility shim for legacy ``durus.file_storage`` imports.
 
-Redirects imports to new location (durus.storage.file)
-for backward compatibility with pickled data from Durus 4.x.
+Prefer ``dhara.storage.file`` for active code. This module remains only for
+backward compatibility with older imports and pickled data.
 """
 
+from __future__ import annotations
+
+import warnings
+
 from dhara.storage.file import *
+
+warnings.warn(
+    "dhara.file_storage is deprecated; use dhara.storage.file instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 __all__ = ["FileStorage"]

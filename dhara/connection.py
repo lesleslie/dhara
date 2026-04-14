@@ -1,9 +1,19 @@
-"""Compatibility shim for durus.connection
+"""Deprecated compatibility shim for legacy ``durus.connection`` imports.
 
-Redirects imports to new location (durus.core.connection)
-for backward compatibility with pickled data from Durus 4.x.
+Prefer ``dhara.core.connection`` for active code. This module remains only for
+backward compatibility with older imports and pickled data.
 """
 
+from __future__ import annotations
+
+import warnings
+
 from dhara.core.connection import *
+
+warnings.warn(
+    "dhara.connection is deprecated; use dhara.core.connection instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 __all__ = ["Connection", "ROOT_OID"]

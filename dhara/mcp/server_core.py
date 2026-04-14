@@ -1,13 +1,14 @@
 """Dhara MCP Server using FastMCP framework.
 
-This module implements the Dhara MCP server using FastMCP patterns
+This module implements the canonical Dhara MCP server using FastMCP patterns
 consistent with Mahavishnu, Session-Buddy, and Crackerjack.
 
 Migration Notes:
 - Replaces custom tool registration with FastMCP @server.tool() decorators
-- Preserves existing security (Token, HMAC, mTLS) from auth module
-- Integrates with DharaSettings from mcp-common
+- Uses DharaSettings as the canonical runtime configuration surface
+- Adds canonical bearer-token auth when enabled in Dhara settings
 - Adds adapter distribution tools via AdapterRegistry
+- Adds ecosystem state tools for service and event persistence
 - Adds health check tools via mcp-common
 """
 
@@ -17,6 +18,7 @@ import time
 from typing import Any
 
 from fastmcp import FastMCP
+from fastmcp.server.auth.authorization import require_scopes
 from mcp_common.health import (
     DependencyConfig,
     register_health_tools,
@@ -34,6 +36,8 @@ from dhara.mcp.adapter_tools import (
     store_adapter_impl,
     validate_adapter_impl,
 )
+from dhara.mcp.ecosystem_state import EcosystemStateStore, EventRetention
+from dhara.mcp.fastmcp_auth import build_token_verifier
 from dhara.mcp.kv_timeseries import KVTimeSeriesStore, TimeSeriesRetention
 from dhara.storage.file import FileStorage
 
@@ -44,8 +48,9 @@ class DharaMCPServer:
     """Dhara MCP Server with FastMCP framework.
 
     Replaces custom MCP implementation with FastMCP for ecosystem alignment.
-    Preserves existing security (Token, HMAC, mTLS) while using standard
-    tool registration patterns.
+    The legacy auth module remains available for compatibility and library use,
+    while the canonical runtime can enable bearer-token auth through Dhara's
+    token store configuration.
 
     ★ Insight: FastMCP Migration ─────────────────────────────────────
     1. FastMCP replaces custom tool registration with @server.tool() decorators
@@ -62,6 +67,14 @@ class DharaMCPServer:
             config: Validated Dhara settings
         """
         self.config = config
+        self._start_time = time.time()
+        self.auth_verifier = build_token_verifier(
+            enabled=config.authentication.enabled,
+            tokens_file=config.authentication.token.tokens_file,
+            require_auth=config.authentication.token.require_auth,
+            default_role=config.authentication.token.default_role,
+            required_scopes=config.authentication.required_scopes,
+        )
 
         # Initialize FastMCP server
         self.server = FastMCP(
@@ -70,6 +83,7 @@ class DharaMCPServer:
                 "Dhara provides persistent object storage and Oneiric adapter "
                 "distribution with ACID transactions and version management."
             ),
+            auth=self.auth_verifier,
         )
 
         # HTTP health endpoint for Claude Code compatibility
@@ -78,14 +92,8 @@ class DharaMCPServer:
             """HTTP health check endpoint for Claude Code `mcp list` compatibility."""
             from starlette.responses import JSONResponse
 
-            return JSONResponse(
-                {
-                    "status": "ok",
-                    "service": "dhara",
-                    "version": "0.1.0",
-                    "adapters": self.adapter_registry.count(),
-                }
-            )
+            runtime = self._runtime_status()
+            return JSONResponse(runtime, status_code=200 if runtime["ready"] else 503)
 
         @self.server.custom_route("/healthz", methods=["GET"])
         async def healthz_check(request: Any) -> Any:
@@ -93,6 +101,40 @@ class DharaMCPServer:
             from starlette.responses import JSONResponse
 
             return JSONResponse({"status": "ok"})
+
+        @self.server.custom_route("/ready", methods=["GET"])
+        async def ready_check(request: Any) -> Any:
+            """HTTP readiness endpoint on the main service port."""
+            from starlette.responses import JSONResponse
+
+            runtime = self._runtime_status()
+            return JSONResponse(runtime, status_code=200 if runtime["ready"] else 503)
+
+        @self.server.custom_route("/readyz", methods=["GET"])
+        async def readyz_check(request: Any) -> Any:
+            """Kubernetes-style readiness endpoint."""
+            from starlette.responses import JSONResponse
+
+            runtime = self._runtime_status()
+            return JSONResponse(runtime, status_code=200 if runtime["ready"] else 503)
+
+        @self.server.custom_route("/metrics", methods=["GET"])
+        async def metrics_check(request: Any) -> Any:
+            """Prometheus metrics endpoint on the main Dhara service port."""
+            from starlette.responses import Response
+
+            from dhara.monitoring.metrics import get_server_metrics
+
+            metrics = get_server_metrics()
+            if not isinstance(metrics, str):
+                import json
+
+                metrics = json.dumps(metrics)
+                media_type = "application/json"
+            else:
+                media_type = "text/plain; version=0.0.4; charset=utf-8"
+
+            return Response(content=metrics, media_type=media_type)
 
         # Initialize storage and connection
         # Expand ~ to home directory
@@ -111,9 +153,12 @@ class DharaMCPServer:
             self.connection,
             retention=TimeSeriesRetention(retention_days=config.time_series.retention_days),
         )
-
-        # Track server start time for health checks
-        self._start_time = time.time()
+        self.ecosystem_state = EcosystemStateStore(
+            self.connection,
+            event_retention=EventRetention(
+                retention_days=config.ecosystem_state.event_retention_days
+            ),
+        )
 
         # Register tools using FastMCP decorators
         self._register_tools()
@@ -127,35 +172,56 @@ class DharaMCPServer:
         )
 
     def _register_tools(self) -> None:
-        """Register all MCP tools using FastMCP decorators.
+        """Register MCP tools based on active profile.
 
-        FastMCP automatically handles:
-        - Input validation via type hints
-        - JSON schema generation from function signatures
-        - Response serialization
-        - Error handling
+        Tools are grouped and gated by the DHARA_TOOL_PROFILE env var.
+        Uses a conditional decorator _tool() that only registers tools
+        belonging to groups in the active profile.
 
-        ★ Insight: Tool Registration Pattern ────────────────────────────
-        Unlike the old custom MCP implementation that required manual
-        get_tool_list() and call_tool() methods, FastMCP uses decorator
-        registration similar to Flask/FastAPI. This provides:
-        1. Type safety via Pydantic models
-        2. Automatic schema generation
-        3. Self-documenting tool definitions
-        ────────────────────────────────────────────────────────────────────
+        Profile tiers:
+            MINIMAL:  KV/time-series storage only
+            STANDARD: Adds adapter registry and ecosystem state
+            FULL:     All tools (same as STANDARD for Dhara)
         """
 
-        @self.server.tool()
+        def auth(*scopes: str):
+            if not self.config.authentication.enabled:
+                return None
+            return require_scopes(*scopes)
+
+        from dhara.mcp.profiles import (
+            TOOL_GROUP_ADAPTER_REGISTRY,
+            TOOL_GROUP_ECOSYSTEM_STATE,
+            TOOL_GROUP_KV_TIME_SERIES,
+            TOOL_GROUP_DESCRIPTIONS,
+            TOOL_GROUP_TOOLS,
+            TOOL_GROUPS_BY_PROFILE,
+            get_active_profile,
+        )
+
+        profile = get_active_profile()
+        active_groups = set(TOOL_GROUPS_BY_PROFILE[profile])
+
+        logger.info("Dhara tool profile=%s groups=%s", profile.value, sorted(active_groups))
+
+        def _tool(group: str, **kwargs):
+            """Conditional registration — only registers if group is in active profile."""
+            if group not in active_groups:
+                return lambda fn: fn  # No-op: function defined but not registered
+            return self.server.tool(**kwargs)
+
+        # --- Adapter Registry tools (STANDARD+) ---
+        @_tool(TOOL_GROUP_ADAPTER_REGISTRY, auth=auth("write"))
         async def store_adapter(
             domain: str,
             key: str,
             provider: str,
             version: str,
             factory_path: str,
-            config: dict[str, Any] = {},
-            dependencies: list[str] = [],
-            capabilities: list[str] = [],
-            metadata: dict[str, Any] = {},
+            config: dict[str, Any] | None = None,
+            dependencies: list[str] | None = None,
+            capabilities: list[str] | None = None,
+            metadata: dict[str, Any] | None = None,
         ) -> dict[str, Any]:
             """Store a Oneiric adapter in the registry.
 
@@ -180,13 +246,161 @@ class DharaMCPServer:
                 provider=provider,
                 version=version,
                 factory_path=factory_path,
-                config=config,
-                dependencies=dependencies,
-                capabilities=capabilities,
-                metadata=metadata,
+                config=config or {},
+                dependencies=dependencies or [],
+                capabilities=capabilities or [],
+                metadata=metadata or {},
             )
 
-        @self.server.tool()
+        @_tool(TOOL_GROUP_ADAPTER_REGISTRY, auth=auth("read"))
+        async def get_contract_info() -> dict[str, Any]:
+            """Return the supported Dhara MCP contract summary."""
+            auth_mode = "token" if self.auth_verifier is not None else "none"
+            return {
+                "ok": True,
+                "server": {
+                    "name": self.config.server_name,
+                    "transport": "FastMCP HTTP",
+                    "http_endpoints": ["/health", "/healthz", "/ready", "/readyz", "/metrics"],
+                },
+                "tool_groups": {
+                    "adapter_registry": [
+                        "store_adapter",
+                        "get_adapter",
+                        "list_adapters",
+                        "list_adapter_versions",
+                        "validate_adapter",
+                        "get_adapter_health",
+                    ],
+                    "kv_time_series": [
+                        "put",
+                        "get",
+                        "record_time_series",
+                        "query_time_series",
+                        "aggregate_patterns",
+                    ],
+                    "ecosystem_state": [
+                        "upsert_service",
+                        "get_service",
+                        "list_services",
+                        "record_event",
+                        "list_events",
+                    ],
+                    "health": ["mcp-common health tools"],
+                },
+                "schema_versions": {
+                    "adapter_registry": 1,
+                    "ecosystem_service": 1,
+                    "ecosystem_event": 1,
+                },
+                "authentication": {
+                    "runtime_mode": auth_mode,
+                    "canonical_fastmcp_wired": self.auth_verifier is not None,
+                    "available_library_surfaces": [
+                        "TokenAuth",
+                        "HMACAuth",
+                        "EnvironmentAuth",
+                        "AuthMiddleware",
+                    ],
+                    "required_scopes": list(self.config.authentication.required_scopes),
+                    "token_file": (
+                        str(self.config.authentication.token.tokens_file.expanduser())
+                        if self.config.authentication.token.tokens_file is not None
+                        else None
+                    ),
+                    "notes": (
+                        "Canonical FastMCP auth uses bearer tokens backed by the "
+                        "Dhara token store when enabled."
+                    )
+                    if self.auth_verifier is not None
+                    else (
+                        "The canonical FastMCP server does not currently enforce "
+                        "auth in the runtime path."
+                    ),
+                },
+                "deprecated_surfaces": {
+                    "module": ["dhara.mcp.server", "dhara.mcp.oneiric_server"],
+                    "legacy_tool_prefixes": ["durus_*"],
+                },
+            }
+
+        # --- Ecosystem State tools (STANDARD+) ---
+        @_tool(TOOL_GROUP_ECOSYSTEM_STATE, auth=auth("write"))
+        async def upsert_service(
+            service_id: str,
+            service_type: str,
+            capabilities: list[str] | None = None,
+            metadata: dict[str, Any] | None = None,
+            status: str = "unknown",
+            lease_expires_at: str | None = None,
+            heartbeat_at: str | None = None,
+        ) -> dict[str, Any]:
+            """Create or update a durable ecosystem service record."""
+            return self.ecosystem_state.upsert_service(
+                service_id=service_id,
+                service_type=service_type,
+                capabilities=capabilities,
+                metadata=metadata,
+                status=status,
+                lease_expires_at=lease_expires_at,
+                heartbeat_at=heartbeat_at,
+            )
+
+        @_tool(TOOL_GROUP_ECOSYSTEM_STATE, auth=auth("read"))
+        async def get_service(service_id: str) -> dict[str, Any]:
+            """Fetch a durable ecosystem service record."""
+            service = self.ecosystem_state.get_service(service_id)
+            return {"ok": True, "service": service}
+
+        @_tool(TOOL_GROUP_ECOSYSTEM_STATE, auth=auth("list"))
+        async def list_services(
+            service_type: str | None = None,
+            capability: str | None = None,
+            status: str | None = None,
+        ) -> dict[str, Any]:
+            """List durable ecosystem service records."""
+            services = self.ecosystem_state.list_services(
+                service_type=service_type,
+                capability=capability,
+                status=status,
+            )
+            return {"ok": True, "count": len(services), "services": services}
+
+        @_tool(TOOL_GROUP_ECOSYSTEM_STATE, auth=auth("write"))
+        async def record_event(
+            event_type: str,
+            source_service: str,
+            payload: dict[str, Any] | None = None,
+            related_service: str | None = None,
+            timestamp: str | None = None,
+        ) -> dict[str, Any]:
+            """Append a durable ecosystem event."""
+            return self.ecosystem_state.record_event(
+                event_type=event_type,
+                source_service=source_service,
+                payload=payload,
+                related_service=related_service,
+                timestamp=timestamp,
+            )
+
+        @_tool(TOOL_GROUP_ECOSYSTEM_STATE, auth=auth("list"))
+        async def list_events(
+            event_type: str | None = None,
+            source_service: str | None = None,
+            related_service: str | None = None,
+            limit: int | None = 100,
+        ) -> dict[str, Any]:
+            """List durable ecosystem events."""
+            events = self.ecosystem_state.list_events(
+                event_type=event_type,
+                source_service=source_service,
+                related_service=related_service,
+                limit=limit,
+            )
+            return {"ok": True, "count": len(events), "events": events}
+
+        # --- KV/Time Series tools (MINIMAL) ---
+        @_tool(TOOL_GROUP_KV_TIME_SERIES, auth=auth("write"))
         async def put(
             key: str,
             value: dict[str, Any] | str | int | float | bool | list[Any] | None,
@@ -195,14 +409,14 @@ class DharaMCPServer:
             """Store a key/value record with optional TTL (seconds)."""
             return self.kv_store.put(key=key, value=value, ttl=ttl)
 
-        @self.server.tool()
+        @_tool(TOOL_GROUP_KV_TIME_SERIES, auth=auth("read"))
         async def get(
             key: str,
         ) -> dict[str, Any]:
             """Get a key/value record."""
             return self.kv_store.get(key=key)
 
-        @self.server.tool()
+        @_tool(TOOL_GROUP_KV_TIME_SERIES, auth=auth("write"))
         async def record_time_series(
             metric_type: str,
             entity_id: str,
@@ -217,7 +431,7 @@ class DharaMCPServer:
                 timestamp=timestamp,
             )
 
-        @self.server.tool()
+        @_tool(TOOL_GROUP_KV_TIME_SERIES, auth=auth("read"))
         async def query_time_series(
             metric_type: str,
             entity_id: str,
@@ -232,7 +446,7 @@ class DharaMCPServer:
                 limit=limit,
             )
 
-        @self.server.tool()
+        @_tool(TOOL_GROUP_KV_TIME_SERIES, auth=auth("read"))
         async def aggregate_patterns(
             start_date: str,
             min_occurrences: int = 2,
@@ -243,7 +457,8 @@ class DharaMCPServer:
                 min_occurrences=min_occurrences,
             )
 
-        @self.server.tool()
+        # --- Remaining Adapter Registry tools (STANDARD+) ---
+        @_tool(TOOL_GROUP_ADAPTER_REGISTRY, auth=auth("read"))
         async def get_adapter(
             domain: str,
             key: str,
@@ -269,7 +484,7 @@ class DharaMCPServer:
                 version=version,
             )
 
-        @self.server.tool()
+        @_tool(TOOL_GROUP_ADAPTER_REGISTRY, auth=auth("list"))
         async def list_adapters(
             domain: str | None = None,
             category: str | None = None,
@@ -289,7 +504,7 @@ class DharaMCPServer:
                 category=category,
             )
 
-        @self.server.tool()
+        @_tool(TOOL_GROUP_ADAPTER_REGISTRY, auth=auth("list"))
         async def list_adapter_versions(
             domain: str,
             key: str,
@@ -315,7 +530,7 @@ class DharaMCPServer:
                 provider=provider,
             )
 
-        @self.server.tool()
+        @_tool(TOOL_GROUP_ADAPTER_REGISTRY, auth=auth("read"))
         async def validate_adapter(
             domain: str,
             key: str,
@@ -347,7 +562,7 @@ class DharaMCPServer:
                 version=version,
             )
 
-        @self.server.tool()
+        @_tool(TOOL_GROUP_ADAPTER_REGISTRY, auth=auth("read"))
         async def get_adapter_health(
             domain: str,
             key: str,
@@ -372,6 +587,44 @@ class DharaMCPServer:
                 key=key,
                 provider=provider,
             )
+
+        # --- Discovery meta-tool (always registered) ---
+        all_tools: dict[str, str] = {}
+        for group_name, tools in TOOL_GROUP_TOOLS.items():
+            desc = TOOL_GROUP_DESCRIPTIONS.get(group_name, "")
+            for tool_name in tools:
+                all_tools[tool_name] = desc
+
+        @self.server.tool()
+        async def discover_tools(query: str | None = None) -> dict[str, Any]:
+            """Search for available Dhara tools by name or capability."""
+            filtered = all_tools
+            if query:
+                q = query.lower()
+                filtered = {
+                    n: d for n, d in all_tools.items()
+                    if q in n.lower() or q in d.lower()
+                }
+
+            profile_group_tools: set[str] = set()
+            for gn in TOOL_GROUPS_BY_PROFILE.get(profile, [TOOL_GROUP_KV_TIME_SERIES]):
+                profile_group_tools.update(TOOL_GROUP_TOOLS.get(gn, []))
+
+            loaded = sorted(set(filtered.keys()) & profile_group_tools)
+            not_loaded = sorted(set(filtered.keys()) - profile_group_tools)
+
+            return {
+                "status": "success",
+                "profile": profile.value,
+                "query": query,
+                "loaded_tools": loaded,
+                "loaded_count": len(loaded),
+                "not_loaded_tools": not_loaded,
+                "not_loaded_count": len(not_loaded),
+                "hint": "Set DHARA_TOOL_PROFILE=full to enable all tools.",
+            }
+
+        logger.info("Dhara MCP tools registration complete (profile=%s)", profile.value)
 
     def _register_health_tools(self) -> None:
         """Register health check tools using mcp-common.
@@ -413,6 +666,97 @@ class DharaMCPServer:
 
         logger.info("Registered health check tools")
 
+    def _probe_storage(self) -> dict[str, Any]:
+        """Probe storage accessibility for readiness and health reporting."""
+        storage_path = self.config.storage.path.expanduser()
+        try:
+            root = self.connection.get_root()
+            return {
+                "path": str(storage_path),
+                "exists": storage_path.exists(),
+                "accessible": True,
+                "read_only": self.config.storage.read_only,
+                "root_keys": len(list(root.keys())),
+            }
+        except Exception as exc:
+            return {
+                "path": str(storage_path),
+                "exists": storage_path.exists(),
+                "accessible": False,
+                "read_only": self.config.storage.read_only,
+                "error": str(exc),
+            }
+
+    def _probe_backups(self) -> dict[str, Any]:
+        """Probe backup catalog visibility for recovery awareness."""
+        backup_dir = self.config.backups.directory.expanduser()
+        if not self.config.backups.enabled:
+            return {"configured": False}
+
+        catalog_path = backup_dir / "backup_catalog.durus"
+        try:
+            backup_dir.mkdir(parents=True, exist_ok=True)
+            latest_backup_id = None
+            latest_backup_at = None
+            total_backups = 0
+
+            if catalog_path.exists():
+                with FileStorage(str(catalog_path), readonly=True) as storage:
+                    connection = Connection(storage)
+                    root = connection.get_root()
+                    backups = root.get("backups", {})
+                    total_backups = len(list(backups.keys()))
+                    latest_payload = None
+                    latest_timestamp = None
+                    for payload in backups.values():
+                        data = dict(payload)
+                        timestamp = data.get("timestamp")
+                        if isinstance(timestamp, str) and (
+                            latest_timestamp is None or timestamp > latest_timestamp
+                        ):
+                            latest_timestamp = timestamp
+                            latest_payload = data
+                    if latest_payload is not None:
+                        latest_backup_id = latest_payload.get("backup_id")
+                        latest_backup_at = latest_payload.get("timestamp")
+
+            return {
+                "configured": True,
+                "directory": str(backup_dir),
+                "catalog_accessible": True,
+                "catalog_exists": catalog_path.exists(),
+                "latest_backup_id": latest_backup_id,
+                "latest_backup_at": latest_backup_at,
+                "total_backups": total_backups,
+            }
+        except Exception as exc:
+            return {
+                "configured": True,
+                "directory": str(backup_dir),
+                "catalog_accessible": False,
+                "error": str(exc),
+            }
+
+    def _runtime_status(self) -> dict[str, Any]:
+        """Return canonical runtime health and readiness data."""
+        storage = self._probe_storage()
+        backups = self._probe_backups()
+        ready = bool(storage.get("accessible"))
+        return {
+            "status": "ok" if ready else "error",
+            "service": "dhara",
+            "version": "0.1.0",
+            "ready": ready,
+            "uptime_seconds": time.time() - self._start_time,
+            "adapters": self.adapter_registry.count(),
+            "authentication": {
+                "enabled": self.auth_verifier is not None,
+                "mode": "token" if self.auth_verifier is not None else "none",
+            },
+            "storage": storage,
+            "backups": backups,
+        }
+
     def run(self, host: str = "127.0.0.1", port: int = 8683) -> None:
         """Run the MCP server (synchronous - manages its own event loop).
 
@@ -429,6 +773,10 @@ class DharaMCPServer:
 
     def close(self) -> None:
         """Close the server and cleanup resources."""
-        # Note: Connection doesn't have a close method in this implementation
-        # The storage is managed by the FileStorage class
+        if getattr(self, "storage", None) is not None:
+            self.storage.close()
         logger.info("Dhara MCP Server closed")
+
+
+# Backward-compatible alias during the dhara rename transition.
+DruvaMCPServer = DharaMCPServer

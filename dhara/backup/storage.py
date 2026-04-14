@@ -89,7 +89,7 @@ class S3Storage(StorageAdapter):
             self.s3_client.upload_file(local_path, self.bucket_name, remote_path)
             logger.info(f"Uploaded to S3: {remote_path}")
             return True
-        except ClientError as e:
+        except self.ClientError as e:
             logger.error(f"S3 upload failed: {e}")
             return False
 
@@ -99,7 +99,7 @@ class S3Storage(StorageAdapter):
             self.s3_client.download_file(self.bucket_name, remote_path, local_path)
             logger.info(f"Downloaded from S3: {remote_path}")
             return True
-        except ClientError as e:
+        except self.ClientError as e:
             logger.error(f"S3 download failed: {e}")
             return False
 
@@ -115,7 +115,7 @@ class S3Storage(StorageAdapter):
             )
             logger.info(f"Uploaded JSON to S3: {remote_path}")
             return True
-        except ClientError as e:
+        except self.ClientError as e:
             logger.error(f"S3 JSON upload failed: {e}")
             return False
 
@@ -127,7 +127,7 @@ class S3Storage(StorageAdapter):
             )
             json_str = response["Body"].read().decode("utf-8")
             return json.loads(json_str)
-        except ClientError as e:
+        except self.ClientError as e:
             logger.error(f"S3 JSON download failed: {e}")
             return None
 
@@ -149,7 +149,7 @@ class S3Storage(StorageAdapter):
                             }
                         )
             return files
-        except ClientError as e:
+        except self.ClientError as e:
             logger.error(f"S3 list files failed: {e}")
             return []
 
@@ -159,7 +159,7 @@ class S3Storage(StorageAdapter):
             self.s3_client.delete_object(Bucket=self.bucket_name, Key=remote_path)
             logger.info(f"Deleted from S3: {remote_path}")
             return True
-        except ClientError as e:
+        except self.ClientError as e:
             logger.error(f"S3 delete failed: {e}")
             return False
 
@@ -197,7 +197,7 @@ class GCSStorage(StorageAdapter):
             blob.upload_from_filename(local_path)
             logger.info(f"Uploaded to GCS: {remote_path}")
             return True
-        except GoogleCloudError as e:
+        except self.GoogleCloudError as e:
             logger.error(f"GCS upload failed: {e}")
             return False
 
@@ -208,7 +208,7 @@ class GCSStorage(StorageAdapter):
             blob.download_to_filename(local_path)
             logger.info(f"Downloaded from GCS: {remote_path}")
             return True
-        except GoogleCloudError as e:
+        except self.GoogleCloudError as e:
             logger.error(f"GCS download failed: {e}")
             return False
 
@@ -220,7 +220,7 @@ class GCSStorage(StorageAdapter):
             blob.upload_from_string(json_str, content_type="application/json")
             logger.info(f"Uploaded JSON to GCS: {remote_path}")
             return True
-        except GoogleCloudError as e:
+        except self.GoogleCloudError as e:
             logger.error(f"GCS JSON upload failed: {e}")
             return False
 
@@ -230,7 +230,7 @@ class GCSStorage(StorageAdapter):
             blob = self.bucket.blob(remote_path)
             json_str = blob.download_as_text()
             return json.loads(json_str)
-        except GoogleCloudError as e:
+        except self.GoogleCloudError as e:
             logger.error(f"GCS JSON download failed: {e}")
             return None
 
@@ -248,7 +248,7 @@ class GCSStorage(StorageAdapter):
                     }
                 )
             return files
-        except GoogleCloudError as e:
+        except self.GoogleCloudError as e:
             logger.error(f"GCS list files failed: {e}")
             return []
 
@@ -259,7 +259,7 @@ class GCSStorage(StorageAdapter):
             blob.delete()
             logger.info(f"Deleted from GCS: {remote_path}")
             return True
-        except GoogleCloudError as e:
+        except self.GoogleCloudError as e:
             logger.error(f"GCS delete failed: {e}")
             return False
 
@@ -270,7 +270,7 @@ class AzureBlobStorage(StorageAdapter):
     def __init__(
         self,
         connection_string: str,
-        container_name: str,
+        container_name: str = "durus-backups",
         account_name: str | None = None,
         account_key: str | None = None,
     ):

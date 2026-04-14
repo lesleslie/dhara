@@ -30,6 +30,19 @@ logging:
 cloud_storage:
   enabled: false
 
+authentication:
+  enabled: false
+  method: token
+  required_scopes: []
+  token:
+    tokens_file: null
+    require_auth: true
+    default_role: readonly
+
+backups:
+  enabled: false
+  directory: ./backups
+
 # Cache configuration
 cache:
   size: 10000

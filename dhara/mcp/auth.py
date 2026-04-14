@@ -1,5 +1,5 @@
 """
-Authentication and Authorization for Durus MCP Servers
+Authentication and authorization for Dhara MCP servers.
 
 This module provides comprehensive security controls for MCP server operations,
 including multiple authentication methods, role-based access control, and
@@ -26,12 +26,24 @@ import secrets
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from functools import wraps
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+
+def _utcnow() -> datetime:
+    """Return a timezone-aware UTC timestamp."""
+    return datetime.now(UTC)
+
+
+def _as_utc(value: datetime) -> datetime:
+    """Normalize a datetime to timezone-aware UTC."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
 
 
 class Permission(Enum):
@@ -144,7 +156,7 @@ class TokenInfo:
         """Check if token is expired"""
         if self.expires_at is None:
             return False
-        return datetime.utcnow() > self.expires_at
+        return _utcnow() > _as_utc(self.expires_at)
 
     def is_valid(self) -> bool:
         """Check if token is valid (not expired or revoked)"""
@@ -279,13 +291,13 @@ class TokenAuth:
 
         expires_at = None
         if expires_in:
-            expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+            expires_at = _utcnow() + timedelta(seconds=expires_in)
 
         token_info = TokenInfo(
             token_id=token_id,
             token_hash=token_hash,
             role=role,
-            created_at=datetime.utcnow(),
+            created_at=_utcnow(),
             expires_at=expires_at,
             rate_limit=rate_limit,
             metadata=metadata or {},
@@ -378,7 +390,7 @@ class TokenAuth:
 
             if self._compare_tokens(token, token_info.token_hash):
                 # Token found and valid
-                token_info.last_used = datetime.utcnow()
+                token_info.last_used = _utcnow()
 
                 logger.info(
                     f"Authentication successful for token '{token_id}' with role '{token_info.role.value}'"
@@ -809,7 +821,7 @@ class AuthMiddleware:
         """Log audit event"""
         log_data = {
             "event": event,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": _utcnow().isoformat(),
         }
 
         if context:

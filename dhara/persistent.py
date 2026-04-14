@@ -1,9 +1,19 @@
-"""Compatibility shim for durus.persistent
+"""Deprecated compatibility shim for legacy ``durus.persistent`` imports.
 
-Redirects imports to new location (durus.core.persistent)
-for backward compatibility with pickled data from Durus 4.x.
+Prefer ``dhara.core.persistent`` for active code. This module remains only for
+backward compatibility with older imports and pickled data.
 """
 
+from __future__ import annotations
+
+import warnings
+
 from dhara.core.persistent import *
+
+warnings.warn(
+    "dhara.persistent is deprecated; use dhara.core.persistent instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 __all__ = ["Persistent", "PersistentBase", "ConnectionBase"]

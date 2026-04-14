@@ -14,8 +14,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from dhara.file_storage import FileStorage
-from dhara.persistent_dict import PersistentDict
+from dhara.core import Connection
+from dhara.collections.dict import PersistentDict
+from dhara.storage.file import FileStorage
 
 from .manager import BackupMetadata, BackupType
 
@@ -25,33 +26,43 @@ logger = logging.getLogger(__name__)
 class BackupCatalog:
     """Manages backup metadata and provides search capabilities."""
 
-    def __init__(self, backup_dir: str):
+    def __init__(self, backup_dir: str | Path):
         self.backup_dir = Path(backup_dir)
-        self.catalog_path = backup_dir / "backup_catalog.durus"
+        self.backup_dir.mkdir(parents=True, exist_ok=True)
+        self.catalog_path = self.backup_dir / "backup_catalog.durus"
         self.catalog = self._load_catalog()
 
-    def _load_catalog(self) -> PersistentDict:
-        """Load or create backup catalog."""
-        if self.catalog_path.exists():
-            try:
-                storage = FileStorage(str(self.catalog_path))
-                catalog = PersistentDict()
-                storage.load(catalog)
-                return catalog
-            except Exception as e:
-                logger.warning(f"Failed to load catalog: {e}, creating new one")
-                return PersistentDict()
-        else:
-            return PersistentDict()
+    def _load_catalog(self) -> dict[str, dict[str, Any]]:
+        """Load catalog data into an in-memory dictionary."""
+        if not self.catalog_path.exists():
+            return {}
+
+        storage = FileStorage(str(self.catalog_path))
+        connection = Connection(storage)
+        root = connection.get_root()
+        backups = root.get("backups", {})
+        catalog = {
+            backup_id: dict(metadata)
+            for backup_id, metadata in backups.items()
+        }
+        storage.close()
+        return catalog
 
     def _save_catalog(self) -> None:
         """Save catalog to disk."""
         try:
             storage = FileStorage(str(self.catalog_path))
-            storage.store(self.catalog)
+            connection = Connection(storage)
+            root = connection.get_root()
+            root["backups"] = PersistentDict(self.catalog)
+            connection.commit()
             storage.close()
         except Exception as e:
             logger.error(f"Failed to save catalog: {e}")
+
+    def _refresh_catalog(self) -> None:
+        """Refresh in-memory state from disk."""
+        self.catalog = self._load_catalog()
 
     def add_backup(self, metadata: BackupMetadata) -> None:
         """Add backup to catalog."""
@@ -60,6 +71,7 @@ class BackupCatalog:
 
     def get_backup(self, backup_id: str) -> BackupMetadata | None:
         """Get backup by ID."""
+        self._refresh_catalog()
         if backup_id in self.catalog:
             data = self.catalog[backup_id]
             return BackupMetadata.from_dict(data)
@@ -67,6 +79,7 @@ class BackupCatalog:
 
     def get_all_backups(self) -> list[BackupMetadata]:
         """Get all backups."""
+        self._refresh_catalog()
         backups = []
         for data in self.catalog.values():
             backups.append(BackupMetadata.from_dict(data))
@@ -101,20 +114,25 @@ class BackupCatalog:
     def get_incremental_chain(self, base_backup_id: str) -> list[BackupMetadata]:
         """Get incremental backups forming a chain from base backup."""
         chain = []
-        current = base_backup_id
+        current_parent = base_backup_id
 
-        while current:
-            backup = self.get_backup(current)
-            if not backup:
+        while True:
+            next_backup = min(
+                (
+                    backup
+                    for backup in self.get_all_backups()
+                    if backup.backup_type == BackupType.INCREMENTAL
+                    and backup.parent_backup_id == current_parent
+                ),
+                key=lambda backup: backup.timestamp,
+                default=None,
+            )
+            if next_backup is None:
                 break
+            chain.append(next_backup)
+            current_parent = next_backup.backup_id
 
-            if backup.backup_type == BackupType.INCREMENTAL:
-                chain.append(backup)
-                current = backup.parent_backup_id
-            else:
-                break
-
-        return chain[::-1]  # Reverse to get chronological order
+        return chain
 
     def get_differential_backups(self, base_backup_id: str) -> list[BackupMetadata]:
         """Get all differential backups based on a full backup."""

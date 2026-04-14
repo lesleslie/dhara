@@ -11,7 +11,7 @@ import secrets
 import threading
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Optional
 
 try:
@@ -21,6 +21,18 @@ try:
 except ImportError:
     ONEIRIC_AVAILABLE = False
     secrets = None
+
+
+def _utcnow() -> datetime:
+    """Return a timezone-aware UTC timestamp."""
+    return datetime.now(UTC)
+
+
+def _as_utc(value: datetime) -> datetime:
+    """Normalize a datetime to timezone-aware UTC."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
 
 
 @dataclass
@@ -40,20 +52,20 @@ class SecretKey:
         """Check if the key has expired."""
         if self.expires_at is None:
             return False
-        return datetime.utcnow() > self.expires_at
+        return _utcnow() > _as_utc(self.expires_at)
 
     @property
     def age(self) -> timedelta:
         """Get the age of the key."""
-        return datetime.utcnow() - self.created_at
+        return _utcnow() - _as_utc(self.created_at)
 
     def rotate(self) -> "SecretKey":
         """Create a new rotated version of this key."""
         new_key = SecretKey(
             key_id=f"{self.key_id}_rotated_{int(time.time())}",
             key_material=secrets.token_bytes(32),  # 256-bit key
-            created_at=datetime.utcnow(),
-            expires_at=datetime.utcnow() + self.rotation_interval,
+            created_at=_utcnow(),
+            expires_at=_utcnow() + self.rotation_interval,
             rotation_interval=self.rotation_interval,
         )
         return new_key
@@ -126,10 +138,10 @@ class OneiricSecretsAdapter:
                 key_material=key_material,
                 created_at=datetime.fromisoformat(created_at_str)
                 if created_at_str
-                else datetime.utcnow(),
+                else _utcnow(),
                 expires_at=datetime.fromisoformat(expires_at_str)
                 if expires_at_str
-                else datetime.utcnow() + self.rotation_interval,
+                else _utcnow() + self.rotation_interval,
                 rotation_interval=self.rotation_interval,
             )
 
@@ -142,8 +154,8 @@ class OneiricSecretsAdapter:
             key = SecretKey(
                 key_id=key_id,
                 key_material=secrets.token_bytes(32),  # 256-bit minimum
-                created_at=datetime.utcnow(),
-                expires_at=datetime.utcnow() + self.rotation_interval,
+                created_at=_utcnow(),
+                expires_at=_utcnow() + self.rotation_interval,
                 rotation_interval=self.rotation_interval,
             )
 

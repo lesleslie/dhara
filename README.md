@@ -45,10 +45,10 @@ dhara mcp status             # Check server status
 dhara mcp health             # Health check
 ```
 
-### Database Commands (Durus Operations)
+### Database Commands (Dhara Storage Operations)
 
 ```bash
-dhara db start               # Start Durus storage server
+dhara db start               # Start Dhara storage server
 dhara db client              # Connect to server (interactive)
 dhara db pack                # Reclaim storage space
 ```
@@ -67,6 +67,38 @@ dhara adapters               # List registered adapters
 dhara storage                # Display storage information
 dhara admin                  # Launch admin shell (IPython)
 ```
+
+## Validation
+
+The preferred local validation path is `crackerjack`:
+
+```bash
+python -m crackerjack qa-health
+python -m crackerjack run-tests
+```
+
+Use direct `pytest` commands when you need to isolate a single file or debug a
+specific failure.
+
+## Configuration Surfaces
+
+Dhara currently exposes two configuration layers:
+
+- `dhara.core.config.DharaSettings` is the canonical runtime settings model for the CLI and MCP server
+- `dhara.config` remains available for lightweight dataclass helpers and compatibility with older code
+
+For service startup, operator configuration, and environment-variable overrides, use `DharaSettings`.
+
+## Deprecation Policy
+
+Dhara is in an active compatibility-reduction window.
+
+- Deprecated compatibility imports remain available in `0.8.x`
+- They are planned for stronger enforcement in `0.9.x`
+- Convenience compatibility shims are candidates for removal in `1.0.0`
+
+The current policy and migration targets are documented in
+`docs/LEGACY_COMPATIBILITY_AND_REMOVAL_PLAN.md`.
 
 ## Quick Demo
 
@@ -94,7 +126,7 @@ This opens an interactive IPython shell connected to the storage server. You hav
 
 ```bash
 # Start server with a persistent file
-dhara db server --file test.dhara
+dhara db start --file test.dhara
 
 # Connect, make changes, commit
 dhara db client --file test.dhara
@@ -103,7 +135,7 @@ dhara db client --file test.dhara
 # >>> connection.commit()
 
 # Stop and restart - data persists
-dhara db server --file test.dhara
+dhara db start --file test.dhara
 dhara db client --file test.dhara
 # >>> root["hello"]
 # 'world'
@@ -130,16 +162,18 @@ takes a storage instance as an argument.
 Example using FileStorage to open a Connection to a file:
 
 ```py
-from dhara.file_storage import FileStorage
-from dhara.connection import Connection
+from dhara.core.connection import Connection
+from dhara.storage.file import FileStorage
+
 connection = Connection(FileStorage("test.dhara"))
 ```
 
 Example using ClientStorage to open a Connection to a dhara server:
 
 ```py
-from dhara.client_storage import ClientStorage
-from dhara.connection import Connection
+from dhara.core.connection import Connection
+from dhara.storage.client import ClientStorage
+
 connection = Connection(ClientStorage())
 ```
 
@@ -156,14 +190,14 @@ obtain the root object.
 In your program, you can make changes to the root object attributes,
 and call `connection.commit()` or `connection.abort()` to lock in or
 revert changes made since the last commit. The root object is
-actually an instance of `dhara.persistent_dict.PersistentDict`, which
+actually an instance of `dhara.collections.dict.PersistentDict`, which
 means that it can be used like a regular dict, except that changes
 will be managed by the Connection. There is a similar class,
-`dhara.persistent_list.PersistentList` that provides list-like behavior,
+`dhara.collections.list.PersistentList` that provides list-like behavior,
 except managed by the Connection.
 
 `PersistentList` and `PersistentDict` both inherit from
-`dhara.persistent.Persistent`, and this is the key to making your own
+`dhara.core.persistent.Persistent`, and this is the key to making your own
 classes participate in the dhara persistence system. Just add
 Persistent class A's list of bases, and your instances will know how
 to manage changes to their attributes through a Connection. To

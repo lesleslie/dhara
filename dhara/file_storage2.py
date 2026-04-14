@@ -7,7 +7,7 @@ import heapq
 from datetime import datetime
 from zlib import compress, decompress
 
-import dhara.connection
+import dhara.core.connection
 from dhara.file import File
 from dhara.logger import is_logging, log
 from dhara.serialize import split_oids, unpack_record

@@ -1,6 +1,6 @@
-"""Druva Operational Modes System.
+"""Dhara Operational Modes System.
 
-This module provides a mode-based architecture for Druva, enabling
+This module provides a mode-based architecture for Dhara, enabling
 simplified setup for development (lite mode) and full capabilities
 for production (standard mode).
 

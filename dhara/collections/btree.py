@@ -6,7 +6,7 @@ $Id$
 from collections.abc import Iterator, MutableMapping
 from typing import TYPE_CHECKING, Any, Self
 
-from dhara.persistent import PersistentObject
+from dhara.core.persistent import PersistentObject
 
 if TYPE_CHECKING:
     pass
@@ -223,7 +223,7 @@ class BNode(PersistentObject):
 
         def is_big(node):
             # Precondition for recursively calling node.delete(key).
-            return node and len(node.items) >= node.minimum_degree
+            return node is not None and len(node.items) >= node.minimum_degree
 
         p = self.get_position(key)
         matches = p < len(self.items) and self.items[p][0] == key
@@ -236,9 +236,13 @@ class BNode(PersistentObject):
             else:
                 raise KeyError(key)
         else:
+            if p >= len(self.nodes):
+                # Merges can reduce the child array before we recurse; in that
+                # case continue deletion through the rightmost surviving child.
+                p = len(self.nodes) - 1
             node = self.nodes[p]
-            lower_sibling = p > 0 and self.nodes[p - 1]
-            upper_sibling = p < len(self.nodes) - 1 and self.nodes[p + 1]
+            lower_sibling = self.nodes[p - 1] if p > 0 else None
+            upper_sibling = self.nodes[p + 1] if p < len(self.nodes) - 1 else None
             if matches:
                 # Case 2.
                 if is_big(node):
@@ -259,7 +263,7 @@ class BNode(PersistentObject):
                     upper_sibling.delete(extreme[0])
                     node.items = node.items + [extreme] + upper_sibling.items
                     if not node.is_leaf():
-                        node.nodes = node.nodes + upper_sibling.nodes
+                        node.nodes = (node.nodes or []) + (upper_sibling.nodes or [])
                     node._count += upper_sibling._count
                     self._count -= 1
                     del self.items[p]
@@ -289,13 +293,13 @@ class BNode(PersistentObject):
                             node.nodes.append(upper_sibling.nodes[0])
                             del upper_sibling.nodes[0]
                         upper_sibling._p_note_change()
-                    elif lower_sibling:
+                    elif lower_sibling is not None:
                         # Case 3b1: Merge with lower_sibling
                         node.items = (
                             lower_sibling.items + [self.items[p - 1]] + node.items
                         )
                         if not node.is_leaf():
-                            node.nodes = lower_sibling.nodes + node.nodes
+                            node.nodes = (lower_sibling.nodes or []) + (node.nodes or [])
                         node._count += lower_sibling._count + 1
                         del self.items[p - 1]
                         del self.nodes[p - 1]
@@ -303,7 +307,7 @@ class BNode(PersistentObject):
                         # Case 3b2: Merge with upper_sibling
                         node.items = node.items + [self.items[p]] + upper_sibling.items
                         if not node.is_leaf():
-                            node.nodes = node.nodes + upper_sibling.nodes
+                            node.nodes = (node.nodes or []) + (upper_sibling.nodes or [])
                         node._count += upper_sibling._count + 1
                         del self.items[p]
                         del self.nodes[p + 1]

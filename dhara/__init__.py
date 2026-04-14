@@ -1,17 +1,21 @@
 """
-Durus - Persistent Object Database for Python
+Dhara - Persistent Object Database for Python
 
 Copyright (c) Corporation for National Research Initiatives 2009. All Rights Reserved.
 Modernized for Python 3.13+ with Oneiric ecosystem integration.
 """
 
+from __future__ import annotations
+
+import importlib
+from typing import Any
+
 __version__ = "0.5.0"
 
-# Import backward compatibility for Durus 4.x databases
-from dhara import _compat  # noqa: F401 (side-effect imports for compat)
+# Import backward compatibility for Durus 4.x databases.
+from dhara import _compat  # noqa: F401  # side-effect import for compat
 
 # Core persistence framework
-# Persistent collections
 from dhara.collections import (
     BNode,
     BTree,
@@ -29,9 +33,6 @@ from dhara.error import (
     WriteConflictError,
 )
 
-# Serialization
-from dhara.serialize import MsgspecSerializer, PickleSerializer, Serializer
-
 # Storage server
 from dhara.server import StorageServer, wait_for_server
 
@@ -48,39 +49,57 @@ from dhara.utils import (
 )
 
 __all__ = [
-    # Version
     "__version__",
-    # Core
     "Connection",
     "Persistent",
     "PersistentBase",
-    # Storage
     "Storage",
     "FileStorage",
     "SqliteStorage",
     "ClientStorage",
-    # Collections
     "PersistentDict",
     "PersistentList",
     "PersistentSet",
     "BTree",
     "BNode",
-    # Server
     "StorageServer",
     "wait_for_server",
-    # Serialization
     "Serializer",
+    "SerializerProtocol",
     "MsgspecSerializer",
     "PickleSerializer",
-    # Utilities
+    "DillSerializer",
+    "FallbackSerializer",
+    "create_serializer",
     "as_bytes",
     "int8_to_str",
     "int4_to_str",
     "str_to_int8",
     "str_to_int4",
-    # Errors
     "ConflictError",
     "ReadConflictError",
     "WriteConflictError",
     "DruvaKeyError",
 ]
+
+
+def __getattr__(name: str) -> Any:
+    """Resolve serializer symbols lazily to avoid optional dependency coupling."""
+    if name in {
+        "Serializer",
+        "SerializerProtocol",
+        "MsgspecSerializer",
+        "PickleSerializer",
+        "DillSerializer",
+        "FallbackSerializer",
+        "create_serializer",
+    }:
+        module = importlib.import_module("dhara.serialize")
+        value = getattr(module, name)
+        globals()[name] = value
+        return value
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+def __dir__() -> list[str]:
+    return sorted(set(__all__) | set(globals()))

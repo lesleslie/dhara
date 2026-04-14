@@ -310,6 +310,8 @@ def create_signer_from_env(env_var: str = "DHARA_SIGNING_KEY") -> ObjectSigner:
     import os
 
     value = os.environ.get(env_var)
+    if not value and env_var == "DHARA_SIGNING_KEY":
+        value = os.environ.get("DRUVA_SIGNING_KEY")
 
     if not value:
         raise ValueError(f"Environment variable {env_var} not set")

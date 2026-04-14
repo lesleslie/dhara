@@ -24,7 +24,8 @@ Dhara can serve as the persistence layer for Mahavishnu orchestration workflows:
 
 ```python
 # In Mahavishnu configuration
-from dhara import Connection, FileStorage
+from dhara.core.connection import Connection
+from dhara.storage.file import FileStorage
 
 # Dhara provides persistent storage for workflow state
 connection = Connection(FileStorage("mahavishnu_workflows.dhara"))
@@ -47,7 +48,7 @@ Dhara supports multiple storage backends:
 
 ```bash
 # No external service needed
-dhara -s --file data.dhara
+dhara db start --file data.dhara
 ```
 
 **SQLite Storage**
@@ -62,10 +63,11 @@ connection = Connection(SqliteStorage("data.db"))
 
 ```bash
 # Server (standalone)
-dhara -s --port 2973
+dhara db start --port 2973
 
 # Client (connects to server)
-from dhara.storage import ClientStorage
+from dhara.core.connection import Connection
+from dhara.storage.client import ClientStorage
 connection = Connection(ClientStorage(address=("localhost", 2973)))
 ```
 
@@ -75,11 +77,8 @@ connection = Connection(ClientStorage(address=("localhost", 2973)))
 
 Dhara includes an MCP server for modern AI/agent workflows:
 
-```python
-from dhara.mcp import create_server
-
-server = create_server(config="dhara.yaml")
-server.run()
+```bash
+dhara mcp start
 ```
 
 **MCP Server Features**:
@@ -122,6 +121,17 @@ logging:
 
 - Oneiric library (for configuration loading)
 - Environment variables (for secrets)
+
+Canonical runtime settings surface:
+
+```python
+from dhara.core.config import DharaSettings
+
+settings = DharaSettings.load("dhara")
+```
+
+The older `dhara.config` dataclass helpers remain available for compatibility,
+but `DharaSettings` is the primary settings API for CLI and MCP runtime flows.
 
 ### Secret Management
 
@@ -174,7 +184,7 @@ logging:
 
 ```bash
 # Direct file access (no network)
-dhara -c --file data.dhara
+dhara db client --file data.dhara
 ```
 
 ### Client/Server Mode
@@ -186,10 +196,10 @@ dhara -c --file data.dhara
 
 ```bash
 # TCP server
-dhara -s --host 0.0.0.0 --port 2973
+dhara db start --host 0.0.0.0 --port 2973
 
 # Unix domain socket
-dhara -s --socket /var/run/dhara.sock
+dhara db start --socket /var/run/dhara.sock
 ```
 
 **Firewall considerations**:
@@ -206,7 +216,11 @@ dhara -s --socket /var/run/dhara.sock
 # Required for development
 pip install -e ".[dev]"
 
-# Testing tools
+# Preferred validation path
+python -m crackerjack qa-health
+python -m crackerjack run-tests
+
+# Lower-level testing tools
 pytest          # Test framework
 pytest-cov      # Coverage reporting
 hypothesis      # Property-based testing
@@ -216,7 +230,7 @@ hypothesis      # Property-based testing
 
 ```bash
 # Quality tools (via Crackerjack)
-python -m crackerjack check
+python -m crackerjack qa-health
 
 # Individual tools
 ruff            # Linting and formatting
@@ -250,7 +264,7 @@ python setup.py build_ext --inplace
 ```bash
 # Simple standalone deployment
 pip install dhara
-dhara -s --file /var/lib/dhara/data.dhara
+dhara db start --file /var/lib/dhara/data.dhara
 ```
 
 ### Client/Server Deployment
@@ -263,10 +277,11 @@ dhara -s --file /var/lib/dhara/data.dhara
 
 ```bash
 # Server
-dhara -s --host 0.0.0.0 --port 2973
+dhara db start --host 0.0.0.0 --port 2973
 
 # Client (on remote machine)
-from dhara.storage import ClientStorage
+from dhara.core.connection import Connection
+from dhara.storage.client import ClientStorage
 connection = Connection(ClientStorage(address=("server.example.com", 2973)))
 ```
 
@@ -282,7 +297,7 @@ RUN pip install dhara
 VOLUME /var/lib/dhara
 EXPOSE 2972
 
-CMD ["dhara", "-s", "--file", "/var/lib/dhara/data.dhara"]
+CMD ["dhara", "db", "start", "--file", "/var/lib/dhara/data.dhara"]
 ```
 
 **Kubernetes example**:

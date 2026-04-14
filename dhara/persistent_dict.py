@@ -1,11 +1,19 @@
-"""Compatibility shim for durus.persistent_dict
+"""Deprecated compatibility shim for legacy ``durus.persistent_dict`` imports.
 
-Redirects imports to new location (durus.collections.dict)
-for backward compatibility with pickled data from Durus 4.x.
+Prefer ``dhara.collections.dict`` for active code. This module remains only for
+backward compatibility with older imports and pickled data.
 """
 
-# Import everything from new location and re-export
+from __future__ import annotations
+
+import warnings
+
 from dhara.collections.dict import *
 
-# Re-export all public classes and functions
+warnings.warn(
+    "dhara.persistent_dict is deprecated; use dhara.collections.dict instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
 __all__ = ["PersistentDict"]

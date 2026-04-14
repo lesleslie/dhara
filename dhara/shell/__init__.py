@@ -1,7 +1,7 @@
-"""Druva admin shell.
+"""Dhara admin shell.
 
-This module provides Druva-specific admin shell functionality extending
-the Oneiric ecosystem shell pattern with Druva-specific features:
+This module provides Dhara-specific admin shell functionality extending
+the Oneiric ecosystem shell pattern with Dhara-specific features:
 
 - Adapter registry management
 - Storage inspection and manipulation
@@ -21,10 +21,10 @@ from oneiric.shell.config import ShellConfig
 logger = logging.getLogger(__name__)
 
 
-class DruvaShell(AdminShell):
-    """Druva-specific admin shell.
+class DharaShell(AdminShell):
+    """Dhara-specific admin shell.
 
-    Extends the Oneiric AdminShell with Druva-specific namespace,
+    Extends the Oneiric AdminShell with Dhara-specific namespace,
     formatters, helpers, and magic commands for adapter distribution
     and storage management.
 
@@ -36,14 +36,14 @@ class DruvaShell(AdminShell):
     - Session tracking via Session-Buddy MCP
 
     Example:
-        >>> from dhara.shell import DruvaShell
-        >>> from dhara.core.config import DruvaSettings
+        >>> from dhara.shell import DharaShell
+        >>> from dhara.core.config import DharaSettings
         >>> from dhara.core.connection import Connection
         >>> from dhara.storage.file_storage import FileStorage
-        >>> config = DruvaSettings.load()
+        >>> config = DharaSettings.load()
         >>> storage = FileStorage(str(config.storage.path))
         >>> connection = Connection(storage)
-        >>> shell = DruvaShell(connection, config)
+        >>> shell = DharaShell(connection, config)
         >>> shell.start()
     """
 
@@ -53,11 +53,11 @@ class DruvaShell(AdminShell):
         config: Any,
         shell_config: ShellConfig | None = None,
     ):
-        """Initialize Druva shell.
+        """Initialize Dhara shell.
 
         Args:
-            connection: Druva Connection instance
-            config: DruvaSettings instance
+            connection: Dhara Connection instance
+            config: DharaSettings instance
             shell_config: Optional shell configuration
         """
         self.connection = connection
@@ -71,19 +71,19 @@ class DruvaShell(AdminShell):
         # Pass config to parent as "app"
         super().__init__(config, shell_config)
 
-        # Add Druva-specific namespace
+        # Add Dhara-specific namespace
         self._add_dhara_namespace()
 
-        # Override session tracker with Druva-specific metadata
-        from .session_tracker import DruvaSessionTracker
+        # Override session tracker with Dhara-specific metadata
+        from .session_tracker import DharaSessionTracker
 
-        self.session_tracker = DruvaSessionTracker(
+        self.session_tracker = DharaSessionTracker(
             component_name="dhara",
         )
         self._session_id: str | None = None
 
     def _add_dhara_namespace(self) -> None:
-        """Add Druva-specific objects to shell namespace."""
+        """Add Dhara-specific objects to shell namespace."""
         self.namespace.update(
             {
                 # Core objects
@@ -113,7 +113,7 @@ class DruvaShell(AdminShell):
         )
 
     def _get_component_name(self) -> str | None:
-        """Return Druva component name for session tracking.
+        """Return Dhara component name for session tracking.
 
         Returns:
             Component name "dhara" for session tracking
@@ -121,10 +121,10 @@ class DruvaShell(AdminShell):
         return "dhara"
 
     def _get_component_version(self) -> str:
-        """Get Druva package version.
+        """Get Dhara package version.
 
         Returns:
-            Druva version string or "unknown" if unavailable
+            Dhara version string or "unknown" if unavailable
         """
         try:
             import importlib.metadata as importlib_metadata
@@ -134,23 +134,23 @@ class DruvaShell(AdminShell):
             return "unknown"
 
     def _get_adapters_info(self) -> list[str]:
-        """Get Druva adapter information.
+        """Get Dhara adapter information.
 
-        Druva stores and distributes adapters, but doesn't use
+        Dhara stores and distributes adapters, but doesn't use
         the orchestration adapter pattern itself.
 
         Returns:
-            Empty list (Druva is curator, not orchestrator)
+            Empty list (Dhara is curator, not orchestrator)
         """
         return []
 
     def _get_banner(self) -> str:
-        """Get Druva-specific banner."""
+        """Get Dhara-specific banner."""
         version = self._get_component_version()
         adapter_count = self.registry.count()
 
         return f"""
-🦀 Druva Admin Shell v{version}
+🦀 Dhara Admin Shell v{version}
 {"=" * 60}
 Persistent Object Storage & Adapter Distribution
 
@@ -158,7 +158,7 @@ Session Tracking: Enabled
   Shell sessions tracked via Session-Buddy MCP
   Metadata: version, adapter count, storage state
 
-Druva is the curator component providing:
+Dhara is the curator component providing:
   - Persistent object storage (ACID transactions)
   - Adapter versioning and distribution
   - Health monitoring and rollback
@@ -169,7 +169,7 @@ Storage Info:
   Connection: {"Active" if self.connection else "Inactive"}
 
 Convenience Functions:
-  push_adapters()        - Push Oneiric adapters to Druva
+  push_adapters()        - Push Oneiric adapters to Dhara
   show_storage_info()    - Display storage statistics
   show_adapter_summary() - Show adapter distribution summary
 
@@ -188,16 +188,16 @@ Storage Operations:
   pack()                 - Pack storage (reclaim space)
 
 Available Objects:
-  connection             - Druva Connection instance
+  connection             - Dhara Connection instance
   registry/adapters      - AdapterRegistry instance
-  config                 - Current DruvaSettings instance
+  config                 - Current DharaSettings instance
 
 Type 'help()' for Python help or %help_shell for shell commands
 {"=" * 60}
 """
 
     async def _push_adapters(self) -> None:
-        """Push Oneiric built-in adapters to Druva.
+        """Push Oneiric built-in adapters to Dhara.
 
         Helper function available in shell namespace.
         Imports and calls the Oneiric adapter pusher.
@@ -210,7 +210,7 @@ Type 'help()' for Python help or %help_shell for shell commands
         try:
             from oneiric.adapters.dhara_pusher import push_adapters_on_startup
 
-            console.print("[cyan]Pushing Oneiric adapters to Druva...[/cyan]")
+            console.print("[cyan]Pushing Oneiric adapters to Dhara...[/cyan]")
 
             results = push_adapters_on_startup()
 
@@ -309,7 +309,7 @@ Type 'help()' for Python help or %help_shell for shell commands
             console.print(f"[red]✗ Failed to get adapter summary: {e}[/red]")
 
     async def _emit_session_start(self) -> None:
-        """Emit session start event with Druva-specific metadata."""
+        """Emit session start event with Dhara-specific metadata."""
         try:
             metadata = {
                 "version": self._get_component_version(),
@@ -327,7 +327,7 @@ Type 'help()' for Python help or %help_shell for shell commands
             )
 
             if self._session_id:
-                logger.info(f"Druva shell session started: {self._session_id}")
+                logger.info(f"Dhara shell session started: {self._session_id}")
             else:
                 logger.debug(
                     "Session tracking unavailable (Session-Buddy MCP not reachable)"
@@ -347,7 +347,7 @@ Type 'help()' for Python help or %help_shell for shell commands
                     "adapters_at_end": self.registry.count(),
                 },
             )
-            logger.info(f"Druva shell session ended: {self._session_id}")
+            logger.info(f"Dhara shell session ended: {self._session_id}")
         except Exception as e:
             logger.debug(f"Failed to emit session end: {e}")
         finally:
@@ -360,4 +360,6 @@ Type 'help()' for Python help or %help_shell for shell commands
         self.connection.close()
 
 
-__all__ = ["DruvaShell"]
+DruvaShell = DharaShell
+
+__all__ = ["DharaShell", "DruvaShell"]

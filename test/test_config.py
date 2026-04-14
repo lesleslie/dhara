@@ -1,4 +1,4 @@
-"""Tests for Druva configuration management."""
+"""Tests for legacy Dhara dataclass configuration helpers."""
 
 import pytest
 from pathlib import Path
@@ -6,6 +6,7 @@ from tempfile import mktemp
 import yaml
 
 from dhara.config import (
+    DharaConfig,
     DruvaConfig,
     StorageConfig,
     CacheConfig,
@@ -133,37 +134,43 @@ class TestConnectionConfig:
             ConnectionConfig(max_retries=-1)
 
 
-class TestDruvaConfig:
-    """Tests for DruvaConfig."""
+class TestDharaConfig:
+    """Tests for DharaConfig and compatibility aliases."""
 
-    def test_default_druva_config(self):
-        """Test default Druva configuration."""
-        config = DruvaConfig()
+    def test_default_dhara_config(self):
+        """Test default Dhara configuration."""
+        config = DharaConfig()
         assert config.storage.backend == "memory"
         assert config.cache.size == 100000
         assert config.connection.timeout == 30.0
         assert config.debug_mode is False
 
-    def test_custom_druva_config(self):
-        """Test custom Druva configuration."""
+    def test_custom_dhara_config(self):
+        """Test custom Dhara configuration."""
         storage = StorageConfig(backend="memory")
         cache = CacheConfig(size=50000)
-        config = DruvaConfig(storage=storage, cache=cache, debug_mode=True)
+        config = DharaConfig(storage=storage, cache=cache, debug_mode=True)
 
         assert config.storage.backend == "memory"
         assert config.cache.size == 50000
         assert config.debug_mode is True
 
+    def test_druva_config_alias(self):
+        """Test that DruvaConfig alias works for backward compatibility."""
+        config = DruvaConfig()
+        assert isinstance(config, DharaConfig)
+        assert config.storage.backend == "memory"
+
     # Backward compatibility - test old name still works
     def test_durus_config_alias(self):
         """Test that DurusConfig alias works for backward compatibility."""
         config = DurusConfig()
-        assert isinstance(config, DruvaConfig)
+        assert isinstance(config, DharaConfig)
         assert config.storage.backend == "memory"
 
     def test_to_dict(self):
         """Test converting configuration to dictionary."""
-        config = DruvaConfig(
+        config = DharaConfig(
             storage=StorageConfig(backend="memory"),
             cache=CacheConfig(size=50000),
         )
@@ -181,7 +188,7 @@ class TestDruvaConfig:
             "connection": {"timeout": 30.0, "max_retries": 3, "retry_delay": 1.0},
             "debug_mode": False,
         }
-        config = DruvaConfig.from_dict(data)
+        config = DharaConfig.from_dict(data)
 
         assert config.storage.backend == "memory"
         assert config.cache.size == 75000
@@ -191,7 +198,7 @@ class TestDruvaConfig:
         data = {
             "storage": {"backend": "file", "path": "/tmp/test.dhara"},
         }
-        config = DruvaConfig.from_dict(data)
+        config = DharaConfig.from_dict(data)
 
         assert isinstance(config.storage.path, Path)
         assert str(config.storage.path) == "/tmp/test.dhara"
@@ -280,8 +287,9 @@ class TestLoadConfigFromEnv:
         import os
 
         # Ensure env var is not set
-        if "DURUS_CONFIG" in os.environ:
-            del os.environ["DURUS_CONFIG"]
+        for key in ["DHARA_CONFIG", "DRUVA_CONFIG", "DURUS_CONFIG"]:
+            if key in os.environ:
+                del os.environ[key]
 
         config = load_config_from_env()
         assert config is None
@@ -299,14 +307,14 @@ class TestLoadConfigFromEnv:
                 yaml.dump(config_data, f)
 
             # Set environment variable
-            os.environ["DURUS_CONFIG"] = config_file
+            os.environ["DHARA_CONFIG"] = config_file
 
             config = load_config_from_env()
             assert config is not None
             assert config.storage.backend == "memory"
         finally:
-            if "DURUS_CONFIG" in os.environ:
-                del os.environ["DURUS_CONFIG"]
+            if "DHARA_CONFIG" in os.environ:
+                del os.environ["DHARA_CONFIG"]
             Path(config_file).unlink(missing_ok=True)
 
     def test_load_config_from_env_with_overrides(self):
@@ -314,6 +322,31 @@ class TestLoadConfigFromEnv:
         import os
 
         # Create temporary config file
+        config_data = {"storage": {"backend": "memory"}}
+        config_file = mktemp(suffix=".yaml")
+
+        try:
+            with open(config_file, "w") as f:
+                yaml.dump(config_data, f)
+
+            os.environ["DHARA_CONFIG"] = config_file
+            os.environ["DHARA_CACHE_SIZE"] = "75000"
+            os.environ["DHARA_DEBUG"] = "1"
+
+            config = load_config_from_env()
+            assert config is not None
+            assert config.cache.size == 75000
+            assert config.debug_mode is True
+        finally:
+            for key in ["DHARA_CONFIG", "DHARA_CACHE_SIZE", "DHARA_DEBUG"]:
+                if key in os.environ:
+                    del os.environ[key]
+            Path(config_file).unlink(missing_ok=True)
+
+    def test_load_config_from_env_legacy_prefix_still_works(self):
+        """Test legacy DURUS_* environment variable compatibility."""
+        import os
+
         config_data = {"storage": {"backend": "memory"}}
         config_file = mktemp(suffix=".yaml")
 
@@ -341,7 +374,7 @@ class TestSaveConfig:
 
     def test_save_config_yaml(self):
         """Test saving configuration to YAML file."""
-        config = DruvaConfig(
+        config = DharaConfig(
             storage=StorageConfig(backend="memory"),
             cache=CacheConfig(size=50000),
         )
@@ -368,7 +401,7 @@ class TestSaveConfig:
         config_file = Path(temp_dir) / "subdir" / "config.yaml"
 
         try:
-            config = DruvaConfig()
+            config = DharaConfig()
             save_config(config, config_file)
             assert config_file.exists()
         finally:
@@ -382,22 +415,22 @@ class TestMergeConfigs:
     def test_merge_empty_configs(self):
         """Test merging no configs returns default."""
         config = merge_configs()
-        assert isinstance(config, DruvaConfig)
+        assert isinstance(config, DharaConfig)
         assert config.storage.backend == "memory"
 
     def test_merge_single_config(self):
         """Test merging single config."""
-        config1 = DruvaConfig(storage=StorageConfig(backend="memory"))
+        config1 = DharaConfig(storage=StorageConfig(backend="memory"))
         result = merge_configs(config1)
         assert result.storage.backend == "memory"
 
     def test_merge_multiple_configs(self):
         """Test merging multiple configs."""
-        config1 = DruvaConfig(
+        config1 = DharaConfig(
             storage=StorageConfig(backend="file", path="/tmp/test.dhara"),
             cache=CacheConfig(size=100000),
         )
-        config2 = DruvaConfig(
+        config2 = DharaConfig(
             storage=StorageConfig(backend="client"),
             cache=CacheConfig(size=50000),
         )
@@ -408,11 +441,11 @@ class TestMergeConfigs:
 
     def test_merge_partial_override(self):
         """Test merging with partial overrides."""
-        config1 = DruvaConfig(
+        config1 = DharaConfig(
             storage=StorageConfig(backend="file", path="/tmp/test.dhara"),
             cache=CacheConfig(size=100000),
         )
-        config2 = DruvaConfig(
+        config2 = DharaConfig(
             cache=CacheConfig(size=50000),
         )
 
@@ -422,16 +455,16 @@ class TestMergeConfigs:
 
     def test_merge_debug_mode(self):
         """Test merging debug mode."""
-        config1 = DruvaConfig(debug_mode=False)
-        config2 = DruvaConfig(debug_mode=True)
+        config1 = DharaConfig(debug_mode=False)
+        config2 = DharaConfig(debug_mode=True)
 
         result = merge_configs(config1, config2)
         assert result.debug_mode is True
 
     def test_merge_preserves_original(self):
         """Test that merge doesn't modify original configs."""
-        config1 = DruvaConfig(cache=CacheConfig(size=100000))
-        config2 = DruvaConfig(cache=CacheConfig(size=50000))
+        config1 = DharaConfig(cache=CacheConfig(size=100000))
+        config2 = DharaConfig(cache=CacheConfig(size=50000))
 
         result = merge_configs(config1, config2)
 

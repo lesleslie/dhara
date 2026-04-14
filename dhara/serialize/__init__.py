@@ -7,14 +7,12 @@ Provides multiple serialization backends:
 - fallback: Whitelist-based auto-fallback (msgspec → pickle → dill)
 - adapter: Bridge between old and new serialization code
 - factory: Easy creation of serializer instances
-
-Security Recommendations:
-- Use msgspec for new databases (safest and fastest)
-- Use fallback for mixed workloads with some msgspec-incompatible types
-- Use pickle only for backward compatibility
-- Use dill only when you need to serialize functions/lambdas
-- Never deserialize untrusted data with pickle or dill
 """
+
+from __future__ import annotations
+
+import importlib
+from typing import TYPE_CHECKING, Any
 
 from dhara.serialize.adapter import (
     ObjectReader,
@@ -26,11 +24,13 @@ from dhara.serialize.adapter import (
     unpack_record,
 )
 from dhara.serialize.base import Serializer, SerializerProtocol
-from dhara.serialize.dill import DillSerializer
 from dhara.serialize.factory import create_serializer
-from dhara.serialize.fallback import FallbackSerializer
-from dhara.serialize.msgspec import MsgspecSerializer
-from dhara.serialize.pickle import PickleSerializer
+
+if TYPE_CHECKING:
+    from dhara.serialize.dill import DillSerializer
+    from dhara.serialize.fallback import FallbackSerializer
+    from dhara.serialize.msgspec import MsgspecSerializer
+    from dhara.serialize.pickle import PickleSerializer
 
 __all__ = [
     # Interfaces
@@ -51,7 +51,31 @@ __all__ = [
     "split_oids",
     "persistent_load",
     "extract_class_name",
+    # Default implementation alias
+    "DEFAULT_SERIALIZER",
 ]
 
-# Default serializer for dhara 5.0
-DEFAULT_SERIALIZER = MsgspecSerializer
+
+def __getattr__(name: str) -> Any:
+    """Resolve optional serializer backends lazily."""
+    module_map = {
+        "MsgspecSerializer": ("dhara.serialize.msgspec", "MsgspecSerializer"),
+        "PickleSerializer": ("dhara.serialize.pickle", "PickleSerializer"),
+        "DillSerializer": ("dhara.serialize.dill", "DillSerializer"),
+        "FallbackSerializer": ("dhara.serialize.fallback", "FallbackSerializer"),
+        "DEFAULT_SERIALIZER": ("dhara.serialize.msgspec", "MsgspecSerializer"),
+    }
+
+    target = module_map.get(name)
+    if target is None:
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+    module_name, attr_name = target
+    module = importlib.import_module(module_name)
+    value = getattr(module, attr_name)
+    globals()[name] = value
+    return value
+
+
+def __dir__() -> list[str]:
+    return sorted(set(__all__) | set(globals()))

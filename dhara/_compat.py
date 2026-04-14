@@ -1,49 +1,58 @@
-"""
-Backward compatibility aliases for Durus 4.x.
+"""Backward compatibility aliases for old ``durus`` import paths."""
 
-This module provides aliases to support loading old Durus 4.x databases
-that contain references to the old 'durus' package name.
-"""
+from __future__ import annotations
 
-# Alias old Durus 4.x class names to new dhara classes
-
-# Create a fake 'durus' module for backward compatibility
+import importlib
+import importlib.abc
+import importlib.machinery
 import sys
 from types import ModuleType
 
-
-class _DurusCompatModule:
-    """Fake durus module for backward compatibility."""
-
-    def __init__(self):
-        self._modules = {}
-
-    def __getattr__(self, name):
-        if name not in self._modules:
-            # Create submodules on demand
-            if name == "persistent":
-                from dhara.core import persistent
-
-                self._modules[name] = persistent
-            elif name == "persistent_dict":
-                from dhara.collections import dict as persistent_dict
-
-                self._modules[name] = persistent_dict
-            elif name == "persistent_list":
-                from dhara.collections import list as persistent_list
-
-                self._modules[name] = persistent_list
-            elif name == "persistent_set":
-                from dhara.collections import set as persistent_set
-
-                self._modules[name] = persistent_set
-            else:
-                # Create empty module
-                self._modules[name] = ModuleType(f"durus.{name}")
-
-        return self._modules[name]
+_DURUS_MODULE_ALIASES = {
+    "durus.persistent": "dhara.core.persistent",
+    "durus.persistent_dict": "dhara.collections.dict",
+    "durus.persistent_list": "dhara.collections.list",
+    "durus.persistent_set": "dhara.collections.set",
+}
 
 
-# Inject fake durus module into sys.modules for backward compatibility
+class _DurusAliasLoader(importlib.abc.Loader):
+    def __init__(self, target_name: str):
+        self.target_name = target_name
+
+    def create_module(self, spec):  # type: ignore[override]
+        module = importlib.import_module(self.target_name)
+        sys.modules[spec.name] = module
+        return module
+
+    def exec_module(self, module):  # type: ignore[override]
+        return None
+
+
+class _DurusAliasFinder(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname: str, path, target=None):  # type: ignore[override]
+        target_name = _DURUS_MODULE_ALIASES.get(fullname)
+        if target_name is None:
+            return None
+
+        target_spec = importlib.util.find_spec(target_name)
+        if target_spec is None:
+            return None
+
+        spec = importlib.machinery.ModuleSpec(
+            fullname,
+            _DurusAliasLoader(target_name),
+            is_package=target_spec.submodule_search_locations is not None,
+        )
+        spec.origin = getattr(target_spec, "origin", None)
+        return spec
+
+
 if "durus" not in sys.modules:
-    sys.modules["durus"] = _DurusCompatModule()
+    durus_module = ModuleType("durus")
+    durus_module.__path__ = []  # type: ignore[attr-defined]
+    sys.modules["durus"] = durus_module
+
+
+if not any(isinstance(finder, _DurusAliasFinder) for finder in sys.meta_path):
+    sys.meta_path.insert(0, _DurusAliasFinder())

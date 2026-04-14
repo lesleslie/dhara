@@ -1,205 +1,115 @@
-# Durus MCP Authentication Quick Start
+# Dhara MCP Quick Start
 
-## 1. Generate Your First Token
+Dhara's supported MCP surface is the FastMCP server implemented in
+`dhara.mcp.server_core` and exposed via `dhara mcp start`.
+The older `dhara.mcp.oneiric_server` path remains only as legacy compatibility
+code.
+
+## 1. Start The MCP Server
 
 ```bash
-# Create a read-only token for your app
-python deployment/scripts/generate_token.py \
-  --token-id myapp \
-  --role readonly
-
-# Create an admin token (use carefully!)
-python deployment/scripts/generate_token.py \
-  --token-id admin \
-  --role admin \
-  --expires-in 2592000  # 30 days
+dhara mcp start
 ```
 
-**IMPORTANT**: Save the token securely! You won't see it again.
+Useful lifecycle commands:
 
-## 2. Configure Your Server
+```bash
+dhara mcp status
+dhara mcp health --probe
+dhara mcp stop
+```
 
-Edit `/etc/durus/production.yaml`:
+## 2. Runtime Configuration
+
+The canonical runtime settings surface is:
+
+```python
+from dhara.core.config import DharaSettings
+
+settings = DharaSettings.load("dhara")
+```
+
+Dhara reads committed settings files plus `DHARA_*` environment variables.
+
+## 3. Supported Tool Categories
+
+The FastMCP server currently exposes these supported tool groups:
+
+- Adapter registry: `store_adapter`, `get_adapter`, `list_adapters`, `list_adapter_versions`, `validate_adapter`, `get_adapter_health`
+- Durable KV/time-series: `put`, `get`, `record_time_series`, `query_time_series`, `aggregate_patterns`
+- Ecosystem state: `upsert_service`, `get_service`, `list_services`, `record_event`, `list_events`
+- Contract introspection: `get_contract_info`
+- Standardized health tools from `mcp-common`
+
+Legacy `durus_*` MCP tool names are part of a deprecated compatibility surface,
+not the canonical contract.
+
+## 3a. Authentication Status
+
+The canonical FastMCP runtime currently does not wire the legacy auth helpers
+into request handling automatically. Instead, when enabled, it uses bearer
+tokens backed by Dhara's token store. Legacy auth helpers remain importable for
+compatibility and library use:
+
+- `TokenAuth`
+- `HMACAuth`
+- `EnvironmentAuth`
+- `AuthMiddleware`
+
+Use `get_contract_info` to inspect the active runtime contract and current auth
+status.
+
+Example settings:
 
 ```yaml
-security:
-  authentication:
-    enabled: true
-    method: token
-    token:
-      tokens_file: /etc/durus/tokens.json
-      require_auth: true
+authentication:
+  enabled: true
+  method: token
+  token:
+    tokens_file: /etc/dhara/tokens.json
 ```
 
-## 3. Use the Token in Your Code
+## 4. Ecosystem State Example
 
 ```python
-from durus.mcp.server import DurusMCPServer
-from durus.mcp.auth import AuthContext, TokenAuth, AuthMiddleware
+# Example MCP tool inputs
 
-# Setup authentication
-token_auth = TokenAuth(tokens_file="/etc/durus/tokens.json")
-auth_middleware = AuthMiddleware(token_auth=token_auth)
+# Register or update a service record
+{
+  "service_id": "mahavishnu",
+  "service_type": "orchestrator",
+  "capabilities": ["workflow", "routing"],
+  "metadata": {"port": 8680},
+  "status": "healthy"
+}
 
-# Create server
-server = DurusMCPServer(
-    storage_path="/data/durus.durus",
-    auth_middleware=auth_middleware
-)
-
-# Call tools with authentication
-auth_context = AuthContext(token="YOUR_TOKEN_HERE")
-
-result = await server.call_tool(
-    tool_name="durus_get",
-    arguments={"key": "my_key"},
-    auth_context=auth_context
-)
+# Record an event
+{
+  "event_type": "workflow_started",
+  "source_service": "mahavishnu",
+  "related_service": "session-buddy",
+  "payload": {"workflow_id": "wf-123"}
+}
 ```
 
-## 4. Token Management Commands
+## 5. HTTP Endpoints
 
-```bash
-# List all tokens
-python deployment/scripts/generate_token.py --list
+Dhara also exposes HTTP endpoints on the same service port:
 
-# Revoke a token
-python deployment/scripts/generate_token.py --token-id myapp --revoke
+- `/health`
+- `/healthz`
+- `/ready`
+- `/readyz`
+- `/metrics`
 
-# Validate tokens file
-python deployment/scripts/generate_token.py --validate
+These exist alongside the MCP transport and are part of the supported runtime
+surface.
 
-# Export as environment variable
-python deployment/scripts/generate_token.py --token-id myapp --export-env
-```
+## 6. Migration Notes
 
-## 5. Common Patterns
-
-### Read-Only Token (Safe for clients)
-
-```bash
-python deployment/scripts/generate_token.py \
-  --token-id client_app \
-  --role readonly \
-  --rate-limit 100
-```
-
-### Read-Write Token (For data operations)
-
-```bash
-python deployment/scripts/generate_token.py \
-  --token-id data_service \
-  --role readwrite \
-  --rate-limit 1000
-```
-
-### Admin Token (For maintenance)
-
-```bash
-python deployment/scripts/generate_token.py \
-  --token-id admin \
-  --role admin \
-  --expires-in 86400  # 1 day, rotate frequently
-```
-
-### Service Token (No expiration)
-
-```bash
-python deployment/scripts/generate_token.py \
-  --token-id background_worker \
-  --role readwrite
-  # No --expires-in = no expiration
-```
-
-## 6. Troubleshooting
-
-### "Authentication failed"
-
-- Check token is correct: `--list`
-- Verify token file path
-- Ensure `authentication.enabled: true`
-
-### "Permission denied"
-
-- Check token role: `--list`
-- Verify role has required permission
-- Upgrade role if needed: revoke and recreate
-
-### "Rate limit exceeded"
-
-- Wait 1 minute for window to reset
-- Increase rate limit: revoke and recreate with higher `--rate-limit`
-- Use multiple tokens for high throughput
-
-## 7. Security Checklist
-
-- [ ] Authentication enabled in production
-- [ ] Strong, randomly generated tokens
-- [ ] Appropriate token expiration
-- [ ] Rate limiting configured
-- [ ] Audit logging enabled
-- [ ] Regular token rotation
-- [ ] Secure token file permissions (0600)
-- [ ] Tokens never committed to git
-- [ ] Admin tokens have short expiration
-- [ ] Read-only tokens for clients
-
-## 8. Permissions by Role
-
-| Operation | Readonly | Readwrite | Admin |
-|-----------|----------|-----------|-------|
-| Read data | ✅ | ✅ | ✅ |
-| List keys | ✅ | ✅ | ✅ |
-| Write data | ❌ | ✅ | ✅ |
-| Delete data | ❌ | ✅ | ✅ |
-| Create checkpoint | ❌ | ❌ | ✅ |
-| Restore checkpoint | ❌ | ❌ | ✅ |
-
-## 9. File Locations
-
-| File | Location |
-|------|----------|
-| Tokens | `/etc/durus/tokens.json` |
-| Config | `/etc/durus/production.yaml` |
-| Audit log | `/var/log/durus/audit.log` |
-| Token generator | `deployment/scripts/generate_token.py` |
-
-## 10. Quick API Reference
-
-```python
-# Authentication
-from durus.mcp.auth import (
-    TokenAuth,           # Token-based auth
-    HMACAuth,            # HMAC-based auth
-    EnvironmentAuth,     # Environment variable auth
-    AuthMiddleware,      # Auth middleware
-    AuthContext,         # Request auth context
-    Role,                # Role enum
-    Permission,          # Permission enum
-)
-
-# Servers
-from durus.mcp.server import DurusMCPServer
-from durus.mcp.oneiric_server import OneiricMCPServer
-
-# Create auth context
-auth_context = AuthContext(
-    token="your_token",           # For token auth
-    hmac_signature="sig",         # For HMAC auth
-    timestamp="1234567890",       # For HMAC auth
-    client_id="client1",          # For HMAC auth
-)
-
-# Call tool with auth
-result = await server.call_tool(
-    tool_name="durus_get",
-    arguments={"key": "my_key"},
-    auth_context=auth_context
-)
-```
-
-## Need Help?
-
-- Full documentation: `/Users/les/Projects/durus/durus/mcp/README.md`
-- Implementation details: `/Users/les/Projects/durus/IMPLEMENTATION_SUMMARY.md`
-- Test examples: `/Users/les/Projects/durus/test/test_mcp_auth.py`
+- Use `dhara.mcp` or `dhara.mcp.server_core` for code-level imports.
+- Use `dhara mcp ...` for CLI lifecycle management.
+- Treat `dhara.mcp.server` and old custom-server examples as deprecated
+  compatibility-only material.
+- Treat `dhara.mcp.oneiric_server` as a legacy path rather than the supported
+  runtime surface.

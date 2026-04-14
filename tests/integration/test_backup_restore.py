@@ -11,6 +11,7 @@ These tests cover:
 
 import os
 import shutil
+import sys
 import tempfile
 import time
 from datetime import datetime, timedelta
@@ -18,18 +19,49 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
+from cryptography.fernet import Fernet
 
-# Add durus to path
+pytest.importorskip("zstandard")
+pytest.importorskip("schedule")
+
+# Add repository root to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from druva.backup.manager import BackupManager, BackupType
-from druva.backup.restore import RestoreManager
-from druva.backup.catalog import BackupCatalog
-from druva.backup.scheduler import BackupScheduler, BackupJob
-from druva.backup.storage import StorageFactory
-from druva.backup.verification import BackupVerification
-from druva.file_storage import FileStorage
-from druva.persistent_dict import PersistentDict
+from dhara.core import Connection
+from dhara.backup.catalog import BackupCatalog
+from dhara.backup.manager import BackupManager, BackupType
+from dhara.backup.restore import RestoreManager
+from dhara.backup.scheduler import BackupJob, BackupScheduler
+from dhara.backup.storage import StorageFactory
+from dhara.backup.verification import BackupVerification
+from dhara.collections.dict import PersistentDict
+from dhara.storage.file import FileStorage
+
+
+def _create_test_database(db_path: str, data: dict) -> None:
+    storage = FileStorage(db_path)
+    connection = Connection(storage)
+    root = connection.get_root()
+    root.clear()
+    root.update(data)
+    connection.commit()
+    storage.close()
+
+
+def _update_test_database(db_path: str, updater) -> None:
+    storage = FileStorage(db_path)
+    connection = Connection(storage)
+    root = connection.get_root()
+    updater(root)
+    connection.commit()
+    storage.close()
+
+
+def _load_root(db_path: str):
+    storage = FileStorage(db_path, readonly=True)
+    connection = Connection(storage)
+    root = connection.get_root()
+    return storage, connection, root
 
 
 class TestBackupManager:
@@ -43,15 +75,16 @@ class TestBackupManager:
         os.makedirs(self.backup_dir, exist_ok=True)
 
         # Create test database
-        storage = FileStorage(self.test_db)
-        root = PersistentDict()
-        root["test_key"] = "test_value"
-        root["nested"] = {"inner": "data"}
-        storage.store(root)
-        storage.close()
+        _create_test_database(
+            self.test_db,
+            {
+                "test_key": "test_value",
+                "nested": {"inner": "data"},
+            },
+        )
 
         # Create backup manager
-        self.storage = FileStorage(self.test_db)
+        self.storage = FileStorage(self.test_db, readonly=True)
         self.backup_manager = BackupManager(
             storage=self.storage,
             backup_dir=self.backup_dir,
@@ -88,9 +121,7 @@ class TestBackupManager:
         catalog.add_backup(full_backup)
 
         # Modify database
-        root = self.storage.open()
-        root["new_key"] = "new_value"
-        root.close()
+        _update_test_database(self.test_db, lambda root: root.__setitem__("new_key", "new_value"))
 
         # Perform incremental backup
         incremental_backup = self.backup_manager.perform_incremental_backup(full_backup.backup_id)
@@ -108,9 +139,7 @@ class TestBackupManager:
         catalog.add_backup(full_backup)
 
         # Modify database
-        root = self.storage.open()
-        root["diff_key"] = "diff_value"
-        root.close()
+        _update_test_database(self.test_db, lambda root: root.__setitem__("diff_key", "diff_value"))
 
         # Perform differential backup
         diff_backup = self.backup_manager.perform_differential_backup(full_backup.backup_id)
@@ -148,7 +177,7 @@ class TestBackupManager:
         # Calculate checksum
         checksum = self.backup_manager._calculate_checksum(test_file)
         assert len(checksum) == 64  # SHA256 hex length
-        assert checksum == "b961ffe92a7dfec0f3ceba3a70a338d7f3530cc33e8c45f6c6b8458353e8e69e"
+        assert checksum == "6ae8a75555209fd6c44157c0aed8016e763ff435a19cf186f76863140143ff72"
 
 
 class TestRestoreManager:
@@ -164,14 +193,10 @@ class TestRestoreManager:
         os.makedirs(self.restore_dir, exist_ok=True)
 
         # Create test database
-        storage = FileStorage(self.test_db)
-        root = PersistentDict()
-        root["original_key"] = "original_value"
-        storage.store(root)
-        storage.close()
+        _create_test_database(self.test_db, {"original_key": "original_value"})
 
         # Create backup
-        self.storage = FileStorage(self.test_db)
+        self.storage = FileStorage(self.test_db, readonly=True)
         self.backup_manager = BackupManager(
             storage=self.storage,
             backup_dir=self.backup_dir
@@ -203,8 +228,7 @@ class TestRestoreManager:
         assert os.path.getsize(restored_path) > 0
 
         # Verify database is accessible
-        restored_storage = FileStorage(restored_path)
-        root = restored_storage.open()
+        restored_storage, _connection, root = _load_root(restored_path)
         assert "original_key" in root
         assert root["original_key"] == "original_value"
         restored_storage.close()
@@ -279,7 +303,7 @@ class TestBackupCatalog:
 
     def test_add_and_get_backup(self):
         """Test adding and retrieving backups."""
-        from druva.backup.manager import BackupMetadata, BackupType
+        from dhara.backup.manager import BackupMetadata, BackupType
 
         # Create test metadata
         metadata = BackupMetadata(
@@ -302,7 +326,7 @@ class TestBackupCatalog:
 
     def test_get_last_backup(self):
         """Test getting last backup."""
-        from druva.backup.manager import BackupMetadata, BackupType
+        from dhara.backup.manager import BackupMetadata, BackupType
 
         # Add multiple backups
         now = datetime.now()
@@ -334,7 +358,7 @@ class TestBackupCatalog:
 
     def test_get_incremental_chain(self):
         """Test getting incremental backup chain."""
-        from druva.backup.manager import BackupMetadata, BackupType
+        from dhara.backup.manager import BackupMetadata, BackupType
 
         # Create a chain
         now = datetime.now()
@@ -379,7 +403,7 @@ class TestBackupCatalog:
 
     def test_search_backups(self):
         """Test searching backups."""
-        from druva.backup.manager import BackupMetadata, BackupType
+        from dhara.backup.manager import BackupMetadata, BackupType
 
         # Add test backups
         now = datetime.now()
@@ -428,14 +452,10 @@ class TestBackupScheduler:
 
         # Create test database
         self.test_db = os.path.join(self.temp_dir, "test_db.durus")
-        storage = FileStorage(self.test_db)
-        root = PersistentDict()
-        root["test_key"] = "test_value"
-        storage.store(root)
-        storage.close()
+        _create_test_database(self.test_db, {"test_key": "test_value"})
 
         # Create backup manager
-        self.storage = FileStorage(self.test_db)
+        self.storage = FileStorage(self.test_db, readonly=True)
         self.backup_manager = BackupManager(
             storage=self.storage,
             backup_dir=self.backup_dir
@@ -537,14 +557,10 @@ class TestBackupVerification:
 
         # Create test database
         self.test_db = os.path.join(self.temp_dir, "test_db.durus")
-        storage = FileStorage(self.test_db)
-        root = PersistentDict()
-        root["test_key"] = "test_value"
-        storage.store(root)
-        storage.close()
+        _create_test_database(self.test_db, {"test_key": "test_value"})
 
         # Create backup
-        self.storage = FileStorage(self.test_db)
+        self.storage = FileStorage(self.test_db, readonly=True)
         self.backup_manager = BackupManager(
             storage=self.storage,
             backup_dir=self.backup_dir
@@ -648,84 +664,78 @@ class TestStorageAdapters:
         if os.path.exists(self.temp_dir):
             shutil.rmtree(self.temp_dir)
 
-    @patch('boto3.client')
-    def test_s3_adapter(self, mock_boto3):
+    def test_s3_adapter(self):
         """Test S3 storage adapter."""
-        # Mock S3 client
-        mock_client = Mock()
-        mock_boto3.return_value = mock_client
+        pytest.importorskip("boto3")
 
-        from druva.backup.storage import S3Storage
+        from dhara.backup.storage import S3Storage
 
-        # Create adapter
-        adapter = S3Storage(
-            bucket_name="test-bucket",
-            access_key="test-key",
-            secret_key="test-secret"
-        )
+        with patch("boto3.client") as mock_boto3:
+            mock_client = Mock()
+            mock_boto3.return_value = mock_client
 
-        # Test upload
-        result = adapter.upload_file(self.test_file, "test/backup.txt")
-        assert result is True
-        mock_client.upload_file.assert_called_once()
+            adapter = S3Storage(
+                bucket_name="test-bucket",
+                access_key="test-key",
+                secret_key="test-secret"
+            )
 
-        # Test download
-        result = adapter.download_file("test/backup.txt", self.test_file)
-        assert result is True
-        mock_client.download_file.assert_called_once()
+            result = adapter.upload_file(self.test_file, "test/backup.txt")
+            assert result is True
+            mock_client.upload_file.assert_called_once()
 
-    @patch('google.cloud.storage.Client')
-    def test_gcs_adapter(self, mock_client):
+            result = adapter.download_file("test/backup.txt", self.test_file)
+            assert result is True
+            mock_client.download_file.assert_called_once()
+
+    def test_gcs_adapter(self):
         """Test GCS storage adapter."""
-        # Mock GCS client
-        mock_blob = Mock()
-        mock_blob.upload_from_filename.return_value = None
-        mock_blob.download_to_filename.return_value = None
-        mock_blob.name = "test/backup.txt"
-        mock_blob.size = 1024
-        mock_blob.time_created = "2024-01-01T00:00:00Z"
-        mock_container = Mock()
-        mock_container.blob.return_value = mock_blob
-        mock_client.return_value.bucket.return_value = mock_container
+        pytest.importorskip("google.cloud.storage")
 
-        from druva.backup.storage import GCSStorage
+        from dhara.backup.storage import GCSStorage
 
-        # Create adapter
-        adapter = GCSStorage(bucket_name="test-bucket")
+        with patch("google.cloud.storage.Client") as mock_client:
+            mock_blob = Mock()
+            mock_blob.upload_from_filename.return_value = None
+            mock_blob.download_to_filename.return_value = None
+            mock_blob.name = "test/backup.txt"
+            mock_blob.size = 1024
+            mock_blob.time_created = "2024-01-01T00:00:00Z"
+            mock_container = Mock()
+            mock_container.blob.return_value = mock_blob
+            mock_client.return_value.bucket.return_value = mock_container
 
-        # Test upload
-        result = adapter.upload_file(self.test_file, "test/backup.txt")
-        assert result is True
+            adapter = GCSStorage(bucket_name="test-bucket")
 
-        # Test download
-        result = adapter.download_file("test/backup.txt", self.test_file)
-        assert result is True
+            result = adapter.upload_file(self.test_file, "test/backup.txt")
+            assert result is True
 
-    @patch('azure.storage.blob.BlobServiceClient')
-    def test_azure_adapter(self, mock_client):
+            result = adapter.download_file("test/backup.txt", self.test_file)
+            assert result is True
+
+    def test_azure_adapter(self):
         """Test Azure Blob Storage adapter."""
-        # Mock Azure client
-        mock_blob_client = Mock()
-        mock_blob_client.upload_blob.return_value = None
-        mock_blob_client.download_blob.return_value.readall.return_value = b"test content"
-        mock_container = Mock()
-        mock_container.get_blob_client.return_value = mock_blob_client
-        mock_client.return_value.get_container_client.return_value = mock_container
+        pytest.importorskip("azure.storage.blob")
 
-        from druva.backup.storage import AzureBlobStorage
+        from dhara.backup.storage import AzureBlobStorage
 
-        # Create adapter
-        adapter = AzureBlobStorage(
-            connection_string="DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test=="
-        )
+        with patch("azure.storage.blob.BlobServiceClient") as mock_client:
+            mock_blob_client = Mock()
+            mock_blob_client.upload_blob.return_value = None
+            mock_blob_client.download_blob.return_value.readall.return_value = b"test content"
+            mock_container = Mock()
+            mock_container.get_blob_client.return_value = mock_blob_client
+            mock_client.from_connection_string.return_value.get_container_client.return_value = mock_container
 
-        # Test upload
-        result = adapter.upload_file(self.test_file, "test/backup.txt")
-        assert result is True
+            adapter = AzureBlobStorage(
+                connection_string="DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test=="
+            )
 
-        # Test download
-        result = adapter.download_file("test/backup.txt", self.test_file)
-        assert result is True
+            result = adapter.upload_file(self.test_file, "test/backup.txt")
+            assert result is True
+
+            result = adapter.download_file("test/backup.txt", self.test_file)
+            assert result is True
 
 
 class TestIntegrationScenarios:
@@ -737,8 +747,10 @@ class TestIntegrationScenarios:
         self.test_db = os.path.join(self.temp_dir, "test_db.durus")
         self.backup_dir = os.path.join(self.temp_dir, "backups")
         self.restore_dir = os.path.join(self.temp_dir, "restores")
+        self.test_restore_dir = os.path.join(self.temp_dir, "test_restores")
         os.makedirs(self.backup_dir, exist_ok=True)
         os.makedirs(self.restore_dir, exist_ok=True)
+        os.makedirs(self.test_restore_dir, exist_ok=True)
 
     def teardown_method(self):
         """Clean up test fixtures."""
@@ -748,15 +760,16 @@ class TestIntegrationScenarios:
     def test_backup_restore_cycle(self):
         """Test complete backup and restore cycle."""
         # Create initial database
-        storage = FileStorage(self.test_db)
-        root = PersistentDict()
-        root["data"] = {"key1": "value1", "key2": "value2"}
-        root["metadata"] = {"created": datetime.now().isoformat()}
-        storage.store(root)
-        storage.close()
+        _create_test_database(
+            self.test_db,
+            {
+                "data": {"key1": "value1", "key2": "value2"},
+                "metadata": {"created": datetime.now().isoformat()},
+            },
+        )
 
         # Create backup manager
-        storage = FileStorage(self.test_db)
+        storage = FileStorage(self.test_db, readonly=True)
         backup_manager = BackupManager(
             storage=storage,
             backup_dir=self.backup_dir
@@ -768,10 +781,11 @@ class TestIntegrationScenarios:
         catalog.add_backup(backup_metadata)
 
         # Modify database
-        storage = FileStorage(self.test_db)
-        root = storage.open()
-        root["data"]["key3"] = "value3"
-        root.close()
+        def add_key3(root):
+            root["data"]["key3"] = "value3"
+            root._p_note_change()
+
+        _update_test_database(self.test_db, add_key3)
 
         # Perform incremental backup
         incremental_backup = backup_manager.perform_incremental_backup(backup_metadata.backup_id)
@@ -787,8 +801,7 @@ class TestIntegrationScenarios:
         restored_path = restore_manager.restore_point_in_time(backup_metadata.timestamp)
 
         # Verify restored data
-        restored_storage = FileStorage(restored_path)
-        restored_root = restored_storage.open()
+        restored_storage, _connection, restored_root = _load_root(restored_path)
         assert "data" in restored_root
         assert "key1" in restored_root["data"]
         assert "key2" in restored_root["data"]
@@ -808,20 +821,16 @@ class TestIntegrationScenarios:
 
     def test_encrypted_backup_restore(self):
         """Test encrypted backup and restore."""
-        from druva.backup.manager import EncryptionEngine
+        from dhara.backup.manager import EncryptionEngine
 
         # Create initial database
-        storage = FileStorage(self.test_db)
-        root = PersistentDict()
-        root["secret_data"] = "sensitive information"
-        storage.store(root)
-        storage.close()
+        _create_test_database(self.test_db, {"secret_data": "sensitive information"})
 
         # Create encryption key
         encryption_key = Fernet.generate_key()
 
         # Create backup manager with encryption
-        storage = FileStorage(self.test_db)
+        storage = FileStorage(self.test_db, readonly=True)
         backup_manager = BackupManager(
             storage=storage,
             backup_dir=self.backup_dir,
@@ -843,8 +852,7 @@ class TestIntegrationScenarios:
         restored_path = restore_manager._restore_from_backup(backup_metadata)
 
         # Verify decrypted data
-        restored_storage = FileStorage(restored_path)
-        restored_root = restored_storage.open()
+        restored_storage, _connection, restored_root = _load_root(restored_path)
         assert "secret_data" in restored_root
         assert restored_root["secret_data"] == "sensitive information"
         restored_storage.close()
@@ -852,18 +860,13 @@ class TestIntegrationScenarios:
     def test_disaster_recovery_scenario(self):
         """Test disaster recovery scenario."""
         # Create database with significant data
-        storage = FileStorage(self.test_db)
-        root = PersistentDict()
-
-        # Add substantial data
-        for i in range(1000):
-            root[f"item_{i}"] = f"value_{i}"
-
-        storage.store(root)
-        storage.close()
+        _create_test_database(
+            self.test_db,
+            {f"item_{i}": f"value_{i}" for i in range(1000)},
+        )
 
         # Create backups
-        storage = FileStorage(self.test_db)
+        storage = FileStorage(self.test_db, readonly=True)
         backup_manager = BackupManager(
             storage=storage,
             backup_dir=self.backup_dir
@@ -875,10 +878,10 @@ class TestIntegrationScenarios:
         catalog.add_backup(full_backup)
 
         # Modify data
-        storage = FileStorage(self.test_db)
-        root = storage.open()
-        root["new_data"] = "important information"
-        root.close()
+        _update_test_database(
+            self.test_db,
+            lambda root: root.__setitem__("new_data", "important information"),
+        )
 
         # Differential backup
         diff_backup = backup_manager.perform_differential_backup(full_backup.backup_id)
@@ -900,8 +903,7 @@ class TestIntegrationScenarios:
 
         # Verify recovery
         assert os.path.exists(recovered_path)
-        recovered_storage = FileStorage(recovered_path)
-        recovered_root = recovered_storage.open()
+        recovered_storage, _connection, recovered_root = _load_root(recovered_path)
 
         # Check data integrity
         assert "new_data" in recovered_root

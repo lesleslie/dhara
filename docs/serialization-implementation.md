@@ -2,11 +2,11 @@
 
 ## Overview
 
-Implemented comprehensive serializer architecture for Durus 5.0 with support for multiple backends (msgspec, pickle, dill), providing users with flexibility in choosing the right serialization strategy for their use case.
+Implemented comprehensive serializer architecture for Dhara with support for multiple backends (msgspec, pickle, dill), providing users with flexibility in choosing the right serialization strategy for their use case.
 
 ## Files Created
 
-### 1. durus/serialize/msgspec.py
+### 1. dhara/serialize/msgspec.py
 
 Enhanced msgspec serializer with:
 
@@ -16,7 +16,7 @@ Enhanced msgspec serializer with:
 - Security: No arbitrary code execution on deserialize
 - Performance: 5-10x faster than pickle
 
-### 2. durus/serialize/dill.py
+### 2. dhara/serialize/dill.py
 
 New dill serializer for extended Python object support:
 
@@ -25,7 +25,7 @@ New dill serializer for extended Python object support:
 - Supports complex object graphs
 - Optional dependency with graceful ImportError handling
 
-### 3. durus/serialize/factory.py
+### 3. dhara/serialize/factory.py
 
 Factory function for creating serializers:
 
@@ -46,7 +46,7 @@ Comprehensive test suite covering:
 
 ## Files Modified
 
-### 1. durus/serialize/base.py
+### 1. dhara/serialize/base.py
 
 Enhanced base serializer interface:
 
@@ -55,16 +55,16 @@ Enhanced base serializer interface:
 - Runtime checkable protocol support
 - Comprehensive type hints
 
-### 2. durus/serialize/pickle.py
+### 2. dhara/serialize/pickle.py
 
 Enhanced pickle serializer:
 
 - Fixed get_state() to return proper dict
 - Added comprehensive docstrings with security warnings
 - Better error handling for edge cases
-- Maintains protocol 2 default for Durus 4.x compatibility
+- Maintains protocol 2 default for legacy Durus 4.x compatibility
 
-### 3. durus/serialize/__init__.py
+### 3. dhara/serialize/__init__.py
 
 Updated exports:
 
@@ -86,7 +86,7 @@ All tests pass successfully:
 ## Usage Examples
 
 ```python
-from durus.serialize import create_serializer, MsgspecSerializer
+from dhara.serialize import create_serializer, MsgspecSerializer
 
 # Using factory (recommended)
 serializer = create_serializer("msgspec", format="json")

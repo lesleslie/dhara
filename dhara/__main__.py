@@ -334,7 +334,7 @@ def client_main():
 def get_storage_class(file):
     """Return the corresponding storage class based on an existing file."""
     if not os.path.exists(file):
-        from dhara.file_storage import FileStorage
+        from dhara.storage.file import FileStorage
 
         return FileStorage
     fp = open(file, "rb")
@@ -349,7 +349,7 @@ def get_storage_class(file):
 
         return SqliteStorage
     elif d.startswith(b"SHELF-1"):
-        from dhara.file_storage import FileStorage
+        from dhara.storage.file import FileStorage
 
         return FileStorage
     else:
@@ -367,7 +367,7 @@ def get_storage(file, storage_class=None, **kwargs):
         storage_class = import_class(storage_class)
     else:
         if file is None:
-            from dhara.file_storage import FileStorage
+            from dhara.storage.file import FileStorage
 
             # passing file=None will create temporary storage
             storage_class = FileStorage

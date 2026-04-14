@@ -17,7 +17,7 @@ import json
 import os
 import tempfile
 import time
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -700,7 +700,7 @@ class TestTokenInfo:
             token_id="test_token",
             token_hash="abc123",
             role=Role.READONLY,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
 
         assert token_info.token_id == "test_token"
@@ -713,7 +713,7 @@ class TestTokenInfo:
             token_id="valid_token",
             token_hash="abc123",
             role=Role.READONLY,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
         )
 
         assert valid_token.is_valid() is True
@@ -724,7 +724,7 @@ class TestTokenInfo:
             token_id="revoked_token",
             token_hash="abc123",
             role=Role.READONLY,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(UTC),
             is_revoked=True,
         )
 
@@ -736,8 +736,8 @@ class TestTokenInfo:
             token_id="expired_token",
             token_hash="abc123",
             role=Role.READONLY,
-            created_at=datetime.utcnow(),
-            expires_at=datetime.utcnow() - timedelta(hours=1),
+            created_at=datetime.now(UTC),
+            expires_at=datetime.now(UTC) - timedelta(hours=1),
         )
 
         assert expired_token.is_expired() is True
@@ -748,8 +748,8 @@ class TestTokenInfo:
             token_id="expired_token",
             token_hash="abc123",
             role=Role.READONLY,
-            created_at=datetime.utcnow(),
-            expires_at=datetime.utcnow() - timedelta(hours=1),
+            created_at=datetime.now(UTC),
+            expires_at=datetime.now(UTC) - timedelta(hours=1),
         )
 
         assert expired_token.is_valid() is False

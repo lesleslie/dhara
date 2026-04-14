@@ -154,7 +154,12 @@ class BackupScheduler:
         self.running = False
         self.last_verification = None
         self.verification_engine = (
-            BackupVerification(backup_dir) if backup_dir else None
+            BackupVerification(
+                str(self.backup_dir),
+                str(self.backup_dir / "test_restores"),
+            )
+            if backup_dir
+            else None
         )
 
     def add_job(

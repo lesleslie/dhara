@@ -471,7 +471,7 @@ if __name__ == "__main__":
         version="1.0.0",
         description="File-based storage backend",
         capabilities=["persistent", "transactional", "append_only"],
-        author="Durus Team",
+        author="Dhara Team",
     )
 
     server.register_adapter(
@@ -480,7 +480,7 @@ if __name__ == "__main__":
         version="1.0.0",
         description="Msgspec serialization",
         capabilities=["fast", "secure", "type_safe"],
-        author="Durus Team",
+        author="Dhara Team",
     )
 
     print(f"\nRegistered adapters: {server.list_adapters()}")

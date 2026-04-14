@@ -63,10 +63,10 @@ Lite mode is designed for **development and testing** with zero configuration re
 export DHARA_MODE=lite
 
 # Start Dhara
-dhara-mcp start
+dhara mcp start
 
 # Or using Python
-python -m dhara.cli start
+python -m dhara.cli mcp start
 ```
 
 #### Option 3: Using Python API
@@ -132,7 +132,7 @@ http://127.0.0.1:8683
 ```bash
 # 1. Start Dhara in lite mode
 export DHARA_MODE=lite
-dhara-mcp start
+dhara mcp start
 
 # 2. In another terminal, connect with Python
 python << 'EOF'
@@ -193,7 +193,7 @@ Standard mode is designed for **production deployments** with full configuration
 export DHARA_MODE=standard
 
 # Start Dhara
-dhara-mcp start
+dhara mcp start
 ```
 
 #### Option 3: Using Python API
@@ -243,7 +243,7 @@ cloud_storage:
 export DHARA_MODE=standard
 export DHARA_STORAGE_BACKEND=file
 export DHARA_STORAGE_PATH=/data/dhara/production.dhara
-dhara-mcp start
+dhara mcp start
 ```
 
 #### SQLite Storage
@@ -252,7 +252,7 @@ dhara-mcp start
 export DHARA_MODE=standard
 export DHARA_STORAGE_BACKEND=sqlite
 export DHARA_STORAGE_PATH=/data/dhara/production.db
-dhara-mcp start
+dhara mcp start
 ```
 
 #### Amazon S3 Storage
@@ -270,7 +270,7 @@ export DHARA_S3_BUCKET=dhara-production
 export DHARA_S3_PREFIX=dhara/
 
 # Start Dhara
-dhara-mcp start
+dhara mcp start
 ```
 
 #### Google Cloud Storage
@@ -286,7 +286,7 @@ export DHARA_GCS_BUCKET=dhara-production
 export DHARA_GCS_PREFIX=dhara/
 
 # Start Dhara
-dhara-mcp start
+dhara mcp start
 ```
 
 #### Azure Blob Storage
@@ -302,7 +302,7 @@ export DHARA_AZURE_CONTAINER=dhara-production
 export DHARA_AZURE_PREFIX=dhara/
 
 # Start Dhara
-dhara-mcp start
+dhara mcp start
 ```
 
 ### Cloud Backup Configuration
@@ -338,10 +338,10 @@ sudo mkdir -p /data/dhara
 sudo chown $USER:$USER /data/dhara
 
 # 3. Start Dhara
-dhara-mcp start
+dhara mcp start
 
 # 4. Verify health
-dhara-mcp health --probe
+dhara mcp health --probe
 ```
 
 ## Mode Management
@@ -376,7 +376,7 @@ To switch between modes:
 1. **Stop current instance**:
 
    ```bash
-   dhara-mcp stop
+   dhara mcp stop
    ```
 
 1. **Set new mode**:
@@ -388,7 +388,7 @@ To switch between modes:
 1. **Start new instance**:
 
    ```bash
-   dhara-mcp start
+   dhara mcp start
    ```
 
 ## Migration Guide
@@ -463,7 +463,7 @@ with open("/tmp/dhara-lite-export.json", "r") as f:
 
 ```bash
 export DHARA_MODE=standard
-dhara-mcp start
+dhara mcp start
 ```
 
 ## Troubleshooting
@@ -500,7 +500,7 @@ lsof -i :8683
 
 # Use a different port
 export DHARA_PORT=8684
-dhara-mcp start
+dhara mcp start
 ```
 
 ### Cloud Storage Connection Issues
@@ -536,7 +536,7 @@ print(s3.list_buckets())
 - Configure appropriate storage backend for your scale
 - Enable automated cloud backups
 - Use JSON logging for log aggregation
-- Monitor health with `dhara-mcp health --probe`
+- Monitor health with `dhara mcp health --probe`
 - Set up alerts for storage capacity and errors
 
 ### Security
@@ -590,7 +590,7 @@ If you encounter issues:
 1. Check mode: `python -c "from dhara.modes import get_mode; print(get_mode().get_info())"`
 1. Check logs: `tail -f ~/.oneiric_cache/dhara.log`
 1. Verify configuration: `python -c "from dhara.core.config import DharaSettings; print(DharaSettings.load())"`
-1. Check health: `dhara-mcp health --probe`
+1. Check health: `dhara mcp health --probe`
 
 ## Summary
 

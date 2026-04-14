@@ -10,7 +10,7 @@ import json
 import logging
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from dhara.mcp.auth import (
@@ -21,6 +21,11 @@ from dhara.mcp.auth import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _utcnow() -> datetime:
+    """Return a timezone-aware UTC timestamp."""
+    return datetime.now(UTC)
 
 
 @dataclass
@@ -85,9 +90,10 @@ class MCPMiddleware:
         self._auth_failure_count = 0
         self._request_durations: list[float] = []
 
-        # Permission mapping for MCP tools
+        # Permission mapping for MCP tools.
+        # `durus_*` names remain for legacy MCP compatibility.
         self._tool_permissions: dict[str, Permission] = {
-            # Durus MCP tools
+            # Legacy Durus-compatible Dhara MCP tools
             "durus_get": Permission.READ,
             "durus_set": Permission.WRITE,
             "durus_list": Permission.LIST,
@@ -210,7 +216,7 @@ class MCPMiddleware:
         log_data = {
             "request_id": request.request_id,
             "method": request.method,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": _utcnow().isoformat(),
         }
 
         if auth_result:
@@ -231,7 +237,7 @@ class MCPMiddleware:
             "method": request.method,
             "success": response.success,
             "duration_ms": response.duration_ms,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": _utcnow().isoformat(),
         }
 
         if not response.success and response.error:

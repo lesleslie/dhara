@@ -30,5 +30,6 @@ dist
 .backup/
 .backups/
 
+.hypothesis/
 .coverage
 coverage.json

@@ -1,13 +1,18 @@
 """
-Durus Configuration Module
+Dhara configuration module.
 
-This module provides centralized configuration for Durus applications,
+This module provides centralized configuration for Dhara applications,
 following Oneiric patterns for configuration management.
+
+`dhara.core.config` is the canonical runtime settings surface for the
+MCP server and CLI. This package remains for lightweight dataclass-based
+configuration helpers and compatibility with older Dhara/Druva code.
 """
 
 from .defaults import (
     CacheConfig,
     ConnectionConfig,
+    DharaConfig,
     DruvaConfig,
     StorageConfig,
 )
@@ -25,6 +30,7 @@ __all__ = [
     "get_security_config",
     "initialize_security",
     # Core configuration classes
+    "DharaConfig",
     "DruvaConfig",
     "StorageConfig",
     "CacheConfig",

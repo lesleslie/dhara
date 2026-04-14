@@ -1,4 +1,4 @@
-"""Unit tests for Druva CLI.
+"""Unit tests for Dhara CLI.
 
 Tests CLI commands including:
 - CLI creation
@@ -18,12 +18,12 @@ import pytest
 from typer.testing import CliRunner
 
 from dhara.cli import create_cli, health_probe_handler, start_handler, stop_handler
-from dhara.core.config import DruvaSettings
+from dhara.core.config import DharaSettings
 
 
 @pytest.mark.unit
-class TestDruvaCLI:
-    """Test Druva CLI application."""
+class TestDharaCLI:
+    """Test Dhara CLI application."""
 
     @pytest.fixture
     def runner(self) -> CliRunner:
@@ -31,10 +31,10 @@ class TestDruvaCLI:
         return CliRunner()
 
     @pytest.fixture
-    def temp_settings(self, tmp_path: Path) -> DruvaSettings:
+    def temp_settings(self, tmp_path: Path) -> DharaSettings:
         """Create temporary settings for testing."""
-        return DruvaSettings(
-            server_name="test-druva",
+        return DharaSettings(
+            server_name="test-dhara",
             storage={
                 "path": tmp_path / "test.dhara",
                 "read_only": False,
@@ -47,9 +47,9 @@ class TestDruvaCLI:
         """Clean environment variables before/after tests."""
         import os
 
-        original = {k: v for k, v in os.environ.items() if k.startswith("DRUVA_")}
+        original = {k: v for k, v in os.environ.items() if k.startswith("DHARA_")}
         for key in list(os.environ.keys()):
-            if key.startswith("DRUVA_"):
+            if key.startswith("DHARA_"):
                 del os.environ[key]
         yield
         for key, value in original.items():
@@ -68,18 +68,21 @@ class TestDruvaCLI:
         assert "admin" in command_names
 
     def test_cli_has_lifecycle_commands(self, runner: CliRunner, clean_env):
-        """Test CLI has standard lifecycle commands."""
+        """Test CLI exposes lifecycle commands under the mcp subcommand."""
         app = create_cli()
 
-        # Test --help to see available commands
         result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
-        assert "start" in result.stdout
-        assert "stop" in result.stdout
-        assert "status" in result.stdout
-        assert "health" in result.stdout
+        assert "mcp" in result.stdout
 
-    def test_adapters_command_empty(self, runner: CliRunner, temp_settings: DruvaSettings):
+        mcp_result = runner.invoke(app, ["mcp", "--help"])
+        assert mcp_result.exit_code == 0
+        assert "start" in mcp_result.stdout
+        assert "stop" in mcp_result.stdout
+        assert "status" in mcp_result.stdout
+        assert "health" in mcp_result.stdout
+
+    def test_adapters_command_empty(self, runner: CliRunner, temp_settings: DharaSettings):
         """Test adapters command with no adapters."""
         from dhara.core import Connection
         from dhara.storage.file import FileStorage
@@ -91,7 +94,7 @@ class TestDruvaCLI:
         storage.close()
 
         # Mock settings.load to return temp_settings BEFORE creating CLI
-        with patch("druva.cli.DruvaSettings.load", return_value=temp_settings):
+        with patch("dhara.cli.DharaSettings.load", return_value=temp_settings):
             app = create_cli()
             result = runner.invoke(app, ["adapters"])
 
@@ -99,7 +102,7 @@ class TestDruvaCLI:
             assert result.exit_code == 0
             assert "Found 0 adapters" in result.stdout or "adapters" in result.stdout.lower()
 
-    def test_adapters_command_with_data(self, runner: CliRunner, temp_settings: DruvaSettings):
+    def test_adapters_command_with_data(self, runner: CliRunner, temp_settings: DharaSettings):
         """Test adapters command with stored adapters."""
         # Create storage and add an adapter
         from dhara.core import Connection
@@ -127,7 +130,7 @@ class TestDruvaCLI:
         storage.close()
 
         # Now test CLI - create CLI inside patch context
-        with patch("druva.cli.DruvaSettings.load", return_value=temp_settings):
+        with patch("dhara.cli.DharaSettings.load", return_value=temp_settings):
             app = create_cli()
             result = runner.invoke(app, ["adapters"])
 
@@ -135,7 +138,7 @@ class TestDruvaCLI:
             assert "adapter:cache:redis" in result.stdout
             assert "1.0.0" in result.stdout
 
-    def test_adapters_command_filter_domain(self, runner: CliRunner, temp_settings: DruvaSettings):
+    def test_adapters_command_filter_domain(self, runner: CliRunner, temp_settings: DharaSettings):
         """Test adapters command with domain filter."""
         from dhara.core import Connection
         from dhara.storage.file import FileStorage
@@ -173,7 +176,7 @@ class TestDruvaCLI:
         conn.commit()
         storage.close()
 
-        with patch("druva.cli.DruvaSettings.load", return_value=temp_settings):
+        with patch("dhara.cli.DharaSettings.load", return_value=temp_settings):
             app = create_cli()
             result = runner.invoke(app, ["adapters", "--domain", "adapter"])
 
@@ -182,7 +185,7 @@ class TestDruvaCLI:
             # Should not show s3 adapter
             assert "s3" not in result.stdout.lower()
 
-    def test_adapters_command_filter_category(self, runner: CliRunner, temp_settings: DruvaSettings):
+    def test_adapters_command_filter_category(self, runner: CliRunner, temp_settings: DharaSettings):
         """Test adapters command with category filter."""
         from dhara.core import Connection
         from dhara.storage.file import FileStorage
@@ -220,7 +223,7 @@ class TestDruvaCLI:
         conn.commit()
         storage.close()
 
-        with patch("druva.cli.DruvaSettings.load", return_value=temp_settings):
+        with patch("dhara.cli.DharaSettings.load", return_value=temp_settings):
             app = create_cli()
             result = runner.invoke(app, ["adapters", "--category", "cache"])
 
@@ -229,7 +232,7 @@ class TestDruvaCLI:
             # Should not show s3
             assert "s3" not in result.stdout.lower()
 
-    def test_storage_command(self, runner: CliRunner, temp_settings: DruvaSettings):
+    def test_storage_command(self, runner: CliRunner, temp_settings: DharaSettings):
         """Test storage info command."""
         from dhara.core import Connection
         from dhara.storage.file import FileStorage
@@ -241,7 +244,7 @@ class TestDruvaCLI:
         conn.commit()
         storage.close()
 
-        with patch("druva.cli.DruvaSettings.load", return_value=temp_settings):
+        with patch("dhara.cli.DharaSettings.load", return_value=temp_settings):
             app = create_cli()
             result = runner.invoke(app, ["storage"])
 
@@ -250,7 +253,7 @@ class TestDruvaCLI:
             assert str(temp_settings.storage.path) in result.stdout
             assert "Root keys:" in result.stdout
 
-    def test_health_probe_handler(self, temp_settings: DruvaSettings):
+    def test_health_probe_handler(self, temp_settings: DharaSettings):
         """Test health probe handler."""
         from dhara.core import Connection
         from dhara.storage.file import FileStorage
@@ -264,30 +267,65 @@ class TestDruvaCLI:
         storage.close()
 
         # Mock settings.load
-        with patch("druva.cli.DruvaSettings.load", return_value=temp_settings):
+        with patch("dhara.cli.DharaSettings.load", return_value=temp_settings):
             snapshot = health_probe_handler()
 
             assert snapshot is not None
             assert snapshot.lifecycle_state["storage_path"] == str(temp_settings.storage.path)
             assert snapshot.lifecycle_state["storage_exists"] is True
+            assert snapshot.lifecycle_state["storage_accessible"] is True
             assert "storage_status" in snapshot.activity_state
+            assert snapshot.activity_state["ready"] is True
 
-    def test_health_probe_handler_no_storage(self, temp_settings: DruvaSettings):
+    def test_health_probe_handler_no_storage(self, temp_settings: DharaSettings):
         """Test health probe with non-existent storage."""
         # Don't create storage file
 
-        with patch("druva.cli.DruvaSettings.load", return_value=temp_settings):
+        with patch("dhara.cli.DharaSettings.load", return_value=temp_settings):
             snapshot = health_probe_handler()
 
             assert snapshot is not None
             assert snapshot.lifecycle_state["storage_exists"] is False
+            assert snapshot.lifecycle_state["storage_accessible"] is False
             assert snapshot.activity_state["storage_status"] == "error"
 
-    @patch("druva.cli.DruvaMCPServer")
-    @patch("druva.cli.write_runtime_health")
-    @patch("druva.cli.DruvaSettings.load")
+    def test_health_probe_handler_reports_backup_catalog(
+        self, tmp_path: Path, temp_settings: DharaSettings
+    ):
+        from dhara.collections.dict import PersistentDict
+        from dhara.core.connection import Connection
+        from dhara.storage.file import FileStorage
+
+        temp_settings.backups.enabled = True
+        temp_settings.backups.directory = tmp_path / "backups"
+        temp_settings.backups.directory.mkdir(parents=True, exist_ok=True)
+        catalog_path = temp_settings.backups.directory / "backup_catalog.durus"
+        with FileStorage(str(catalog_path)) as storage:
+            connection = Connection(storage)
+            root = connection.get_root()
+            root["backups"] = PersistentDict(
+                {
+                    "full_1": PersistentDict(
+                        {
+                            "backup_id": "full_1",
+                            "timestamp": "2026-04-03T00:00:00",
+                        }
+                    )
+                }
+            )
+            connection.commit()
+
+        with patch("dhara.cli.DharaSettings.load", return_value=temp_settings):
+            snapshot = health_probe_handler()
+
+            assert snapshot.lifecycle_state["backup_configured"] is True
+            assert snapshot.lifecycle_state["backup_catalog_accessible"] is True
+
+    @patch("dhara.cli.DharaMCPServer")
+    @patch("dhara.cli.write_runtime_health")
+    @patch("dhara.cli.DharaSettings.load")
     def test_start_handler(
-        self, mock_load: Mock, mock_write_health: Mock, mock_server: Mock, temp_settings: DruvaSettings
+        self, mock_load: Mock, mock_write_health: Mock, mock_server: Mock, temp_settings: DharaSettings
     ):
         """Test start handler initialization."""
         mock_load.return_value = temp_settings
@@ -304,37 +342,41 @@ class TestDruvaCLI:
         mock_server.assert_called_once_with(temp_settings)
         mock_server_instance.run.assert_called_once()
 
-    @patch("druva.cli.DruvaMCPServer")
-    def test_stop_handler(self, mock_server: Mock):
+    @patch("dhara.cli.write_runtime_health")
+    @patch("dhara.cli.DharaSettings.load")
+    @patch("dhara.cli.DharaMCPServer")
+    def test_stop_handler(self, mock_server: Mock, mock_load: Mock, mock_write_health: Mock, temp_settings: DharaSettings):
         """Test stop handler cleanup."""
         mock_server_instance = Mock()
         import dhara.cli
 
-        druva.cli._server_instance = mock_server_instance
+        dhara.cli._server_instance = mock_server_instance
+        mock_load.return_value = temp_settings
 
         stop_handler(12345)
 
         mock_server_instance.close.assert_called_once()
-        assert druva.cli._server_instance is None
+        mock_write_health.assert_called_once()
+        assert dhara.cli._server_instance is None
 
-    def test_admin_command_requires_ipython(self, runner: CliRunner, temp_settings: DruvaSettings):
+    def test_admin_command_requires_ipython(self, runner: CliRunner, temp_settings: DharaSettings):
         """Test admin command (requires IPython)."""
         app = create_cli()
 
-        with patch("druva.cli.DruvaSettings.load", return_value=temp_settings):
+        with patch("dhara.cli.DharaSettings.load", return_value=temp_settings):
             # Should try to import IPython
             result = runner.invoke(app, ["admin"])
 
             # May fail if IPython not installed, but command should exist
             assert "admin" in result.stdout.lower() or result.exit_code != 0
 
-    def test_cli_error_handling(self, runner: CliRunner, temp_settings: DruvaSettings):
+    def test_cli_error_handling(self, runner: CliRunner, temp_settings: DharaSettings):
         """Test CLI handles errors gracefully."""
         app = create_cli()
 
         # Test with invalid storage path (should handle error)
-        invalid_settings = DruvaSettings(
-            server_name="test-druva",
+        invalid_settings = DharaSettings(
+            server_name="test-dhara",
             storage={
                 "path": "/nonexistent/path/test.dhara",  # Invalid path
                 "read_only": True,
@@ -342,7 +384,7 @@ class TestDruvaCLI:
             cache_root=temp_settings.cache_root,
         )
 
-        with patch("druva.cli.DruvaSettings.load", return_value=invalid_settings):
+        with patch("dhara.cli.DharaSettings.load", return_value=invalid_settings):
             result = runner.invoke(app, ["storage"])
 
             # Should handle error gracefully
@@ -354,7 +396,7 @@ class TestDruvaCLI:
 
         result = runner.invoke(app, ["--help"])
         assert result.exit_code == 0
-        assert "Druva" in result.stdout
+        assert "Dhara" in result.stdout
 
     def test_adapters_command_help(self, runner: CliRunner):
         """Test adapters command help."""
@@ -388,10 +430,10 @@ class TestCLIIntegration:
     """Integration tests for CLI with actual storage."""
 
     @pytest.fixture
-    def populated_storage(self, tmp_path: Path) -> DruvaSettings:
+    def populated_storage(self, tmp_path: Path) -> DharaSettings:
         """Create storage with sample data."""
-        settings = DruvaSettings(
-            server_name="test-druva",
+        settings = DharaSettings(
+            server_name="test-dhara",
             storage={
                 "path": tmp_path / "test.dhara",
                 "read_only": False,
@@ -426,7 +468,7 @@ class TestCLIIntegration:
 
         return settings
 
-    def test_full_adapters_workflow(self, populated_storage: DruvaSettings):
+    def test_full_adapters_workflow(self, populated_storage: DharaSettings):
         """Test full adapters listing workflow."""
         from dhara.core import Connection
         from dhara.storage.file import FileStorage
@@ -445,7 +487,7 @@ class TestCLIIntegration:
 
         storage.close()
 
-    def test_storage_info_with_data(self, populated_storage: DruvaSettings):
+    def test_storage_info_with_data(self, populated_storage: DharaSettings):
         """Test storage info with actual data."""
         from dhara.core import Connection
         from dhara.storage.file import FileStorage

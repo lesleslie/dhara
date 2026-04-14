@@ -156,15 +156,15 @@ class TestObjectSigner:
 
     def test_create_signer_from_env_not_set(self):
         """Test that env var must be set."""
-        if "DRUVA_SIGNING_KEY" in os.environ:
-            del os.environ["DRUVA_SIGNING_KEY"]
+        if "DHARA_SIGNING_KEY" in os.environ:
+            del os.environ["DHARA_SIGNING_KEY"]
 
         with pytest.raises(ValueError):
             create_signer_from_env()
 
     def test_create_signer_from_env_with_password(self):
         """Test creating signer from env var password."""
-        os.environ["DRUVA_SIGNING_KEY"] = "test-password"
+        os.environ["DHARA_SIGNING_KEY"] = "test-password"
 
         try:
             signer = create_signer_from_env()
@@ -172,7 +172,7 @@ class TestObjectSigner:
             signed = signer.sign(data)
             assert signer.verify(signed) == data
         finally:
-            del os.environ["DRUVA_SIGNING_KEY"]
+            del os.environ["DHARA_SIGNING_KEY"]
 
 
 class TestSignedStorage:

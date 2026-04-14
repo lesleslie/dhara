@@ -1,9 +1,19 @@
-"""Compatibility shim for durus.persistent_list
+"""Deprecated compatibility shim for legacy ``durus.persistent_list`` imports.
 
-Redirects imports to new location (durus.collections.list)
-for backward compatibility with pickled data from Durus 4.x.
+Prefer ``dhara.collections.list`` for active code. This module remains only for
+backward compatibility with older imports and pickled data.
 """
 
+from __future__ import annotations
+
+import warnings
+
 from dhara.collections.list import *
+
+warnings.warn(
+    "dhara.persistent_list is deprecated; use dhara.collections.list instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 __all__ = ["PersistentList"]

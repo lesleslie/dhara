@@ -13,7 +13,7 @@ dhara is a modern persistent object system for Python - essentially a noSQL data
 - Complete architectural refactoring with layered package structure
 - Modern Python 3.13+ type hints throughout
 - Multiple serialization backends (msgspec, pickle, dill)
-- Oneiric integration for configuration and logging
+- Oneiric integration for configuration management, logging, secrets, and adapter resolution
 - MCP server for modern AI/agent workflows
 - Enhanced security with proper secret management
 
@@ -31,11 +31,14 @@ pip install -e ".[dev]"
 
 ### Running Tests
 
-Tests use pytest (modernized from legacy sancho.utest):
+Tests use pytest under the hood, but the preferred validation path is `crackerjack`:
 
 ```bash
-# Run all tests
-pytest
+# Run the QA status wrapper
+python -m crackerjack qa-health
+
+# Run tests through the quality wrapper
+python -m crackerjack run-tests
 
 # Run specific test file
 pytest test/test_connection.py
@@ -55,20 +58,9 @@ pytest test/test_connection.py::test_connection_basic
 ### Quality Checks
 
 ```bash
-# Run all quality checks via crackerjack
-python -m crackerjack check
-
-# Individual checks
-python -m crackerjack lint          # Ruff linting
-python -m crackerjack format        # Ruff formatting
-python -m crackerjack test          # Pytest
-python -m crackerjack typecheck     # Pyright (strict mode)
-python -m crackerjack security      # Bandit security scan
-python -m crackerjack complexity    # Complexity analysis
-
-# Auto-fix issues
-python -m crackerjack lint --fix
-python -m crackerjack format --fix
+# Available repo-level wrappers
+python -m crackerjack qa-health
+python -m crackerjack run-tests --coverage
 ```
 
 ### Building C Extension
@@ -644,20 +636,9 @@ This project uses crackerjack for automated quality checks and code standards.
 ### Running Quality Checks
 
 ```bash
-# Run all quality checks
-python -m crackerjack check
-
-# Run specific checks
-python -m crackerjack lint          # Ruff linting
-python -m crackerjack format        # Ruff formatting
-python -m crackerjack test          # Pytest with coverage
-python -m crackerjack typecheck     # Pyright type checking
-python -m crackerjack security      # Bandit security scan
-python -m crackerjack complexity    # Complexipy complexity check
-
-# Fix issues automatically
-python -m crackerjack lint --fix
-python -m crackerjack format --fix
+# Run available wrappers
+python -m crackerjack qa-health
+python -m crackerjack run-tests --coverage
 
 # Run all checks with AI auto-fix
 python -m crackerjack run --ai-fix

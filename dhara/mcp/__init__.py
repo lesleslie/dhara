@@ -1,13 +1,14 @@
 """
-Durus MCP (Model Context Protocol) Server Package
+Dhara MCP (Model Context Protocol) Server Package
 
-This package provides MCP server implementations for Durus with integrated
-authentication and authorization.
+This package provides MCP server implementations for Dhara with integrated
+compatibility authentication helpers.
 
 Components:
-- auth: Authentication and authorization classes
-- server: Main Durus MCP server
-- oneiric_server: Oneiric-compatible MCP server
+- auth: Authentication and authorization helper classes
+- server_core: Canonical FastMCP server implementation
+- server: Compatibility wrapper for legacy imports
+- oneiric_server: Legacy custom server path retained for compatibility
 """
 
 from dhara.mcp.auth import (
@@ -19,8 +20,11 @@ from dhara.mcp.auth import (
     Permission,
     TokenAuth,
 )
+from dhara.mcp.server_core import DharaMCPServer, DruvaMCPServer
 
 __all__ = [
+    "DharaMCPServer",
+    "DruvaMCPServer",
     "AuthMiddleware",
     "TokenAuth",
     "HMACAuth",

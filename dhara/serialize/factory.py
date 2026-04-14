@@ -7,9 +7,6 @@ proper error handling and validation.
 from typing import Any, Literal
 
 from dhara.serialize.base import Serializer
-from dhara.serialize.dill import DillSerializer
-from dhara.serialize.msgspec import MsgspecSerializer
-from dhara.serialize.pickle import PickleSerializer
 
 
 def create_serializer(
@@ -28,62 +25,27 @@ def create_serializer(
     Raises:
         ValueError: If backend is unknown
         ImportError: If backend requires optional dependencies
-
-    Examples:
-        >>> # Create default msgspec serializer (safe, fast)
-        >>> set = create_serializer()  # Uses msgspec by default
-        >>>
-        >>> # Create msgspec serializer with JSON format
-        >>> set = create_serializer("msgspec", format="json", use_builtins=True)
-        >>>
-        >>> # Create fallback serializer with whitelist
-        >>> set = create_serializer("fallback", pickle_whitelist={"numpy.ndarray"})
-        >>>
-        >>> # Create pickle serializer (WARNING: use only with trusted data)
-        >>> set = create_serializer("pickle", protocol=2)
-        >>>
-        >>> # Create dill serializer (WARNING: use only with trusted data)
-        >>> set = create_serializer("dill", protocol=4)
-
-    Backend-specific arguments:
-
-        msgspec (default, safe):
-            format (str): "msgpack" or "json" (default: "msgpack")
-            use_builtins (bool): Convert to built-in types (default: True)
-            RECOMMENDED: Safe for untrusted data, fast, and type-safe
-
-        fallback (safe with whitelist):
-            pickle_whitelist (set): Types allowed to use pickle (e.g., {"numpy.ndarray"})
-            allow_dill (bool): Allow dill as final fallback (default: False)
-            msgspec_kwargs (dict): Arguments for msgspec serializer
-            pickle_kwargs (dict): Arguments for pickle serializer
-            dill_kwargs (dict): Arguments for dill serializer
-            ⚠️ SECURITY: Only pickle/dill whitelisted types. Safe fallback.
-
-        pickle (unsafe):
-            protocol (int): Pickle protocol version (default: 2)
-            ⚠️ SECURITY WARNING: Pickle can execute arbitrary code
-            Only use with trusted data. Use msgspec for untrusted data.
-
-        dill (unsafe):
-            protocol (int): Pickle protocol version (default: dill.DEFAULT_PROTOCOL)
-            ⚠️ SECURITY WARNING: dill can execute arbitrary code
-            Only use with trusted data. Use msgspec for untrusted data.
     """
-    from dhara.serialize.fallback import FallbackSerializer
+    if backend == "pickle":
+        from dhara.serialize.pickle import PickleSerializer
 
-    serializers: dict[str, type[Serializer]] = {
-        "pickle": PickleSerializer,
-        "msgspec": MsgspecSerializer,
-        "dill": DillSerializer,
-        "fallback": FallbackSerializer,
-    }
+        serializer_class: type[Serializer] = PickleSerializer
+    elif backend == "msgspec":
+        from dhara.serialize.msgspec import MsgspecSerializer
 
-    serializer_class = serializers.get(backend)
-    if serializer_class is None:
+        serializer_class = MsgspecSerializer
+    elif backend == "dill":
+        from dhara.serialize.dill import DillSerializer
+
+        serializer_class = DillSerializer
+    elif backend == "fallback":
+        from dhara.serialize.fallback import FallbackSerializer
+
+        serializer_class = FallbackSerializer
+    else:
         raise ValueError(
             f"Unknown serializer: {backend}. "
-            f"Choose from: {', '.join(serializers.keys())}"
+            "Choose from: pickle, msgspec, dill, fallback"
         )
 
     try:

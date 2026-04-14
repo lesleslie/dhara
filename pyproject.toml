@@ -3,14 +3,16 @@ requires = ["setuptools", "wheel"]
 
 [dependency-groups]
 dev = [
+    "azure-storage-blob>=12.23.0",
+    "boto3>=1.35.0",
     "crackerjack",
-    "onnxruntime>=1.20.0",
-]
-
-[tool.uv]
-override-dependencies = [
-    # Skip onnxruntime on macOS (no universal wheels available)
-    "onnxruntime>=1.20.0; sys_platform == 'linux'",
+    "dill>=0.3.9",
+    "google-cloud-storage>=2.18.0",
+    "onnxruntime>=1.23.2,<1.24; sys_platform == 'linux'",
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=5.0.0",
+    "pytest-timeout>=2.3.0",
 ]
 
 # Full-Featured Library Template
@@ -19,7 +21,7 @@ override-dependencies = [
 
 [project]
 name = "dhara"
-version = "0.8.2"
+version = "0.8.3"
 description = "A Python Persistent Object Database with ACID Transactions"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -52,7 +54,20 @@ dependencies = [
     # Admin shell with IPython (ecosystem standard)
     "ipython>=8.0.0",
     "rich>=13.0.0",  # For pretty tables and console output
+    "cryptography>=43.0.0",
     "msgspec>=0.20.0",
+    "schedule>=1.2.0",
+    "zstandard>=0.23.0",
+]
+
+[project.optional-dependencies]
+serialization = [
+    "dill>=0.3.9",
+]
+cloud = [
+    "azure-storage-blob>=12.23.0",
+    "boto3>=1.35.0",
+    "google-cloud-storage>=2.18.0",
 ]
 
 [project.urls]
@@ -66,7 +81,10 @@ Repository = "https://github.com/lesleslie/dhara"
 dhara = "dhara.cli:main"
 
 [tool.setuptools]
-packages = ["dhara"]
+
+[tool.setuptools.packages.find]
+include = ["dhara*", "druva*"]
+exclude = ["tests*", "test*"]
 
 [tool.ruff]
 target-version = "py313"
@@ -84,12 +102,8 @@ max-complexity = 15
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 timeout = 600
-testpaths = ["test"]
+testpaths = ["test", "tests"]
 addopts = [
-    "--cov=dhara",
-    "--cov-report=term-missing:skip-covered",
-    "--cov-report=html:htmlcov",
-    "--cov-report=json",
     "--strict-markers",
     "--strict-config",
     "-ra",

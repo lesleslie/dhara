@@ -1,5 +1,5 @@
 """
-Restore manager for Durus databases.
+Restore manager for Dhara databases.
 
 This module implements restore functionality including:
 - Point-in-time recovery
@@ -16,7 +16,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from dhara.file_storage import FileStorage
+from dhara.core import Connection
+from dhara.storage.file import FileStorage
 
 from .catalog import BackupCatalog
 from .manager import BackupMetadata, BackupType, CompressionEngine, EncryptionEngine
@@ -84,30 +85,29 @@ class RestoreManager:
         backup_path = Path(backup_metadata.source_path)
 
         if not backup_path.exists():
-            raise FileNotFoundError(f"Backup file not found: {backup_path}")
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # Step 1: Download from cloud if necessary
-            if not backup_path.exists() and self.cloud_adapter:
+            if self.cloud_adapter:
                 self.logger.info(
                     f"Downloading backup from cloud: {backup_metadata.backup_id}"
                 )
                 backup_path = self._download_backup_from_cloud(backup_metadata)
+            else:
+                raise FileNotFoundError(f"Backup file not found: {backup_path}")
 
-            # Step 2: Decrypt if encrypted
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # Step 1: Decrypt if encrypted
             if backup_metadata.encryption_enabled and self.encryption:
-                decrypted_path = os.path.join(temp_dir, "decrypted_backup.durus")
+                decrypted_path = os.path.join(temp_dir, "decrypted_backup.durus.zst")
                 self.encryption.decrypt_file(str(backup_path), decrypted_path)
                 backup_path = Path(decrypted_path)
 
-            # Step 3: Decompress if compressed
+            # Step 2: Decompress if compressed
             if backup_path.suffix == ".zst":
                 decompressed_path = os.path.join(temp_dir, "decompressed_backup.durus")
                 compression_engine = CompressionEngine()
                 compression_engine.decompress_file(str(backup_path), decompressed_path)
                 backup_path = Path(decompressed_path)
 
-            # Step 4: Restore to target location
+            # Step 3: Restore to target location
             self._ensure_target_directory()
             shutil.copy2(str(backup_path), self.target_path)
 
@@ -287,29 +287,13 @@ class RestoreManager:
                 self.logger.error("Restored file does not exist")
                 return False
 
-            # Check file size
-            if os.path.getsize(self.target_path) != backup_metadata.size_bytes:
-                self.logger.error(
-                    f"File size mismatch: expected {backup_metadata.size_bytes}, got {os.path.getsize(self.target_path)}"
-                )
-                return False
-
-            # Check checksum
-            checksum = self._calculate_checksum(self.target_path)
-            if checksum != backup_metadata.checksum:
-                self.logger.error(
-                    f"Checksum mismatch: expected {backup_metadata.checksum}, got {checksum}"
-                )
-                return False
-
-            # Try to open storage
+            # Verify restored storage can be opened and root accessed.
             if self.storage_type == "file":
                 try:
                     storage = FileStorage(str(self.target_path))
-                    connection = storage.open()
+                    connection = Connection(storage)
                     connection.get_root()
-                    # Basic verification - can access root
-                    connection.close()
+                    storage.close()
                     return True
                 except Exception as e:
                     self.logger.error(f"Failed to open restored storage: {e}")

@@ -1,6 +1,6 @@
 """Standard operational mode - Full-featured production mode.
 
-This mode provides complete Druva capabilities:
+This mode provides complete Dhara capabilities:
 - Configurable storage backends (file, SQLite, S3, GCS, Azure)
 - Full configuration via YAML + environment variables
 - Production-ready defaults
@@ -24,7 +24,7 @@ from typing import Any
 
 from oneiric.core.logging import get_logger
 
-from dhara.core.config import DruvaSettings, StorageConfig
+from dhara.core.config import DharaSettings, StorageConfig
 from dhara.modes.base import ModeValidationError, OperationalMode
 
 logger = get_logger(__name__)
@@ -113,11 +113,11 @@ class StandardMode(OperationalMode):
         # Load settings to check backend
         if self.settings is None:
             try:
-                self.settings = DruvaSettings.load("dhara")
+                self.settings = DharaSettings.load("dhara")
             except Exception as e:
                 logger.warning(f"Could not load settings for validation: {e}")
                 # Don't fail validation, will use defaults
-                self.settings = DruvaSettings()
+                self.settings = DharaSettings()
 
         try:
             # Backend-specific validation
@@ -218,7 +218,7 @@ class StandardMode(OperationalMode):
         return f"""
 ╔═══════════════════════════════════════════════════════════════════╗
 ║                                                                   ║
-║   🦀 Druva Standard Mode - Production Ready                     ║
+║   Dhara Standard Mode - Production Ready                        ║
 ║                                                                   ║
 ║   ✓ Full configuration control                                   ║
 ║   ✓ Storage backend: {backend:<10}                                ║

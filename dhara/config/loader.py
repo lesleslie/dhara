@@ -1,6 +1,6 @@
-"""Configuration loader for Durus.
+"""Configuration loader for Dhara.
 
-This module provides utilities for loading Durus configuration from
+This module provides utilities for loading Dhara configuration from
 various sources (files, dictionaries, environment variables).
 """
 
@@ -12,7 +12,7 @@ from typing import Literal
 import yaml
 
 from dhara.config.defaults import (
-    DruvaConfig,
+    DharaConfig,
 )
 
 # Maximum configuration file size to prevent DoS attacks (10MB)
@@ -27,13 +27,34 @@ MAX_PORT = 65535
 
 # Maximum cache size to prevent memory exhaustion (1 billion entries)
 MAX_CACHE_SIZE = 1_000_000_000
+LEGACY_ENV_PREFIXES = ("DRUVA", "DURUS")
+
+
+def _env_prefix_candidates(prefix: str) -> tuple[str, ...]:
+    """Return canonical and legacy env prefixes to consult.
+
+    `DHARA_*` is the canonical namespace. Legacy `DRUVA_*` and `DURUS_*`
+    values remain readable for compatibility.
+    """
+    if prefix == "DHARA":
+        return ("DHARA",) + LEGACY_ENV_PREFIXES
+    return (prefix,)
+
+
+def _get_env_value(prefixes: tuple[str, ...], suffix: str) -> str | None:
+    """Get the first matching env var value from canonical/legacy prefixes."""
+    for prefix in prefixes:
+        value = os.environ.get(f"{prefix}_{suffix}")
+        if value is not None:
+            return value
+    return None
 
 
 def load_config(
     source: str | Path | dict,
     format: Literal["yaml", "json", "dict", "auto"] = "auto",
     max_size: int = MAX_CONFIG_SIZE,
-) -> DruvaConfig:
+) -> DharaConfig:
     """Load configuration from file or dictionary.
 
     Args:
@@ -42,7 +63,7 @@ def load_config(
         max_size: Maximum config file size in bytes (default: 10MB)
 
     Returns:
-        Validated DruvaConfig instance
+        Validated DharaConfig instance
 
     Raises:
         FileNotFoundError: If config file doesn't exist
@@ -61,7 +82,7 @@ def load_config(
     """
     # Handle dictionary input
     if isinstance(source, dict):
-        return DruvaConfig.from_dict(source)
+        return DharaConfig.from_dict(source)
 
     # Handle file input
     path = Path(source)
@@ -113,13 +134,13 @@ def load_config(
             f"Configuration file must contain a dictionary, got {type(data).__name__}"
         )
 
-    return DruvaConfig.from_dict(data)
+    return DharaConfig.from_dict(data)
 
 
 def load_config_from_env(
-    prefix: str = "DURUS",
+    prefix: str = "DHARA",
     config_file_var: str = "CONFIG",
-) -> DruvaConfig | None:
+) -> DharaConfig | None:
     """Load configuration from environment variables.
 
     This function checks for a configuration file path in the environment
@@ -127,11 +148,11 @@ def load_config_from_env(
     values in the config file.
 
     Args:
-        prefix: Environment variable prefix (default: 'DURUS')
+        prefix: Environment variable prefix (default: 'DHARA')
         config_file_var: Suffix for config file variable (default: 'CONFIG')
 
     Returns:
-        DruvaConfig instance if config file is found, None otherwise
+        DharaConfig instance if config file is found, None otherwise
 
     Raises:
         ValueError: If any environment variable has an invalid value
@@ -140,15 +161,17 @@ def load_config_from_env(
 
     Examples:
         Set environment variable:
-        export DURUS_CONFIG=/path/to/config.yaml
+        export DHARA_CONFIG=/path/to/config.yaml
 
         Load in code:
         >>> config = load_config_from_env()
         >>> if config:
         ...     print(f"Loaded config: {config.storage.backend}")
     """
+    prefixes = _env_prefix_candidates(prefix)
+
     # Check for config file path
-    config_path = os.environ.get(f"{prefix}_{config_file_var}")
+    config_path = _get_env_value(prefixes, config_file_var)
 
     if not config_path:
         return None
@@ -160,8 +183,8 @@ def load_config_from_env(
     # e.g., DURUS_STORAGE_BACKEND, DURUS_CACHE_SIZE
 
     # Validate storage backend
-    if f"{prefix}_STORAGE_BACKEND" in os.environ:
-        backend = os.environ[f"{prefix}_STORAGE_BACKEND"]
+    backend = _get_env_value(prefixes, "STORAGE_BACKEND")
+    if backend is not None:
         if backend not in VALID_STORAGE_BACKENDS:
             raise ValueError(
                 f"Invalid {prefix}_STORAGE_BACKEND: {backend}. "
@@ -170,8 +193,8 @@ def load_config_from_env(
         config.storage.backend = backend
 
     # Validate and sanitize storage path
-    if f"{prefix}_STORAGE_PATH" in os.environ:
-        path_str = os.environ[f"{prefix}_STORAGE_PATH"]
+    path_str = _get_env_value(prefixes, "STORAGE_PATH")
+    if path_str is not None:
 
         # Check for path traversal attempts
         if "../" in path_str or "..\\\\" in path_str:
@@ -198,15 +221,16 @@ def load_config_from_env(
         config.storage.path = path
 
     # Validate storage host (basic validation)
-    if f"{prefix}_STORAGE_HOST" in os.environ:
-        host = os.environ[f"{prefix}_STORAGE_HOST"].strip()
+    host_value = _get_env_value(prefixes, "STORAGE_HOST")
+    if host_value is not None:
+        host = host_value.strip()
         if not host:
             raise ValueError(f"{prefix}_STORAGE_HOST cannot be empty")
         config.storage.host = host
 
     # Validate storage port with proper error handling
-    if f"{prefix}_STORAGE_PORT" in os.environ:
-        port_str = os.environ[f"{prefix}_STORAGE_PORT"]
+    port_str = _get_env_value(prefixes, "STORAGE_PORT")
+    if port_str is not None:
         try:
             port = int(port_str)
         except ValueError as e:
@@ -222,8 +246,8 @@ def load_config_from_env(
         config.storage.port = port
 
     # Validate cache size with bounds checking
-    if f"{prefix}_CACHE_SIZE" in os.environ:
-        size_str = os.environ[f"{prefix}_CACHE_SIZE"]
+    size_str = _get_env_value(prefixes, "CACHE_SIZE")
+    if size_str is not None:
         try:
             size = int(size_str)
         except ValueError as e:
@@ -240,14 +264,15 @@ def load_config_from_env(
         config.cache.size = size
 
     # Validate debug mode flag
-    if f"{prefix}_DEBUG" in os.environ:
-        debug_str = os.environ[f"{prefix}_DEBUG"].lower()
+    debug_raw = _get_env_value(prefixes, "DEBUG")
+    if debug_raw is not None:
+        debug_str = debug_raw.lower()
         valid_true_values = {"1", "true", "yes", "on", "enabled"}
         valid_false_values = {"0", "false", "no", "off", "disabled"}
 
         if debug_str not in valid_true_values | valid_false_values:
             raise ValueError(
-                f"Invalid {prefix}_DEBUG: {os.environ[f'{prefix}_DEBUG']!r}. "
+                f"Invalid {prefix}_DEBUG: {debug_raw!r}. "
                 f"Valid values: {', '.join(sorted(valid_true_values | valid_false_values))}"
             )
 
@@ -257,14 +282,14 @@ def load_config_from_env(
 
 
 def save_config(
-    config: DruvaConfig,
+    config: DharaConfig,
     path: str | Path,
     format: Literal["yaml", "json"] = "yaml",
 ) -> None:
     """Save configuration to file.
 
     Args:
-        config: DruvaConfig instance to save
+        config: DharaConfig instance to save
         path: Path to save the configuration file
         format: Format to save ('yaml' or 'json')
 
@@ -273,7 +298,7 @@ def save_config(
         OSError: If file cannot be written
 
     Examples:
-        >>> config = DruvaConfig()
+        >>> config = DharaConfig()
         >>> save_config(config, 'config.yaml')
     """
     path = Path(path)
@@ -295,25 +320,25 @@ def save_config(
     path.write_text(content)
 
 
-def merge_configs(*configs: DruvaConfig) -> DruvaConfig:
+def merge_configs(*configs: DharaConfig) -> DharaConfig:
     """Merge multiple configurations, with later configs taking precedence.
 
     This is useful for layering configurations (defaults -> file -> env -> cli).
 
     Args:
-        *configs: DruvaConfig instances to merge
+        *configs: DharaConfig instances to merge
 
     Returns:
-        Merged DruvaConfig instance
+        Merged DharaConfig instance
 
     Examples:
-        >>> default = DruvaConfig()
-        >>> override = DruvaConfig(storage=StorageConfig(backend='memory'))
+        >>> default = DharaConfig()
+        >>> override = DharaConfig(storage=StorageConfig(backend='memory'))
         >>> merged = merge_configs(default, override)
         >>> assert merged.storage.backend == 'memory'
     """
     if not configs:
-        return DruvaConfig()
+        return DharaConfig()
 
     # Start with a deep copy of the first config
     result = deepcopy(configs[0])

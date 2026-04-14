@@ -35,6 +35,19 @@ cloud_storage:
   # Backup schedule (cron format)
   schedule: "0 2 * * *"  # Daily at 2 AM
 
+authentication:
+  enabled: false
+  method: token
+  required_scopes: []
+  token:
+    tokens_file: /etc/dhara/tokens.json
+    require_auth: true
+    default_role: readonly
+
+backups:
+  enabled: true
+  directory: /data/dhara/backups
+
 # Cache configuration
 cache:
   size: 100000

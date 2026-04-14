@@ -85,14 +85,14 @@ class TestUtil:
 
     def test_int8_str_read_write_with_trace(self):
         s = BytesIO()
-        druva.utils.TRACE = True
+        dhara.utils.TRACE = True
         for x in ("", "a", "ab", "a" * 1000):
             x = as_bytes(x)
             s.seek(0)
             write_int8_str(s, x)
             s.seek(0)
             assert x == read_int8_str(s)
-        druva.utils.TRACE = False
+        dhara.utils.TRACE = False
 
     def test_short_read_exception(self):
         class FakeSocket:

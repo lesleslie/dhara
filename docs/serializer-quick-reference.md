@@ -1,5 +1,9 @@
 # Serializer Quick Reference Guide
 
+These serializers are exposed through `dhara.serialize`. Historical `durus.*`
+imports may still appear in migration examples, but `dhara` is the canonical
+package name.
+
 ## Available Serializers
 
 ### 1. MsgspecSerializer (Recommended)
@@ -7,7 +11,7 @@
 **Best for:** New databases, performance-critical applications
 
 ```python
-from durus.serialize import MsgspecSerializer
+from dhara.serialize import MsgspecSerializer
 
 # MessagePack format (binary, fast, compact)
 set = MsgspecSerializer(format="msgpack", use_builtins=True)
@@ -22,25 +26,25 @@ set = MsgspecSerializer(format="json", use_builtins=True)
 
 ### 2. PickleSerializer (Compatibility)
 
-**Best for:** Backward compatibility with Durus 4.x
+**Best for:** Backward compatibility with legacy Durus 4.x data
 
 ```python
-from durus.serialize import PickleSerializer
+from dhara.serialize import PickleSerializer
 
-set = PickleSerializer(protocol=2)  # Durus 4.x default
+set = PickleSerializer(protocol=2)  # Durus 4.x compatibility default
 set = PickleSerializer(protocol=4)  # Better performance
 ```
 
 **Performance:** Baseline
 **Security:** Unsafe with untrusted data
-**Compatibility:** 100% compatible with Durus 4.x
+**Compatibility:** Compatible with legacy Durus 4.x data
 
 ### 3. DillSerializer (Extended)
 
 **Best for:** Serializing functions, lambdas, complex objects
 
 ```python
-from durus.serialize import DillSerializer
+from dhara.serialize import DillSerializer
 
 try:
     set = DillSerializer(protocol=4)
@@ -56,7 +60,7 @@ except ImportError:
 ## Factory Function (Recommended)
 
 ```python
-from durus.serialize import create_serializer
+from dhara.serialize import create_serializer
 
 # Create any serializer by name
 set = create_serializer("msgspec", format="json")
@@ -67,7 +71,7 @@ set = create_serializer("dill", protocol=4)
 ## Basic Usage
 
 ```python
-from durus.serialize import create_serializer
+from dhara.serialize import create_serializer
 
 # Create serializer
 serializer = create_serializer("msgspec")
@@ -88,7 +92,7 @@ state = serializer.get_state(persistent_obj)
 |----------|----------------------|
 | New database | MsgspecSerializer |
 | Performance critical | MsgspecSerializer |
-| Durus 4.x compatibility | PickleSerializer |
+| Legacy Durus 4.x compatibility | PickleSerializer |
 | Need to serialize functions | DillSerializer |
 | Interoperability needed | MsgspecSerializer (JSON format) |
 
@@ -112,26 +116,25 @@ For a typical dictionary with 100 key-value pairs:
 
 ## Migration Path
 
-### From Durus 4.x (pickle) to Durus 5.0 (msgspec)
+### From legacy Durus 4.x (pickle) to Dhara msgspec
 
 ```python
 # Old Durus 4.x code
 from durus import Connection
 connection = Connection("mydb.durus")  # Uses pickle
 
-# New Durus 5.0 code (future)
-from durus import Connection
-from durus.serialize import MsgspecSerializer
+# New Dhara code
+from dhara import Connection
+from dhara.serialize import MsgspecSerializer
 
-# This will be supported in future updates
 serializer = MsgspecSerializer()
-connection = Connection("mydb.durus", serializer=serializer)
+connection = Connection("mydb.dhara", serializer=serializer)
 ```
 
 For now, use the factory to create serializers independently:
 
 ```python
-from durus.serialize import create_serializer
+from dhara.serialize import create_serializer
 
 # Create msgspec serializer for new data
 serializer = create_serializer("msgspec")
@@ -144,7 +147,7 @@ pickle_serializer = create_serializer("pickle")
 ## Error Handling
 
 ```python
-from durus.serialize import create_serializer
+from dhara.serialize import create_serializer
 
 # Handle invalid serializer name
 try:
@@ -169,7 +172,7 @@ except TypeError as e:
 ## Testing Your Serializers
 
 ```python
-from durus.serialize import create_serializer
+from dhara.serialize import create_serializer
 
 # Test round-trip
 serializer = create_serializer("msgspec")
@@ -193,7 +196,7 @@ print("Round-trip successful!")
 
 ```python
 import msgspec
-from durus.serialize import MsgspecSerializer
+from dhara.serialize import MsgspecSerializer
 
 # Create custom encoder for special types
 encoder = msgspec.msgpack.Encoder()
@@ -204,7 +207,7 @@ serializer = MsgspecSerializer()
 ### Protocol Selection for pickle/dill
 
 ```python
-# Protocol 2: Python 2 compatible (Durus 4.x default)
+# Protocol 2: Python 2 compatible (legacy Durus 4.x default)
 set = create_serializer("pickle", protocol=2)
 
 # Protocol 4: Python 3.4+ (better performance)
