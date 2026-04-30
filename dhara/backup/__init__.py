@@ -16,7 +16,17 @@ from .catalog import BackupCatalog
 from .manager import BackupManager
 from .restore import RestoreManager
 from .scheduler import BackupScheduler
-from .storage import AzureBlobStorage, GCSStorage, S3Storage, StorageAdapter
+from .storage import (
+    AzureBlobStorage,
+    AzureBlobStorageAdapter,
+    GCSStorage,
+    GCSStorageAdapter,
+    LocalStorageAdapter,
+    S3Storage,
+    S3StorageAdapter,
+    StorageAdapter,
+    StorageAdapterFactory,
+)
 from .verification import BackupVerification
 
 __all__ = [
@@ -26,7 +36,12 @@ __all__ = [
     "BackupScheduler",
     "StorageAdapter",
     "S3Storage",
+    "S3StorageAdapter",
     "GCSStorage",
+    "GCSStorageAdapter",
     "AzureBlobStorage",
+    "AzureBlobStorageAdapter",
+    "LocalStorageAdapter",
+    "StorageAdapterFactory",
     "BackupVerification",
 ]
