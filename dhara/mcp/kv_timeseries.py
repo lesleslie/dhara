@@ -11,7 +11,7 @@ Storage is backed by Dhara persistent objects (PersistentDict/List).
 
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from dhara.collections.dict import PersistentDict
@@ -20,15 +20,15 @@ from dhara.core.connection import Connection
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _parse_iso(ts: str) -> datetime | None:
     try:
         dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
         if dt.tzinfo is None:
-            return dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc)
+            return dt.replace(tzinfo=UTC)
+        return dt.astimezone(UTC)
     except Exception:
         return None
 
@@ -44,7 +44,9 @@ class TimeSeriesRetention:
 class KVTimeSeriesStore:
     """Simple Dhara-backed KV and time-series store."""
 
-    def __init__(self, connection: Connection, retention: TimeSeriesRetention | None = None):
+    def __init__(
+        self, connection: Connection, retention: TimeSeriesRetention | None = None
+    ):
         self.connection = connection
         self.retention = retention or TimeSeriesRetention()
         self._ensure_root()

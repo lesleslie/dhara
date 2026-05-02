@@ -21,7 +21,8 @@ script (likely the decode_string() function).
 assert bytes is not str, "This script is for Python 3+ only."
 
 import sys
-from datetime import datetime, date
+from datetime import date, datetime
+
 
 def decode_string(self, value):
     # This function will likely need patching depending on the application
@@ -35,18 +36,21 @@ def decode_string(self, value):
     # check for data that should be retained as byte strings
     if last in [date, datetime]:
         return value
-    if len(value) == 8 and value[:4] == b'\0\0\0\0':
+    if len(value) == 8 and value[:4] == b"\0\0\0\0":
         # assume oid, keep as bytes
         return value
     try:
         return value.decode(self.encoding, self.errors)
     except UnicodeDecodeError:
-        print('decode failed %r %s' % (value[:8], self.stack))
+        print("decode failed %r %s" % (value[:8], self.stack))
         return value
+
 
 def patch_pickler():
     import pickle
+
     import durus.utils
+
     # We will modify the the Unpickler class.
     durus.utils.Unpickler = pickle._Unpickler
     durus.utils.loads = pickle._loads
@@ -56,16 +60,16 @@ def patch_pickler():
 
     # Make a fake __builtin__ in case any of those are pickled.
     import builtins
-    sys.modules['__builtin__'] = builtins
+
+    sys.modules["__builtin__"] = builtins
 
 
 def main():
-    from shutil import copyfile
     from os.path import exists
+    from shutil import copyfile
 
     def usage():
-        sys.stdout.write(
-            "Usage: python %s <existing_file> <new_file>\n" % sys.argv[0])
+        sys.stdout.write("Usage: python %s <existing_file> <new_file>\n" % sys.argv[0])
         sys.stdout.write("  Creates a new py3k-compatible file ")
         sys.stdout.write("from an existing FileStorage file.\n")
         raise SystemExit
@@ -77,7 +81,7 @@ def main():
     if not exists(infile):
         usage()
     if exists(outfile):
-        if input('overwrite %r? [y/N] ' % outfile).strip().lower() != 'y':
+        if input("overwrite %r? [y/N] " % outfile).strip().lower() != "y":
             raise SystemExit
     copyfile(infile, outfile)
 
@@ -90,7 +94,7 @@ def main():
     storage_class = get_storage_class(outfile)
     storage = storage_class(outfile)
     connection = Connection(storage)
-    print ("Converting %s for use with py3k." % outfile)
+    print("Converting %s for use with py3k." % outfile)
     for j, x in enumerate(connection.get_crawler()):
         x._p_note_change()
         if j > 0 and j % 10000 == 0:
@@ -101,5 +105,5 @@ def main():
     connection.pack()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

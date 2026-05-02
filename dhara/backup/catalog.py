@@ -14,8 +14,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from dhara.core import Connection
 from dhara.collections.dict import PersistentDict
+from dhara.core import Connection
 from dhara.storage.file import FileStorage
 
 from .manager import BackupMetadata, BackupType
@@ -41,10 +41,7 @@ class BackupCatalog:
         connection = Connection(storage)
         root = connection.get_root()
         backups = root.get("backups", {})
-        catalog = {
-            backup_id: dict(metadata)
-            for backup_id, metadata in backups.items()
-        }
+        catalog = {backup_id: dict(metadata) for backup_id, metadata in backups.items()}
         storage.close()
         return catalog
 

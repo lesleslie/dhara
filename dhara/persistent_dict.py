@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import warnings
 
-from dhara.collections.dict import *
+from dhara.collections.dict import PersistentDict
 
 warnings.warn(
     "dhara.persistent_dict is deprecated; use dhara.collections.dict instead.",

@@ -151,7 +151,9 @@ class DharaMCPServer:
         self.adapter_registry = AdapterRegistry(self.connection)
         self.kv_store = KVTimeSeriesStore(
             self.connection,
-            retention=TimeSeriesRetention(retention_days=config.time_series.retention_days),
+            retention=TimeSeriesRetention(
+                retention_days=config.time_series.retention_days
+            ),
         )
         self.ecosystem_state = EcosystemStateStore(
             self.connection,
@@ -171,7 +173,7 @@ class DharaMCPServer:
             f"(storage={config.storage.path}, adapters={self.adapter_registry.count()})"
         )
 
-    def _register_tools(self) -> None:
+    def _register_tools(self) -> None:  # noqa: C901
         """Register MCP tools based on active profile.
 
         Tools are grouped and gated by the DHARA_TOOL_PROFILE env var.
@@ -191,9 +193,9 @@ class DharaMCPServer:
 
         from dhara.mcp.profiles import (
             TOOL_GROUP_ADAPTER_REGISTRY,
+            TOOL_GROUP_DESCRIPTIONS,
             TOOL_GROUP_ECOSYSTEM_STATE,
             TOOL_GROUP_KV_TIME_SERIES,
-            TOOL_GROUP_DESCRIPTIONS,
             TOOL_GROUP_TOOLS,
             TOOL_GROUPS_BY_PROFILE,
             get_active_profile,
@@ -202,7 +204,9 @@ class DharaMCPServer:
         profile = get_active_profile()
         active_groups = set(TOOL_GROUPS_BY_PROFILE[profile])
 
-        logger.info("Dhara tool profile=%s groups=%s", profile.value, sorted(active_groups))
+        logger.info(
+            "Dhara tool profile=%s groups=%s", profile.value, sorted(active_groups)
+        )
 
         def _tool(group: str, **kwargs):
             """Conditional registration — only registers if group is in active profile."""
@@ -261,7 +265,13 @@ class DharaMCPServer:
                 "server": {
                     "name": self.config.server_name,
                     "transport": "FastMCP HTTP",
-                    "http_endpoints": ["/health", "/healthz", "/ready", "/readyz", "/metrics"],
+                    "http_endpoints": [
+                        "/health",
+                        "/healthz",
+                        "/ready",
+                        "/readyz",
+                        "/metrics",
+                    ],
                 },
                 "tool_groups": {
                     "adapter_registry": [
@@ -319,7 +329,7 @@ class DharaMCPServer:
                     ),
                 },
                 "deprecated_surfaces": {
-                    "module": ["dhara.mcp.server", "dhara.mcp.oneiric_server"],
+                    "module": ["dhara.mcp.server"],
                     "legacy_tool_prefixes": ["durus_*"],
                 },
             }
@@ -602,7 +612,8 @@ class DharaMCPServer:
             if query:
                 q = query.lower()
                 filtered = {
-                    n: d for n, d in all_tools.items()
+                    n: d
+                    for n, d in all_tools.items()
                     if q in n.lower() or q in d.lower()
                 }
 

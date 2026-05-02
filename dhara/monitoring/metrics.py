@@ -205,6 +205,16 @@ class MetricsCollector:
             return None
         return generate_latest(self._registry).decode("utf-8")
 
+    def _read_counter(self, counter) -> int:
+        """Sum metric values, excluding _created counters."""
+        return sum(
+            s.value for s in counter.collect()[0].samples if "_created" not in s.name
+        )
+
+    def _read_gauge(self, gauge) -> float:
+        """Read the current value of a Gauge."""
+        return gauge.collect()[0].samples[0].value
+
     def get_cache_hit_rate(self) -> float | None:
         """Calculate cache hit rate.
 
@@ -214,8 +224,8 @@ class MetricsCollector:
         if not self._enabled:
             return None
 
-        hits = self._cache_hits._value.get()
-        misses = self._cache_misses._value.get()
+        hits = self._read_counter(self._cache_hits)
+        misses = self._read_counter(self._cache_misses)
         total = hits + misses
 
         if total == 0:
@@ -234,16 +244,16 @@ class MetricsCollector:
 
         return {
             "enabled": True,
-            "storage_operations": self._storage_operations._value.get(),
-            "cache_size": self._cache_size._value.get(),
-            "cache_hits": self._cache_hits._value.get(),
-            "cache_misses": self._cache_misses._value.get(),
+            "storage_operations": self._read_counter(self._storage_operations),
+            "cache_size": self._read_gauge(self._cache_size),
+            "cache_hits": self._read_counter(self._cache_hits),
+            "cache_misses": self._read_counter(self._cache_misses),
             "cache_hit_rate": self.get_cache_hit_rate(),
-            "transactions_committed": self._transactions_committed._value.get(),
-            "transactions_aborted": self._transactions_aborted._value.get(),
-            "transaction_conflicts": self._transaction_conflicts._value.get(),
-            "active_connections": self._active_connections._value.get(),
-            "total_connections": self._total_connections._value.get(),
+            "transactions_committed": self._read_counter(self._transactions_committed),
+            "transactions_aborted": self._read_counter(self._transactions_aborted),
+            "transaction_conflicts": self._read_counter(self._transaction_conflicts),
+            "active_connections": self._read_gauge(self._active_connections),
+            "total_connections": self._read_counter(self._total_connections),
         }
 
 

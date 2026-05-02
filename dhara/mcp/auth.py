@@ -56,6 +56,7 @@ def _reset_config() -> None:
 
 class DharaPermission(Enum):
     """Dhara-specific permissions extending the base Permission model."""
+
     CHECKPOINT = "checkpoint"
     RESTORE = "restore"
 
@@ -72,28 +73,37 @@ def require_dhara_auth(
 
             token_str = kwargs.pop("__auth_token__", None)
             if not token_str:
-                return {"error": "Authentication required", "error_code": "AUTH_REQUIRED"}
+                return {
+                    "error": "Authentication required",
+                    "error_code": "AUTH_REQUIRED",
+                }
 
             try:
-                payload = _verify_token(token_str, secret=cfg.secret, expected_audience="dhara")
+                payload = _verify_token(
+                    token_str, secret=cfg.secret, expected_audience="dhara"
+                )
             except AuthError as exc:
                 return {"error": str(exc), "error_code": "AUTH_FAILED"}
 
             perm = permission if isinstance(permission, Permission) else Permission.READ
-            _audit.emit(AuthAuditEvent(
-                timestamp=datetime.now(UTC),
-                service="dhara",
-                caller_service=payload.issuer,
-                caller_id=payload.subject,
-                action=func.__name__,
-                permission=perm,
-                result="allowed",
-                reason=None,
-                source_ip=None,
-                token_id=payload.jti,
-            ))
+            _audit.emit(
+                AuthAuditEvent(
+                    timestamp=datetime.now(UTC),
+                    service="dhara",
+                    caller_service=payload.issuer,
+                    caller_id=payload.subject,
+                    action=func.__name__,
+                    permission=perm,
+                    result="allowed",
+                    reason=None,
+                    source_ip=None,
+                    token_id=payload.jti,
+                )
+            )
             return await func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -118,6 +128,7 @@ from datetime import timedelta
 
 class Role(Enum):
     """Legacy Role enum - maintained for backward compatibility."""
+
     READONLY = "readonly"
     READWRITE = "readwrite"
     ADMIN = "admin"
@@ -129,13 +140,19 @@ class Role(Enum):
         elif self == Role.READWRITE:
             return {Permission.READ, Permission.WRITE, Permission.DELETE}
         elif self == Role.ADMIN:
-            return {Permission.READ, Permission.WRITE, Permission.DELETE, Permission.ADMIN}
+            return {
+                Permission.READ,
+                Permission.WRITE,
+                Permission.DELETE,
+                Permission.ADMIN,
+            }
         return set()
 
 
 @dataclass
 class AuthResult:
     """Legacy AuthResult - maintained for backward compatibility."""
+
     success: bool
     token_id: str | None = None
     role: Role | None = None
@@ -151,6 +168,7 @@ class AuthResult:
 @dataclass
 class AuthContext:
     """Legacy AuthContext - maintained for backward compatibility."""
+
     token: str | None = None
     hmac_signature: str | None = None
     timestamp: str | None = None
@@ -169,6 +187,7 @@ class AuthContext:
 @dataclass
 class TokenInfo:
     """Legacy TokenInfo - maintained for backward compatibility."""
+
     token_id: str
     token_hash: str
     role: Role
@@ -184,7 +203,11 @@ class TokenInfo:
         if self.expires_at is None:
             return False
         now = datetime.now(UTC)
-        exp = self.expires_at if self.expires_at.tzinfo else self.expires_at.replace(tzinfo=UTC)
+        exp = (
+            self.expires_at
+            if self.expires_at.tzinfo
+            else self.expires_at.replace(tzinfo=UTC)
+        )
         return now > exp
 
     def is_valid(self) -> bool:
@@ -253,7 +276,9 @@ class TokenAuth:
                         "token_hash": info.token_hash,
                         "role": info.role.value,
                         "created_at": info.created_at.isoformat(),
-                        "expires_at": info.expires_at.isoformat() if info.expires_at else None,
+                        "expires_at": info.expires_at.isoformat()
+                        if info.expires_at
+                        else None,
                         "is_revoked": info.is_revoked,
                         "rate_limit": info.rate_limit,
                         "metadata": info.metadata,

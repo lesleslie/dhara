@@ -92,7 +92,7 @@ def interactive_client(
     # Try to use IPython if available, fall back to InteractiveConsole
     try:
         from IPython.terminal.embed import InteractiveShellEmbed
-        from IPython.terminal.ipapp import load_default_config
+        from IPython.terminal.ipapp import load_default_config  # noqa: F401
 
         use_ipython = True
     except ImportError:

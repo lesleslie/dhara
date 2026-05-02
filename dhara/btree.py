@@ -4,6 +4,6 @@ Redirects imports to new location (durus.collections.btree)
 for backward compatibility with pickled data from Durus 4.x.
 """
 
-from dhara.collections.btree import *
+from dhara.collections.btree import BNode, BTree
 
 __all__ = ["BTree", "BNode"]

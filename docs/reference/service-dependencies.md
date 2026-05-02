@@ -457,6 +457,6 @@ For detailed backup procedures, see [docs/BACKUP_RECOVERY.md](../BACKUP_RECOVERY
 ## Next Steps
 
 - See [README.md](../../README.md) for usage examples
-- See [ARCHITECTURE.md](../../ARCHITECTURE.md) for architecture details
+- See ARCHITECTURE.md for architecture details
 - See [CLAUDE.md](../../CLAUDE.md) for development guidelines
 - See [docs/BACKUP_RECOVERY.md](../BACKUP_RECOVERY.md) for backup procedures

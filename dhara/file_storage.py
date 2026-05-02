@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import warnings
 
-from dhara.storage.file import *
+from dhara.storage.file import FileStorage
 
 warnings.warn(
     "dhara.file_storage is deprecated; use dhara.storage.file instead.",

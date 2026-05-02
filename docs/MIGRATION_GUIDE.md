@@ -106,7 +106,6 @@ Use:
 ### Deprecated MCP Surface
 
 - `dhara.mcp.server`
-- `dhara.mcp.oneiric_server`
 - legacy `durus_*` tool names
 
 ### Current Supported Tool Groups
@@ -123,9 +122,7 @@ Use `get_contract_info` to inspect the supported MCP contract at runtime.
 
 The canonical FastMCP runtime supports bearer-token auth when
 `authentication.enabled` is set and a Dhara token file is configured. Legacy
-auth helper classes remain available for compatibility and library use, and the
-older `dhara.mcp.oneiric_server` module remains in the repo as a legacy path
-rather than the supported runtime surface.
+auth helper classes remain available for compatibility and library use.
 
 ## Persistence Contract Notes
 

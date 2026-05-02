@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import warnings
 
-from dhara.core.persistent import *
+from dhara.core.persistent import ConnectionBase, Persistent, PersistentBase
 
 warnings.warn(
     "dhara.persistent is deprecated; use dhara.core.persistent instead.",

@@ -10,31 +10,31 @@ This script demonstrates:
 5. Verification and testing
 """
 
+import logging
 import os
 import sys
 import tempfile
-import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 # Add durus to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from dhara.file_storage import FileStorage
-from dhara.persistent_dict import PersistentDict
+from cryptography.fernet import Fernet
+
 from dhara.backup.manager import BackupManager, BackupType
 from dhara.backup.restore import RestoreManager
 from dhara.backup.scheduler import BackupScheduler
 from dhara.backup.verification import BackupVerification
-from dhara.backup.storage import StorageFactory
-from cryptography.fernet import Fernet
+from dhara.file_storage import FileStorage
+from dhara.persistent_dict import PersistentDict
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
 
 def create_sample_database(path: str) -> FileStorage:
     """Create a sample database with some test data."""
@@ -48,20 +48,16 @@ def create_sample_database(path: str) -> FileStorage:
     root["metadata"] = {
         "created": datetime.now().isoformat(),
         "version": "1.0",
-        "type": "sample_database"
+        "type": "sample_database",
     }
 
     root["users"] = {
         "user1": {"name": "Alice", "email": "alice@example.com", "active": True},
         "user2": {"name": "Bob", "email": "bob@example.com", "active": True},
-        "user3": {"name": "Charlie", "email": "charlie@example.com", "active": False}
+        "user3": {"name": "Charlie", "email": "charlie@example.com", "active": False},
     }
 
-    root["settings"] = {
-        "theme": "dark",
-        "language": "en",
-        "notifications": True
-    }
+    root["settings"] = {"theme": "dark", "language": "en", "notifications": True}
 
     # Store root object
     storage.store(root)
@@ -69,6 +65,7 @@ def create_sample_database(path: str) -> FileStorage:
 
     logger.info("Sample database created successfully")
     return storage
+
 
 def demonstrate_backup_manager():
     """Demonstrate backup manager functionality."""
@@ -84,9 +81,7 @@ def demonstrate_backup_manager():
 
     # Create backup manager
     backup_manager = BackupManager(
-        storage=storage,
-        backup_dir=backup_dir,
-        compression_level=3
+        storage=storage, backup_dir=backup_dir, compression_level=3
     )
 
     # Perform full backup
@@ -100,12 +95,18 @@ def demonstrate_backup_manager():
     storage = FileStorage(db_path)
     root = storage.open()
     root["new_data"] = "This was added after backup"
-    root["users"]["user4"] = {"name": "David", "email": "david@example.com", "active": True}
+    root["users"]["user4"] = {
+        "name": "David",
+        "email": "david@example.com",
+        "active": True,
+    }
     root.close()
 
     # Perform incremental backup
     logger.info("Creating incremental backup...")
-    incremental_backup = backup_manager.perform_incremental_backup(full_backup.backup_id)
+    incremental_backup = backup_manager.perform_incremental_backup(
+        full_backup.backup_id
+    )
     logger.info(f"Incremental backup created: {incremental_backup.backup_id}")
     logger.info(f"Parent backup: {incremental_backup.parent_backup_id}")
 
@@ -129,6 +130,7 @@ def demonstrate_backup_manager():
     logger.info("Backup demonstration completed successfully")
     return temp_dir, [full_backup, incremental_backup, diff_backup]
 
+
 def demonstrate_restore_manager(temp_dir, backups):
     """Demonstrate restore manager functionality."""
     logger.info("=== Demonstrating Restore Manager ===")
@@ -138,7 +140,7 @@ def demonstrate_restore_manager(temp_dir, backups):
     # Create restore manager
     restore_manager = RestoreManager(
         target_path=os.path.join(restore_dir, "restored_db.durus"),
-        backup_dir=os.path.join(temp_dir, "backups")
+        backup_dir=os.path.join(temp_dir, "backups"),
     )
 
     # Get restore summary
@@ -173,6 +175,7 @@ def demonstrate_restore_manager(temp_dir, backups):
 
     logger.info("Restore demonstration completed successfully")
 
+
 def demonstrate_scheduling(temp_dir):
     """Demonstrate backup scheduling."""
     logger.info("=== Demonstrating Backup Scheduler ===")
@@ -182,16 +185,13 @@ def demonstrate_scheduling(temp_dir):
 
     # Create backup manager
     storage = FileStorage(db_path)
-    backup_manager = BackupManager(
-        storage=storage,
-        backup_dir=backup_dir
-    )
+    backup_manager = BackupManager(storage=storage, backup_dir=backup_dir)
 
     # Create scheduler
     scheduler = BackupScheduler(
         backup_dir=backup_dir,
         backup_manager=backup_manager,
-        auto_verify=False  # Disable for demo
+        auto_verify=False,  # Disable for demo
     )
 
     # Configure default jobs
@@ -204,9 +204,13 @@ def demonstrate_scheduling(temp_dir):
         schedule_spec="daily",
         retention_days=7,
         callbacks={
-            "on_success": lambda metadata, job: logger.info(f"Demo backup successful: {metadata.backup_id}"),
-            "on_failure": lambda job, error: logger.error(f"Demo backup failed: {error}")
-        }
+            "on_success": lambda metadata, job: logger.info(
+                f"Demo backup successful: {metadata.backup_id}"
+            ),
+            "on_failure": lambda job, error: logger.error(
+                f"Demo backup failed: {error}"
+            ),
+        },
     )
 
     logger.info(f"Added custom job: {custom_job.name}")
@@ -215,7 +219,9 @@ def demonstrate_scheduling(temp_dir):
     statuses = scheduler.get_all_jobs_status()
     logger.info("Current job statuses:")
     for name, status in statuses.items():
-        logger.info(f"  {name}: {status['backup_type']} - {'enabled' if status['enabled'] else 'disabled'}")
+        logger.info(
+            f"  {name}: {status['backup_type']} - {'enabled' if status['enabled'] else 'disabled'}"
+        )
 
     # Run job immediately
     logger.info("Running demo job immediately...")
@@ -227,6 +233,7 @@ def demonstrate_scheduling(temp_dir):
 
     logger.info("Scheduling demonstration completed successfully")
 
+
 def demonstrate_verification(temp_dir):
     """Demonstrate backup verification."""
     logger.info("=== Demonstrating Backup Verification ===")
@@ -237,11 +244,12 @@ def demonstrate_verification(temp_dir):
     verification = BackupVerification(
         backup_dir=backup_dir,
         test_restore_dir=os.path.join(temp_dir, "test_restores"),
-        max_test_size_mb=10  # Small limit for demo
+        max_test_size_mb=10,  # Small limit for demo
     )
 
     # Get catalog
     from dhara.backup.catalog import BackupCatalog
+
     catalog = BackupCatalog(backup_dir)
     all_backups = catalog.get_all_backups()
 
@@ -251,15 +259,21 @@ def demonstrate_verification(temp_dir):
         logger.info(f"Checking integrity of backup: {backup.backup_id}")
 
         integrity_result = verification.check_backup_integrity(backup)
-        logger.info(f"Integrity check: {integrity_result.status} - {integrity_result.message}")
+        logger.info(
+            f"Integrity check: {integrity_result.status} - {integrity_result.message}"
+        )
 
         # Check compression ratio
         compression_result = verification.check_compression_ratio(backup)
-        logger.info(f"Compression ratio: {compression_result.status} - {compression_result.message}")
+        logger.info(
+            f"Compression ratio: {compression_result.status} - {compression_result.message}"
+        )
 
         # Check retention policy
         retention_result = verification.check_retention_policy(backup)
-        logger.info(f"Retention policy: {retention_result.status} - {retention_result.message}")
+        logger.info(
+            f"Retention policy: {retention_result.status} - {retention_result.message}"
+        )
 
         # Run all checks
         all_results = verification.run_all_checks(backup)
@@ -277,6 +291,7 @@ def demonstrate_verification(temp_dir):
 
     logger.info("Verification demonstration completed successfully")
 
+
 def demonstrate_encryption(temp_dir):
     """Demonstrate encrypted backups."""
     logger.info("=== Demonstrating Encryption ===")
@@ -291,7 +306,7 @@ def demonstrate_encryption(temp_dir):
     backup_manager = BackupManager(
         storage=storage,
         backup_dir=os.path.join(temp_dir, "encrypted_backups"),
-        encryption_key=encryption_key
+        encryption_key=encryption_key,
     )
 
     # Perform encrypted backup
@@ -308,7 +323,7 @@ def demonstrate_encryption(temp_dir):
     restore_manager = RestoreManager(
         target_path=os.path.join(temp_dir, "restored_encrypted.durus"),
         backup_dir=os.path.join(temp_dir, "encrypted_backups"),
-        encryption_key=encryption_key
+        encryption_key=encryption_key,
     )
 
     # Restore encrypted backup
@@ -322,6 +337,7 @@ def demonstrate_encryption(temp_dir):
     restored_storage.close()
 
     logger.info("Encryption demonstration completed successfully")
+
 
 def demonstrate_cloud_storage():
     """Demonstrate cloud storage integration (mock)."""
@@ -337,7 +353,11 @@ def demonstrate_cloud_storage():
         mock_adapter.download_file.return_value = True
         mock_adapter.upload_json.return_value = True
         mock_adapter.list_files.return_value = [
-            {"name": "backup1.durus.zst.enc", "size": 1024000, "last_modified": "2024-01-01T00:00:00Z"}
+            {
+                "name": "backup1.durus.zst.enc",
+                "size": 1024000,
+                "last_modified": "2024-01-01T00:00:00Z",
+            }
         ]
 
         # Create backup manager with cloud adapter
@@ -345,18 +365,19 @@ def demonstrate_cloud_storage():
         backup_manager = BackupManager(
             storage=None,  # Mock for demo
             backup_dir=temp_dir,
-            cloud_adapter=mock_adapter
+            cloud_adapter=mock_adapter,
         )
 
         # Mock backup metadata
         from dhara.backup.manager import BackupMetadata, BackupType
+
         mock_metadata = BackupMetadata(
             backup_id="demo_cloud_backup",
             backup_type=BackupType.FULL,
             timestamp=datetime.now(),
             source_path=os.path.join(temp_dir, "demo_backup.durus"),
             size_bytes=1024000,
-            checksum="abc123"
+            checksum="abc123",
         )
 
         # Upload to cloud
@@ -374,6 +395,7 @@ def demonstrate_cloud_storage():
     except Exception as e:
         logger.error(f"Cloud storage demo failed: {e}")
         logger.info("This may be due to missing cloud storage libraries")
+
 
 def main():
     """Main demonstration function."""
@@ -405,6 +427,7 @@ def main():
     except Exception as e:
         logger.error(f"Demonstration failed: {e}")
         raise
+
 
 if __name__ == "__main__":
     main()

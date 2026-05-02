@@ -5,25 +5,29 @@ This script creates a new storage with the oids of all instances,
 which makes FileStorage (when using the Shelf format) more compact
 and efficient for some operations.
 """
-from dhara.connection import Connection
+
+import sys
 from os.path import exists
 from tempfile import TemporaryFile
-import sys
+
+from dhara.connection import Connection
 
 if sys.version < "3":
     from cPickle import dump, load
 else:
     from pickle import dump, load
 
+
 def usage():
     print("%s <old-file-storage> <new-file-storage>" % sys.argv[0])
     print(__doc__)
     raise SystemExit
 
+
 def main(old_file, new_file):
-    if old_file.startswith('-'):
+    if old_file.startswith("-"):
         usage()
-    if new_file.startswith('-'):
+    if new_file.startswith("-"):
         usage()
     assert not exists(new_file)
     connection = Connection(sys.argv[1])
@@ -41,7 +45,8 @@ def main(old_file, new_file):
     print("pack")
     connection2.pack()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     if len(sys.argv) != 3:
         usage()
     main(*sys.argv[1:])

@@ -137,7 +137,7 @@ def load_config(
     return DharaConfig.from_dict(data)
 
 
-def load_config_from_env(
+def load_config_from_env(  # noqa: C901
     prefix: str = "DHARA",
     config_file_var: str = "CONFIG",
 ) -> DharaConfig | None:
@@ -195,7 +195,6 @@ def load_config_from_env(
     # Validate and sanitize storage path
     path_str = _get_env_value(prefixes, "STORAGE_PATH")
     if path_str is not None:
-
         # Check for path traversal attempts
         if "../" in path_str or "..\\\\" in path_str:
             raise ValueError(

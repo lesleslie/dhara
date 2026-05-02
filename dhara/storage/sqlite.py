@@ -1,4 +1,5 @@
 """
+from __future__ import annotations
 An sqlite-based storage module.  Uses a sqlite as the on-disc storage of
 persistent data.
 
@@ -243,7 +244,7 @@ class SqliteStorage(Storage):
             # safe to yield now, we have finished identifying dead objects
             yield None
             self._delete(dead)
-            yield "finished %s, %d live objects, %d removed" % (
+            yield "finished %s, %d live objects, %d removed" % (  # noqa: UP031
                 datetime.now(),
                 len(alive),
                 len(dead),

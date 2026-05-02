@@ -21,7 +21,7 @@ dev = [
 
 [project]
 name = "dhara"
-version = "0.8.3"
+version = "0.9.0"
 description = "A Python Persistent Object Database with ACID Transactions"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -56,14 +56,12 @@ dependencies = [
     "rich>=13.0.0",  # For pretty tables and console output
     "cryptography>=43.0.0",
     "msgspec>=0.20.0",
+    "dill>=0.3.9",
     "schedule>=1.2.0",
     "zstandard>=0.23.0",
 ]
 
 [project.optional-dependencies]
-serialization = [
-    "dill>=0.3.9",
-]
 cloud = [
     "azure-storage-blob>=12.23.0",
     "boto3>=1.35.0",

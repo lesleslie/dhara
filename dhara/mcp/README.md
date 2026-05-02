@@ -10,8 +10,6 @@ Dhara's supported MCP implementation is the FastMCP server in
 - imports from `dhara.mcp` or `dhara.mcp.server_core`
 
 The deprecated `dhara.mcp.server` module remains only as a compatibility wrapper.
-The older `dhara.mcp.oneiric_server` path is also legacy and is not the
-supported runtime surface for new integrations.
 
 ## Supported Contract
 
@@ -33,7 +31,6 @@ The canonical FastMCP runtime supports bearer-token auth when
   `write`, and `admin`
 - Legacy auth helpers still available as library surfaces:
   `TokenAuth`, `HMACAuth`, `EnvironmentAuth`, `AuthMiddleware`
-- Legacy custom/auth-capable server path: `dhara.mcp.oneiric_server`
 
 Use `get_contract_info` to inspect the active runtime contract, including auth
 mode, required scopes, token-file path, and deprecated surfaces.
@@ -124,8 +121,6 @@ server = DharaMCPServer(settings)
 - Prefer `dhara.mcp` or `dhara.mcp.server_core` in active code.
 - Treat legacy `durus_*` tool names as deprecated compatibility-only behavior.
 - Treat `dhara.mcp.server` as deprecated.
-- Treat `dhara.mcp.oneiric_server` as legacy compatibility code, not the
-  canonical runtime path.
 
 ## Related Docs
 

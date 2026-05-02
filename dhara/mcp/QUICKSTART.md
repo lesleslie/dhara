@@ -2,8 +2,6 @@
 
 Dhara's supported MCP surface is the FastMCP server implemented in
 `dhara.mcp.server_core` and exposed via `dhara mcp start`.
-The older `dhara.mcp.oneiric_server` path remains only as legacy compatibility
-code.
 
 ## 1. Start The MCP Server
 
@@ -111,5 +109,3 @@ surface.
 - Use `dhara mcp ...` for CLI lifecycle management.
 - Treat `dhara.mcp.server` and old custom-server examples as deprecated
   compatibility-only material.
-- Treat `dhara.mcp.oneiric_server` as a legacy path rather than the supported
-  runtime surface.

@@ -2,17 +2,19 @@
 
 import os
 import tempfile
+
 import pytest
+
 from dhara.core import Connection
-from dhara.storage.base import MemoryStorage
-from dhara.storage import FileStorage, SqliteStorage
 from dhara.core.persistent import Persistent
+from dhara.storage import FileStorage, SqliteStorage
+from dhara.storage.base import MemoryStorage
 
 
 @pytest.fixture
 def temp_file():
     """Create a temporary file path."""
-    fd, path = tempfile.mkstemp(suffix='.durus')
+    fd, path = tempfile.mkstemp(suffix=".durus")
     os.close(fd)
     yield path
     if os.path.exists(path):
@@ -22,7 +24,7 @@ def temp_file():
 @pytest.fixture
 def temp_sqlite_file():
     """Create a temporary SQLite file path."""
-    fd, path = tempfile.mkstemp(suffix='.sqlite')
+    fd, path = tempfile.mkstemp(suffix=".sqlite")
     os.close(fd)
     yield path
     if os.path.exists(path):

@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: dhara
-Version: 0.8.2
+Version: 0.8.3
 Summary: A Python Persistent Object Database with ACID Transactions
 Author-email: CNRI and others <nas-dhara@arctrix.com>
 Maintainer-email: dhara Development Team <nas-dhara@arctrix.com>
@@ -30,10 +30,9 @@ Requires-Dist: ipython>=8.0.0
 Requires-Dist: rich>=13.0.0
 Requires-Dist: cryptography>=43.0.0
 Requires-Dist: msgspec>=0.20.0
+Requires-Dist: dill>=0.3.9
 Requires-Dist: schedule>=1.2.0
 Requires-Dist: zstandard>=0.23.0
-Provides-Extra: serialization
-Requires-Dist: dill>=0.3.9; extra == "serialization"
 Provides-Extra: cloud
 Requires-Dist: azure-storage-blob>=12.23.0; extra == "cloud"
 Requires-Dist: boto3>=1.35.0; extra == "cloud"

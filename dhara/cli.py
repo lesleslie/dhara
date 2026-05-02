@@ -305,7 +305,9 @@ def health_probe_handler() -> RuntimeHealthSnapshot:
             "adapters_registered": 0,  # Would check registry if server running
             "current_status": "healthy" if is_healthy else "unhealthy",
             "ready": is_healthy,
-            "storage_status": "ok" if storage_status.get("storage_accessible") else "error",
+            "storage_status": "ok"
+            if storage_status.get("storage_accessible")
+            else "error",
         },
     )
 

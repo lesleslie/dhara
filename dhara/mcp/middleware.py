@@ -91,9 +91,17 @@ class MCPMiddleware:
         self._request_durations: list[float] = []
 
         # Permission mapping for MCP tools.
-        # `durus_*` names remain for legacy MCP compatibility.
+        # Canonical adapter registry names are preferred; legacy Durus names
+        # remain supported for backward compatibility.
         self._tool_permissions: dict[str, Permission] = {
-            # Legacy Durus-compatible Dhara MCP tools
+            # Canonical Dhara adapter registry tools
+            "store_adapter": Permission.WRITE,
+            "get_adapter": Permission.READ,
+            "list_adapters": Permission.LIST,
+            "list_adapter_versions": Permission.LIST,
+            "validate_adapter": Permission.READ,
+            "get_adapter_health": Permission.READ,
+            # Legacy compatibility aliases
             "durus_get": Permission.READ,
             "durus_set": Permission.WRITE,
             "durus_list": Permission.LIST,
@@ -101,11 +109,6 @@ class MCPMiddleware:
             "durus_checkpoint": Permission.CHECKPOINT,
             "durus_restore_checkpoint": Permission.RESTORE,
             "durus_connect": Permission.READ,
-            # Oneiric MCP tools
-            "oneiric_register_adapter": Permission.WRITE,
-            "oneiric_get_adapter": Permission.READ,
-            "oneiric_list_adapters": Permission.LIST,
-            "oneiric_search_adapters": Permission.READ,
         }
 
     def get_required_permission(self, tool_name: str) -> Permission | None:

@@ -23,7 +23,6 @@ Usage:
 """
 
 import argparse
-import getpass
 import hashlib
 import json
 import os
@@ -34,8 +33,7 @@ from pathlib import Path
 # Add parent directory to path to import durus
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from druva.mcp.auth import Role, TokenInfo, generate_token
-
+from druva.mcp.auth import generate_token
 
 # Default paths
 DEFAULT_TOKENS_FILE = "/etc/durus/tokens.json"
@@ -56,7 +54,7 @@ def print_token_safe(token: str, token_id: str):
     print("=" * 70)
     print(f"\n  Token ID:    {token_id}")
     print(f"  Token:       {token}")
-    print(f"\n  Use this token in the Authorization header:")
+    print("\n  Use this token in the Authorization header:")
     print(f"  Authorization: Bearer {token}")
     print("\n" + "=" * 70 + "\n")
 
@@ -91,7 +89,7 @@ def generate_new_token(
     # Load existing tokens
     tokens_data = {}
     if os.path.exists(tokens_file):
-        with open(tokens_file, "r") as f:
+        with open(tokens_file) as f:
             tokens_data = json.load(f)
 
     # Check if token already exists
@@ -158,7 +156,7 @@ def revoke_token(
         print(f"Error: Tokens file not found: {tokens_file}", file=sys.stderr)
         sys.exit(1)
 
-    with open(tokens_file, "r") as f:
+    with open(tokens_file) as f:
         tokens_data = json.load(f)
 
     if "tokens" not in tokens_data or token_id not in tokens_data["tokens"]:
@@ -188,7 +186,7 @@ def list_tokens(tokens_file: str = DEFAULT_TOKENS_FILE) -> None:
         print(f"No tokens file found: {tokens_file}")
         return
 
-    with open(tokens_file, "r") as f:
+    with open(tokens_file) as f:
         tokens_data = json.load(f)
 
     if "tokens" not in tokens_data or not tokens_data["tokens"]:
@@ -210,7 +208,7 @@ def list_tokens(tokens_file: str = DEFAULT_TOKENS_FILE) -> None:
             expires_at = datetime.fromisoformat(info["expires_at"])
             print(f"    Expires:    {info['expires_at']}")
             if expires_at < datetime.utcnow():
-                print(f"    WARNING:   Token is expired!")
+                print("    WARNING:   Token is expired!")
 
     print("\n" + "=" * 70 + "\n")
 
@@ -232,7 +230,7 @@ def export_env_variable(
         print(f"Error: Tokens file not found: {tokens_file}", file=sys.stderr)
         sys.exit(1)
 
-    with open(tokens_file, "r") as f:
+    with open(tokens_file) as f:
         tokens_data = json.load(f)
 
     if "tokens" not in tokens_data or token_id not in tokens_data["tokens"]:
@@ -244,15 +242,15 @@ def export_env_variable(
     if export_format == "bash":
         print(f'\nexport DURUS_TOKEN_ID="{token_id}"')
         print(f'export DURUS_TOKEN_HASH="{token_info["token_hash"]}"')
-        print(f'\n# Add to ~/.bashrc or ~/.zshrc')
+        print("\n# Add to ~/.bashrc or ~/.zshrc")
 
     elif export_format == "json":
         print(json.dumps({"token_id": token_id, **token_info}, indent=2))
 
     elif export_format == "dotenv":
-        print(f'\nDURUS_TOKEN_ID={token_id}')
-        print(f'DURUS_TOKEN_HASH={token_info["token_hash"]}')
-        print(f'\n# Add to .env file')
+        print(f"\nDURUS_TOKEN_ID={token_id}")
+        print(f"DURUS_TOKEN_HASH={token_info['token_hash']}")
+        print("\n# Add to .env file")
 
 
 def validate_tokens(tokens_file: str = DEFAULT_TOKENS_FILE) -> None:
@@ -268,7 +266,7 @@ def validate_tokens(tokens_file: str = DEFAULT_TOKENS_FILE) -> None:
 
     print(f"Validating tokens file: {tokens_file}\n")
 
-    with open(tokens_file, "r") as f:
+    with open(tokens_file) as f:
         try:
             tokens_data = json.load(f)
         except json.JSONDecodeError as e:
@@ -289,9 +287,7 @@ def validate_tokens(tokens_file: str = DEFAULT_TOKENS_FILE) -> None:
 
             # Check role validity
             if info.get("role") not in ["readonly", "readwrite", "admin"]:
-                issues.append(
-                    f"Token '{token_id}': invalid role '{info.get('role')}'"
-                )
+                issues.append(f"Token '{token_id}': invalid role '{info.get('role')}'")
 
             # Check expiration
             if info.get("expires_at"):

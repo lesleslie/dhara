@@ -10,19 +10,20 @@ This script:
 """
 
 import os
-import sys
-import subprocess
-import tempfile
 import shutil
+import subprocess
+import sys
+import tempfile
 from pathlib import Path
+
 
 def run_command(cmd, description=None, check=True):
     """Run a command with error handling."""
     if description:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"STEP: {description}")
         print(f"COMMAND: {' '.join(cmd)}")
-        print('='*60)
+        print("=" * 60)
 
     try:
         result = subprocess.run(cmd, check=check, capture_output=True, text=True)
@@ -38,27 +39,45 @@ def run_command(cmd, description=None, check=True):
             sys.exit(1)
         return e
 
+
 def install_dependencies():
     """Install required dependencies."""
     print("Installing dependencies for Durus backup system...")
 
     # Core dependencies
-    run_command([
-        sys.executable, "-m", "pip", "install",
-        "cryptography", "zstandard", "schedule"
-    ], "Installing core dependencies")
+    run_command(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "cryptography",
+            "zstandard",
+            "schedule",
+        ],
+        "Installing core dependencies",
+    )
 
     # Cloud storage dependencies (optional)
-    run_command([
-        sys.executable, "-m", "pip", "install",
-        "boto3", "google-cloud-storage", "azure-storage-blob"
-    ], "Installing cloud storage dependencies")
+    run_command(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "boto3",
+            "google-cloud-storage",
+            "azure-storage-blob",
+        ],
+        "Installing cloud storage dependencies",
+    )
 
     # Test dependencies
-    run_command([
-        sys.executable, "-m", "pip", "install",
-        "pytest", "pytest-cov", "pytest-mock"
-    ], "Installing test dependencies")
+    run_command(
+        [sys.executable, "-m", "pip", "install", "pytest", "pytest-cov", "pytest-mock"],
+        "Installing test dependencies",
+    )
+
 
 def create_test_database(path: str):
     """Create a test database."""
@@ -67,9 +86,10 @@ def create_test_database(path: str):
     # Import durus and create database
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+    from datetime import datetime
+
     from druva.file_storage import FileStorage
     from druva.persistent_dict import PersistentDict
-    from datetime import datetime
 
     # Create storage
     storage = FileStorage(path)
@@ -79,7 +99,7 @@ def create_test_database(path: str):
     root["metadata"] = {
         "created": datetime.now().isoformat(),
         "type": "test_database",
-        "records": 1000
+        "records": 1000,
     }
 
     # Add sample records
@@ -88,13 +108,14 @@ def create_test_database(path: str):
             "id": i,
             "name": f"User {i}",
             "email": f"user{i}@example.com",
-            "data": f"Sample data {i}" * 10
+            "data": f"Sample data {i}" * 10,
         }
 
     storage.store(root)
     storage.close()
 
     print(f"Test database created with {len(root['record_0'].keys()) * 1000} records")
+
 
 def run_tests():
     """Run backup system tests."""
@@ -105,11 +126,18 @@ def run_tests():
     os.chdir(project_dir)
 
     # Run integration tests
-    test_result = run_command([
-        sys.executable, "-m", "pytest",
-        "tests/integration/test_backup_restore.py",
-        "-v", "--cov=backup", "--cov-report=html"
-    ], "Running integration tests with coverage")
+    test_result = run_command(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "tests/integration/test_backup_restore.py",
+            "-v",
+            "--cov=backup",
+            "--cov-report=html",
+        ],
+        "Running integration tests with coverage",
+    )
 
     if test_result.returncode == 0:
         print("\n✓ All tests passed!")
@@ -117,6 +145,7 @@ def run_tests():
         print("\n✗ Some tests failed")
 
     return test_result.returncode == 0
+
 
 def run_demo():
     """Run the backup system demonstration."""
@@ -127,11 +156,13 @@ def run_demo():
     os.chdir(project_dir)
 
     # Run the example script
-    demo_result = run_command([
-        sys.executable, "examples/backup_example.py"
-    ], "Running backup system demonstration")
+    demo_result = run_command(
+        [sys.executable, "examples/backup_example.py"],
+        "Running backup system demonstration",
+    )
 
     return demo_result.returncode == 0
+
 
 def create_cli_test():
     """Test the CLI functionality."""
@@ -147,14 +178,22 @@ def create_cli_test():
 
         # Test backup command
         print("\nTesting backup command...")
-        result = run_command([
-            sys.executable, "-m", "durus.backup.cli",
-            "backup",
-            "--source", db_path,
-            "--backup-dir", backup_dir,
-            "--type", "full",
-            "--verbose"
-        ], "Creating backup via CLI")
+        result = run_command(
+            [
+                sys.executable,
+                "-m",
+                "durus.backup.cli",
+                "backup",
+                "--source",
+                db_path,
+                "--backup-dir",
+                backup_dir,
+                "--type",
+                "full",
+                "--verbose",
+            ],
+            "Creating backup via CLI",
+        )
 
         if result.returncode == 0:
             print("✓ Backup command successful")
@@ -164,11 +203,17 @@ def create_cli_test():
 
         # Test list command
         print("\nTesting list command...")
-        result = run_command([
-            sys.executable, "-m", "durus.backup.cli",
-            "list",
-            "--backup-dir", backup_dir
-        ], "Listing backups via CLI")
+        result = run_command(
+            [
+                sys.executable,
+                "-m",
+                "durus.backup.cli",
+                "list",
+                "--backup-dir",
+                backup_dir,
+            ],
+            "Listing backups via CLI",
+        )
 
         if result.returncode == 0:
             print("✓ List command successful")
@@ -179,13 +224,20 @@ def create_cli_test():
         # Test restore command
         print("\nTesting restore command...")
         restore_dir = os.path.join(test_dir, "restored_db")
-        result = run_command([
-            sys.executable, "-m", "durus.backup.cli",
-            "restore",
-            "--target", restore_dir,
-            "--backup-dir", backup_dir,
-            "--verify"
-        ], "Restoring via CLI")
+        result = run_command(
+            [
+                sys.executable,
+                "-m",
+                "durus.backup.cli",
+                "restore",
+                "--target",
+                restore_dir,
+                "--backup-dir",
+                backup_dir,
+                "--verify",
+            ],
+            "Restoring via CLI",
+        )
 
         if result.returncode == 0:
             print("✓ Restore command successful")
@@ -199,6 +251,7 @@ def create_cli_test():
         # Cleanup
         if os.path.exists(test_dir):
             shutil.rmtree(test_dir)
+
 
 def create_sample_configuration():
     """Create sample configuration files."""
@@ -235,7 +288,7 @@ enabled = false
 """
 
     config_file = config_dir / "backup.conf"
-    with open(config_file, 'w') as f:
+    with open(config_file, "w") as f:
         f.write(backup_config)
 
     print(f"Sample configuration created: {config_file}")
@@ -243,12 +296,14 @@ enabled = false
     # Generate encryption key
     key_file = config_dir / "backup.key"
     from cryptography.fernet import Fernet
+
     key = Fernet.generate_key()
-    with open(key_file, 'wb') as f:
+    with open(key_file, "wb") as f:
         f.write(key)
 
     print(f"Encryption key generated: {key_file}")
     print("WARNING: Store this key securely!")
+
 
 def create_documentation():
     """Create additional documentation."""
@@ -346,10 +401,11 @@ BackupVerification(
 """
 
     api_file = doc_dir / "API.md"
-    with open(api_file, 'w') as f:
+    with open(api_file, "w") as f:
         f.write(api_doc)
 
     print(f"API documentation created: {api_file}")
+
 
 def main():
     """Main setup function."""
@@ -402,8 +458,10 @@ def main():
     except Exception as e:
         print(f"\nSetup failed: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

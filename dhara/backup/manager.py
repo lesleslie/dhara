@@ -24,8 +24,8 @@ from typing import Any
 import zstandard as zstd
 from cryptography.fernet import Fernet
 
-from dhara.storage.file import FileStorage
 from dhara.storage import Storage
+from dhara.storage.file import FileStorage
 
 logger = logging.getLogger(__name__)
 

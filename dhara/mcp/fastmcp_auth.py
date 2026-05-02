@@ -9,7 +9,6 @@ from fastmcp.server.auth.providers.jwt import AccessToken, TokenVerifier
 
 from dhara.mcp.auth import Role, TokenAuth
 
-
 ROLE_MAP: dict[str, Role] = {
     "readonly": Role.READONLY,
     "readwrite": Role.READWRITE,
@@ -66,7 +65,9 @@ class DharaTokenVerifier(TokenVerifier):
             claims={
                 "token_id": result.token_id,
                 "role": result.role.value if result.role else None,
-                "permissions": sorted(permission.value for permission in result.permissions),
+                "permissions": sorted(
+                    permission.value for permission in result.permissions
+                ),
             },
         )
 

@@ -22,7 +22,6 @@ initialize_secrets = None
 
 try:
     from dhara.security.oneiric_secrets import (
-        OneiricSecretsAdapter,
         create_hmac_signature,
         initialize_secrets,
         verify_hmac_signature,

@@ -433,7 +433,7 @@ class TestSimpleMode:
         assert mode.active_transactions == 1
         # Note: last_operation is only set for the most recent transaction
 
-        # Commit remaining transaction (tx_id1 should still be commitable)
+        # Commit remaining transaction (tx_id1 should still be committable)
         assert mode.commit_transaction(tx_id1) is True
         assert mode.active_transactions == 0
         assert mode.last_operation is None

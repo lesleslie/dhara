@@ -12,7 +12,7 @@ without requiring each caller to reinvent its own key layout over raw KV calls.
 """
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from dhara.collections.dict import PersistentDict
@@ -21,7 +21,7 @@ from dhara.core.connection import Connection
 
 
 def _utcnow() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 @dataclass
@@ -189,7 +189,7 @@ class EcosystemStateStore:
             except ValueError:
                 event_dt = None
             if event_dt is not None and event_dt.tzinfo is None:
-                event_dt = event_dt.replace(tzinfo=timezone.utc)
+                event_dt = event_dt.replace(tzinfo=UTC)
             if event_dt is not None and event_dt < cutoff:
                 continue
             if event_type and event.get("event_type") != event_type:
@@ -219,7 +219,7 @@ class EcosystemStateStore:
             except ValueError:
                 event_dt = None
             if event_dt is not None and event_dt.tzinfo is None:
-                event_dt = event_dt.replace(tzinfo=timezone.utc)
+                event_dt = event_dt.replace(tzinfo=UTC)
             if event_dt is None or event_dt >= cutoff:
                 kept.append(item)
         if len(kept) != len(events):

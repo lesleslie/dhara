@@ -1,4 +1,5 @@
 """
+from __future__ import annotations
 $URL$
 $Id$
 
@@ -253,7 +254,7 @@ class InheritedSocket(SocketAddress):
             path = self.name.replace("\0", "@")
             try:
                 path = path.decode(sys.getfilesystemencoding())
-            except:
+            except Exception:
                 pass
             return path
         elif isinstance(self.name, str):
@@ -675,7 +676,7 @@ class StorageServer:
                 5,
                 f"[{getpid()}]\n"
                 + "\n".join(
-                    "%8s: %s" % (item[1], item[0])
+                    "%8s: %s" % (item[1], item[0])  # noqa: UP031
                     for item in sorted(self.load_record.items())
                 ),
             )

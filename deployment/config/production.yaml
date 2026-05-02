@@ -223,10 +223,12 @@ security:
         dhara_checkpoint: checkpoint
         dhara_restore_checkpoint: restore
 
-        oneiric_register_adapter: write
-        oneiric_get_adapter: read
-        oneiric_list_adapters: list
-        oneiric_search_adapters: read
+        store_adapter: write
+        get_adapter: read
+        list_adapters: list
+        list_adapter_versions: list
+        validate_adapter: read
+        get_adapter_health: read
 
   # Audit logging
   audit:
@@ -269,43 +271,6 @@ mcp:
 
     # Port to listen on
     port: 2973
-
-    # Enable authentication
-    authentication:
-      enabled: true
-
-    # Enable authorization
-    authorization:
-      enabled: true
-
-    # Enable metrics
-    metrics:
-      enabled: true
-
-    # Enable request logging
-    logging:
-      enabled: true
-      level: INFO
-
-  # Oneiric-compatible MCP Server
-  oneiric_server:
-    # Enable server
-    enabled: true
-
-    # Server name
-    name: "oneiric-mcp-server"
-
-    # Server version
-    version: "5.0.0"
-
-    # Description
-    description: "Oneiric adapter registry MCP server"
-
-    # Host to bind to
-    host: 0.0.0.0
-
-    # Port to listen on
-    port: 2974
 
     # Enable authentication
     authentication:

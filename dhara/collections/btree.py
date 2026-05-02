@@ -214,7 +214,7 @@ class BNode(PersistentObject):
         else:
             return self.nodes[-1].get_max_item()
 
-    def delete(self, key: Any) -> None:
+    def delete(self, key: Any) -> None:  # noqa: C901
         """(key:anything)
         Delete the item with this key.
         This is intended to follow the description in 19.3 of
@@ -299,7 +299,9 @@ class BNode(PersistentObject):
                             lower_sibling.items + [self.items[p - 1]] + node.items
                         )
                         if not node.is_leaf():
-                            node.nodes = (lower_sibling.nodes or []) + (node.nodes or [])
+                            node.nodes = (lower_sibling.nodes or []) + (
+                                node.nodes or []
+                            )
                         node._count += lower_sibling._count + 1
                         del self.items[p - 1]
                         del self.nodes[p - 1]
@@ -307,7 +309,9 @@ class BNode(PersistentObject):
                         # Case 3b2: Merge with upper_sibling
                         node.items = node.items + [self.items[p]] + upper_sibling.items
                         if not node.is_leaf():
-                            node.nodes = (node.nodes or []) + (upper_sibling.nodes or [])
+                            node.nodes = (node.nodes or []) + (
+                                upper_sibling.nodes or []
+                            )
                         node._count += upper_sibling._count + 1
                         del self.items[p]
                         del self.nodes[p + 1]

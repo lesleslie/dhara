@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import warnings
 
-from dhara.core.connection import *
+from dhara.core.connection import ROOT_OID, Connection
 
 warnings.warn(
     "dhara.connection is deprecated; use dhara.core.connection instead.",
