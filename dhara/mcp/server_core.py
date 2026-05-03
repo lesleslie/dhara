@@ -328,10 +328,6 @@ class DharaMCPServer:
                         "auth in the runtime path."
                     ),
                 },
-                "deprecated_surfaces": {
-                    "module": ["dhara.mcp.server"],
-                    "legacy_tool_prefixes": ["durus_*"],
-                },
             }
 
         # --- Ecosystem State tools (STANDARD+) ---
@@ -787,7 +783,3 @@ class DharaMCPServer:
         if getattr(self, "storage", None) is not None:
             self.storage.close()
         logger.info("Dhara MCP Server closed")
-
-
-# Backward-compatible alias during the dhara rename transition.
-DruvaMCPServer = DharaMCPServer

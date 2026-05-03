@@ -29,6 +29,7 @@ dist
 .archives/
 .backup/
 .backups/
+dhara.egg-info/
 
 .hypothesis/
 .coverage

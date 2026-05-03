@@ -14,7 +14,7 @@ Successfully completed comprehensive test coverage improvement for the Dhara pro
    - 100% coverage
    - Core functionality: Operation recording, cache tracking, transaction statistics, connection management
 
-2. **Monitoring Server** (`test_monitoring_server_simple.py`)  
+2. **Monitoring Server** (`test_monitoring_server_simple.py`)
    - 21 comprehensive tests
    - 100% coverage
    - Core functionality: HTTP endpoints, server lifecycle, health checks, request handling

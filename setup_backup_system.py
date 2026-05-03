@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Setup script for the Durus backup and restore system.
+Setup script for the Dhara backup and restore system.
 
 This script:
 1. Installs required dependencies
@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import Optional
 
 
 def run_command(cmd, description=None, check=True):
@@ -42,7 +43,7 @@ def run_command(cmd, description=None, check=True):
 
 def install_dependencies():
     """Install required dependencies."""
-    print("Installing dependencies for Durus backup system...")
+    print("Installing dependencies for Dhara backup system...")
 
     # Core dependencies
     run_command(
@@ -83,13 +84,13 @@ def create_test_database(path: str):
     """Create a test database."""
     print(f"Creating test database at {path}")
 
-    # Import durus and create database
+    # Import Dhara and create database
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
     from datetime import datetime
 
-    from druva.file_storage import FileStorage
-    from druva.persistent_dict import PersistentDict
+    from dhara.storage.file import FileStorage
+    from dhara.collections.dict import PersistentDict
 
     # Create storage
     storage = FileStorage(path)

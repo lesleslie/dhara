@@ -1,5 +1,5 @@
 #!/bin/bash
-# Druva MCP Server Startup Script
+# Dhara MCP Server Startup Script
 
 set -e
 
@@ -10,4 +10,4 @@ cd "$(dirname "$0")"
 source .venv/bin/activate
 
 # Start the MCP server (uses default port from config)
-python -m druva.cli start
+python -m dhara.mcp

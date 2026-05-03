@@ -1116,27 +1116,6 @@ class TestGetContractInfo:
         finally:
             _stop_patches()
 
-    def test_contract_info_deprecated_surfaces(self, mock_config: DharaSettings) -> None:
-        (
-            mock_conn, mock_fs, mock_fm_cls, mock_build_auth,
-            mock_reg_health, *_impls
-        ) = _apply_patches()
-        try:
-            from dhara.mcp.server_core import DharaMCPServer
-
-            mock_server, captured = _make_capturing_fastmcp("get_contract_info")
-            mock_fm_cls.return_value = mock_server
-
-            DharaMCPServer(mock_config)
-
-            contract_fn = captured["get_contract_info"]
-            result = asyncio.get_event_loop().run_until_complete(contract_fn())
-
-            assert "deprecated_surfaces" in result
-            assert "dhara.mcp.server" in result["deprecated_surfaces"]["module"]
-        finally:
-            _stop_patches()
-
 
 # ---------------------------------------------------------------------------
 # Tests -- Server Lifecycle
@@ -1227,21 +1206,6 @@ class TestServerLifecycle:
                 )
         finally:
             _stop_patches()
-
-
-# ---------------------------------------------------------------------------
-# Tests -- Backward-Compatible Alias
-# ---------------------------------------------------------------------------
-
-
-class TestDruvaAlias:
-    """Test the DruvaMCPServer backward-compatible alias."""
-
-    def test_alias_exists(self) -> None:
-        from dhara.mcp.server_core import DruvaMCPServer, DharaMCPServer
-
-        assert DruvaMCPServer is DharaMCPServer
-
 
 # ---------------------------------------------------------------------------
 # Tests -- Tool Function Dispatch (Integration-style)

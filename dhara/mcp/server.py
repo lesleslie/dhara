@@ -1,29 +1,5 @@
-"""Legacy compatibility wrapper for the canonical Dhara FastMCP server.
+"""Removed legacy compatibility module."""
 
-`dhara.mcp.server_core` contains the supported implementation. This module
-remains only to preserve older import paths while the ecosystem finishes the
-rename from Druva/Durus to Dhara.
-"""
-
-from __future__ import annotations
-
-import warnings
-from typing import Any
-
-from dhara.core.config import DharaSettings
-from dhara.mcp.server_core import DharaMCPServer, DruvaMCPServer
-
-warnings.warn(
-    "dhara.mcp.server is deprecated; use dhara.mcp.server_core or dhara.mcp instead.",
-    DeprecationWarning,
-    stacklevel=2,
+raise ImportError(
+    "dhara.mcp.server has been removed; use dhara.mcp.server_core or dhara.mcp instead."
 )
-
-
-def create_server_from_config(config: dict[str, Any]) -> DharaMCPServer:
-    """Create the canonical Dhara MCP server from a config dictionary."""
-    settings = DharaSettings.model_validate(config)
-    return DharaMCPServer(settings)
-
-
-__all__ = ["DharaMCPServer", "DruvaMCPServer", "create_server_from_config"]

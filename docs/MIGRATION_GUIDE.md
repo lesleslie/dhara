@@ -2,8 +2,7 @@
 
 ## Overview
 
-Dhara is the canonical package and service identity. Older `Durus` and `Druva`
-names remain only where compatibility is still required.
+Dhara is the canonical package and service identity. Older `Durus` and `Druva` names are historical only.
 
 This guide covers the supported migration path for:
 
@@ -29,17 +28,15 @@ from dhara.collections.list import PersistentList
 from dhara.mcp import DharaMCPServer
 ```
 
-### Deprecated Compatibility Imports
+### Historical Compatibility Imports
 
-These still work in `0.8.x` but emit deprecation warnings:
+The following paths are retained only in archived history and should not be used in new code:
 
 - `dhara.file_storage`
 - `dhara.connection`
 - `dhara.persistent`
 - `dhara.persistent_dict`
 - `dhara.persistent_list`
-- `dhara.mcp.server`
-- `druva`
 
 ## Configuration Migration
 
@@ -103,10 +100,10 @@ Use:
 - `dhara.mcp.server_core`
 - `dhara mcp start`
 
-### Deprecated MCP Surface
+### Historical MCP Surface
 
-- `dhara.mcp.server`
-- legacy `durus_*` tool names
+- `dhara.mcp.server` is removed from the live package.
+- legacy `durus_*` tool names are historical only
 
 ### Current Supported Tool Groups
 

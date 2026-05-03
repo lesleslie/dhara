@@ -107,5 +107,3 @@ surface.
 
 - Use `dhara.mcp` or `dhara.mcp.server_core` for code-level imports.
 - Use `dhara mcp ...` for CLI lifecycle management.
-- Treat `dhara.mcp.server` and old custom-server examples as deprecated
-  compatibility-only material.

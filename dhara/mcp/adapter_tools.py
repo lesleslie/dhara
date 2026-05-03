@@ -19,23 +19,10 @@ logger = logging.getLogger(__name__)
 
 
 def _import_factory(factory_path: str) -> tuple[Any, Any]:
-    """Import a factory path, retrying legacy druva paths via dhara."""
-    candidates = [factory_path]
-    if factory_path.startswith("druva."):
-        candidates.append(factory_path.replace("druva.", "dhara.", 1))
-
-    last_error: Exception | None = None
-    for candidate in candidates:
-        try:
-            module_path, class_name = candidate.rsplit(".", 1)
-            module = importlib.import_module(module_path)
-            return module, getattr(module, class_name)
-        except (ImportError, AttributeError) as exc:
-            last_error = exc
-
-    if last_error is not None:
-        raise last_error
-    raise ImportError(f"Unable to import factory path: {factory_path}")
+    """Import a factory path and return its module and class."""
+    module_path, class_name = factory_path.rsplit(".", 1)
+    module = importlib.import_module(module_path)
+    return module, getattr(module, class_name)
 
 
 class Adapter(Persistent):

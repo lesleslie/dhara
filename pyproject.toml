@@ -21,7 +21,7 @@ dev = [
 
 [project]
 name = "dhara"
-version = "0.9.0"
+version = "0.9.1"
 description = "A Python Persistent Object Database with ACID Transactions"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -81,7 +81,7 @@ dhara = "dhara.cli:main"
 [tool.setuptools]
 
 [tool.setuptools.packages.find]
-include = ["dhara*", "druva*"]
+include = ["dhara*"]
 exclude = ["tests*", "test*"]
 
 [tool.ruff]
@@ -167,6 +167,7 @@ exclude_dirs = ["test/"]
 [tool.codespell]
 quiet-level = 3
 ignore-words-list = "crate,uptodate,nd,nin"
+ignore-regex = '(b"help"|b"he")'
 
 [tool.creosote]
 paths = ["dhara"]

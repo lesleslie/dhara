@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import importlib
 from datetime import datetime
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -100,37 +99,6 @@ class TestImportFactory:
     def test_raises_on_missing_attribute(self) -> None:
         with pytest.raises(AttributeError):
             _import_factory("os.path.totally_fake_function_xyz")
-
-    def test_druva_to_dhara_fallback(self) -> None:
-        """If a 'druva.' path fails, it retries with 'dhara.'."""
-        with patch("importlib.import_module", side_effect=ImportError("no druva")) as mock_import:
-            with pytest.raises(ImportError):
-                _import_factory("druva.some.module.MyClass")
-
-        calls = mock_import.call_args_list
-        assert len(calls) == 2
-        assert calls[0][0][0] == "druva.some.module"
-        assert calls[1][0][0] == "dhara.some.module"
-
-    def test_druva_fallback_succeeds(self) -> None:
-        """If druva path fails but dhara path succeeds, return the result."""
-        from dhara.collections.dict import PersistentDict
-
-        call_count = 0
-        original_import = importlib.import_module
-
-        def _mock_import(path: str) -> Any:
-            nonlocal call_count
-            call_count += 1
-            if path == "druva.collections.dict":
-                raise ImportError("no druva")
-            return original_import(path)
-
-        with patch("importlib.import_module", side_effect=_mock_import):
-            module, cls = _import_factory("druva.collections.dict.PersistentDict")
-
-        assert call_count == 2
-        assert cls is PersistentDict
 
 
 # ---------------------------------------------------------------------------

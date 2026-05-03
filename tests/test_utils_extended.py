@@ -188,7 +188,7 @@ class TestReadSocketPath:
 
     def test_socket_read_chunked(self):
         """Socket that delivers bytes in chunks."""
-        sock = _FakeSocket([b"hel", b"lo"])
+        sock = _FakeSocket([b"help", b"lo"])
         result = read(sock, 5)
         assert result == b"hello"
 

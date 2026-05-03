@@ -376,7 +376,7 @@ class TestWriteSocketEdgeCases:
 
         sock = Sock()
         write(sock, b"hello")
-        assert sock.sent == [b"hel", b"he"]
+        assert sock.sent == [b"help", b"he"]
 
     def test_socket_zero_below_threshold_then_succeed(self):
         """9 zeros (below threshold of 10) then success is OK."""

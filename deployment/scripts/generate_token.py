@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Token Generation Utility for Durus MCP Servers
+Token Generation Utility for Dhara MCP Servers
 
-This script generates and manages authentication tokens for Durus MCP servers.
+This script generates and manages authentication tokens for Dhara MCP servers.
 Tokens are stored as SHA-256 hashes and include role-based permissions.
 
 Usage:
@@ -29,15 +29,16 @@ import os
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Optional
 
-# Add parent directory to path to import durus
+# Add parent directory to path to import dhara
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from druva.mcp.auth import generate_token
+from dhara.mcp.auth import generate_token
 
 # Default paths
-DEFAULT_TOKENS_FILE = "/etc/durus/tokens.json"
-DEFAULT_OUTPUT_DIR = Path("/etc/durus")
+DEFAULT_TOKENS_FILE = "/etc/dhara/tokens.json"
+DEFAULT_OUTPUT_DIR = Path("/etc/dhara")
 
 
 def print_token_safe(token: str, token_id: str):

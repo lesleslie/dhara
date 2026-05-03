@@ -9,7 +9,7 @@ Dhara's supported MCP implementation is the FastMCP server in
 - `python -m dhara.mcp`
 - imports from `dhara.mcp` or `dhara.mcp.server_core`
 
-The deprecated `dhara.mcp.server` module remains only as a compatibility wrapper.
+The supported MCP surface is `dhara.mcp.server_core` and `dhara.mcp`.
 
 ## Supported Contract
 
@@ -33,7 +33,7 @@ The canonical FastMCP runtime supports bearer-token auth when
   `TokenAuth`, `HMACAuth`, `EnvironmentAuth`, `AuthMiddleware`
 
 Use `get_contract_info` to inspect the active runtime contract, including auth
-mode, required scopes, token-file path, and deprecated surfaces.
+mode, required scopes, and token-file path.
 
 ### Tool Groups
 
