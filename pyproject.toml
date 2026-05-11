@@ -21,7 +21,7 @@ dev = [
 
 [project]
 name = "dhara"
-version = "0.9.2"
+version = "0.9.3"
 description = "A Python Persistent Object Database with ACID Transactions"
 readme = "README.md"
 requires-python = ">=3.13"
