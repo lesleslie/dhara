@@ -26,13 +26,7 @@ from dhara.utils import (
     ShortRead,
     int8_to_str,
     str_to_int8,
-    write,
-    write_int4,
-    write_int4_str,
-    write_int8,
-    write_int8_str,
 )
-
 
 # ── Helpers ──
 
@@ -219,8 +213,6 @@ class TestInit:
 
     def test_init_with_readonly_false_on_missing_file(self):
         """FileStorage2 can create a new file when readonly=False."""
-        from dhara.file import File
-
         path = "/tmp/test_fs2_nonexistent_create.durus"
         try:
             s = FileStorage2(path)
@@ -938,7 +930,7 @@ class TestGetPacker:
         packer = storage.get_packer()
         assert storage.pack_extra is not None
         # Clean up: consume the packer to reset pack_extra
-        # (This may fail due to dhara.connection bug in source, so just reset)
+        # (This may fail due to a historical ROOT_OID compatibility issue, so just reset)
         try:
             for _ in packer:
                 pass
@@ -962,12 +954,11 @@ class TestPack:
         """pack() delegates to get_packer()."""
         _store_and_commit(storage, int8_to_str(0), b"pack_data")
         # pack() calls get_packer() which sets pack_extra.
-        # The actual packing may fail due to a known bug in the source
-        # (dhara.connection.ROOT_OID should be dhara.core.connection.ROOT_OID).
+        # The actual packing may fail due to a known historical bug in the source.
         try:
             storage.pack()
         except AttributeError:
-            # Known source code bug: dhara.connection.ROOT_OID doesn't exist.
+            # Known source code bug: ROOT_OID compatibility may be unavailable.
             # Verify the packer was at least started (pack_extra was set).
             storage.pack_extra = None
 

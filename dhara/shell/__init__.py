@@ -39,7 +39,7 @@ class DharaShell(AdminShell):
         >>> from dhara.shell import DharaShell
         >>> from dhara.core.config import DharaSettings
         >>> from dhara.core.connection import Connection
-        >>> from dhara.storage.file_storage import FileStorage
+        >>> from dhara.storage.file import FileStorage
         >>> config = DharaSettings.load()
         >>> storage = FileStorage(str(config.storage.path))
         >>> connection = Connection(storage)

@@ -7,7 +7,7 @@ import heapq
 from datetime import datetime
 from zlib import compress, decompress
 
-import dhara.core.connection
+from dhara.core.connection import ROOT_OID
 from dhara.file import File
 from dhara.logger import is_logging, log
 from dhara.serialize import split_oids, unpack_record
@@ -230,7 +230,7 @@ class FileStorage2(Storage):
             # packed file will be mostly the same as the old file in order
             # to speed up the rsync delta process.
             default_rank = 2**64
-            pack_todo = [(0, dhara.connection.ROOT_OID)]
+            pack_todo = [(0, ROOT_OID)]
             while pack_todo or self.pack_extra:
                 if self.pack_extra:
                     oid = self.pack_extra.pop()

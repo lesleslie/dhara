@@ -14,10 +14,9 @@ Covers the helper functions used by CLI entry points:
 import os
 import sys
 from io import BytesIO
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # SecurityWarning
@@ -117,7 +116,7 @@ class TestGetStorageClass:
         assert result is FileStorage
 
     def test_dfs20_header_returns_file_storage2(self):
-        """A file starting with b'DFS20' returns FileStorage2."""
+        """A file starting with b'DFS20' returns legacy FileStorage2 compatibility."""
         from dhara.__main__ import get_storage_class
 
         mock_file = BytesIO(b"DFS20_some_data_here_extra")
@@ -194,10 +193,13 @@ class TestGetStorageClass:
                     get_storage_class("short.durus")
 
     def test_reads_exactly_20_bytes(self):
-        """get_storage_class reads exactly 20 bytes from the file header."""
+        """get_storage_class reads exactly 20 bytes from the file header.
+
+        The DFS20 legacy compatibility header is still recognized here.
+        """
         from dhara.__main__ import get_storage_class
 
-        # Exactly 20 bytes of DFS20 content
+        # Exactly 20 bytes of legacy DFS20 content.
         content = b"DFS20" + b"\x00" * 15
         mock_file = BytesIO(content)
         with patch("dhara.__main__.os.path.exists", return_value=True):
@@ -313,7 +315,7 @@ class TestGetStorage:
 
         mock_storage_cls = MagicMock(return_value=MagicMock())
         with patch("dhara.__main__.import_class", return_value=mock_storage_cls):
-            result = get_storage(
+            _ = get_storage(
                 "test.durus",
                 storage_class="some.Module",
                 readonly=True,

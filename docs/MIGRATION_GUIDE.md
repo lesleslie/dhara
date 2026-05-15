@@ -30,13 +30,16 @@ from dhara.mcp import DharaMCPServer
 
 ### Historical Compatibility Imports
 
-The following paths are retained only in archived history and should not be used in new code:
+The following paths are removed or retained only in archived history and should not be used in new code:
 
-- `dhara.file_storage`
-- `dhara.connection`
-- `dhara.persistent`
-- `dhara.persistent_dict`
-- `dhara.persistent_list`
+- `dhara.file_storage` has been removed
+- `dhara.connection` has been removed
+- `dhara.persistent` has been removed
+- `dhara.persistent_dict` has been removed
+- `dhara.persistent_list` has been removed
+
+For legacy Durus file-format compatibility, `dhara.file_storage2` remains available,
+but new code should prefer `dhara.storage.file.FileStorage`.
 
 ## Configuration Migration
 

@@ -10,9 +10,9 @@ from types import ModuleType
 import pytest
 
 from dhara._compat import (
+    _DURUS_MODULE_ALIASES,
     _DurusAliasFinder,
     _DurusAliasLoader,
-    _DURUS_MODULE_ALIASES,
 )
 
 
@@ -34,7 +34,7 @@ class TestDurusAliasLoader:
             "durus.persistent_test_unique",
             loader,
         )
-        mod = loader.create_module(spec)
+        loader.create_module(spec)
         assert "durus.persistent_test_unique" in sys.modules
         sys.modules.pop("durus.persistent_test_unique", None)
 
@@ -76,3 +76,21 @@ class TestModuleAliases:
     def test_can_import_via_alias(self):
         mod = importlib.import_module("durus.persistent")
         assert hasattr(mod, "Persistent")
+
+
+class TestLegacyShims:
+    @pytest.mark.parametrize(
+        "module_name",
+        [
+            "dhara.file_storage",
+            "dhara.connection",
+            "dhara.persistent",
+            "dhara.persistent_dict",
+            "dhara.persistent_list",
+            "dhara.persistent_set",
+        ],
+    )
+    def test_legacy_shims_removed(self, module_name: str):
+        sys.modules.pop(module_name, None)
+        with pytest.raises(ModuleNotFoundError):
+            importlib.import_module(module_name)

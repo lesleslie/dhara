@@ -30,7 +30,6 @@ Use these paths for all new code:
 
 The following are deprecated and should not be used in new code:
 
-- `dhara.file_storage`
 - `dhara.connection`
 - `dhara.persistent`
 - `dhara.persistent_dict`
@@ -38,11 +37,23 @@ The following are deprecated and should not be used in new code:
 - `dhara.mcp.server`
 - `druva`
 
+Removed compatibility surfaces:
+
+- `dhara.file_storage`
+- `dhara.connection`
+- `dhara.persistent`
+- `dhara.persistent_dict`
+- `dhara.persistent_list`
+
 The following remain compatibility aliases inside the dataclass config helper
 layer and are deprecated as primary names:
 
 - `dhara.config.DruvaConfig`
 - `dhara.core.config.DruvaSettings`
+
+The legacy Durus file-format helper `dhara.file_storage2` is still supported
+for historical format compatibility, but it is not the preferred file-storage
+API for new code.
 
 ## Timeline
 

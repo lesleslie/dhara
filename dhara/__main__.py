@@ -332,7 +332,11 @@ def client_main():
 
 
 def get_storage_class(file):
-    """Return the corresponding storage class based on an existing file."""
+    """Return the storage class for an existing file.
+
+    The legacy DFS20 header remains supported via FileStorage2 for older
+    databases, while SHELF-1 maps to the canonical FileStorage backend.
+    """
     if not os.path.exists(file):
         from dhara.storage.file import FileStorage
 
