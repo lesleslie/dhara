@@ -12,7 +12,6 @@ from dhara.utils import (
     as_bytes,
     int8_to_str,
     iteritems,
-    next,
     read,
     read_int8,
     read_int8_str,

@@ -36,7 +36,6 @@ from dhara.utils import (
     as_bytes,
     int4_to_str,
     join_bytes,
-    next,
     read,
     read_int4,
     read_int4_str,
