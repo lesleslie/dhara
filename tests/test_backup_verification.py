@@ -400,6 +400,50 @@ class TestPerformTestRestore:
         # Directory should be cleaned up after exception
         assert not (tmp_path / "test_restores" / "test_restore_err").exists()
 
+    def test_exception_cleanup_when_restore_dir_missing(self, tmp_path):
+        bv = BackupVerification(
+            backup_dir=str(tmp_path),
+            test_restore_dir=str(tmp_path / "test_restores"),
+        )
+        content = b"error backup"
+        path = tmp_path / "backup.durus"
+        path.write_bytes(content)
+        meta = _make_metadata(source_path=str(path), backup_id="missing-dir")
+
+        with patch("dhara.backup.verification.RestoreManager") as MockRM:
+            MockRM.side_effect = RuntimeError("restore exploded")
+
+            result = bv.perform_test_restore(meta)
+
+        assert result.status == "failed"
+        assert "restore exploded" in result.message
+        assert result.details["error"] == "restore exploded"
+        assert not (tmp_path / "test_restores" / "test_restore_missing-dir").exists()
+
+    def test_exception_cleanup_when_mkdir_fails(self, tmp_path):
+        bv = BackupVerification(
+            backup_dir=str(tmp_path),
+            test_restore_dir=str(tmp_path / "test_restores"),
+        )
+        content = b"error backup"
+        path = tmp_path / "backup.durus"
+        path.write_bytes(content)
+        meta = _make_metadata(source_path=str(path), backup_id="mkdir-fails")
+
+        def fail_mkdir(*args, **kwargs):
+            raise RuntimeError("mkdir exploded")
+
+        with patch("dhara.backup.verification.Path.mkdir", side_effect=fail_mkdir):
+            with patch("dhara.backup.verification.RestoreManager") as MockRM:
+                MockRM.side_effect = RuntimeError("restore exploded")
+
+                result = bv.perform_test_restore(meta)
+
+        assert result.status == "failed"
+        assert "mkdir exploded" in result.message
+        assert result.details["error"] == "mkdir exploded"
+        assert not (tmp_path / "test_restores" / "test_restore_mkdir-fails").exists()
+
 
 # ===========================================================================
 # check_retention_policy
@@ -851,6 +895,28 @@ class TestGenerateVerificationReport:
         assert report["overall_stats"]["failed"] == 0
         assert report["overall_stats"]["warning"] == 0
         assert report["total_backups"] == 2
+
+    def test_multi_backup_report_with_warning_only(self):
+        bv = BackupVerification(backup_dir="/tmp")
+
+        all_results = {
+            "b1": {
+                "integrity": CheckResult("integrity", "warning"),
+                "compression": CheckResult("compression", "passed"),
+            },
+            "b2": {
+                "integrity": CheckResult("integrity", "warning"),
+                "compression": CheckResult("compression", "warning"),
+            },
+        }
+        with patch.object(bv, "run_all_checks", return_value=all_results):
+            report = bv.generate_verification_report(None)
+
+        assert report["overall_stats"]["passed"] == 0
+        assert report["overall_stats"]["failed"] == 0
+        assert report["overall_stats"]["warning"] == 2
+        assert report["backup_reports"]["b1"]["overall_status"] == "warning"
+        assert report["backup_reports"]["b2"]["overall_status"] == "warning"
 
 
 # ===========================================================================

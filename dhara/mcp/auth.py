@@ -61,6 +61,35 @@ class DharaPermission(Enum):
     RESTORE = "restore"
 
 
+def _permission_all_permissions(cls) -> set[Permission]:
+    return set(cls)
+
+
+def _permission_read_permissions(cls) -> set[Permission]:
+    return {Permission.READ}
+
+
+def _permission_write_permissions(cls) -> set[Permission]:
+    return {Permission.READ, Permission.WRITE}
+
+
+# Backward-compatible helpers expected by legacy tests and middleware.
+if not hasattr(Permission, "all_permissions"):
+    Permission.all_permissions = classmethod(_permission_all_permissions)  # type: ignore[attr-defined]
+if not hasattr(Permission, "read_permissions"):
+    Permission.read_permissions = classmethod(_permission_read_permissions)  # type: ignore[attr-defined]
+if not hasattr(Permission, "write_permissions"):
+    Permission.write_permissions = classmethod(_permission_write_permissions)  # type: ignore[attr-defined]
+
+# Legacy permission names that map onto the current permission set.
+if not hasattr(Permission, "LIST"):
+    Permission.LIST = Permission.READ  # type: ignore[attr-defined]
+if not hasattr(Permission, "CHECKPOINT"):
+    Permission.CHECKPOINT = Permission.ADMIN  # type: ignore[attr-defined]
+if not hasattr(Permission, "RESTORE"):
+    Permission.RESTORE = Permission.ADMIN  # type: ignore[attr-defined]
+
+
 def require_dhara_auth(
     permission: Permission | DharaPermission | None = None,
 ) -> Callable:

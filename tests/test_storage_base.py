@@ -47,6 +47,11 @@ class TestStorageAbstract:
         ms = MemoryStorage()
         ms.close()  # should not raise
 
+    def test_default_pack_methods_return_none(self):
+        ms = MemoryStorage()
+        assert ms.get_packer() is None
+        assert ms.pack() is None
+
 
 # ===========================================================================
 # MemoryStorage
@@ -212,6 +217,44 @@ class TestGenOidRecord:
         ms = self._make_storage({ROOT_OID: record_root, ref_oid: record_child})
         oids = [oid for oid, _ in ms.gen_oid_record()]
         assert len(oids) == len(set(oids))
+
+    def test_duplicate_ref_is_skipped_by_seen(self):
+        ref_oid = _oid(1)
+        record_root = _pack(ROOT_OID, b"\nRoot\n{}", ref_oid + ref_oid)
+        record_child = _pack(ref_oid, b"\nChild\n{}", b"")
+        ms = self._make_storage({ROOT_OID: record_root, ref_oid: record_child})
+        assert list(ms.gen_oid_record()) == [
+            (ROOT_OID, record_root),
+            (ref_oid, record_child),
+        ]
+
+    def test_seen_ref_is_not_requeued(self):
+        ref_a = _oid(1)
+        ref_b = _oid(2)
+        shared = _oid(3)
+        root = _pack(ROOT_OID, b"\nRoot\n{}", ref_a + ref_b)
+        a = _pack(ref_a, b"\nA\n{}", shared)
+        b = _pack(ref_b, b"\nB\n{}", shared)
+        shared_record = _pack(shared, b"\nShared\n{}", b"")
+        ms = self._make_storage(
+            {
+                ROOT_OID: root,
+                ref_a: a,
+                ref_b: b,
+                shared: shared_record,
+            }
+        )
+        oids = [oid for oid, _ in ms.gen_oid_record()]
+        assert oids == [ROOT_OID, ref_a, ref_b, shared]
+
+    def test_seen_oid_ref_is_not_requeued(self):
+        ref_oid = _oid(1)
+        root = _pack(ROOT_OID, b"\nRoot\n{}", ref_oid)
+        child = _pack(ref_oid, b"\nChild\n{}", ROOT_OID)
+        ms = self._make_storage({ROOT_OID: root, ref_oid: child})
+
+        oids = [oid for oid, _ in ms.gen_oid_record()]
+        assert oids == [ROOT_OID, ref_oid]
 
 
 # ===========================================================================

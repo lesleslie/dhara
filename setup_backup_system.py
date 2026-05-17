@@ -15,7 +15,6 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Optional
 
 
 def run_command(cmd, description=None, check=True):
@@ -89,8 +88,8 @@ def create_test_database(path: str):
 
     from datetime import datetime
 
-    from dhara.storage.file import FileStorage
     from dhara.collections.dict import PersistentDict
+    from dhara.storage.file import FileStorage
 
     # Create storage
     storage = FileStorage(path)

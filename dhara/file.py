@@ -3,17 +3,11 @@ $URL$
 $Id$
 """
 
+import fcntl
 import os
 import os.path
 from os.path import exists
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
-
-if os.name == "nt":
-    import pywintypes  # http://sf.net/projects/pywin32/
-    import win32con
-    import win32file
-else:
-    import fcntl
 
 
 class File:
@@ -92,22 +86,7 @@ class File:
         """
         assert not self.is_readonly()
         if not self.has_lock:
-            if os.name == "nt":
-                try:
-                    win32file.LockFileEx(
-                        win32file._get_osfhandle(self.file.fileno()),
-                        (
-                            win32con.LOCKFILE_EXCLUSIVE_LOCK
-                            | win32con.LOCKFILE_FAIL_IMMEDIATELY
-                        ),
-                        0,
-                        -65536,
-                        pywintypes.OVERLAPPED(),
-                    )
-                except pywintypes.error:
-                    raise OSError("Unable to obtain lock")
-            else:
-                fcntl.flock(self.file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            fcntl.flock(self.file, fcntl.LOCK_EX | fcntl.LOCK_NB)
             self.has_lock = True
 
     def release_lock(self):
@@ -115,15 +94,7 @@ class File:
         Make sure that we do not retain an exclusive lock on self.file.
         """
         if self.has_lock:
-            if os.name == "nt":
-                win32file.UnlockFileEx(
-                    win32file._get_osfhandle(self.file.fileno()),
-                    0,
-                    -65536,
-                    pywintypes.OVERLAPPED(),
-                )
-            else:
-                fcntl.flock(self.file, fcntl.LOCK_UN)
+            fcntl.flock(self.file, fcntl.LOCK_UN)
             self.has_lock = False
 
     def write(self, s):

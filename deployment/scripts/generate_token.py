@@ -29,7 +29,6 @@ import os
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
 # Add parent directory to path to import dhara
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
@@ -68,10 +67,10 @@ def hash_token(token: str) -> str:
 def generate_new_token(
     token_id: str,
     role: str,
-    expires_in: Optional[int] = None,
+    expires_in: int | None = None,
     rate_limit: int = 1000,
     tokens_file: str = DEFAULT_TOKENS_FILE,
-    metadata: Optional[dict] = None,
+    metadata: dict | None = None,
 ) -> str:
     """
     Generate a new authentication token

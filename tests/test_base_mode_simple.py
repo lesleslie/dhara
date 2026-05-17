@@ -78,6 +78,7 @@ class SimpleMode:
         self.operations_completed = 0
         self.operations_failed = 0
         self.active_transactions = 0
+        self._tx_counter = 0
 
         # Mock storage and logging
         self.storage = Mock()
@@ -150,7 +151,8 @@ class SimpleMode:
         if self.status != ModeStatus.ACTIVE:
             raise MockOperationalModeError("Cannot begin transaction: mode not active")
 
-        transaction_id = f"tx_{int(datetime.now().timestamp() * 1000)}"
+        self._tx_counter += 1
+        transaction_id = f"tx_{self._tx_counter}"
         self.transaction_count += 1
         self.active_transactions += 1
         self.last_operation = transaction_id
@@ -172,6 +174,7 @@ class SimpleMode:
 
         self.active_transactions -= 1
         self.operations_completed += 1
+        self._active_transactions.remove(transaction_id)
 
         # Update last_operation if this was the most recent transaction
         if transaction_id == self.last_operation:
@@ -179,9 +182,8 @@ class SimpleMode:
 
             # Find the new last active transaction
             if hasattr(self, '_active_transactions'):
-                remaining = [tx for tx in self._active_transactions if tx != transaction_id]
-                if remaining:
-                    self.last_operation = remaining[-1]
+                if self._active_transactions:
+                    self.last_operation = self._active_transactions[-1]
 
         self.logger.debug(f"Transaction {transaction_id} committed")
         return True

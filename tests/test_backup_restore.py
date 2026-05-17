@@ -859,6 +859,22 @@ class TestVerifyRestore:
 
         assert result is False
 
+    def test_outer_exception_returns_false(self, tmp_path):
+        """Unexpected target path failures should hit the outer exception handler."""
+        target = tmp_path / "restore.durus"
+        target.write_text("data")
+        rm = RestoreManager(target_path=str(target), storage_type="file")
+        metadata = _make_backup_metadata()
+
+        class BrokenTarget:
+            def exists(self):
+                raise RuntimeError("boom")
+
+        rm.target_path = BrokenTarget()
+
+        result = rm.verify_restore(metadata)
+        assert result is False
+
     def test_file_storage_get_root_fails_returns_false(self, tmp_path):
         """When Connection.get_root raises, verify returns False."""
         target = tmp_path / "restore.durus"

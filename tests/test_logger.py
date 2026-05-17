@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import io
 import sys
 from logging import INFO
@@ -60,6 +61,17 @@ class TestDirectOutput:
                 # Should log warning, not redirect
         sys.stdout = original_stdout
 
+    def test_direct_output_logs_when_stdout_customized(self):
+        buf = io.StringIO()
+        stderr_buf = io.StringIO()
+        custom_stdout = io.StringIO()
+        with patch("sys.__stderr__", stderr_buf):
+            with patch("sys.__stdout__", io.StringIO()):
+                with patch("sys.stdout", custom_stdout):
+                    with patch("dhara.logger.log") as mock_log:
+                        direct_output(buf)
+        mock_log.assert_any_call(100, "sys.stdout already customized.")
+
     def test_direct_output_resets_stderr(self):
         buf = io.StringIO()
         original_stderr = sys.stderr
@@ -79,6 +91,17 @@ class TestDirectOutput:
                 direct_output(buf)
         sys.stderr = original_stderr
 
+    def test_direct_output_logs_when_stderr_customized(self):
+        buf = io.StringIO()
+        stderr_buf = io.StringIO()
+        custom_stderr = io.StringIO()
+        with patch("sys.__stderr__", stderr_buf):
+            with patch("sys.__stdout__", sys.stdout):
+                with patch("sys.stderr", custom_stderr):
+                    with patch("dhara.logger.log") as mock_log:
+                        direct_output(buf)
+        mock_log.assert_any_call(100, "sys.stderr already customized.")
+
     def test_direct_output_same_as___stderr__(self):
         buf = io.StringIO()
         # When file IS sys.__stderr__, the function returns early
@@ -93,3 +116,16 @@ class TestDirectOutput:
 class TestLogFunction:
     def test_log_callable(self):
         assert callable(log)
+
+
+class TestModuleInit:
+    def test_module_initializes_default_output_when_handlers_empty(self):
+        import dhara.logger as logger_module
+
+        original_handlers = list(logger_module.logger.handlers)
+        try:
+            logger_module.logger.handlers[:] = []
+            importlib.reload(logger_module)
+            assert len(logger_module.logger.handlers) >= 1
+        finally:
+            logger_module.logger.handlers[:] = original_handlers

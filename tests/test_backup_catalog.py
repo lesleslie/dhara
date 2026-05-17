@@ -645,6 +645,27 @@ class TestBackupCatalogCleanup:
         catalog = BackupCatalog(str(tmp_path))
         assert catalog.cleanup_expired_backups() == 0
 
+    @patch.object(BackupCatalog, "_load_catalog")
+    @patch.object(BackupCatalog, "_save_catalog")
+    def test_cleanup_skips_catalog_removal_when_remove_fails(self, mock_save, mock_load, tmp_path):
+        now = datetime.now()
+        expired_ts = now - timedelta(days=60)
+        backup_file = tmp_path / "old.bak"
+        backup_file.write_text("data")
+
+        mock_load.return_value = {
+            "old-1": _metadata_dict(
+                "old-1", timestamp=expired_ts, retention_days=7,
+                source_path=str(backup_file),
+            ),
+        }
+        catalog = BackupCatalog(str(tmp_path))
+        with patch.object(catalog, "remove_backup", return_value=False):
+            count = catalog.cleanup_expired_backups()
+
+        assert count == 0
+        assert "old-1" in catalog.catalog
+
 
 # ===========================================================================
 # Export / Import

@@ -278,6 +278,11 @@ class TestRecordSigning:
         with pytest.raises(ValueError):
             signer.verify_record(os.urandom(10))
 
+    def test_verify_record_signed_payload_too_short(self, signer):
+        signed = signer.sign(b"abc")
+        with pytest.raises(ValueError, match="Record too short to contain OID"):
+            signer.verify_record(signed)
+
 
 # ============================================================================
 # SignedStorage

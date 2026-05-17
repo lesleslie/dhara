@@ -71,6 +71,27 @@ class TestSqliteStorageInit:
         c.execute("SELECT 1")
         assert c.fetchone()[0] == 1
 
+    def test_get_last_oid_with_empty_result(self, tmp_path, monkeypatch):
+        path = str(tmp_path / "empty.durus")
+        s = SqliteStorage(path)
+
+        class FakeCursor:
+            def execute(self, sql):
+                self.sql = sql
+
+            def fetchone(self):
+                return None
+
+        class FakeConn:
+            def cursor(self):
+                return FakeCursor()
+
+            def close(self):
+                pass
+
+        s._conn = FakeConn()
+        assert s._get_last_oid() == 0
+
 
 # ===========================================================================
 # new_oid
@@ -183,6 +204,28 @@ class TestSqliteStorageTransactions:
         loaded = store.load(_oid(1))
         assert loaded == record
 
+    def test_end_logs_when_enabled(self, store, monkeypatch):
+        store.begin()
+        store.store(_oid(1), _pack(_oid(1), b"loggable"))
+        logged: list[str] = []
+        monkeypatch.setattr("dhara.storage.sqlite.is_logging", lambda level: True)
+        monkeypatch.setattr("dhara.storage.sqlite.log", lambda level, msg: logged.append(msg))
+
+        store.end()
+
+        assert logged and "Transaction at [" in logged[0]
+
+    def test_end_does_not_log_when_disabled(self, store, monkeypatch):
+        store.begin()
+        store.store(_oid(2), _pack(_oid(2), b"quiet"))
+        logged: list[str] = []
+        monkeypatch.setattr("dhara.storage.sqlite.is_logging", lambda level: False)
+        monkeypatch.setattr("dhara.storage.sqlite.log", lambda level, msg: logged.append(msg))
+
+        store.end()
+
+        assert logged == []
+
 
 # ===========================================================================
 # sync
@@ -239,6 +282,24 @@ class TestSqliteStorageGenOidRecord:
         assert len(pairs) == 1
         assert pairs[0][0] == _oid(5)
 
+    def test_gen_records_no_start_oid_with_iteritems_patch(self, store, monkeypatch):
+        store.begin()
+        store.store(_oid(0), _pack(_oid(0), b"a"))
+        store.end()
+        monkeypatch.setattr("dhara.storage.sqlite.iteritems", lambda value: value)
+        monkeypatch.setattr("dhara.storage.sqlite.SqliteStorage._gen_records", lambda self: iter([(_oid(0), b"record")]))
+
+        pairs = list(store.gen_oid_record())
+        assert pairs[0][0] == _oid(0)
+
+    def test_gen_records_with_duplicate_refs_skips_seen(self, store):
+        store.begin()
+        store.store(ROOT_OID, _pack(ROOT_OID, b"root", ROOT_OID))
+        store.end()
+
+        pairs = list(store.gen_oid_record(start_oid=ROOT_OID))
+        assert pairs[0][0] == ROOT_OID
+
 
 # ===========================================================================
 # _get_refs
@@ -288,6 +349,46 @@ class TestSqliteStorageDelete:
 
     def test_delete_nonexistent_no_error(self, store):
         store._delete([_oid(99)])  # should not raise
+
+
+# ===========================================================================
+# Internal helpers / packing
+# ===========================================================================
+
+
+class TestSqliteStorageInternalHelpers:
+    def test_store_records_updates_pack_extra(self, store):
+        store.pack_extra = []
+        record = _pack(_oid(3), b"payload")
+        store._store_records([record])
+        assert store.pack_extra == [_oid(3)]
+
+    def test_gen_records_internal_with_fake_cursor(self, tmp_path):
+        path = str(tmp_path / "fake.durus")
+        s = SqliteStorage(path)
+
+        class FakeCursor:
+            def execute(self, sql):
+                self.sql = sql
+
+            def fetchall(self):
+                return [(1, b"data", b"refs")]
+
+        class FakeConn:
+            def cursor(self):
+                return FakeCursor()
+
+            def close(self):
+                pass
+
+        s._conn = FakeConn()
+        monkeypatch = pytest.MonkeyPatch()
+        monkeypatch.setattr("dhara.storage.sqlite.pack_record", lambda oid, data, refs: (oid, data, refs))
+        try:
+            items = list(s._gen_records())
+        finally:
+            monkeypatch.undo()
+        assert items == [(_oid(1), (1, b"data", b"refs"))]
 
 
 # ===========================================================================
@@ -405,3 +506,33 @@ class TestSqliteStoragePack:
         store.store(_oid(0), _pack(_oid(0), b"a"))
         result = store.get_packer()
         assert list(result) == []
+
+    def test_get_packer_yields_for_duplicate_ref(self, store, monkeypatch):
+        store.begin()
+        store.store(ROOT_OID, _pack(ROOT_OID, b"root", ROOT_OID))
+        store.end()
+        store._PACK_INCREMENT = 1
+        monkeypatch.setattr(store, "_get_refs", lambda oid: [ROOT_OID] if oid == ROOT_OID else [])
+        monkeypatch.setattr(store, "_list_all_oids", lambda: [ROOT_OID])
+        deleted: list[set[bytes]] = []
+        monkeypatch.setattr(store, "_delete", lambda dead: deleted.append(set(dead)))
+
+        outputs = list(store.get_packer())
+        assert outputs[0].startswith("started ")
+        assert None in outputs
+        assert outputs[-1].startswith("finished ")
+        assert deleted == [set()]
+
+    def test_get_packer_with_pack_extra(self, store, monkeypatch):
+        store._PACK_INCREMENT = 1
+        monkeypatch.setattr(store, "_get_refs", lambda oid: [])
+        monkeypatch.setattr(store, "_list_all_oids", lambda: [_oid(9)])
+        deleted: list[set[bytes]] = []
+        monkeypatch.setattr(store, "_delete", lambda dead: deleted.append(set(dead)))
+
+        packer = store.get_packer()
+        store.pack_extra.append(_oid(9))
+        outputs = list(packer)
+        assert outputs[0].startswith("started ")
+        assert outputs[-1].startswith("finished ")
+        assert deleted == [set()]

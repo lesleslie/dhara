@@ -88,8 +88,9 @@ def main():
     # monkey patch pickler class, must be done before importing durus stuff
     patch_pickler()
 
-    from dhara.__main__ import get_storage_class
     from dhara.connection import Connection
+
+    from dhara.__main__ import get_storage_class
 
     storage_class = get_storage_class(outfile)
     storage = storage_class(outfile)

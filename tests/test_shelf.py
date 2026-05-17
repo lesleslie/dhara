@@ -1113,3 +1113,110 @@ class TestShelfEdgeCases:
         value = b"max-name"
         open_shelf.store([(name, value)])
         assert open_shelf.get_value(name) == value
+
+
+# ── 14. File wrapper ──
+
+
+class TestFileWrapper:
+    """Direct tests for dhara.file.File."""
+
+    def test_open_missing_readonly_raises(self):
+        with pytest.raises(OSError, match='No ".*" found'):
+            File("/no/such/file.durus", readonly=True)
+
+    def test_open_new_file_and_accessors(self, tmp_path):
+        path = tmp_path / "file.durus"
+        f = File(str(path))
+        assert f.get_name() == str(path)
+        assert f.is_temporary() is False
+        assert f.is_readonly() is False
+        assert len(f) == 0
+        f.close()
+
+    def test_temporary_file_round_trip(self):
+        f = File()
+        assert f.is_temporary() is True
+        assert f.read() == b""
+        f.write(b"abc")
+        f.seek(0)
+        assert f.read(2) == b"ab"
+        f.seek_end()
+        assert f.tell() == 3
+        f.close()
+
+    def test_seek_and_read_all(self, tmp_path):
+        path = tmp_path / "seek.durus"
+        f = File(str(path))
+        f.write(b"hello world")
+        f.seek(0)
+        assert f.read() == b"hello world"
+        f.seek(6)
+        assert f.read(5) == b"world"
+        f.close()
+
+    def test_rename_and_length(self, tmp_path):
+        path = tmp_path / "source.durus"
+        renamed = tmp_path / "dest.durus"
+        f = File(str(path))
+        f.write(b"payload")
+        assert len(f) == 7
+        f.rename(str(renamed))
+        assert f.get_name() == str(renamed)
+        f.seek(0)
+        assert f.read() == b"payload"
+        f.close()
+        assert renamed.exists()
+
+    def test_rename_over_existing_file_unlinks_target(self, tmp_path):
+        source = tmp_path / "source.durus"
+        target = tmp_path / "target.durus"
+        target.write_bytes(b"old")
+        f = File(str(source))
+        f.write(b"payload")
+        f.rename(str(target))
+        f.seek(0)
+        assert f.read() == b"payload"
+        f.close()
+        assert target.read_bytes() == b"payload"
+
+    def test_rename_same_name_is_noop(self, tmp_path):
+        path = tmp_path / "same.durus"
+        f = File(str(path))
+        f.write(b"payload")
+        f.rename(str(path))
+        assert f.get_name() == str(path)
+        f.close()
+
+    def test_flush_and_fsync_without_os_fsync(self, tmp_path, monkeypatch):
+        path = tmp_path / "nofsync.durus"
+        f = File(str(path))
+        monkeypatch.delattr(os, "fsync", raising=False)
+        f.write(b"payload")
+        f.flush()
+        f.fsync()
+        f.close()
+
+    def test_fsync_calls_os_fsync_when_available(self, tmp_path, monkeypatch):
+        path = tmp_path / "fsync.durus"
+        f = File(str(path))
+        f.write(b"payload")
+        fsync_calls = []
+
+        def fake_fsync(fd):
+            fsync_calls.append(fd)
+
+        monkeypatch.setattr(os, "fsync", fake_fsync, raising=False)
+        f.fsync()
+        f.close()
+        assert len(fsync_calls) >= 1
+
+    def test_lock_and_truncate(self, tmp_path):
+        path = tmp_path / "lock.durus"
+        f = File(str(path))
+        f.obtain_lock()
+        assert f.has_lock is True
+        f.truncate()
+        f.release_lock()
+        assert f.has_lock is False
+        f.close()

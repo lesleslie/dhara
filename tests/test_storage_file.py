@@ -841,6 +841,26 @@ class TestPackRealFile:
 
         storage.close()
 
+    def test_get_packer_skips_prepack_rename_when_file_becomes_temporary(
+        self, temp_storage_path
+    ):
+        """If the file reports temporary during pack iteration, the prepack rename is skipped."""
+        from dhara.serialize import pack_record
+
+        storage = FileStorage(temp_storage_path)
+        oid0 = int8_to_str(0)
+        record = pack_record(oid0, b"packer_test", b"")
+        storage.begin()
+        storage.store(oid0, record)
+        storage.end()
+
+        packer = storage.get_packer()
+        with patch.object(storage.shelf.get_file(), "is_temporary", return_value=True):
+            messages = list(packer)
+
+        assert any(isinstance(m, str) and "started" in m for m in messages)
+        storage.close()
+
 
 # ── 18. Logging during end() ──
 
@@ -865,6 +885,23 @@ class TestEndLogging:
         log_args = mock_log.call_args
         assert log_args[0][0] == 20
         assert "Transaction at" in log_args[0][1]
+
+    @patch("dhara.storage.file.is_logging", return_value=False)
+    @patch("dhara.storage.file.log")
+    def test_end_does_not_log_when_logging_disabled(
+        self, mock_log, mock_is_logging, file_storage
+    ):
+        """end() skips transaction logging when logging is disabled."""
+        from dhara.serialize import pack_record
+
+        oid = int8_to_str(0)
+        record = pack_record(oid, b"logged_data", b"")
+        file_storage.begin()
+        file_storage.store(oid, record)
+        file_storage.end()
+
+        mock_is_logging.assert_called_with(20)
+        mock_log.assert_not_called()
 
 
 # ── 19. new_oid with invalid set ──

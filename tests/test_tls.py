@@ -17,6 +17,8 @@ from dhara.security.tls import (
     _get_tls_env,
     generate_self_signed_cert,
     get_env_tls_config,
+    wrap_client_socket,
+    wrap_server_socket,
 )
 
 
@@ -157,10 +159,35 @@ class TestTLSConfigInit:
         with pytest.raises(FileNotFoundError, match="CA file not found"):
             TLSConfig(certfile=certfile, keyfile=keyfile, cafile="/nonexistent/ca.pem")
 
+    def test_nonexistent_key_file_raises(self, temp_tls_certs):
+        certfile, _ = temp_tls_certs
+        with pytest.raises(FileNotFoundError, match="Key file not found"):
+            TLSConfig(certfile=certfile, keyfile="/nonexistent/key.pem")
+
     def test_nonexistent_capath_raises(self, temp_tls_certs):
         certfile, keyfile = temp_tls_certs
         with pytest.raises(FileNotFoundError, match="CA directory not found"):
             TLSConfig(certfile=certfile, keyfile=keyfile, capath="/nonexistent/ca_dir")
+
+    def test_nonexistent_client_cert_file_raises(self, temp_tls_certs):
+        certfile, keyfile = temp_tls_certs
+        with pytest.raises(FileNotFoundError, match="Client certificate not found"):
+            TLSConfig(
+                certfile=certfile,
+                keyfile=keyfile,
+                client_certfile="/nonexistent/client-cert.pem",
+                client_keyfile=keyfile,
+            )
+
+    def test_nonexistent_client_key_file_raises(self, temp_tls_certs):
+        certfile, keyfile = temp_tls_certs
+        with pytest.raises(FileNotFoundError, match="Client key not found"):
+            TLSConfig(
+                certfile=certfile,
+                keyfile=keyfile,
+                client_certfile=certfile,
+                client_keyfile="/nonexistent/client-key.pem",
+            )
 
     def test_custom_verify_mode(self, temp_tls_certs):
         certfile, keyfile = temp_tls_certs
@@ -225,6 +252,85 @@ class TestCreateServerContext:
         ctx = server_config.create_server_context()
         assert ctx.verify_mode == ssl.CERT_NONE
 
+    def test_server_context_with_cafile_and_capath(self, temp_tls_certs, temp_ca_cert, tmp_path, monkeypatch):
+        certfile, keyfile = temp_tls_certs
+        capath = tmp_path / "ca-dir"
+        capath.mkdir()
+
+        calls: list[tuple[str, dict[str, str | None]]] = []
+
+        class FakeContext:
+            def __init__(self, protocol):
+                self.protocol = protocol
+                self.minimum_version = None
+                self.verify_mode = None
+
+            def load_cert_chain(self, **kwargs):
+                calls.append(("load_cert_chain", kwargs))
+
+            def load_verify_locations(self, **kwargs):
+                calls.append(("load_verify_locations", kwargs))
+
+            def set_ciphers(self, ciphers):
+                calls.append(("set_ciphers", {"ciphers": ciphers}))
+
+        monkeypatch.setattr(ssl, "SSLContext", FakeContext)
+
+        config = TLSConfig(
+            certfile=certfile,
+            keyfile=keyfile,
+            cafile=temp_ca_cert,
+            capath=capath,
+            verify_mode=ssl.CERT_OPTIONAL,
+            tls_version=ssl.TLSVersion.TLSv1_2,
+            cipher_suites="ECDHE+AESGCM",
+        )
+        ctx = config.create_server_context()
+
+        assert isinstance(ctx, FakeContext)
+        assert ctx.verify_mode == ssl.CERT_OPTIONAL
+        assert ("load_cert_chain", {"certfile": str(config.certfile), "keyfile": str(config.keyfile)}) in calls
+        assert ("load_verify_locations", {"cafile": str(config.cafile)}) in calls
+        assert ("load_verify_locations", {"capath": str(config.capath)}) in calls
+        assert ("set_ciphers", {"ciphers": "ECDHE+AESGCM"}) in calls
+
+    def test_server_context_with_capath_only(self, temp_tls_certs, tmp_path, monkeypatch):
+        certfile, keyfile = temp_tls_certs
+        capath = tmp_path / "server-ca"
+        capath.mkdir()
+
+        calls: list[tuple[str, dict[str, str | None]]] = []
+
+        class FakeContext:
+            def __init__(self, protocol):
+                self.protocol = protocol
+                self.minimum_version = None
+                self.verify_mode = None
+
+            def load_cert_chain(self, **kwargs):
+                calls.append(("load_cert_chain", kwargs))
+
+            def load_verify_locations(self, **kwargs):
+                calls.append(("load_verify_locations", kwargs))
+
+            def set_ciphers(self, ciphers):
+                calls.append(("set_ciphers", {"ciphers": ciphers}))
+
+        monkeypatch.setattr(ssl, "SSLContext", FakeContext)
+
+        config = TLSConfig(
+            certfile=certfile,
+            keyfile=keyfile,
+            capath=capath,
+            verify_mode=ssl.CERT_REQUIRED,
+        )
+        ctx = config.create_server_context()
+
+        assert isinstance(ctx, FakeContext)
+        assert ctx.verify_mode == ssl.CERT_REQUIRED
+        assert ("load_verify_locations", {"capath": str(config.capath)}) in calls
+        assert not any(name == "load_verify_locations" and "cafile" in kwargs for name, kwargs in calls)
+
 
 # ============================================================================
 # create_client_context
@@ -267,6 +373,147 @@ class TestCreateClientContext:
         )
         ctx = config.create_client_context()
         assert isinstance(ctx, ssl.SSLContext)
+
+    def test_client_context_with_capath_and_mutual_tls(self, temp_tls_certs, temp_ca_cert, tmp_path, monkeypatch):
+        certfile, keyfile = temp_tls_certs
+        capath = tmp_path / "client-ca"
+        capath.mkdir()
+
+        calls: list[tuple[str, dict[str, str | None] | dict[str, object]]] = []
+
+        class FakeContext:
+            def __init__(self, protocol):
+                self.protocol = protocol
+                self.minimum_version = None
+                self.verify_mode = None
+                self.check_hostname = None
+
+            def load_verify_locations(self, **kwargs):
+                calls.append(("load_verify_locations", kwargs))
+
+            def load_default_certs(self, **kwargs):
+                calls.append(("load_default_certs", kwargs))
+
+            def load_cert_chain(self, **kwargs):
+                calls.append(("load_cert_chain", kwargs))
+
+            def set_ciphers(self, ciphers):
+                calls.append(("set_ciphers", {"ciphers": ciphers}))
+
+        monkeypatch.setattr(ssl, "SSLContext", FakeContext)
+
+        config = TLSConfig(
+            certfile=certfile,
+            keyfile=keyfile,
+            cafile=temp_ca_cert,
+            capath=capath,
+            client_certfile=certfile,
+            client_keyfile=keyfile,
+            tls_version=ssl.TLSVersion.TLSv1_2,
+            cipher_suites="ECDHE+AESGCM",
+        )
+        ctx = config.create_client_context()
+
+        assert isinstance(ctx, FakeContext)
+        assert ctx.verify_mode == ssl.CERT_REQUIRED
+        assert ctx.check_hostname is True
+        assert ("load_verify_locations", {"cafile": str(config.cafile)}) in calls
+        assert ("load_verify_locations", {"capath": str(config.capath)}) in calls
+        assert ("load_cert_chain", {"certfile": str(config.client_certfile), "keyfile": str(config.client_keyfile)}) in calls
+        assert ("set_ciphers", {"ciphers": "ECDHE+AESGCM"}) in calls
+
+    def test_client_context_verify_none_skips_default_certs(self, temp_tls_certs, monkeypatch):
+        certfile, keyfile = temp_tls_certs
+        calls: list[tuple[str, dict[str, object]]] = []
+
+        class FakeContext:
+            def __init__(self, protocol):
+                self.protocol = protocol
+                self.minimum_version = None
+                self.verify_mode = None
+                self.check_hostname = None
+
+            def load_verify_locations(self, **kwargs):
+                calls.append(("load_verify_locations", kwargs))
+
+            def load_default_certs(self, **kwargs):
+                calls.append(("load_default_certs", kwargs))
+
+            def load_cert_chain(self, **kwargs):
+                calls.append(("load_cert_chain", kwargs))
+
+            def set_ciphers(self, ciphers):
+                calls.append(("set_ciphers", {"ciphers": ciphers}))
+
+        monkeypatch.setattr(ssl, "SSLContext", FakeContext)
+
+        config = TLSConfig(
+            certfile=certfile,
+            keyfile=keyfile,
+            verify_mode=ssl.CERT_NONE,
+        )
+        ctx = config.create_client_context()
+
+        assert isinstance(ctx, FakeContext)
+        assert ctx.verify_mode == ssl.CERT_NONE
+        assert ("load_default_certs", {"purpose": ssl.Purpose.SERVER_AUTH}) not in calls
+
+
+# ============================================================================
+# wrap_server_socket / wrap_client_socket
+# ============================================================================
+
+
+class TestSocketWrapping:
+    """Tests for the thin socket wrapper helpers."""
+
+    def test_wrap_server_socket_uses_server_context(self, temp_tls_certs):
+        certfile, keyfile = temp_tls_certs
+        sentinels: list[tuple[str, object]] = []
+
+        class FakeContext:
+            def wrap_socket(self, sock, server_side=False, server_hostname=None):
+                sentinels.append(("wrap_socket", (sock, server_side, server_hostname)))
+                return "wrapped-server"
+
+        config = TLSConfig(certfile=certfile, keyfile=keyfile)
+        config.create_server_context = lambda: FakeContext()
+
+        result = wrap_server_socket("plain-socket", config)
+        assert result == "wrapped-server"
+        assert sentinels == [("wrap_socket", ("plain-socket", True, None))]
+
+    def test_wrap_client_socket_respects_hostname_check(self, temp_tls_certs):
+        certfile, keyfile = temp_tls_certs
+        sentinels: list[tuple[str, object]] = []
+
+        class FakeContext:
+            def wrap_socket(self, sock, server_side=False, server_hostname=None):
+                sentinels.append(("wrap_socket", (sock, server_side, server_hostname)))
+                return "wrapped-client"
+
+        config = TLSConfig(certfile=certfile, keyfile=keyfile, check_hostname=True)
+        config.create_client_context = lambda: FakeContext()
+
+        result = wrap_client_socket("plain-socket", config, server_hostname="example.com")
+        assert result == "wrapped-client"
+        assert sentinels == [("wrap_socket", ("plain-socket", False, "example.com"))]
+
+    def test_wrap_client_socket_omits_hostname_when_disabled(self, temp_tls_certs):
+        certfile, keyfile = temp_tls_certs
+        sentinels: list[tuple[str, object]] = []
+
+        class FakeContext:
+            def wrap_socket(self, sock, server_side=False, server_hostname=None):
+                sentinels.append(("wrap_socket", (sock, server_side, server_hostname)))
+                return "wrapped-client"
+
+        config = TLSConfig(certfile=certfile, keyfile=keyfile, check_hostname=False)
+        config.create_client_context = lambda: FakeContext()
+
+        result = wrap_client_socket("plain-socket", config, server_hostname="example.com")
+        assert result == "wrapped-client"
+        assert sentinels == [("wrap_socket", ("plain-socket", False, None))]
 
 
 # ============================================================================

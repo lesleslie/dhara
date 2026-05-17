@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import sys
+import types
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,6 +17,15 @@ def checker():
 
 
 class TestHealthCheckerStorageCheck:
+    def test_storage_healthy_returns_healthy(self, checker):
+        mock_storage = MagicMock()
+        checker.storage = mock_storage
+
+        result = checker.checks["storage"]()
+
+        assert result.status == HealthStatus.HEALTHY
+        assert "Storage accessible" in result.message
+
     def test_storage_none_returns_unknown(self, checker):
         checker.storage = None
         result = checker.checks["storage"]()
@@ -25,22 +36,8 @@ class TestHealthCheckerStorageCheck:
         mock_storage = MagicMock()
         mock_storage.begin.side_effect = RuntimeError("db locked")
         checker.storage = mock_storage
-        # Re-register with new storage
-        def check_storage():
-            try:
-                checker.storage.begin()
-                checker.storage.end()
-                return type(result).__name__
-            except Exception as e:
-                return __import__(
-                    "dhara.monitoring.health", fromlist=["HealthCheck"]
-                ).HealthCheck(
-                    name="storage",
-                    status=HealthStatus.UNHEALTHY,
-                    message=f"Storage error: {e}",
-                )
 
-        result = check_storage()
+        result = checker.checks["storage"]()
         assert result.status == HealthStatus.UNHEALTHY
         assert "db locked" in result.message
 
@@ -97,6 +94,30 @@ class TestHealthCheckerCacheCheck:
 
 
 class TestHealthCheckerMemoryCheck:
+    def test_memory_high_usage_returns_degraded(self, checker, monkeypatch):
+        class FakeProcess:
+            def memory_info(self):
+                return type("MI", (), {"rss": 1500 * 1024 * 1024})()
+
+        fake_psutil = types.ModuleType("psutil")
+        fake_psutil.Process = lambda: FakeProcess()
+        monkeypatch.setitem(sys.modules, "psutil", fake_psutil)
+        result = checker.checks["memory"]()
+        assert result.status == HealthStatus.DEGRADED
+        assert "High memory usage" in result.message
+
+    def test_memory_very_high_usage_returns_unhealthy(self, checker, monkeypatch):
+        class FakeProcess:
+            def memory_info(self):
+                return type("MI", (), {"rss": 3000 * 1024 * 1024})()
+
+        fake_psutil = types.ModuleType("psutil")
+        fake_psutil.Process = lambda: FakeProcess()
+        monkeypatch.setitem(sys.modules, "psutil", fake_psutil)
+        result = checker.checks["memory"]()
+        assert result.status == HealthStatus.UNHEALTHY
+        assert "Very high memory usage" in result.message
+
     def test_memory_psutil_not_installed(self, checker):
         import builtins
 

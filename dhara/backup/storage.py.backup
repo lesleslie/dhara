@@ -397,7 +397,7 @@ class GCSStorageAdapter(_DelegatingStorageAdapter):
 
 
 class AzureBlobStorageAdapter(_DelegatingStorageAdapter):
-    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: C901
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         settings = args[0] if args else None
         connection_string = kwargs.pop("connection_string", None)
         container_name = kwargs.pop("container_name", kwargs.pop("container", None))

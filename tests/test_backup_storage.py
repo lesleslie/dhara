@@ -374,56 +374,8 @@ class TestGCSStorageInit:
         mock_gcs_client.bucket.assert_called_once_with("gcs-bucket")
 
     def test_init_with_credentials_path(self):
-        """Verify credentials_path triggers service_account loading.
+        """Verify credentials_path is normalized into the settings object."""
 
-        Note: The source code references `service_account` without importing it
-        inside __init__. This test injects the name into the module namespace to
-        confirm the intended behavior.
-        """
-        import dhara.backup.storage as storage_module
-
-        mock_gcs_module = MagicMock()
-        mock_client = MagicMock()
-        mock_gcs_module.Client.return_value = mock_client
-        mock_bucket = MagicMock()
-        mock_client.bucket.return_value = mock_bucket
-
-        fake_gcs_error = type("GoogleCloudError", (Exception,), {})
-        mock_sa = MagicMock()
-        mock_google_cloud = MagicMock()
-        mock_google_cloud.storage = mock_gcs_module
-
-        with patch.dict(
-            "sys.modules",
-            {
-                "google": MagicMock(cloud=mock_google_cloud),
-                "google.cloud": mock_google_cloud,
-                "google.cloud.storage": mock_gcs_module,
-                "google.oauth2": MagicMock(service_account=mock_sa),
-                "google.oauth2.service_account": mock_sa,
-                "google.cloud.exceptions": MagicMock(GoogleCloudError=fake_gcs_error),
-            },
-        ), patch(
-            "dhara.backup.storage.service_account",
-            mock_sa,
-            create=True,
-        ):
-            storage = GCSStorage(
-                bucket_name="bucket",
-                credentials_path="/path/to/sa.json",
-                project_id="proj",
-            )
-        # Verify _credentials was set via from_service_account_file
-        mock_sa.Credentials.from_service_account_file.assert_called_once_with(
-            "/path/to/sa.json"
-        )
-
-    def test_init_with_credentials_path_name_error(self):
-        """Verify that credentials_path without patched import raises NameError.
-
-        This documents the known bug: the source references `service_account`
-        without importing `from google.oauth2 import service_account`.
-        """
         mock_gcs_module = MagicMock()
         mock_client = MagicMock()
         mock_gcs_module.Client.return_value = mock_client
@@ -445,12 +397,13 @@ class TestGCSStorageInit:
                 "google.cloud.exceptions": MagicMock(GoogleCloudError=fake_gcs_error),
             },
         ):
-            with pytest.raises(NameError, match="service_account"):
-                GCSStorage(
-                    bucket_name="bucket",
-                    credentials_path="/path/to/sa.json",
-                    project_id="proj",
-                )
+            storage = GCSStorage(
+                bucket_name="bucket",
+                credentials_path="/path/to/sa.json",
+                project_id="proj",
+            )
+        assert str(storage.settings.credentials_file) == "/path/to/sa.json"
+        assert storage.project_id == "proj"
 
 
 class TestGCSStorageUploadFile:
@@ -746,23 +699,18 @@ class TestAzureUploadFile:
         second_call = mock_blob_client.upload_blob.call_args_list[1]
         assert second_call.kwargs.get("overwrite") is True
 
-    def test_upload_resource_exists_name_error(self, tmp_path):
-        """Document that bare ResourceExistsError in upload_file is a bug.
-
-        The source catches `ResourceExistsError` as a bare name, but it was only
-        stored on `self` during __init__. When the exception is raised, Python
-        raises NameError because the name isn't in the method's scope.
-        """
+    def test_upload_resource_exists_retries_with_overwrite(self, tmp_path):
+        """ResourceExistsError should retry upload with overwrite=True."""
         storage, _, mock_container, ResourceExistsError = _make_azure_storage()
         local_file = tmp_path / "data.bin"
         local_file.write_bytes(b"hello")
 
         mock_blob_client = MagicMock()
         mock_container.get_blob_client.return_value = mock_blob_client
-        mock_blob_client.upload_blob.side_effect = ResourceExistsError("exists")
-
-        with pytest.raises(NameError, match="ResourceExistsError"):
-            storage.upload_file(str(local_file), "backup/data.bin")
+        mock_blob_client.upload_blob.side_effect = [ResourceExistsError("exists"), None]
+        result = storage.upload_file(str(local_file), "backup/data.bin")
+        assert result is True
+        assert mock_blob_client.upload_blob.call_count == 2
 
     def test_upload_generic_exception(self, tmp_path):
         storage, _, mock_container, ResourceExistsError = _make_azure_storage()

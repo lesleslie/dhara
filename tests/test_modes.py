@@ -618,17 +618,13 @@ class TestLiteMode:
     def test_is_port_available_listening(self):
         """Port with a server listening should be 'not available'."""
         mode = LiteMode()
-        # Bind a socket to a port, then check
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(("127.0.0.1", 0))
-        sock.listen(1)
-        port = sock.getsockname()[1]
-        try:
-            result = mode._is_port_available("127.0.0.1", port)
-            assert result is False
-        finally:
-            sock.close()
+        with patch("socket.socket") as mock_socket_cls:
+            sock = MagicMock()
+            sock.connect_ex.return_value = 0
+            sock.getsockname.return_value = ("127.0.0.1", 54321)
+            mock_socket_cls.return_value = sock
+            result = mode._is_port_available("127.0.0.1", 54321)
+        assert result is False
 
     def test_is_port_available_exception_returns_true(self):
         """If socket check fails, assume port is available."""
@@ -836,18 +832,16 @@ class TestStandardMode:
         settings.storage = MagicMock(spec=StorageConfig)
         settings.storage.backend = "file"
         mode = StandardMode(settings=settings)
-        # Bind a socket to port 0 to get a free port, then check
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(("0.0.0.0", 0))
-        sock.listen(1)
-        port = sock.getsockname()[1]
-        with patch.object(mode, "DEFAULT_PORT", port):
-            with patch.object(mode, "_validate_file_storage"):
-                # Should not raise, just warn
-                result = mode.validate_environment()
+        with patch("socket.socket") as mock_socket_cls:
+            sock = MagicMock()
+            sock.connect_ex.return_value = 0
+            sock.getsockname.return_value = ("0.0.0.0", 54321)
+            mock_socket_cls.return_value = sock
+            with patch.object(mode, "DEFAULT_PORT", 54321):
+                with patch.object(mode, "_validate_file_storage"):
+                    # Should not raise, just warn
+                    result = mode.validate_environment()
         assert result is True
-        sock.close()
 
     def test_validate_no_settings_loads_default(self):
         """When settings is None, validate_environment loads defaults."""
@@ -1028,16 +1022,13 @@ class TestStandardMode:
 
     def test_is_port_available_listening(self):
         mode = StandardMode()
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(("0.0.0.0", 0))
-        sock.listen(1)
-        port = sock.getsockname()[1]
-        try:
-            result = mode._is_port_available("0.0.0.0", port)
-            assert result is False
-        finally:
-            sock.close()
+        with patch("socket.socket") as mock_socket_cls:
+            sock = MagicMock()
+            sock.connect_ex.return_value = 0
+            sock.getsockname.return_value = ("0.0.0.0", 54321)
+            mock_socket_cls.return_value = sock
+            result = mode._is_port_available("0.0.0.0", 54321)
+        assert result is False
 
     def test_is_port_available_exception_returns_true(self):
         mode = StandardMode()

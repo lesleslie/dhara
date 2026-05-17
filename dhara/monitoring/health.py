@@ -180,13 +180,13 @@ class HealthChecker:
                 memory_info = process.memory_info()
                 memory_mb = memory_info.rss / 1024 / 1024
 
-                # Simple heuristic: unhealthy if using > 1GB
-                if memory_mb > 1024:
-                    status = HealthStatus.DEGRADED
-                    message = f"High memory usage: {memory_mb:.1f} MB"
-                elif memory_mb > 2048:
+                # Simple heuristic: degrade above 1GB, unhealthy above 2GB.
+                if memory_mb > 2048:
                     status = HealthStatus.UNHEALTHY
                     message = f"Very high memory usage: {memory_mb:.1f} MB"
+                elif memory_mb > 1024:
+                    status = HealthStatus.DEGRADED
+                    message = f"High memory usage: {memory_mb:.1f} MB"
                 else:
                     status = HealthStatus.HEALTHY
                     message = f"Memory usage normal: {memory_mb:.1f} MB"

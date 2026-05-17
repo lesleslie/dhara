@@ -1,0 +1,944 @@
+"""
+Integration tests for backup and restore functionality.
+
+These tests cover:
+- Backup creation and management
+- Restore operations
+- Compression and encryption
+- Verification and testing
+- Cloud storage integration
+"""
+
+import os
+import asyncio
+import shutil
+import sys
+import tempfile
+import time
+from datetime import datetime, timedelta
+from pathlib import Path
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
+from cryptography.fernet import Fernet
+
+pytest.importorskip("zstandard")
+pytest.importorskip("schedule")
+
+# Add repository root to path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+
+from dhara.core import Connection
+from dhara.backup.catalog import BackupCatalog
+from dhara.backup.manager import BackupManager, BackupType
+from dhara.backup.restore import RestoreManager
+from dhara.backup.scheduler import BackupJob, BackupScheduler
+from dhara.backup.storage import StorageFactory
+from dhara.backup.verification import BackupVerification
+from dhara.collections.dict import PersistentDict
+from dhara.storage.file import FileStorage
+
+
+def _create_test_database(db_path: str, data: dict) -> None:
+    storage = FileStorage(db_path)
+    connection = Connection(storage)
+    root = connection.get_root()
+    root.clear()
+    root.update(data)
+    connection.commit()
+    storage.close()
+
+
+def _update_test_database(db_path: str, updater) -> None:
+    storage = FileStorage(db_path)
+    connection = Connection(storage)
+    root = connection.get_root()
+    updater(root)
+    connection.commit()
+    storage.close()
+
+
+def _load_root(db_path: str):
+    storage = FileStorage(db_path, readonly=True)
+    connection = Connection(storage)
+    root = connection.get_root()
+    return storage, connection, root
+
+
+class TestBackupManager:
+    """Test backup manager functionality."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.test_db = os.path.join(self.temp_dir, "test_db.durus")
+        self.backup_dir = os.path.join(self.temp_dir, "backups")
+        os.makedirs(self.backup_dir, exist_ok=True)
+
+        # Create test database
+        _create_test_database(
+            self.test_db,
+            {
+                "test_key": "test_value",
+                "nested": {"inner": "data"},
+            },
+        )
+
+        # Create backup manager
+        self.storage = FileStorage(self.test_db, readonly=True)
+        self.backup_manager = BackupManager(
+            storage=self.storage,
+            backup_dir=self.backup_dir,
+            compression_level=3
+        )
+
+    def teardown_method(self):
+        """Clean up test fixtures."""
+        if os.path.exists(self.temp_dir):
+            shutil.rmtree(self.temp_dir)
+
+    def test_full_backup(self):
+        """Test full backup creation."""
+        # Perform backup
+        metadata = self.backup_manager.perform_full_backup()
+
+        # Verify metadata
+        assert metadata.backup_type == BackupType.FULL
+        assert metadata.backup_id is not None
+        assert os.path.exists(metadata.source_path)
+        assert metadata.size_bytes > 0
+        assert metadata.checksum is not None
+
+        # Verify backup file exists
+        backup_path = Path(metadata.source_path)
+        assert backup_path.exists()
+        assert backup_path.suffix == ".zst"  # Compressed
+
+    def test_incremental_backup(self):
+        """Test incremental backup creation."""
+        # First create a full backup
+        full_backup = self.backup_manager.perform_full_backup()
+        catalog = BackupCatalog(self.backup_dir)
+        catalog.add_backup(full_backup)
+
+        # Modify database
+        _update_test_database(self.test_db, lambda root: root.__setitem__("new_key", "new_value"))
+
+        # Perform incremental backup
+        incremental_backup = self.backup_manager.perform_incremental_backup(full_backup.backup_id)
+
+        # Verify metadata
+        assert incremental_backup.backup_type == BackupType.INCREMENTAL
+        assert incremental_backup.parent_backup_id == full_backup.backup_id
+        assert incremental_backup.backup_id != full_backup.backup_id
+
+    def test_differential_backup(self):
+        """Test differential backup creation."""
+        # First create a full backup
+        full_backup = self.backup_manager.perform_full_backup()
+        catalog = BackupCatalog(self.backup_dir)
+        catalog.add_backup(full_backup)
+
+        # Modify database
+        _update_test_database(self.test_db, lambda root: root.__setitem__("diff_key", "diff_value"))
+
+        # Perform differential backup
+        diff_backup = self.backup_manager.perform_differential_backup(full_backup.backup_id)
+
+        # Verify metadata
+        assert diff_backup.backup_type == BackupType.DIFFERENTIAL
+        assert diff_backup.parent_backup_id == full_backup.backup_id
+
+    def test_cleanup_old_backups(self):
+        """Test cleanup of old backups."""
+        # Create test backups
+        full_backup = self.backup_manager.perform_full_backup()
+        catalog = BackupCatalog(self.backup_dir)
+        catalog.add_backup(full_backup)
+
+        # Modify retention
+        full_backup.retention_days = -1  # Expired
+        catalog.add_backup(full_backup)
+
+        # Run cleanup
+        removed_count = self.backup_manager.cleanup_old_backups()
+
+        # Verify cleanup worked
+        assert removed_count > 0
+        backups = catalog.get_all_backups()
+        assert len(backups) == 0
+
+    def test_checksum_verification(self):
+        """Test checksum calculation."""
+        # Create a test file
+        test_file = os.path.join(self.temp_dir, "test.txt")
+        with open(test_file, "w") as f:
+            f.write("test content")
+
+        # Calculate checksum
+        checksum = self.backup_manager._calculate_checksum(test_file)
+        assert len(checksum) == 64  # SHA256 hex length
+        assert checksum == "6ae8a75555209fd6c44157c0aed8016e763ff435a19cf186f76863140143ff72"
+
+
+class TestRestoreManager:
+    """Test restore manager functionality."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.test_db = os.path.join(self.temp_dir, "test_db.durus")
+        self.backup_dir = os.path.join(self.temp_dir, "backups")
+        self.restore_dir = os.path.join(self.temp_dir, "restores")
+        os.makedirs(self.backup_dir, exist_ok=True)
+        os.makedirs(self.restore_dir, exist_ok=True)
+
+        # Create test database
+        _create_test_database(self.test_db, {"original_key": "original_value"})
+
+        # Create backup
+        self.storage = FileStorage(self.test_db, readonly=True)
+        self.backup_manager = BackupManager(
+            storage=self.storage,
+            backup_dir=self.backup_dir
+        )
+        self.backup_metadata = self.backup_manager.perform_full_backup()
+
+        # Add to catalog
+        self.catalog = BackupCatalog(self.backup_dir)
+        self.catalog.add_backup(self.backup_metadata)
+
+    def teardown_method(self):
+        """Clean up test fixtures."""
+        if os.path.exists(self.temp_dir):
+            shutil.rmtree(self.temp_dir)
+
+    def test_simple_restore(self):
+        """Test basic restore functionality."""
+        # Create restore manager
+        restore_manager = RestoreManager(
+            target_path=os.path.join(self.restore_dir, "restored_db.durus"),
+            backup_dir=self.backup_dir
+        )
+
+        # Perform restore
+        restored_path = restore_manager._restore_from_backup(self.backup_metadata)
+
+        # Verify restore
+        assert os.path.exists(restored_path)
+        assert os.path.getsize(restored_path) > 0
+
+        # Verify database is accessible
+        restored_storage, _connection, root = _load_root(restored_path)
+        assert "original_key" in root
+        assert root["original_key"] == "original_value"
+        restored_storage.close()
+
+    def test_find_restore_points(self):
+        """Test finding restore points."""
+        restore_manager = RestoreManager(
+            target_path=os.path.join(self.restore_dir, "test.durus"),
+            backup_dir=self.backup_dir
+        )
+
+        # Find all restore points
+        restore_points = restore_manager.find_restore_points()
+
+        assert len(restore_points) == 1
+        assert restore_points[0].backup_id == self.backup_metadata.backup_id
+
+    def test_point_in_time_restore(self):
+        """Test point-in-time restore."""
+        restore_manager = RestoreManager(
+            target_path=os.path.join(self.restore_dir, "restored_db.durus"),
+            backup_dir=self.backup_dir
+        )
+
+        # Test with backup timestamp
+        restore_point = restore_manager.restore_point_in_time(self.backup_metadata.timestamp)
+
+        assert os.path.exists(restore_point)
+
+    def test_verify_restore(self):
+        """Test restore verification."""
+        restore_manager = RestoreManager(
+            target_path=os.path.join(self.restore_dir, "restored_db.durus"),
+            backup_dir=self.backup_dir
+        )
+
+        # Restore and verify
+        restore_manager._restore_from_backup(self.backup_metadata)
+        is_valid = restore_manager.verify_restore(self.backup_metadata)
+
+        assert is_valid is True
+
+    def test_get_restore_summary(self):
+        """Test getting restore summary."""
+        restore_manager = RestoreManager(
+            target_path=os.path.join(self.restore_dir, "test.durus"),
+            backup_dir=self.backup_dir
+        )
+
+        summary = restore_manager.get_restore_summary()
+
+        assert "total_backups" in summary
+        assert "storage_type" in summary
+        assert "encryption_enabled" in summary
+        assert summary["total_backups"] == 1
+
+
+class TestBackupCatalog:
+    """Test backup catalog functionality."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.backup_dir = os.path.join(self.temp_dir, "backups")
+        os.makedirs(self.backup_dir, exist_ok=True)
+        self.catalog = BackupCatalog(self.backup_dir)
+
+    def teardown_method(self):
+        """Clean up test fixtures."""
+        if os.path.exists(self.temp_dir):
+            shutil.rmtree(self.temp_dir)
+
+    def test_add_and_get_backup(self):
+        """Test adding and retrieving backups."""
+        from dhara.backup.manager import BackupMetadata, BackupType
+
+        # Create test metadata
+        metadata = BackupMetadata(
+            backup_id="test_backup",
+            backup_type=BackupType.FULL,
+            timestamp=datetime.now(),
+            source_path="/path/to/backup.durus",
+            size_bytes=1024,
+            checksum="abc123"
+        )
+
+        # Add to catalog
+        self.catalog.add_backup(metadata)
+
+        # Retrieve from catalog
+        retrieved = self.catalog.get_backup("test_backup")
+        assert retrieved is not None
+        assert retrieved.backup_id == "test_backup"
+        assert retrieved.backup_type == BackupType.FULL
+
+    def test_get_last_backup(self):
+        """Test getting last backup."""
+        from dhara.backup.manager import BackupMetadata, BackupType
+
+        # Add multiple backups
+        now = datetime.now()
+        backup1 = BackupMetadata(
+            backup_id="backup1",
+            backup_type=BackupType.FULL,
+            timestamp=now,
+            source_path="/path/1",
+            size_bytes=1024,
+            checksum="abc123"
+        )
+
+        backup2 = BackupMetadata(
+            backup_id="backup2",
+            backup_type=BackupType.INCREMENTAL,
+            timestamp=now + timedelta(minutes=1),
+            source_path="/path/2",
+            size_bytes=512,
+            checksum="def456",
+            parent_backup_id="backup1"
+        )
+
+        self.catalog.add_backup(backup1)
+        self.catalog.add_backup(backup2)
+
+        # Get last backup
+        last_backup = self.catalog.get_last_backup()
+        assert last_backup.backup_id == "backup2"
+
+    def test_get_incremental_chain(self):
+        """Test getting incremental backup chain."""
+        from dhara.backup.manager import BackupMetadata, BackupType
+
+        # Create a chain
+        now = datetime.now()
+        full_backup = BackupMetadata(
+            backup_id="full",
+            backup_type=BackupType.FULL,
+            timestamp=now,
+            source_path="/path/full",
+            size_bytes=1024,
+            checksum="abc123"
+        )
+
+        inc1 = BackupMetadata(
+            backup_id="inc1",
+            backup_type=BackupType.INCREMENTAL,
+            timestamp=now + timedelta(minutes=1),
+            source_path="/path/inc1",
+            size_bytes=512,
+            checksum="def456",
+            parent_backup_id="full"
+        )
+
+        inc2 = BackupMetadata(
+            backup_id="inc2",
+            backup_type=BackupType.INCREMENTAL,
+            timestamp=now + timedelta(minutes=2),
+            source_path="/path/inc2",
+            size_bytes=256,
+            checksum="ghi789",
+            parent_backup_id="inc1"
+        )
+
+        self.catalog.add_backup(full_backup)
+        self.catalog.add_backup(inc1)
+        self.catalog.add_backup(inc2)
+
+        # Get chain
+        chain = self.catalog.get_incremental_chain("full")
+        assert len(chain) == 2
+        assert chain[0].backup_id == "inc1"
+        assert chain[1].backup_id == "inc2"
+
+    def test_search_backups(self):
+        """Test searching backups."""
+        from dhara.backup.manager import BackupMetadata, BackupType
+
+        # Add test backups
+        now = datetime.now()
+        backup1 = BackupMetadata(
+            backup_id="full_backup_20240101",
+            backup_type=BackupType.FULL,
+            timestamp=now,
+            source_path="/path/1",
+            size_bytes=1024,
+            checksum="abc123"
+        )
+
+        backup2 = BackupMetadata(
+            backup_id="incremental_backup_20240101",
+            backup_type=BackupType.INCREMENTAL,
+            timestamp=now + timedelta(hours=1),
+            source_path="/path/2",
+            size_bytes=512,
+            checksum="def456"
+        )
+
+        self.catalog.add_backup(backup1)
+        self.catalog.add_backup(backup2)
+
+        # Search by type
+        full_backups = self.catalog.search_backups(backup_type=BackupType.FULL)
+        assert len(full_backups) == 1
+        assert full_backups[0].backup_type == BackupType.FULL
+
+        # Search by string
+        incremental_backups = self.catalog.search_backups(contains_string="incremental")
+        assert len(incremental_backups) == 1
+        assert "incremental" in incremental_backups[0].backup_id
+
+
+class TestBackupScheduler:
+    """Test backup scheduler functionality."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.backup_dir = os.path.join(self.temp_dir, "backups")
+        self.restore_dir = os.path.join(self.temp_dir, "restores")
+        os.makedirs(self.backup_dir, exist_ok=True)
+        os.makedirs(self.restore_dir, exist_ok=True)
+
+        # Create test database
+        self.test_db = os.path.join(self.temp_dir, "test_db.durus")
+        _create_test_database(self.test_db, {"test_key": "test_value"})
+
+        # Create backup manager
+        self.storage = FileStorage(self.test_db, readonly=True)
+        self.backup_manager = BackupManager(
+            storage=self.storage,
+            backup_dir=self.backup_dir
+        )
+
+        # Create scheduler
+        self.scheduler = BackupScheduler(
+            backup_dir=self.backup_dir,
+            backup_manager=self.backup_manager,
+            auto_verify=False
+        )
+
+    def teardown_method(self):
+        """Clean up test fixtures."""
+        self.scheduler.stop()
+        if os.path.exists(self.temp_dir):
+            shutil.rmtree(self.temp_dir)
+
+    def test_add_job(self):
+        """Test adding backup job."""
+        job = self.scheduler.add_job(
+            name="test_job",
+            backup_type=BackupType.FULL,
+            schedule_spec="daily",
+            retention_days=30
+        )
+
+        assert job.name == "test_job"
+        assert job.backup_type == BackupType.FULL
+        assert job.schedule_spec == "daily"
+
+    def test_enable_disable_job(self):
+        """Test enabling and disabling jobs."""
+        # Add job
+        job = self.scheduler.add_job(
+            name="test_job",
+            backup_type=BackupType.FULL,
+            schedule_spec="daily"
+        )
+
+        # Disable job
+        assert self.scheduler.disable_job("test_job") is True
+        assert job.enabled is False
+
+        # Enable job
+        assert self.scheduler.enable_job("test_job") is True
+        assert job.enabled is True
+
+    def test_run_job_immediately(self):
+        """Test running job immediately."""
+        # Add job
+        self.scheduler.add_job(
+            name="immediate_job",
+            backup_type=BackupType.FULL,
+            schedule_spec="daily"
+        )
+
+        # Run immediately
+        result = self.scheduler.run_job("immediate_job")
+
+        assert result is not None
+        assert result["status"] in ["success", "failed"]
+
+    def test_get_all_jobs_status(self):
+        """Test getting all job statuses."""
+        # Add multiple jobs
+        self.scheduler.add_job(
+            name="job1",
+            backup_type=BackupType.FULL,
+            schedule_spec="daily"
+        )
+
+        self.scheduler.add_job(
+            name="job2",
+            backup_type=BackupType.INCREMENTAL,
+            schedule_spec="hourly"
+        )
+
+        # Get all statuses
+        statuses = self.scheduler.get_all_jobs_status()
+
+        assert len(statuses) == 2
+        assert "job1" in statuses
+        assert "job2" in statuses
+        assert "backup_type" in statuses["job1"]
+        assert "backup_type" in statuses["job2"]
+
+
+class TestBackupVerification:
+    """Test backup verification functionality."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.backup_dir = os.path.join(self.temp_dir, "backups")
+        self.test_restore_dir = os.path.join(self.temp_dir, "test_restores")
+        os.makedirs(self.backup_dir, exist_ok=True)
+        os.makedirs(self.test_restore_dir, exist_ok=True)
+
+        # Create test database
+        self.test_db = os.path.join(self.temp_dir, "test_db.durus")
+        _create_test_database(self.test_db, {"test_key": "test_value"})
+
+        # Create backup
+        self.storage = FileStorage(self.test_db, readonly=True)
+        self.backup_manager = BackupManager(
+            storage=self.storage,
+            backup_dir=self.backup_dir
+        )
+        self.backup_metadata = self.backup_manager.perform_full_backup()
+
+        # Add to catalog
+        self.catalog = BackupCatalog(self.backup_dir)
+        self.catalog.add_backup(self.backup_metadata)
+
+        # Create verification
+        self.verification = BackupVerification(
+            backup_dir=self.backup_dir,
+            test_restore_dir=self.test_restore_dir
+        )
+
+    def teardown_method(self):
+        """Clean up test fixtures."""
+        if os.path.exists(self.temp_dir):
+            shutil.rmtree(self.temp_dir)
+
+    def test_check_backup_integrity(self):
+        """Test backup integrity check."""
+        result = self.verification.check_backup_integrity(self.backup_metadata)
+
+        assert result.status == "passed"
+        assert result.check_name == "integrity_check"
+        assert "duration_seconds" in result.details
+
+    def test_check_compression_ratio(self):
+        """Test compression ratio check."""
+        result = self.verification.check_compression_ratio(self.backup_metadata)
+
+        assert result.status in ["passed", "warning"]
+        assert result.check_name == "compression_check"
+        assert "compression_ratio" in result.details
+
+    def test_perform_test_restore(self):
+        """Test performing a test restore."""
+        result = self.verification.perform_test_restore(self.backup_metadata)
+
+        assert result.status == "passed"
+        assert result.check_name == "test_restore"
+        assert "duration_seconds" in result.details
+
+    def test_check_retention_policy(self):
+        """Test retention policy check."""
+        result = self.verification.check_retention_policy(self.backup_metadata)
+
+        assert result.status in ["passed", "warning"]
+        assert result.check_name == "retention_check"
+        assert "retention_date" in result.details
+
+    def test_run_all_checks(self):
+        """Test running all checks."""
+        results = self.verification.run_all_checks(self.backup_metadata)
+
+        assert "integrity" in results
+        assert "compression" in results
+        assert "test_restore" in results
+        assert "retention" in results
+
+        # All checks should have passed
+        for result in results.values():
+            assert result.status in ["passed", "warning"]
+
+    def test_generate_verification_report(self):
+        """Test generating verification report."""
+        report = self.verification.generate_verification_report(self.backup_metadata)
+
+        assert "backup_id" in report
+        assert "overall_status" in report
+        assert "checks" in report
+        assert "timestamp" in report
+
+        # Check structure
+        assert "integrity" in report["checks"]
+        assert "test_restore" in report["checks"]
+
+
+class TestStorageAdapters:
+    """Test cloud storage adapters."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.test_file = os.path.join(self.temp_dir, "test.txt")
+        self.test_dir = os.path.join(self.temp_dir, "upload_test")
+        os.makedirs(self.test_dir, exist_ok=True)
+
+        # Create test files
+        with open(self.test_file, "w") as f:
+            f.write("test content")
+
+        for i in range(3):
+            with open(os.path.join(self.test_dir, f"file{i}.txt"), "w") as f:
+                f.write(f"content {i}")
+
+    def teardown_method(self):
+        """Clean up test fixtures."""
+        if os.path.exists(self.temp_dir):
+            shutil.rmtree(self.temp_dir)
+
+    def test_s3_adapter(self):
+        """Test S3 storage adapter."""
+        pytest.importorskip("boto3")
+
+        from dhara.backup.storage import S3StorageAdapter, S3StorageSettings
+
+        class _Body:
+            async def read(self):
+                return b"test content"
+
+            async def close(self):
+                return None
+
+        mock_client = Mock()
+        mock_client.put_object = AsyncMock(return_value=None)
+        mock_client.get_object = AsyncMock(return_value={"Body": _Body()})
+
+        adapter = S3StorageAdapter(
+            S3StorageSettings(bucket="test-bucket"),
+            client=mock_client,
+        )
+
+        asyncio.run(adapter.upload("test/backup.txt", b"test content"))
+        mock_client.put_object.assert_called_once()
+
+        result = asyncio.run(adapter.download("test/backup.txt"))
+        assert result == b"test content"
+        mock_client.get_object.assert_called_once()
+
+    def test_gcs_adapter(self):
+        """Test GCS storage adapter."""
+        pytest.importorskip("google.cloud.storage")
+
+        from dhara.backup.storage import GCSStorageAdapter, GCSStorageSettings
+
+        with patch("google.cloud.storage.Client") as mock_client:
+            mock_blob = Mock()
+            mock_blob.upload_from_filename.return_value = None
+            mock_blob.upload_from_string.return_value = None
+            mock_blob.download_as_bytes.return_value = b"test content"
+            mock_container = Mock()
+            mock_container.blob.return_value = mock_blob
+            mock_client.return_value.bucket.return_value = mock_container
+
+            adapter = GCSStorageAdapter(
+                GCSStorageSettings(bucket="test-bucket", project="test-project")
+            )
+            adapter._client = mock_client.return_value
+            adapter._bucket = mock_container
+
+            asyncio.run(adapter.upload("test/backup.txt", b"test content"))
+            mock_blob.upload_from_string.assert_called_once()
+
+            result = asyncio.run(adapter.download("test/backup.txt"))
+            assert result == b"test content"
+
+    def test_azure_adapter(self):
+        """Test Azure Blob Storage adapter."""
+        pytest.importorskip("azure.storage.blob")
+
+        from dhara.backup.storage import AzureBlobStorageAdapter, AzureBlobStorageSettings
+
+        with patch("azure.storage.blob.BlobServiceClient") as mock_client:
+            mock_blob_client = Mock()
+            mock_blob_client.upload_blob = AsyncMock(return_value=None)
+            download_blob = Mock()
+            download_blob.readall = AsyncMock(return_value=b"test content")
+            mock_blob_client.download_blob = AsyncMock(return_value=download_blob)
+            mock_container = Mock()
+            mock_container.get_blob_client.return_value = mock_blob_client
+            mock_client.from_connection_string.return_value.get_container_client.return_value = mock_container
+
+            adapter = AzureBlobStorageAdapter(
+                AzureBlobStorageSettings(
+                    connection_string="DefaultEndpointsProtocol=https;AccountName=test;AccountKey=test==",
+                    container="test-container",
+                )
+            )
+            adapter._client = mock_client.from_connection_string.return_value
+            adapter._container_client = mock_container
+
+            asyncio.run(adapter.upload("test/backup.txt", b"test content"))
+            mock_blob_client.upload_blob.assert_called_once()
+
+            result = asyncio.run(adapter.download("test/backup.txt"))
+            assert result == b"test content"
+
+
+class TestIntegrationScenarios:
+    """Integration test scenarios for backup and restore."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.test_db = os.path.join(self.temp_dir, "test_db.durus")
+        self.backup_dir = os.path.join(self.temp_dir, "backups")
+        self.restore_dir = os.path.join(self.temp_dir, "restores")
+        self.test_restore_dir = os.path.join(self.temp_dir, "test_restores")
+        os.makedirs(self.backup_dir, exist_ok=True)
+        os.makedirs(self.restore_dir, exist_ok=True)
+        os.makedirs(self.test_restore_dir, exist_ok=True)
+
+    def teardown_method(self):
+        """Clean up test fixtures."""
+        if os.path.exists(self.temp_dir):
+            shutil.rmtree(self.temp_dir)
+
+    def test_backup_restore_cycle(self):
+        """Test complete backup and restore cycle."""
+        # Create initial database
+        _create_test_database(
+            self.test_db,
+            {
+                "data": {"key1": "value1", "key2": "value2"},
+                "metadata": {"created": datetime.now().isoformat()},
+            },
+        )
+
+        # Create backup manager
+        storage = FileStorage(self.test_db, readonly=True)
+        backup_manager = BackupManager(
+            storage=storage,
+            backup_dir=self.backup_dir
+        )
+
+        # Perform full backup
+        backup_metadata = backup_manager.perform_full_backup()
+        catalog = BackupCatalog(self.backup_dir)
+        catalog.add_backup(backup_metadata)
+
+        # Modify database
+        def add_key3(root):
+            root["data"]["key3"] = "value3"
+            root._p_note_change()
+
+        _update_test_database(self.test_db, add_key3)
+
+        # Perform incremental backup
+        incremental_backup = backup_manager.perform_incremental_backup(backup_metadata.backup_id)
+        catalog.add_backup(incremental_backup)
+
+        # Restore to point in time
+        restore_manager = RestoreManager(
+            target_path=os.path.join(self.restore_dir, "restored_db.durus"),
+            backup_dir=self.backup_dir
+        )
+
+        # Restore from full backup
+        restored_path = restore_manager.restore_point_in_time(backup_metadata.timestamp)
+
+        # Verify restored data
+        restored_storage, _connection, restored_root = _load_root(restored_path)
+        assert "data" in restored_root
+        assert "key1" in restored_root["data"]
+        assert "key2" in restored_root["data"]
+        assert "key3" not in restored_root["data"]
+        restored_storage.close()
+
+        # Verify with verification system
+        verification = BackupVerification(
+            backup_dir=self.backup_dir,
+            test_restore_dir=self.test_restore_dir
+        )
+        results = verification.run_all_checks(backup_metadata)
+
+        # All checks should pass
+        for result in results.values():
+            assert result.status != "failed"
+
+    def test_encrypted_backup_restore(self):
+        """Test encrypted backup and restore."""
+        from dhara.backup.manager import EncryptionEngine
+
+        # Create initial database
+        _create_test_database(self.test_db, {"secret_data": "sensitive information"})
+
+        # Create encryption key
+        encryption_key = Fernet.generate_key()
+
+        # Create backup manager with encryption
+        storage = FileStorage(self.test_db, readonly=True)
+        backup_manager = BackupManager(
+            storage=storage,
+            backup_dir=self.backup_dir,
+            encryption_key=encryption_key
+        )
+
+        # Perform encrypted backup
+        backup_metadata = backup_manager.perform_full_backup()
+        assert backup_metadata.encryption_enabled is True
+
+        # Create restore manager with same key
+        restore_manager = RestoreManager(
+            target_path=os.path.join(self.restore_dir, "restored_db.durus"),
+            backup_dir=self.backup_dir,
+            encryption_key=encryption_key
+        )
+
+        # Restore encrypted backup
+        restored_path = restore_manager._restore_from_backup(backup_metadata)
+
+        # Verify decrypted data
+        restored_storage, _connection, restored_root = _load_root(restored_path)
+        assert "secret_data" in restored_root
+        assert restored_root["secret_data"] == "sensitive information"
+        restored_storage.close()
+
+    def test_disaster_recovery_scenario(self):
+        """Test disaster recovery scenario."""
+        # Create database with significant data
+        _create_test_database(
+            self.test_db,
+            {f"item_{i}": f"value_{i}" for i in range(1000)},
+        )
+
+        # Create backups
+        storage = FileStorage(self.test_db, readonly=True)
+        backup_manager = BackupManager(
+            storage=storage,
+            backup_dir=self.backup_dir
+        )
+
+        # Full backup
+        full_backup = backup_manager.perform_full_backup()
+        catalog = BackupCatalog(self.backup_dir)
+        catalog.add_backup(full_backup)
+
+        # Modify data
+        _update_test_database(
+            self.test_db,
+            lambda root: root.__setitem__("new_data", "important information"),
+        )
+
+        # Differential backup
+        diff_backup = backup_manager.perform_differential_backup(full_backup.backup_id)
+        catalog.add_backup(diff_backup)
+
+        # Simulate disaster - delete original database
+        if os.path.exists(self.test_db):
+            os.remove(self.test_db)
+
+        # Restore from latest backup
+        restore_manager = RestoreManager(
+            target_path=os.path.join(self.restore_dir, "recovered_db.durus"),
+            backup_dir=self.backup_dir
+        )
+
+        # Use most recent backup
+        latest_backup = catalog.get_last_backup()
+        recovered_path = restore_manager._restore_from_backup(latest_backup)
+
+        # Verify recovery
+        assert os.path.exists(recovered_path)
+        recovered_storage, _connection, recovered_root = _load_root(recovered_path)
+
+        # Check data integrity
+        assert "new_data" in recovered_root
+        assert recovered_root["new_data"] == "important information"
+
+        # Check some original data
+        assert "item_0" in recovered_root
+        assert recovered_root["item_0"] == "value_0"
+
+        recovered_storage.close()
+
+        # Run verification
+        verification = BackupVerification(
+            backup_dir=self.backup_dir,
+            test_restore_dir=self.test_restore_dir
+        )
+        report = verification.generate_verification_report(latest_backup)
+
+        assert report["overall_status"] != "failed"
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

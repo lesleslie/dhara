@@ -168,6 +168,19 @@ class TestBackupJobSchedule:
             job.schedule()
         assert "Invalid schedule spec" in caplog.text
 
+    @patch("dhara.backup.scheduler.schedule")
+    def test_maybe_run_unsupported_backup_type(self, mock_schedule_mod):
+        job = BackupJob(
+            name="j",
+            backup_type=MagicMock(),
+            schedule_spec="daily",
+            backup_manager=_make_manager(),
+        )
+        job.backup_type = "unsupported"
+        result = job.run()
+        assert result["status"] == "failed"
+        assert "unsupported backup type" in result["reason"]
+
 
 class TestBackupJobRun:
     """Test BackupJob.run() execution paths."""

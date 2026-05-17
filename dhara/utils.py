@@ -28,34 +28,17 @@ def str_to_int4(v):
 
 IS_PYPY = hasattr(sys, "pypy_version_info")
 
-if sys.version < "3":
-    from __builtin__ import str as byte_string
-    from __builtin__ import xrange
 
-    def iteritems(x):
-        return x.iteritems()
+xrange = range
+byte_string = (bytearray, bytes)
 
-    def next(x):
-        return x.next()
 
-    from cStringIO import StringIO as BytesIO
+def iteritems(x):
+    return x.items()
 
-    if not IS_PYPY:
-        from cPickle import Pickler, Unpickler, dumps, loads
-    else:
-        # PyPy's pickle is faster than cPickle
-        from pickle import Pickler, Unpickler, dumps, loads
-else:
-    xrange = range
-    from builtins import bytearray, next
 
-    byte_string = (bytearray, bytes)
-
-    def iteritems(x):
-        return x.items()
-
-    from io import BytesIO
-    from pickle import Pickler, Unpickler, dumps, loads
+from io import BytesIO
+from pickle import Pickler, Unpickler, dumps, loads
 
 _used = [dumps, loads, Unpickler, Pickler, next]  # to quiet code checker.
 

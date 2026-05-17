@@ -20,6 +20,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import typer
+from typer.testing import CliRunner
 
 # ---------------------------------------------------------------------------
 # Ensure the dhara package root is importable when running from tests/
@@ -66,6 +67,21 @@ def _make_mock_settings(**overrides) -> MagicMock:
             obj = getattr(obj, part)
         setattr(obj, parts[-1], value)
     return settings
+
+
+def _build_cli_app(settings: MagicMock):
+    """Build a real Typer app while stubbing the CLI factory."""
+    from dhara.cli import create_cli
+
+    factory = MagicMock()
+    app = typer.Typer()
+    factory.create_app.return_value = app
+
+    with (
+        patch("dhara.core.config.DharaSettings.load", return_value=settings),
+        patch("dhara.cli.MCPServerCLIFactory", return_value=factory),
+    ):
+        return create_cli()
 
 
 # ===========================================================================
@@ -116,6 +132,12 @@ class TestValidatePath:
         result = _validate_path(".")
         assert result is not None
         assert result.is_absolute()
+
+    def test_path_resolution_failure_raises_exit(self):
+        """A resolution failure should surface as a CLI exit."""
+        with patch("pathlib.Path.resolve", side_effect=OSError("bad path")):
+            with pytest.raises(typer.Exit):
+                _validate_path("broken")
 
 
 # ===========================================================================
@@ -256,6 +278,40 @@ class TestProbeBackupRuntime:
         assert result["backup_count"] == 0
         assert result["latest_backup_id"] is None
         assert result["latest_backup_at"] is None
+
+    def test_backups_enabled_with_catalog(self, tmp_path):
+        """When the catalog exists, read the backup payloads and latest entry."""
+        catalog_dir = tmp_path / "backups"
+        catalog_dir.mkdir()
+        (catalog_dir / "backup_catalog.durus").write_text("catalog")
+        settings = _make_mock_settings(
+            **{"backups.enabled": True, "backups.directory": catalog_dir}
+        )
+
+        mock_root = MagicMock()
+        mock_root.get.return_value = {
+            "b0": {"backup_id": "b0", "timestamp": 123},
+            "b1": {"backup_id": "b1", "timestamp": "2024-01-01T10:00:00"},
+            "b2": {"backup_id": "b2", "timestamp": "2024-01-02T10:00:00"},
+        }
+
+        mock_connection = MagicMock()
+        mock_connection.get_root.return_value = mock_root
+
+        mock_storage_instance = MagicMock()
+        mock_storage_instance.__enter__ = MagicMock(return_value=mock_storage_instance)
+        mock_storage_instance.__exit__ = MagicMock(return_value=False)
+
+        with (
+            patch("dhara.storage.file.FileStorage", return_value=mock_storage_instance),
+            patch("dhara.core.connection.Connection", return_value=mock_connection),
+        ):
+            result = _probe_backup_runtime(settings)
+
+        assert result["backup_catalog_exists"] is True
+        assert result["backup_count"] == 3
+        assert result["latest_backup_id"] == "b2"
+        assert result["latest_backup_at"] == "2024-01-02T10:00:00"
 
     def test_backup_error(self):
         """When backup probing raises, return error status."""
@@ -537,6 +593,82 @@ class TestStartHandler:
                 start_handler()
             assert exc_info.value.exit_code == 1
 
+    @patch("dhara.cli.write_runtime_health")
+    def test_start_handler_runs_and_cleans_up(self, mock_write_health):
+        """A normal server start should run, close, and write snapshots."""
+        import dhara.cli
+
+        mock_settings = _make_mock_settings(**{"server_name": "dhara"})
+        mock_server = MagicMock()
+        mock_server.adapter_registry.count.return_value = 4
+
+        original_instance = dhara.cli._server_instance
+        dhara.cli._server_instance = None
+
+        try:
+            with (
+                patch("dhara.core.config.DharaSettings.load", return_value=mock_settings),
+                patch("dhara.cli.DharaMCPServer", return_value=mock_server),
+            ):
+                start_handler()
+        finally:
+            dhara.cli._server_instance = original_instance
+
+        mock_server.run.assert_called_once_with(host="127.0.0.1", port=8683)
+        mock_server.close.assert_called_once()
+        assert mock_write_health.call_count == 2
+
+    @patch("dhara.cli.write_runtime_health")
+    def test_start_handler_keyboard_interrupt(self, mock_write_health):
+        """KeyboardInterrupt should still trigger the cleanup path."""
+        import dhara.cli
+
+        mock_settings = _make_mock_settings(**{"server_name": "dhara"})
+        mock_server = MagicMock()
+        mock_server.adapter_registry.count.return_value = 2
+        mock_server.run.side_effect = KeyboardInterrupt
+
+        original_instance = dhara.cli._server_instance
+        dhara.cli._server_instance = None
+
+        try:
+            with (
+                patch("dhara.core.config.DharaSettings.load", return_value=mock_settings),
+                patch("dhara.cli.DharaMCPServer", return_value=mock_server),
+            ):
+                start_handler()
+        finally:
+            dhara.cli._server_instance = original_instance
+
+        mock_server.close.assert_called_once()
+        assert mock_write_health.call_count == 2
+
+    @patch("dhara.cli.write_runtime_health")
+    def test_start_handler_falsey_server_skips_close(self, mock_write_health):
+        """A falsey server object should skip the close call in cleanup."""
+        import dhara.cli
+
+        mock_settings = _make_mock_settings(**{"server_name": "dhara"})
+        mock_server = MagicMock()
+        mock_server.adapter_registry.count.return_value = 1
+        mock_server.__bool__.return_value = False
+
+        original_instance = dhara.cli._server_instance
+        dhara.cli._server_instance = None
+
+        try:
+            with (
+                patch("dhara.core.config.DharaSettings.load", return_value=mock_settings),
+                patch("dhara.cli.DharaMCPServer", return_value=mock_server),
+            ):
+                start_handler()
+        finally:
+            dhara.cli._server_instance = original_instance
+
+        mock_server.run.assert_called_once_with(host="127.0.0.1", port=8683)
+        mock_server.close.assert_not_called()
+        assert mock_write_health.call_count == 2
+
 
 # ===========================================================================
 # create_cli
@@ -609,3 +741,186 @@ class TestCreateCli:
         assert call_kwargs["stop_handler"] is stop_handler
         assert call_kwargs["health_probe_handler"] is health_probe_handler
         assert call_kwargs["use_mcp_subcommand"] is True
+
+
+class TestCreateCliRuntime:
+    """Tests for the runtime behavior of the Typer app built by create_cli()."""
+
+    def test_version_option_prints_version(self):
+        """The global --version flag should print the CLI version."""
+        settings = _make_mock_settings()
+        app = _build_cli_app(settings)
+
+        with patch("typer.echo") as mock_echo:
+            with pytest.raises(typer.Exit):
+                app.registered_callback.callback(version=True)
+
+        mock_echo.assert_called_once_with("dhara version 0.6.1")
+
+    def test_adapters_storage_and_admin_commands(self, tmp_path):
+        """Root-level custom commands should execute through the Typer app."""
+        settings = _make_mock_settings()
+        settings.storage.path = tmp_path / "db.dhara"
+        settings.storage.path.write_text("db")
+        app = _build_cli_app(settings)
+        runner = CliRunner()
+
+        mock_storage = MagicMock()
+        mock_storage.__enter__ = MagicMock(return_value=mock_storage)
+        mock_storage.__exit__ = MagicMock(return_value=False)
+        mock_connection = MagicMock()
+        mock_root = MagicMock()
+        mock_root.keys.return_value = ["a", "b"]
+        mock_connection.get_root.return_value = mock_root
+        mock_registry = MagicMock()
+        mock_registry.list_adapters.return_value = [
+            {
+                "adapter_id": "adapter-1",
+                "version": "1.0",
+                "metadata": {"description": "demo"},
+            }
+        ]
+        mock_shell = MagicMock()
+
+        with (
+            patch("dhara.storage.file.FileStorage", return_value=mock_storage),
+            patch("dhara.core.connection.Connection", return_value=mock_connection),
+            patch("dhara.mcp.adapter_tools.AdapterRegistry", return_value=mock_registry),
+            patch("dhara.shell.DharaShell", return_value=mock_shell),
+        ):
+            adapters_result = runner.invoke(app, ["adapters"])
+            storage_result = runner.invoke(app, ["storage"])
+            admin_denied = runner.invoke(app, ["admin"])
+            admin_allowed = runner.invoke(app, ["admin", "--confirm"])
+
+        assert adapters_result.exit_code == 0
+        assert "Found 1 adapters" in adapters_result.stdout
+        assert storage_result.exit_code == 0
+        assert "Storage Information" in storage_result.stdout
+        assert admin_denied.exit_code == 1
+        assert admin_allowed.exit_code == 0
+        mock_shell.start.assert_called_once()
+
+    def test_admin_storage_errors_return_nonzero(self, tmp_path):
+        """Admin command should surface file access errors cleanly."""
+        settings = _make_mock_settings()
+        settings.storage.path = tmp_path / "missing.dhara"
+        app = _build_cli_app(settings)
+        runner = CliRunner()
+
+        with (
+            patch("dhara.storage.file.FileStorage", side_effect=FileNotFoundError),
+            patch("dhara.core.connection.Connection"),
+            patch("dhara.shell.DharaShell"),
+        ):
+            result = runner.invoke(app, ["admin", "--confirm"])
+
+        assert result.exit_code == 1
+
+        with (
+            patch("dhara.storage.file.FileStorage", side_effect=PermissionError),
+            patch("dhara.core.connection.Connection"),
+            patch("dhara.shell.DharaShell"),
+        ):
+            result = runner.invoke(app, ["admin", "--confirm"])
+
+        assert result.exit_code == 1
+
+    def test_db_client_start_and_pack_commands(self, tmp_path):
+        """Legacy database commands should route through the helper functions."""
+        settings = _make_mock_settings()
+        app = _build_cli_app(settings)
+        runner = CliRunner()
+
+        db_file = tmp_path / "client.dhara"
+        db_file.write_text("db")
+        pack_file = tmp_path / "pack.dhara"
+        pack_file.write_text("db")
+
+        mock_interactive_client = MagicMock()
+        mock_get_storage = MagicMock(return_value=MagicMock())
+        mock_start_durus = MagicMock()
+        mock_connection = MagicMock()
+        mock_connection.pack = MagicMock()
+        mock_client_storage = MagicMock(return_value=MagicMock())
+
+        with (
+            patch("dhara.__main__.interactive_client", mock_interactive_client),
+            patch("dhara.__main__.get_storage", mock_get_storage),
+            patch("dhara.__main__.start_durus", mock_start_durus),
+            patch("dhara.__main__.Connection", return_value=mock_connection),
+            patch("dhara.storage.client.ClientStorage", mock_client_storage),
+        ):
+            client_result = runner.invoke(app, ["db", "client", "--file", str(db_file)])
+            client_host_result = runner.invoke(
+                app, ["db", "client", "--host", "10.0.0.8", "--port", "2980"]
+            )
+            start_result = runner.invoke(app, ["db", "start", "--file", str(db_file)])
+            pack_file_result = runner.invoke(app, ["db", "pack", "--file", str(pack_file)])
+            pack_socket_result = runner.invoke(
+                app, ["db", "pack", "--host", "10.0.0.8", "--port", "2980"]
+            )
+            pack_missing_result = runner.invoke(
+                app, ["db", "pack", "--file", str(tmp_path / "missing.dhara")]
+            )
+
+        assert client_result.exit_code == 0
+        assert client_host_result.exit_code == 0
+        assert start_result.exit_code == 0
+        assert pack_file_result.exit_code == 0
+        assert pack_socket_result.exit_code == 0
+        assert pack_missing_result.exit_code == 1
+        mock_interactive_client.assert_any_call(
+            file=str(db_file),
+            address=None,
+            cache_size=10000,
+            readonly=False,
+            repair=False,
+            startup=None,
+            storage_class=None,
+            tls_config=None,
+        )
+        mock_interactive_client.assert_any_call(
+            file=None,
+            address=("10.0.0.8", 2980),
+            cache_size=10000,
+            readonly=False,
+            repair=False,
+            startup=None,
+            storage_class=None,
+            tls_config=None,
+        )
+        mock_get_storage.assert_any_call(str(db_file), readonly=False)
+        mock_start_durus.assert_called()
+        mock_connection.pack.assert_called()
+
+    def test_db_pack_connection_error_returns_exit(self, tmp_path):
+        """Pack should exit when the connection pack step fails."""
+        settings = _make_mock_settings()
+        app = _build_cli_app(settings)
+        runner = CliRunner()
+
+        pack_file = tmp_path / "pack.dhara"
+        pack_file.write_text("db")
+
+        mock_connection = MagicMock()
+        mock_connection.pack.side_effect = ConnectionError("offline")
+
+        with (
+            patch("dhara.__main__.get_storage", return_value=MagicMock()),
+            patch("dhara.__main__.Connection", return_value=mock_connection),
+            patch("dhara.storage.client.ClientStorage", return_value=MagicMock()),
+        ):
+            result = runner.invoke(app, ["db", "pack", "--file", str(pack_file)])
+
+        assert result.exit_code == 1
+
+    def test_main_invokes_created_app(self):
+        """main() should construct the app and execute it."""
+        from dhara.cli import main
+
+        mock_app = MagicMock()
+        with patch("dhara.cli.create_cli", return_value=mock_app):
+            main()
+
+        mock_app.assert_called_once_with()

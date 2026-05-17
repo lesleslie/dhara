@@ -27,6 +27,18 @@ class TestCreateSerializer:
             with pytest.raises(ImportError, match="dill"):
                 create_serializer(backend="dill")
 
+    def test_dill_backend_import_error_is_wrapped(self, monkeypatch):
+        from dhara.serialize import dill as dill_module
+
+        class BoomSerializer:
+            def __init__(self, **kwargs):
+                raise ImportError("boom")
+
+        monkeypatch.setattr(dill_module, "DillSerializer", BoomSerializer)
+
+        with pytest.raises(ImportError, match="Failed to create dill serializer: boom"):
+            create_serializer(backend="dill")
+
     def test_unknown_backend_raises_value_error(self):
         with pytest.raises(ValueError, match="Unknown serializer"):
             create_serializer(backend="unknown")
