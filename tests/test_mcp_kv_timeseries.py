@@ -387,6 +387,22 @@ class TestQueryTimeSeriesExtended:
         assert len(results) == 1
         assert results[0]["v"] == "recent"
 
+    def test_query_skips_stale_manual_entries(self, connection: Any) -> None:
+        """Manually inserted stale rows hit the retention skip branch."""
+        store = KVTimeSeriesStore(
+            connection,
+            retention=TimeSeriesRetention(retention_days=1),
+        )
+        ts_list = store._get_ts_list("m", "e")
+        ts_list.append({"ts": _ts(48), "v": "old"})
+        ts_list.append({"ts": _ts(1), "v": "recent"})
+        connection.commit()
+
+        results = store.query_time_series("m", "e")
+
+        assert len(results) == 1
+        assert results[0]["v"] == "recent"
+
     def test_query_filters_by_start_date(self, connection: Any) -> None:
         """Line 156-157: items before start_dt are skipped."""
         store = KVTimeSeriesStore(
@@ -671,6 +687,22 @@ class TestAggregatePatternsExtended:
         assert len(results) == 1
         assert results[0]["pattern"] == "123"
         assert results[0]["count"] == 2
+
+    def test_stale_manual_entries_are_skipped(self, connection: Any) -> None:
+        """Manually inserted stale rows hit the retention skip branch."""
+        store = KVTimeSeriesStore(
+            connection,
+            retention=TimeSeriesRetention(retention_days=1),
+        )
+        ts_list = store._get_ts_list("m", "e")
+        ts_list.append({"ts": _ts(48), "pattern": "old"})
+        ts_list.append({"ts": _ts(1), "pattern": "new"})
+        connection.commit()
+
+        results = store.aggregate_patterns(_ts(365), min_occurrences=1)
+
+        assert len(results) == 1
+        assert results[0]["pattern"] == "new"
 
 
 # ---------------------------------------------------------------------------

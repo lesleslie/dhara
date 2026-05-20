@@ -310,6 +310,29 @@ class TestLoadConfigFromEnv:
         with pytest.raises(ValueError, match="cannot be empty"):
             load_config_from_env()
 
+    def test_storage_host_override(self, yaml_config_file, monkeypatch):
+        monkeypatch.setenv("DHARA_CONFIG", str(yaml_config_file))
+        monkeypatch.setenv("DHARA_STORAGE_HOST", "example.com")
+        cfg = load_config_from_env()
+        assert cfg.storage.host == "example.com"
+
+    def test_storage_path_resolution_failure(self, yaml_config_file, monkeypatch):
+        monkeypatch.setenv("DHARA_CONFIG", str(yaml_config_file))
+        monkeypatch.setenv("DHARA_STORAGE_PATH", "/tmp/config.dhara")
+
+        def _raise(self):
+            raise OSError("cannot resolve")
+
+        monkeypatch.setattr("dhara.config.loader.Path.resolve", _raise, raising=False)
+        with pytest.raises(ValueError, match="Error resolving path"):
+            load_config_from_env()
+
+    def test_cache_size_type_error_raises(self, yaml_config_file, monkeypatch):
+        monkeypatch.setenv("DHARA_CONFIG", str(yaml_config_file))
+        monkeypatch.setenv("DHARA_CACHE_SIZE", "abc")
+        with pytest.raises(TypeError, match="must be an integer"):
+            load_config_from_env()
+
 
 # ============================================================================
 # save_config
@@ -408,6 +431,40 @@ class TestMergeConfigs:
         cfg2 = DharaConfig(cache=CacheConfig(enabled=False))
         merged = merge_configs(cfg1, cfg2)
         assert merged.cache.enabled is False
+
+    def test_all_scalar_overrides(self, tmp_path):
+        base = DharaConfig()
+        override = DharaConfig(
+            storage=StorageConfig(
+                backend="file",
+                path=tmp_path / "override.dhara",
+                host="example.com",
+                port=4242,
+                read_only=True,
+            ),
+            cache=CacheConfig(size=2500, shrink_threshold=3.5, enabled=False),
+            connection=ConnectionConfig(
+                timeout=45.0,
+                max_retries=9,
+                retry_delay=2.5,
+            ),
+            debug_mode=True,
+        )
+
+        merged = merge_configs(base, override)
+
+        assert merged.storage.backend == "file"
+        assert merged.storage.path == tmp_path / "override.dhara"
+        assert merged.storage.host == "example.com"
+        assert merged.storage.port == 4242
+        assert merged.storage.read_only is True
+        assert merged.cache.size == 2500
+        assert merged.cache.shrink_threshold == 3.5
+        assert merged.cache.enabled is False
+        assert merged.connection.timeout == 45.0
+        assert merged.connection.max_retries == 9
+        assert merged.connection.retry_delay == 2.5
+        assert merged.debug_mode is True
 
 
 # ============================================================================

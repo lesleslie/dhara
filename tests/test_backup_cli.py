@@ -153,6 +153,93 @@ def test_cmd_backup_differential_without_prior_full_backup(tmp_path):
     storage.close.assert_called_once()
 
 
+def test_cmd_backup_differential_with_prior_full_backup(tmp_path):
+    from dhara.backup.cli import cmd_backup
+
+    source = tmp_path / "source.durus"
+    source.write_text("data")
+    metadata = SimpleNamespace(backup_id="diff_2", size_bytes=321, source_path=str(source))
+    backup_manager = MagicMock()
+    backup_manager.perform_differential_backup.return_value = metadata
+    catalog = MagicMock()
+    catalog.get_last_backup_of_type.return_value = SimpleNamespace(backup_id="full_prev")
+
+    with patch("dhara.backup.cli.init_backup_directory"):
+        with patch("dhara.backup.cli.FileStorage") as mock_storage_cls:
+            storage = MagicMock()
+            mock_storage_cls.return_value = storage
+            with patch("dhara.backup.cli.BackupManager", return_value=backup_manager):
+                with patch("dhara.backup.cli.BackupCatalog", return_value=catalog):
+                    args = _args(source=str(source), backup_dir=str(tmp_path / "backups"), type="differential")
+                    assert cmd_backup(args) == 0
+
+    backup_manager.perform_differential_backup.assert_called_once_with("full_prev")
+    storage.close.assert_called_once()
+
+
+def test_cmd_backup_unknown_type_returns_error(tmp_path):
+    from dhara.backup.cli import cmd_backup
+
+    source = tmp_path / "source.durus"
+    source.write_text("data")
+
+    with patch("dhara.backup.cli.init_backup_directory"):
+        with patch("dhara.backup.cli.FileStorage") as mock_storage_cls:
+            storage = MagicMock()
+            mock_storage_cls.return_value = storage
+            with patch("dhara.backup.cli.BackupManager"):
+                args = _args(source=str(source), backup_dir=str(tmp_path / "backups"), type="mystery")
+                assert cmd_backup(args) == 1
+
+
+def test_cmd_backup_key_file_path(tmp_path):
+    from dhara.backup.cli import cmd_backup
+
+    source = tmp_path / "source.durus"
+    source.write_text("data")
+    key_file = tmp_path / "backup.key"
+    key_file.write_bytes(b"manual-key")
+    metadata = SimpleNamespace(backup_id="full_3", size_bytes=1, source_path=str(source))
+    backup_manager = MagicMock()
+    backup_manager.perform_full_backup.return_value = metadata
+
+    with patch("dhara.backup.cli.init_backup_directory"):
+        with patch("dhara.backup.cli.FileStorage") as mock_storage_cls:
+            storage = MagicMock()
+            mock_storage_cls.return_value = storage
+            with patch("dhara.backup.cli.BackupManager", return_value=backup_manager):
+                args = _args(
+                    source=str(source),
+                    backup_dir=str(tmp_path / "backups"),
+                    key_file=str(key_file),
+                )
+                assert cmd_backup(args) == 0
+
+
+def test_cmd_backup_key_file_path(tmp_path):
+    from dhara.backup.cli import cmd_backup
+
+    source = tmp_path / "source.durus"
+    source.write_text("data")
+    key_file = tmp_path / "backup.key"
+    key_file.write_bytes(b"manual-key")
+    metadata = SimpleNamespace(backup_id="full_3", size_bytes=1, source_path=str(source))
+    backup_manager = MagicMock()
+    backup_manager.perform_full_backup.return_value = metadata
+
+    with patch("dhara.backup.cli.init_backup_directory"):
+        with patch("dhara.backup.cli.FileStorage") as mock_storage_cls:
+            storage = MagicMock()
+            mock_storage_cls.return_value = storage
+            with patch("dhara.backup.cli.BackupManager", return_value=backup_manager):
+                args = _args(
+                    source=str(source),
+                    backup_dir=str(tmp_path / "backups"),
+                    key_file=str(key_file),
+                )
+                assert cmd_backup(args) == 0
+
+
 def test_cmd_backup_encrypts_with_generated_key(tmp_path):
     from dhara.backup.cli import cmd_backup
 
@@ -174,6 +261,34 @@ def test_cmd_backup_encrypts_with_generated_key(tmp_path):
     mock_key.assert_called_once()
     backup_manager.perform_full_backup.assert_called_once()
     storage.close.assert_called_once()
+
+
+def test_cmd_backup_verbose_and_key_file_failure(tmp_path):
+    from dhara.backup.cli import cmd_backup
+
+    source = tmp_path / "source.durus"
+    source.write_text("data")
+    key_file = tmp_path / "key.bin"
+
+    backup_manager = MagicMock()
+    backup_manager.perform_full_backup.side_effect = RuntimeError("boom")
+
+    with patch("dhara.backup.cli.init_backup_directory"):
+        with patch("dhara.backup.cli.FileStorage") as mock_storage_cls:
+            storage = MagicMock()
+            mock_storage_cls.return_value = storage
+            with patch("dhara.backup.cli.BackupManager", return_value=backup_manager):
+                with patch("builtins.open", mock_open(read_data=b"enc-key")):
+                    args = _args(
+                        source=str(source),
+                        backup_dir=str(tmp_path / "backups"),
+                        verbose=True,
+                        key_file=str(key_file),
+                    )
+                    assert cmd_backup(args) == 1
+
+    storage.close.assert_called_once()
+
 
 
 def test_cmd_restore_missing_backup_returns_error(tmp_path):
@@ -223,6 +338,78 @@ def test_cmd_restore_timestamp_branch(tmp_path):
     restore_manager.restore_point_in_time.assert_called_once_with(datetime(2024, 1, 1, 12, 30, 0))
 
 
+def test_cmd_restore_backup_id_and_key_file(tmp_path):
+    from dhara.backup.cli import cmd_restore
+
+    backup = SimpleNamespace(backup_id="b42")
+    catalog = MagicMock()
+    catalog.get_backup.return_value = backup
+    restore_manager = MagicMock()
+
+    key_file = tmp_path / "restore.key"
+    key_file.write_bytes(b"restore-key")
+    args = _args(
+        target=str(tmp_path / "restored.durus"),
+        backup_dir=str(tmp_path / "backups"),
+        backup_id="b42",
+        key_file=str(key_file),
+    )
+    with patch("dhara.backup.cli.init_backup_directory"):
+        with patch("dhara.backup.cli.BackupCatalog", return_value=catalog):
+            with patch("dhara.backup.cli.RestoreManager", return_value=restore_manager):
+                assert cmd_restore(args) == 0
+
+    restore_manager._restore_from_backup.assert_called_once_with(backup)
+
+
+def test_cmd_restore_verbose_latest_and_verify_failure(tmp_path):
+    from dhara.backup.cli import cmd_restore
+
+    backup = SimpleNamespace(backup_id="b7")
+    catalog = MagicMock()
+    catalog.get_last_backup.return_value = backup
+    restore_manager = MagicMock()
+    restore_manager.verify_restore.return_value = False
+
+    args = _args(
+        target=str(tmp_path / "restored.durus"),
+        backup_dir=str(tmp_path / "backups"),
+        verbose=True,
+        verify=True,
+    )
+    with patch("dhara.backup.cli.init_backup_directory"):
+        with patch("dhara.backup.cli.BackupCatalog", return_value=catalog):
+            with patch("dhara.backup.cli.RestoreManager", return_value=restore_manager):
+                assert cmd_restore(args) == 0
+
+    restore_manager._restore_from_backup.assert_called_once_with(backup)
+    restore_manager.verify_restore.assert_called_once_with(backup)
+
+
+def test_cmd_restore_backup_missing_and_failure(tmp_path):
+    from dhara.backup.cli import cmd_restore
+
+    catalog = MagicMock()
+    catalog.get_backup.return_value = None
+    failing_restore = MagicMock()
+    failing_restore._restore_from_backup.side_effect = RuntimeError("boom")
+
+    args = _args(target=str(tmp_path / "restored.durus"), backup_dir=str(tmp_path / "backups"), backup_id="missing")
+    with patch("dhara.backup.cli.init_backup_directory"):
+        with patch("dhara.backup.cli.BackupCatalog", return_value=catalog):
+            assert cmd_restore(args) == 1
+
+    with patch("dhara.backup.cli.init_backup_directory"):
+        with patch("dhara.backup.cli.BackupCatalog", return_value=MagicMock(get_last_backup=MagicMock(return_value=None))):
+            assert cmd_restore(_args(target=str(tmp_path / "restored3.durus"), backup_dir=str(tmp_path / "backups"))) == 1
+
+    args2 = _args(target=str(tmp_path / "restored2.durus"), backup_dir=str(tmp_path / "backups"))
+    with patch("dhara.backup.cli.init_backup_directory"):
+        with patch("dhara.backup.cli.BackupCatalog", return_value=MagicMock(get_last_backup=MagicMock(return_value=SimpleNamespace(backup_id="b1")))):
+            with patch("dhara.backup.cli.RestoreManager", return_value=failing_restore):
+                assert cmd_restore(args2) == 1
+
+
 def test_cmd_list_json_format(tmp_path, capsys):
     from dhara.backup.cli import cmd_list
 
@@ -250,6 +437,27 @@ def test_cmd_list_empty_table_returns_zero(tmp_path, capsys):
     with patch("dhara.backup.cli.BackupCatalog", return_value=catalog):
         assert cmd_list(args) == 0
     assert "No backups found" in capsys.readouterr().out
+
+
+def test_cmd_list_table_and_failure(tmp_path, capsys):
+    from dhara.backup.cli import cmd_list
+
+    backup = SimpleNamespace(
+        backup_id="b1",
+        backup_type=SimpleNamespace(value="full"),
+        size_bytes=1024 * 1024,
+        timestamp=datetime(2024, 1, 1, 12, 0, 0),
+    )
+    catalog = MagicMock()
+    catalog.search_backups.return_value = [backup]
+    args = _args(backup_dir=str(tmp_path), format="table")
+    with patch("dhara.backup.cli.BackupCatalog", return_value=catalog):
+        assert cmd_list(args) == 0
+
+    assert "Backup ID" in capsys.readouterr().out
+
+    with patch("dhara.backup.cli.BackupCatalog", side_effect=RuntimeError("boom")):
+        assert cmd_list(args) == 1
 
 
 def test_cmd_list_since_filter_parses_date(tmp_path):
@@ -295,6 +503,29 @@ def test_cmd_verify_missing_latest_backup_returns_error(tmp_path):
             assert cmd_verify(args) == 1
 
 
+def test_cmd_verify_report_and_failure_exception(tmp_path):
+    from dhara.backup.cli import cmd_verify
+
+    backup = SimpleNamespace(backup_id="b1")
+    failed = SimpleNamespace(status="failed", message="bad")
+    catalog = MagicMock()
+    catalog.get_all_backups.return_value = [backup]
+    verification = MagicMock()
+    verification.run_all_checks.return_value = {"integrity": failed}
+    verification.generate_verification_report.return_value = {"report": True}
+
+    args = _args(backup_dir=str(tmp_path), all=True, output=str(tmp_path / "report.json"))
+    with patch("dhara.backup.cli.init_backup_directory"):
+        with patch("dhara.backup.cli.BackupCatalog", return_value=catalog):
+            with patch("dhara.backup.cli.BackupVerification", return_value=verification):
+                with patch("builtins.open", mock_open()):
+                    assert cmd_verify(args) == 1
+
+    with patch("dhara.backup.cli.init_backup_directory"):
+        with patch("dhara.backup.cli.BackupCatalog", side_effect=RuntimeError("boom")):
+            assert cmd_verify(_args(backup_dir=str(tmp_path))) == 1
+
+
 def test_cmd_verify_single_backup_with_failure_marks_nonzero(tmp_path, capsys):
     from dhara.backup.cli import cmd_verify
 
@@ -312,6 +543,26 @@ def test_cmd_verify_single_backup_with_failure_marks_nonzero(tmp_path, capsys):
                 assert cmd_verify(args) == 1
 
     assert "✗ integrity: bad" in capsys.readouterr().out
+
+
+def test_cmd_verify_verbose_and_missing_backup(tmp_path):
+    from dhara.backup.cli import cmd_verify
+
+    backup = SimpleNamespace(backup_id="b1")
+    catalog = MagicMock()
+    catalog.get_backup.return_value = backup
+    verification = MagicMock()
+    verification.run_all_checks.return_value = {"integrity": SimpleNamespace(status="passed", message="ok")}
+
+    args = _args(backup_dir=str(tmp_path), backup_id="b1", verbose=True)
+    with patch("dhara.backup.cli.init_backup_directory"):
+        with patch("dhara.backup.cli.BackupCatalog", return_value=catalog):
+            with patch("dhara.backup.cli.BackupVerification", return_value=verification):
+                assert cmd_verify(args) == 0
+
+    with patch("dhara.backup.cli.init_backup_directory"):
+        with patch("dhara.backup.cli.BackupCatalog", return_value=MagicMock(get_backup=MagicMock(return_value=None))):
+            assert cmd_verify(_args(backup_dir=str(tmp_path), backup_id="missing")) == 1
 
 
 def test_cmd_schedule_status(tmp_path, capsys):
@@ -337,6 +588,20 @@ def test_cmd_schedule_unimplemented_actions_return_error(capsys):
 
     out = capsys.readouterr().out
     assert "Scheduled backup management would start here" in out
+
+
+def test_cmd_schedule_unknown_action_returns_none():
+    from dhara.backup.cli import cmd_schedule
+
+    assert cmd_schedule(_args(action="bogus")) is None
+
+
+def test_cmd_schedule_status_failure(tmp_path):
+    from dhara.backup.cli import cmd_schedule
+
+    args = _args(action="status", backup_dir=str(tmp_path))
+    with patch("dhara.backup.cli.BackupCatalog", side_effect=RuntimeError("boom")):
+        assert cmd_schedule(args) == 1
 
 
 def test_cmd_catalog_branches(tmp_path, capsys):
@@ -372,6 +637,48 @@ def test_cmd_catalog_branches(tmp_path, capsys):
     assert "Catalog validation: PASSED" in out
     assert "Catalog exported" in out
     assert "Imported 7 backups" in out
+
+
+def test_cmd_catalog_import_missing_value_and_unknown_action(tmp_path):
+    from dhara.backup.cli import cmd_catalog
+
+    catalog = MagicMock()
+    with patch("dhara.backup.cli.BackupCatalog", return_value=catalog):
+        assert cmd_catalog(_args(action="import", backup_dir=str(tmp_path))) == 0
+        assert cmd_catalog(_args(action="other", backup_dir=str(tmp_path))) == 0
+
+
+def test_cmd_catalog_import_with_value(tmp_path):
+    from dhara.backup.cli import cmd_catalog
+
+    catalog = MagicMock()
+    catalog.import_catalog.return_value = 2
+    with patch("dhara.backup.cli.BackupCatalog", return_value=catalog):
+        assert cmd_catalog(
+            _args(action="import", backup_dir=str(tmp_path), **{"import": str(tmp_path / "cat.json")})
+        ) == 0
+
+
+def test_cmd_catalog_import_with_value(tmp_path):
+    from dhara.backup.cli import cmd_catalog
+
+    catalog = MagicMock()
+    catalog.import_catalog.return_value = 2
+    with patch("dhara.backup.cli.BackupCatalog", return_value=catalog):
+        assert cmd_catalog(_args(action="import", backup_dir=str(tmp_path), **{"import": str(tmp_path / "cat.json")})) == 0
+
+
+def test_cmd_catalog_empty_list_and_failure(tmp_path, capsys):
+    from dhara.backup.cli import cmd_catalog
+
+    catalog = MagicMock()
+    catalog.get_all_backups.return_value = []
+    with patch("dhara.backup.cli.BackupCatalog", return_value=catalog):
+        assert cmd_catalog(_args(action="list", backup_dir=str(tmp_path))) == 0
+    assert "No backups in catalog" in capsys.readouterr().out
+
+    with patch("dhara.backup.cli.BackupCatalog", side_effect=RuntimeError("boom")):
+        assert cmd_catalog(_args(action="stats", backup_dir=str(tmp_path))) == 1
 
 
 def test_cmd_catalog_validate_with_issues(tmp_path, capsys):
@@ -410,6 +717,20 @@ def test_cmd_config_show_generate_and_init(tmp_path):
         assert cmd_config(_args(action="init-dir", backup_dir=str(tmp_path / "b"))) == 0
     mock_init.assert_called_once()
 
+    assert cmd_config(_args(action="other")) == 0
+
+
+def test_cmd_config_generate_key_missing_file_returns_error():
+    from dhara.backup.cli import cmd_config
+
+    assert cmd_config(_args(action="generate-key", key_file=None)) == 1
+
+
+def test_cmd_config_generate_key_uses_missing_file_error():
+    from dhara.backup.cli import cmd_config
+
+    assert cmd_config(_args(action="generate-key", key_file=None)) == 1
+
 
 def test_main_without_command_prints_help():
     from dhara.backup.cli import main
@@ -438,3 +759,15 @@ def test_main_dispatches_handler(tmp_path):
     parser.parse_args.return_value = args
     with patch("dhara.backup.cli.setup_parser", return_value=parser):
         assert main() == 1
+
+
+def test_main_dispatches_backup_handler(tmp_path):
+    from dhara.backup.cli import main
+
+    args = _args(command="backup")
+    parser = MagicMock()
+    parser.parse_args.return_value = args
+    with patch("dhara.backup.cli.setup_parser", return_value=parser):
+        with patch("dhara.backup.cli.cmd_backup", return_value=7) as mock_handler:
+            assert main() == 7
+    mock_handler.assert_called_once_with(args)

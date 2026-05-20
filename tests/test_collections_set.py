@@ -72,6 +72,11 @@ class TestPersistentSetEquality:
         ps2 = _make_set([1, 2])
         assert ps1 == ps2
 
+    def test_eq_not_persistent_set_returns_false(self):
+        ps = _make_set([1, 2])
+        assert (ps == {1, 2}) is False
+        assert (ps == [1, 2]) is False
+
     def test_eq_different(self):
         ps1 = _make_set([1])
         ps2 = _make_set([2])

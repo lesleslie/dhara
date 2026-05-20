@@ -12,6 +12,7 @@ from __future__ import annotations
 import os
 import socket
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -861,6 +862,15 @@ class TestStandardMode:
                     result = mode.validate_environment()
         assert result is True
 
+    def test_validate_environment_wraps_unexpected_error(self):
+        mode = StandardMode(settings=DharaSettings())
+        with patch.object(mode, "_validate_file_storage"):
+            with patch.object(
+                mode, "_validate_network_access", side_effect=RuntimeError("boom")
+            ):
+                with pytest.raises(ModeValidationError, match="Environment validation failed"):
+                    mode.validate_environment()
+
     # -- configure_storage --
 
     def test_configure_file_storage(self):
@@ -948,12 +958,37 @@ class TestStandardMode:
         # Path normalizes azure:// to azure:/
         assert "azure:/dhara-production/dhara.dhara" in str(result.path)
 
+    def test_validate_s3_storage_warns_without_bucket_attribute(self, monkeypatch):
+        monkeypatch.setenv("AWS_ACCESS_KEY_ID", "key")
+        mode = StandardMode(settings=SimpleNamespace())
+
+        mode._validate_s3_storage()
+
+    def test_validate_gcs_storage_warns_without_bucket_attribute(self, monkeypatch):
+        monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", "/tmp/creds.json")
+        mode = StandardMode(settings=SimpleNamespace())
+
+        mode._validate_gcs_storage()
+
+    def test_validate_azure_storage_warns_without_container_attribute(self, monkeypatch):
+        monkeypatch.setenv("AZURE_STORAGE_CONNECTION_STRING", "conn")
+        mode = StandardMode(settings=SimpleNamespace())
+
+        mode._validate_azure_storage()
+
     def test_configure_storage_empty_backend_defaults_to_file(self):
         """When backend is empty string, defaults to 'file'."""
         mode = StandardMode()
         config = StorageConfig(backend="")
         result = mode.configure_storage(config)
         assert result.backend == "file"
+
+    def test_configure_storage_unknown_backend_passthrough(self):
+        """Unknown backend falls through all branches without changing it."""
+        mode = StandardMode()
+        config = StorageConfig(backend="custom")
+        result = mode.configure_storage(config)
+        assert result.backend == "custom"
 
     # -- get_startup_options --
 

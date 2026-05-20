@@ -242,6 +242,30 @@ class TestProcessResponse:
         mw.process_response(req, resp)
         assert len(mw._request_durations) == 1
 
+    def test_metrics_disabled_skips_tracking(self):
+        mw = MCPMiddleware(enable_metrics=False, enable_logging=False)
+        req = MCPRequest(method="test", params={})
+        resp = MCPResponse(success=False, error="fail")
+
+        mw.process_response(req, resp)
+
+        assert mw._request_count == 0
+        assert mw._error_count == 0
+        assert mw._request_durations == []
+
+    def test_logs_auth_result_token_id(self, monkeypatch):
+        mw = MCPMiddleware(enable_logging=True, enable_metrics=False)
+        req = MCPRequest(method="test", params={})
+        resp = MCPResponse(success=True, duration_ms=12.5)
+        auth = AuthResult(success=True, token_id="token-123", role=Role.ADMIN)
+        log_mock = MagicMock()
+        monkeypatch.setattr("dhara.mcp.middleware.logger.log", log_mock)
+
+        mw.process_response(req, resp, auth_result=auth)
+
+        assert log_mock.called
+        assert "token-123" in log_mock.call_args.args[1]
+
 
 # ===========================================================================
 # check_tool_permission

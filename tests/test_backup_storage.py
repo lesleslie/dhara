@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from datetime import datetime, timezone
 from io import BytesIO
 from unittest.mock import MagicMock, call, patch
@@ -13,6 +14,8 @@ from dhara.backup.storage import (
     AzureBlobStorage,
     GCSStorage,
     S3Storage,
+    _DelegatingStorageAdapter,
+    _settings_to_kwargs,
     StorageAdapter,
     StorageFactory,
 )
@@ -60,6 +63,64 @@ class TestStorageAdapterABC:
         )
         with pytest.raises(TypeError):
             PartialImpl()
+
+
+class TestDelegatingStorageAdapter:
+    def test_forwards_all_operations(self):
+        adapter = MagicMock()
+        adapter.upload_file.return_value = True
+        adapter.download_file.return_value = True
+        adapter.upload_json.return_value = True
+        adapter.download_json.return_value = {"ok": True}
+        adapter.list_files.return_value = [{"key": "a"}]
+        adapter.delete_file.return_value = True
+
+        wrapper = _DelegatingStorageAdapter(adapter)
+
+        assert wrapper.upload_file("local", "remote") is True
+        assert wrapper.download_file("remote", "local") is True
+        assert wrapper.upload_json({"a": 1}, "remote") is True
+        assert wrapper.download_json("remote") == {"ok": True}
+        assert wrapper.list_files(prefix="x") == [{"key": "a"}]
+        assert wrapper.delete_file("remote") is True
+        assert wrapper.some_attr == adapter.some_attr
+
+    def test_missing_attr_raises(self):
+        wrapper = _DelegatingStorageAdapter(None)
+        with pytest.raises(AttributeError, match="missing"):
+            _ = wrapper.missing
+
+
+class TestSettingsConversion:
+    def test_settings_to_kwargs_for_known_settings(self, tmp_path):
+        from oneiric.adapters.storage import (
+            AzureBlobStorageSettings,
+            GCSStorageSettings,
+            LocalStorageSettings,
+            S3StorageSettings,
+        )
+
+        s3 = S3StorageSettings(bucket="bucket", region="eu-west-1", use_accelerate_endpoint=True)
+        gcs = GCSStorageSettings(bucket="bucket", project="proj", credentials_file=tmp_path / "creds.json")
+        azure = AzureBlobStorageSettings(container="container", connection_string="conn", credential="cred")
+        local = LocalStorageSettings(base_path=tmp_path)
+
+        assert _settings_to_kwargs(s3)["bucket_name"] == "bucket"
+        assert _settings_to_kwargs(gcs)["project_id"] == "proj"
+        assert _settings_to_kwargs(azure)["container_name"] == "container"
+        assert _settings_to_kwargs(local)["base_path"] == tmp_path
+
+    def test_settings_to_kwargs_model_dump_and_dict(self):
+        class ModelDumpOnly:
+            def model_dump(self):
+                return {"alpha": 1}
+
+        assert _settings_to_kwargs(ModelDumpOnly()) == {"alpha": 1}
+        assert _settings_to_kwargs({"beta": 2}) == {"beta": 2}
+
+    def test_settings_to_kwargs_unsupported(self):
+        with pytest.raises(TypeError, match="Unsupported settings object"):
+            _settings_to_kwargs(object())
 
 
 # ---------------------------------------------------------------------------
@@ -147,6 +208,51 @@ class TestS3StorageInit:
             storage = S3Storage(bucket_name="bucket")
 
         mock_boto3.client.assert_called_once_with("s3", region_name="us-east-1")
+
+    def test_init_from_settings_object(self):
+        from oneiric.adapters.storage import S3StorageSettings
+
+        mock_boto3 = MagicMock()
+        mock_client = MagicMock()
+        mock_boto3.client.return_value = mock_client
+
+        fake_client_error = type("ClientError", (Exception,), {})
+        settings = S3StorageSettings(
+            bucket="my-bucket",
+            region="eu-central-1",
+            endpoint_url="http://minio:9000",
+            profile_name="profile",
+            access_key_id="AKID",
+            secret_access_key="SECRET",
+            session_token="TOKEN",
+            healthcheck_key="health",
+            use_accelerate_endpoint=True,
+        )
+
+        with patch.dict(
+            "sys.modules",
+            {"boto3": mock_boto3, "botocore": MagicMock(), "botocore.exceptions": MagicMock(ClientError=fake_client_error)},
+        ):
+            storage = S3Storage(settings)
+
+        assert storage.bucket_name == "my-bucket"
+        assert storage.settings is settings
+        mock_boto3.client.assert_called_once_with(
+            "s3",
+            region_name="eu-central-1",
+            endpoint_url="http://minio:9000",
+            aws_access_key_id="AKID",
+            aws_secret_access_key="SECRET",
+            aws_session_token="TOKEN",
+        )
+
+    def test_init_rejects_unexpected_kwargs(self):
+        with pytest.raises(TypeError, match="Unexpected keyword arguments"):
+            S3Storage(bucket_name="bucket", extra="nope")
+
+    def test_init_requires_bucket_name(self):
+        with pytest.raises(TypeError, match="bucket_name is required"):
+            S3Storage(region="us-east-1")
 
 
 def _make_s3_storage():
@@ -244,6 +350,84 @@ class TestS3StorageDownloadJson:
         )
         result = storage.download_json("missing.json")
         assert result is None
+
+    def test_download_json_string_body_branch(self):
+        storage, mock_client, _ = _make_s3_storage()
+
+        class _Body:
+            def read(self):
+                return json.dumps({"hello": "world"})
+
+        mock_client.get_object.return_value = {"Body": _Body()}
+
+        result = storage.download_json("data.json")
+        assert result == {"hello": "world"}
+
+
+class TestS3StorageAsyncMethods:
+    @pytest.mark.asyncio
+    async def test_async_upload_and_download(self):
+        storage, mock_client, _ = _make_s3_storage()
+
+        async def _put_object(*args, **kwargs):
+            return None
+
+        class _Body:
+            def read(self):
+                async def _read():
+                    return b"hello"
+
+                return _read()
+
+        async def _get_object(*args, **kwargs):
+            return {"Body": _Body()}
+
+        mock_client.put_object.return_value = _put_object()
+        mock_client.get_object.return_value = _get_object()
+
+        await storage.upload("remote", b"payload")
+        data = await storage.download("remote")
+
+        assert data == b"hello"
+
+    @pytest.mark.asyncio
+    async def test_async_upload_and_download_sync_return_branches(self):
+        storage, mock_client, _ = _make_s3_storage()
+
+        class _Body:
+            def read(self):
+                return b"world"
+
+        mock_client.put_object.return_value = None
+        mock_client.get_object.return_value = {"Body": _Body()}
+
+        await storage.upload("remote", b"payload")
+        data = await storage.download("remote")
+
+        assert data == b"world"
+
+
+class TestS3StorageAsyncDownloads:
+    @pytest.mark.asyncio
+    async def test_async_download_with_string_body(self):
+        storage, mock_client, _ = _make_s3_storage()
+
+        class _Response:
+            def __init__(self):
+                self.Body = None
+
+        async def _get_object(*args, **kwargs):
+            class _Body:
+                def read(self):
+                    return "hello"
+
+            return {"Body": _Body()}
+
+        mock_client.get_object.return_value = _get_object()
+
+        data = await storage.download("remote")
+
+        assert data == b"hello"
 
 
 class TestS3StorageListFiles:
@@ -405,6 +589,45 @@ class TestGCSStorageInit:
         assert str(storage.settings.credentials_file) == "/path/to/sa.json"
         assert storage.project_id == "proj"
 
+    def test_init_from_settings_object(self):
+        from oneiric.adapters.storage import GCSStorageSettings
+
+        mock_gcs_module = MagicMock()
+        mock_client = MagicMock()
+        mock_gcs_module.Client.return_value = mock_client
+        mock_bucket = MagicMock()
+        mock_client.bucket.return_value = mock_bucket
+
+        fake_gcs_error = type("GoogleCloudError", (Exception,), {})
+        mock_google_cloud = MagicMock()
+        mock_google_cloud.storage = mock_gcs_module
+        settings = GCSStorageSettings(bucket="bucket", project="proj")
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "google": MagicMock(cloud=mock_google_cloud),
+                "google.cloud": mock_google_cloud,
+                "google.cloud.storage": mock_gcs_module,
+                "google.oauth2": MagicMock(),
+                "google.oauth2.service_account": MagicMock(),
+                "google.cloud.exceptions": MagicMock(GoogleCloudError=fake_gcs_error),
+            },
+        ):
+            storage = GCSStorage(settings)
+
+        assert storage.bucket_name == "bucket"
+        assert storage.settings is settings
+        mock_gcs_module.Client.assert_called_once_with(project="proj", credentials=None)
+
+    def test_init_requires_bucket_name(self):
+        with pytest.raises(TypeError, match="bucket_name is required"):
+            GCSStorage(project_id="proj")
+
+    def test_init_rejects_unexpected_kwargs(self):
+        with pytest.raises(TypeError, match="Unexpected keyword arguments"):
+            GCSStorage(bucket_name="bucket", extra="nope")
+
 
 class TestGCSStorageUploadFile:
     def test_upload_success(self):
@@ -494,6 +717,158 @@ class TestGCSStorageDownloadJson:
         assert result is None
 
 
+class TestGCSStorageAsyncMethods:
+    @pytest.mark.asyncio
+    async def test_async_upload_and_download_bytes(self):
+        storage, mock_bucket, _, _ = _make_gcs_storage()
+        class _Blob:
+            def upload_from_string(self, data):
+                class _Awaitable:
+                    def __await__(self):
+                        async def _inner():
+                            return None
+
+                        return _inner().__await__()
+
+                return _Awaitable()
+
+            def download_as_bytes(self):
+                class _Awaitable:
+                    def __await__(self):
+                        async def _inner():
+                            return b"payload"
+
+                        return _inner().__await__()
+
+                return _Awaitable()
+
+        mock_bucket.blob.return_value = _Blob()
+
+        await storage.upload("remote", b"payload")
+        data = await storage.download("remote")
+
+        assert data == b"payload"
+
+    @pytest.mark.asyncio
+    async def test_async_upload_and_download_sync_return_branches(self):
+        storage, mock_bucket, _, _ = _make_gcs_storage()
+
+        class _Blob:
+            def upload_from_filename(self, data):
+                return None
+
+            def download_as_bytes(self):
+                return b"payload"
+
+        mock_bucket.blob.return_value = _Blob()
+
+        await storage.upload("remote", b"payload")
+        data = await storage.download("remote")
+
+        assert data == b"payload"
+
+    @pytest.mark.asyncio
+    async def test_async_download_text_branch(self):
+        storage, mock_bucket, _, _ = _make_gcs_storage()
+
+        class _Blob:
+            def upload_from_string(self, *args, **kwargs):
+                async def _upload():
+                    return None
+
+                return _upload()
+
+            def download_as_text(self):
+                async def _download():
+                    return "hello"
+
+                return _download()
+
+        mock_blob = _Blob()
+        mock_bucket.blob.return_value = mock_blob
+
+        await storage.upload("remote", b"payload")
+        data = await storage.download("remote")
+
+        assert data == b"hello"
+
+    @pytest.mark.asyncio
+    async def test_async_download_text_sync_branch(self):
+        storage, mock_bucket, _, _ = _make_gcs_storage()
+
+        class _Blob:
+            def download_as_text(self):
+                return "hello"
+
+        mock_bucket.blob.return_value = _Blob()
+
+        data = await storage.download("remote")
+
+        assert data == b"hello"
+
+    def test_upload_file_from_filename_branch(self, tmp_path):
+        storage, mock_bucket, _, _ = _make_gcs_storage()
+
+        class _Blob:
+            def upload_from_filename(self, local_path):
+                self.local_path = local_path
+
+        blob = _Blob()
+        mock_bucket.blob.return_value = blob
+
+        file_path = tmp_path / "file.bin"
+        file_path.write_bytes(b"x")
+
+        assert storage.upload_file(str(file_path), "remote") is True
+        assert blob.local_path == str(file_path)
+
+    @pytest.mark.asyncio
+    async def test_async_download_text_only_branch(self):
+        storage, mock_bucket, _, _ = _make_gcs_storage()
+
+        class _Blob:
+            def download_as_text(self):
+                class _Awaitable:
+                    def __await__(self):
+                        async def _inner():
+                            return "hello"
+
+                        return _inner().__await__()
+
+                return _Awaitable()
+
+        mock_bucket.blob.return_value = _Blob()
+        data = await storage.download("remote")
+        assert data == b"hello"
+
+    def test_upload_from_filename_branch(self, tmp_path):
+        storage, mock_bucket, _, _ = _make_gcs_storage()
+
+        class _Blob:
+            def upload_from_filename(self, local_path):
+                self.local_path = local_path
+
+        blob = _Blob()
+        mock_bucket.blob.return_value = blob
+
+        path = tmp_path / "file.bin"
+        path.write_bytes(b"x")
+
+        assert storage.upload_file(str(path), "remote") is True
+        assert blob.local_path == str(path)
+
+    def test_download_as_text_branch(self):
+        storage, mock_bucket, _, _ = _make_gcs_storage()
+
+        class _Blob:
+            def download_as_text(self):
+                return "hello"
+
+        mock_bucket.blob.return_value = _Blob()
+
+        assert storage.download_json("remote") is None
+
+
 class TestGCSStorageListFiles:
     def test_list_files_success(self):
         storage, mock_bucket, _, _ = _make_gcs_storage()
@@ -524,6 +899,436 @@ class TestGCSStorageListFiles:
 
         files = storage.list_files()
         assert files == []
+
+
+class TestAzureBlobStorageSettingsInit:
+    def test_init_from_settings_and_account_values(self):
+        from oneiric.adapters.storage import AzureBlobStorageSettings
+
+        mock_blob_module = MagicMock()
+        mock_client = MagicMock()
+        mock_container = MagicMock()
+        mock_client.get_container_client.return_value = mock_container
+        mock_blob_module.BlobServiceClient.return_value = mock_client
+        mock_blob_module.BlobServiceClient.from_connection_string.side_effect = Exception("nope")
+        fake_resource_exists_error = type("ResourceExistsError", (Exception,), {})
+
+        mock_azure = MagicMock()
+        mock_azure.storage.blob = mock_blob_module
+        mock_azure.core.exceptions = MagicMock(ResourceExistsError=fake_resource_exists_error)
+        settings = AzureBlobStorageSettings(container="container", connection_string="conn")
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "azure": mock_azure,
+                "azure.core": mock_azure.core,
+                "azure.core.exceptions": mock_azure.core.exceptions,
+                "azure.storage": MagicMock(),
+                "azure.storage.blob": mock_blob_module,
+            },
+        ):
+            storage = AzureBlobStorage(settings, client=mock_client)
+
+        assert storage.container_name == "container"
+        assert storage.settings is settings
+        assert storage.container_client is mock_container
+
+    def test_init_derives_account_url_and_credential(self):
+        mock_blob_module = MagicMock()
+        mock_client = MagicMock()
+        mock_container = MagicMock()
+        mock_client.get_container_client.return_value = mock_container
+        mock_blob_module.BlobServiceClient.return_value = mock_client
+        fake_resource_exists_error = type("ResourceExistsError", (Exception,), {})
+
+        mock_azure = MagicMock()
+        mock_azure.storage.blob = mock_blob_module
+        mock_azure.core.exceptions = MagicMock(ResourceExistsError=fake_resource_exists_error)
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "azure": mock_azure,
+                "azure.core": mock_azure.core,
+                "azure.core.exceptions": mock_azure.core.exceptions,
+                "azure.storage": MagicMock(),
+                "azure.storage.blob": mock_blob_module,
+            },
+        ):
+            storage = AzureBlobStorage(
+                container_name="container",
+                account_name="acct",
+                account_key="key",
+                client=mock_client,
+            )
+
+        assert storage.account_url == "https://acct.blob.core.windows.net"
+        assert storage.credential == "key"
+
+    def test_init_from_settings_object(self):
+        from oneiric.adapters.storage import AzureBlobStorageSettings
+
+        mock_blob_module = MagicMock()
+        mock_client = MagicMock()
+        mock_container = MagicMock()
+        mock_client.get_container_client.return_value = mock_container
+        mock_blob_module.BlobServiceClient.return_value = mock_client
+        fake_resource_exists_error = type("ResourceExistsError", (Exception,), {})
+
+        mock_azure = MagicMock()
+        mock_azure.storage.blob = mock_blob_module
+        mock_azure.core.exceptions = MagicMock(ResourceExistsError=fake_resource_exists_error)
+        settings = AzureBlobStorageSettings(container="container", default_content_type="text/plain")
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "azure": mock_azure,
+                "azure.core": mock_azure.core,
+                "azure.core.exceptions": mock_azure.core.exceptions,
+                "azure.storage": MagicMock(),
+                "azure.storage.blob": mock_blob_module,
+            },
+        ):
+            storage = AzureBlobStorage(settings)
+
+        assert storage.settings is settings
+        assert storage.container_name == "container"
+
+    def test_init_from_settings_object_copies_optional_fields(self):
+        from types import SimpleNamespace
+
+        mock_blob_module = MagicMock()
+        mock_client = MagicMock()
+        mock_container = MagicMock()
+        mock_client.get_container_client.return_value = mock_container
+        mock_blob_module.BlobServiceClient.return_value = mock_client
+        fake_resource_exists_error = type("ResourceExistsError", (Exception,), {})
+
+        mock_azure = MagicMock()
+        mock_azure.storage.blob = mock_blob_module
+        mock_azure.core.exceptions = MagicMock(ResourceExistsError=fake_resource_exists_error)
+        settings = SimpleNamespace(
+            container="container",
+            connection_string="conn",
+            account_url="https://example.blob.core.windows.net",
+            credential="cred",
+            default_content_type="text/plain",
+        )
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "azure": mock_azure,
+                "azure.core": mock_azure.core,
+                "azure.core.exceptions": mock_azure.core.exceptions,
+                "azure.storage": MagicMock(),
+                "azure.storage.blob": mock_blob_module,
+            },
+        ):
+            storage = AzureBlobStorage(settings)
+
+        assert storage.connection_string == "conn"
+        assert storage.account_url == "https://example.blob.core.windows.net"
+        assert storage.credential == "cred"
+        assert storage.settings.default_content_type == "text/plain"
+
+    def test_init_rejects_unexpected_kwargs(self):
+        with pytest.raises(TypeError, match="Unexpected keyword arguments"):
+            AzureBlobStorage(container_name="container", extra="nope")
+
+    def test_fallback_client_paths(self, tmp_path):
+        fake_resource_exists_error = type("ResourceExistsError", (Exception,), {})
+        mock_blob_module = MagicMock()
+        mock_blob_module.BlobServiceClient.from_connection_string.side_effect = Exception(
+            "boom"
+        )
+        mock_blob_module.BlobServiceClient.side_effect = Exception("boom")
+        mock_azure = MagicMock()
+        mock_azure.storage.blob = mock_blob_module
+        mock_azure.core.exceptions = MagicMock(ResourceExistsError=fake_resource_exists_error)
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "azure": mock_azure,
+                "azure.core": mock_azure.core,
+                "azure.core.exceptions": mock_azure.core.exceptions,
+                "azure.storage": MagicMock(),
+                "azure.storage.blob": mock_blob_module,
+            },
+        ):
+            storage = AzureBlobStorage(container_name="container")
+
+        path = tmp_path / "tmp_azure_storage.txt"
+        path.write_text("data")
+        try:
+            assert storage.upload_file(str(path), "remote.txt") is True
+            assert storage.download_file("remote.txt", str(path.with_name("copy.txt"))) is True
+            assert storage.upload_json({"a": 1}, "data.json") is True
+            assert storage.download_json("data.json") is None
+            assert storage.list_files() == []
+            assert storage.delete_file("remote.txt") is True
+        finally:
+            if path.exists():
+                path.unlink()
+            copy_path = path.with_name("copy.txt")
+            if copy_path.exists():
+                copy_path.unlink()
+
+    def test_fallback_client_direct_methods(self):
+        fake_resource_exists_error = type("ResourceExistsError", (Exception,), {})
+        mock_blob_module = MagicMock()
+        mock_blob_module.BlobServiceClient.from_connection_string.side_effect = Exception(
+            "boom"
+        )
+        mock_blob_module.BlobServiceClient.side_effect = Exception("boom")
+        mock_azure = MagicMock()
+        mock_azure.storage.blob = mock_blob_module
+        mock_azure.core.exceptions = MagicMock(ResourceExistsError=fake_resource_exists_error)
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "azure": mock_azure,
+                "azure.core": mock_azure.core,
+                "azure.core.exceptions": mock_azure.core.exceptions,
+                "azure.storage": MagicMock(),
+                "azure.storage.blob": mock_blob_module,
+            },
+        ):
+            storage = AzureBlobStorage(container_name="container")
+
+        blob_client = storage.client.get_container_client("container").get_blob_client(
+            "remote.txt"
+        )
+        assert blob_client.upload_blob(b"data") is None
+        assert blob_client.download_blob().readall() == b""
+        assert blob_client.delete_blob() is None
+        assert storage.client.get_container_client("container").list_blobs() == []
+
+    def test_fallback_client_download_awaitable_branch(self):
+        fake_resource_exists_error = type("ResourceExistsError", (Exception,), {})
+
+        class _AwaitableDownload:
+            def __await__(self):
+                async def _inner():
+                    class _Download:
+                        def readall(self):
+                            class _Awaitable:
+                                def __await__(self):
+                                    async def _inner2():
+                                        return b""
+
+                                    return _inner2().__await__()
+
+                            return _Awaitable()
+
+                    return _Download()
+
+                return _inner().__await__()
+
+        class _Blob:
+            def upload_blob(self, *args, **kwargs):
+                return None
+
+            def download_blob(self):
+                return _AwaitableDownload()
+
+        class _Container:
+            def get_blob_client(self, _name):
+                return _Blob()
+
+            def list_blobs(self, name_starts_with=""):
+                return []
+
+        class _Client:
+            def get_container_client(self, _name):
+                return _Container()
+
+        mock_azure = MagicMock()
+        mock_azure.core.exceptions = MagicMock(ResourceExistsError=fake_resource_exists_error)
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "azure": mock_azure,
+                "azure.core": mock_azure.core,
+                "azure.core.exceptions": mock_azure.core.exceptions,
+                "azure.storage": MagicMock(),
+                "azure.storage.blob": MagicMock(BlobServiceClient=MagicMock()),
+            },
+        ):
+            adapter = AzureBlobStorage(container_name="container", client=_Client())
+
+        import asyncio
+
+        async def _run():
+            return await adapter.download("remote")
+
+        assert asyncio.run(_run()) == b""
+
+    def test_upload_file_overwrite_on_resource_exists(self, tmp_path):
+        fake_resource_exists_error = type("ResourceExistsError", (Exception,), {})
+        mock_blob = MagicMock()
+        mock_blob.upload_blob.side_effect = [fake_resource_exists_error(), None]
+        mock_container = MagicMock()
+        mock_container.get_blob_client.return_value = mock_blob
+        adapter = AzureBlobStorage.__new__(AzureBlobStorage)
+        adapter.container_client = mock_container
+        adapter._resource_exists_error = fake_resource_exists_error
+
+        file_path = tmp_path / "backup.bin"
+        file_path.write_bytes(b"content")
+
+        assert adapter.upload_file(str(file_path), "remote.bin") is True
+        mock_blob.upload_blob.assert_any_call(b"content")
+        mock_blob.upload_blob.assert_any_call(b"content", overwrite=True)
+
+
+class TestAzureBlobStorageAsyncMethods:
+    @pytest.mark.asyncio
+    async def test_async_upload_and_download(self):
+        fake_resource_exists_error = type("ResourceExistsError", (Exception,), {})
+
+        class _Blob:
+            def upload_blob(self, data, **kwargs):
+                async def _upload():
+                    return None
+
+                return _upload()
+
+            def download_blob(self):
+                class _Download:
+                    def readall(self):
+                        async def _read():
+                            return b"azure"
+
+                        return _read()
+
+                return _Download()
+
+        class _Container:
+            def get_blob_client(self, _name):
+                return _Blob()
+
+            def list_blobs(self, name_starts_with=""):
+                return []
+
+        class _Client:
+            def get_container_client(self, _name):
+                return _Container()
+
+        mock_azure = MagicMock()
+        mock_azure.core.exceptions = MagicMock(ResourceExistsError=fake_resource_exists_error)
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "azure": mock_azure,
+                "azure.core": mock_azure.core,
+                "azure.core.exceptions": mock_azure.core.exceptions,
+                "azure.storage": MagicMock(),
+                "azure.storage.blob": MagicMock(BlobServiceClient=MagicMock()),
+            },
+        ):
+            adapter = AzureBlobStorage(container_name="container", client=_Client())
+
+        await adapter.upload("remote", b"payload")
+        data = await adapter.download("remote")
+        assert data == b"azure"
+
+    @pytest.mark.asyncio
+    async def test_async_upload_and_download_sync_return_branches(self):
+        fake_resource_exists_error = type("ResourceExistsError", (Exception,), {})
+
+        class _Blob:
+            def upload_blob(self, data, **kwargs):
+                return None
+
+            def download_blob(self):
+                class _Download:
+                    def readall(self):
+                        return b"azure"
+
+                return _Download()
+
+        class _Container:
+            def get_blob_client(self, _name):
+                return _Blob()
+
+            def list_blobs(self, name_starts_with=""):
+                return []
+
+        class _Client:
+            def get_container_client(self, _name):
+                return _Container()
+
+        mock_azure = MagicMock()
+        mock_azure.core.exceptions = MagicMock(ResourceExistsError=fake_resource_exists_error)
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "azure": mock_azure,
+                "azure.core": mock_azure.core,
+                "azure.core.exceptions": mock_azure.core.exceptions,
+                "azure.storage": MagicMock(),
+                "azure.storage.blob": MagicMock(BlobServiceClient=MagicMock()),
+            },
+        ):
+            adapter = AzureBlobStorage(container_name="container", client=_Client())
+
+        await adapter.upload("remote", b"payload")
+        assert await adapter.download("remote") == b"azure"
+
+    @pytest.mark.asyncio
+    async def test_async_download_blob_awaitable_branch(self):
+        fake_resource_exists_error = type("ResourceExistsError", (Exception,), {})
+
+        class _AwaitableDownload:
+            def __await__(self):
+                async def _inner():
+                    class _Download:
+                        def readall(self):
+                            return b"azure"
+
+                    return _Download()
+
+                return _inner().__await__()
+
+        class _Blob:
+            def upload_blob(self, data, **kwargs):
+                return None
+
+            def download_blob(self):
+                return _AwaitableDownload()
+
+        class _Container:
+            def get_blob_client(self, _name):
+                return _Blob()
+
+        class _Client:
+            def get_container_client(self, _name):
+                return _Container()
+
+        mock_azure = MagicMock()
+        mock_azure.core.exceptions = MagicMock(ResourceExistsError=fake_resource_exists_error)
+
+        with patch.dict(
+            "sys.modules",
+            {
+                "azure": mock_azure,
+                "azure.core": mock_azure.core,
+                "azure.core.exceptions": mock_azure.core.exceptions,
+                "azure.storage": MagicMock(),
+                "azure.storage.blob": MagicMock(BlobServiceClient=MagicMock()),
+            },
+        ):
+            adapter = AzureBlobStorage(container_name="container", client=_Client())
+
+        assert await adapter.download("remote") == b"azure"
 
 
 class TestGCSStorageDeleteFile:
@@ -698,6 +1503,27 @@ class TestAzureUploadFile:
         assert mock_blob_client.upload_blob.call_count == 2
         second_call = mock_blob_client.upload_blob.call_args_list[1]
         assert second_call.kwargs.get("overwrite") is True
+
+    def test_upload_file_overwrite_failure(self, tmp_path):
+        storage, _, mock_container, ResourceExistsError = _make_azure_storage()
+        local_file = tmp_path / "data.bin"
+        local_file.write_bytes(b"hello")
+
+        mock_blob_client = MagicMock()
+        mock_container.get_blob_client.return_value = mock_blob_client
+        mock_blob_client.upload_blob.side_effect = [
+            ResourceExistsError("exists"),
+            RuntimeError("still failing"),
+        ]
+
+        with patch(
+            "dhara.backup.storage.ResourceExistsError",
+            ResourceExistsError,
+            create=True,
+        ):
+            result = storage.upload_file(str(local_file), "backup/data.bin")
+
+        assert result is False
 
     def test_upload_resource_exists_retries_with_overwrite(self, tmp_path):
         """ResourceExistsError should retry upload with overwrite=True."""

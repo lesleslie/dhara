@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -11,6 +12,8 @@ from dhara.mcp.ecosystem_state import (
     EventRetention,
     _utcnow,
 )
+from dhara.collections.dict import PersistentDict
+from dhara.collections.list import PersistentList
 
 
 def _ts(hours_ago: int = 0) -> str:
@@ -26,6 +29,20 @@ class TestEventRetention:
         cutoff = r.cutoff()
         now = datetime.now(timezone.utc)
         assert (now - cutoff).days >= 13
+
+
+class TestEcosystemStateInitialization:
+    def test_existing_root_skips_commit(self, connection):
+        root = connection.get_root()
+        root["ecosystem_services"] = PersistentDict()
+        root["ecosystem_events"] = PersistentList()
+        connection.commit = MagicMock()
+
+        store = EcosystemStateStore(connection)
+
+        assert store._services() is root["ecosystem_services"]
+        assert store._events() is root["ecosystem_events"]
+        connection.commit.assert_not_called()
 
 
 class TestEcosystemStateService:
@@ -182,3 +199,77 @@ class TestEcosystemStateEvents:
         event = store.list_events()[0]
         assert event["schema_version"] == 1
         assert event["payload"] == {}
+
+    def test_list_events_handles_invalid_and_naive_timestamps(self, connection):
+        store = EcosystemStateStore(
+            connection,
+            event_retention=EventRetention(retention_days=365),
+        )
+        events = store._events()
+        events.append(
+            PersistentDict(
+                {
+                    "event_type": "broken",
+                    "source_service": "s",
+                    "timestamp": "not-a-timestamp",
+                }
+            )
+        )
+        events.append(
+            PersistentDict(
+                {
+                    "event_type": "naive",
+                    "source_service": "s",
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
+        )
+
+        results = store.list_events(limit=None)
+        assert [event["event_type"] for event in results] == ["broken", "naive"]
+
+    def test_list_events_skips_old_manual_event(self, connection):
+        store = EcosystemStateStore(
+            connection,
+            event_retention=EventRetention(retention_days=1),
+        )
+        store._events().append(
+            PersistentDict(
+                {
+                    "event_type": "old",
+                    "source_service": "s",
+                    "timestamp": _ts(48),
+                }
+            )
+        )
+
+        assert store.list_events(limit=None) == []
+
+    def test_prune_events_handles_invalid_and_naive_timestamps(self, connection):
+        store = EcosystemStateStore(
+            connection,
+            event_retention=EventRetention(retention_days=365),
+        )
+        events = store._events()
+        events.append(
+            PersistentDict(
+                {
+                    "event_type": "broken",
+                    "source_service": "s",
+                    "timestamp": "not-a-timestamp",
+                }
+            )
+        )
+        events.append(
+            PersistentDict(
+                {
+                    "event_type": "naive",
+                    "source_service": "s",
+                    "timestamp": datetime.now().isoformat(),
+                }
+            )
+        )
+
+        store._prune_events(events)
+
+        assert [event["event_type"] for event in events] == ["broken", "naive"]

@@ -551,3 +551,69 @@ class TestConstants:
         assert UNSAVED == 1
         assert SAVED == 0
         assert GHOST == -1
+
+    def test_reload_uses_c_extension_path_when_available(self, monkeypatch):
+        import importlib
+        import sys
+        from types import ModuleType
+
+        fake = ModuleType("dhara._persistent")
+
+        class FakeConnectionBase:
+            __slots__ = ["transaction_serial"]
+
+            def __new__(klass, *args, **kwargs):
+                obj = object.__new__(klass)
+                obj.transaction_serial = 1
+                return obj
+
+        class FakePersistentBase:
+            pass
+
+        def fake_hasattribute(obj, name):
+            return hasattr(obj, name)
+
+        fake.ConnectionBase = FakeConnectionBase
+        fake.PersistentBase = FakePersistentBase
+        fake._delattribute = object.__delattr__
+        fake._getattribute = object.__getattribute__
+        fake._hasattribute = fake_hasattribute
+        fake._setattribute = object.__setattr__
+        fake.call_if_persistent = lambda f, x: f(x) if isinstance(x, FakePersistentBase) else None
+
+        original_persistent = sys.modules.get("dhara.core.persistent")
+        original_backend = sys.modules.get("dhara._persistent")
+        try:
+            monkeypatch.setitem(sys.modules, "dhara._persistent", fake)
+            sys.modules.pop("dhara.core.persistent", None)
+            module = importlib.import_module("dhara.core.persistent")
+
+            assert module.PersistentObject.__slots__ == []
+
+            class ReloadedPersistent(module.PersistentObject):
+                __slots__ = ["extra_slot"]
+
+            obj = ReloadedPersistent()
+            obj._p_status = module.GHOST
+            obj._p_connection = MagicMock()
+            obj._p_connection.transaction_serial = 1
+
+            loaded = False
+
+            def tracking_load(self_inner):
+                nonlocal loaded
+                loaded = True
+                object.__setattr__(self_inner, "_p_status", module.SAVED)
+
+            with patch.object(ReloadedPersistent, "_p_load_state", tracking_load):
+                obj.__getstate__()
+
+            assert loaded
+        finally:
+            sys.modules.pop("dhara.core.persistent", None)
+            if original_persistent is not None:
+                sys.modules["dhara.core.persistent"] = original_persistent
+            if original_backend is not None:
+                sys.modules["dhara._persistent"] = original_backend
+            else:
+                sys.modules.pop("dhara._persistent", None)

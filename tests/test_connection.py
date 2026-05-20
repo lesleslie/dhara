@@ -167,9 +167,16 @@ class TestObjectDictionary:
         od = ObjectDictionary()
         obj = _MinimalObj()
         od["key"] = obj
-        del od.mapping["key"]  # simulate weakref dying
-        # After clearing the mapping entry, get should return None
-        assert od.get("key") is None
+        del obj
+        gc.collect()
+        assert "key" in od.dead
+
+    def test_callback_with_dead_self_is_noop(self):
+        od = ObjectDictionary()
+        callback = od.callback
+        del od
+        gc.collect()
+        callback(MagicMock(key="dead"))
 
     def test_setitem_revives_dead(self):
         od = ObjectDictionary()

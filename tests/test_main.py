@@ -14,6 +14,7 @@ Covers the helper functions used by CLI entry points:
 import os
 import sys
 from io import BytesIO
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -94,6 +95,28 @@ class TestConfigureReadline:
                 configure_readline({}, "/tmp/existing_history")
 
         mock_readline.read_history_file.assert_called_once_with("/tmp/existing_history")
+
+    @patch("dhara.__main__.os.path.exists", return_value=False)
+    def test_history_is_written_on_exit(self, mock_exists):
+        from dhara.__main__ import configure_readline
+
+        mock_readline = MagicMock()
+        mock_rlcompleter = MagicMock()
+        mock_rlcompleter.Completer.return_value.complete = MagicMock()
+        saved = {}
+
+        def register(fn):
+            saved["fn"] = fn
+
+        with patch.dict(
+            sys.modules,
+            {"readline": mock_readline, "rlcompleter": mock_rlcompleter},
+        ):
+            with patch("atexit.register", side_effect=register):
+                configure_readline({}, "/tmp/history")
+
+        saved["fn"]()
+        mock_readline.write_history_file.assert_called_once_with("/tmp/history")
 
 
 # ---------------------------------------------------------------------------
@@ -742,3 +765,451 @@ class TestMain:
                 main()
 
         mock_usage.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# client_main / run_durus_main / pack_storage_main / interactive_client
+# ---------------------------------------------------------------------------
+
+
+class TestCliEntryPoints:
+    def _parse_args(self, options):
+        return patch("dhara.__main__.OptionParser.parse_args", return_value=(options, []))
+
+    def test_client_main_invokes_interactive_client(self):
+        from dhara.__main__ import client_main
+
+        options = SimpleNamespace(
+            file="client.dhara",
+            host="localhost",
+            port=2970,
+            address=None,
+            storage=None,
+            cache_size=123,
+            readonly=True,
+            repair=True,
+            startup="",
+            tls_cafile=None,
+            tls_capath=None,
+            tls_certfile=None,
+            tls_keyfile=None,
+            tls_no_verify=False,
+        )
+        with self._parse_args(options), patch("dhara.__main__.interactive_client") as mock_client:
+            client_main()
+
+        mock_client.assert_called_once_with(
+            "client.dhara",
+            ("localhost", 2970),
+            123,
+            True,
+            True,
+            "",
+            None,
+            None,
+        )
+
+    def test_client_main_explicit_address(self):
+        from dhara.__main__ import client_main
+
+        options = SimpleNamespace(
+            file=None,
+            host="localhost",
+            port=2970,
+            address="/tmp/durus.sock",
+            storage=None,
+            cache_size=10000,
+            readonly=False,
+            repair=False,
+            startup="",
+            tls_cafile=None,
+            tls_capath=None,
+            tls_certfile=None,
+            tls_keyfile=None,
+            tls_no_verify=False,
+        )
+        with self._parse_args(options), patch("dhara.__main__.interactive_client") as mock_client:
+            client_main()
+
+        mock_client.assert_called_once_with(
+            None,
+            "/tmp/durus.sock",
+            10000,
+            False,
+            False,
+            "",
+            None,
+            None,
+        )
+
+    def test_client_main_tls_error_returns(self):
+        from dhara.__main__ import client_main
+
+        options = SimpleNamespace(
+            file=None,
+            host="localhost",
+            port=2970,
+            address="socket",
+            storage=None,
+            cache_size=10000,
+            readonly=False,
+            repair=False,
+            startup="",
+            tls_cafile="ca.pem",
+            tls_capath=None,
+            tls_certfile=None,
+            tls_keyfile=None,
+            tls_no_verify=False,
+        )
+        with (
+            self._parse_args(options),
+            patch("dhara.__main__.TLSConfig", side_effect=ValueError("bad tls")),
+            patch("dhara.__main__.log") as mock_log,
+            patch("dhara.__main__.interactive_client") as mock_client,
+        ):
+            client_main()
+
+        mock_log.assert_called_once()
+        mock_client.assert_not_called()
+
+    def test_run_durus_main_start_and_stop_paths(self):
+        from dhara.__main__ import run_durus_main
+
+        start_options = SimpleNamespace(
+            port=2970,
+            file="server.dhara",
+            host="localhost",
+            storage=None,
+            gcbytes=1000,
+            address=None,
+            owner=None,
+            group=None,
+            umask=None,
+            logginglevel=20,
+            logfile=None,
+            repair=False,
+            readonly=False,
+            stop=False,
+            tls_certfile=None,
+            tls_keyfile=None,
+            tls_cafile=None,
+            tls_capath=None,
+            generate_tls_cert=None,
+        )
+        stop_options = SimpleNamespace(**{**start_options.__dict__, "address": "@sock", "stop": True})
+
+        with (
+            self._parse_args(start_options),
+            patch("dhara.__main__.get_storage", return_value=MagicMock()),
+            patch("dhara.__main__.start_durus") as mock_start,
+            patch("dhara.__main__.SocketAddress.new", return_value="addr"),
+        ):
+            run_durus_main()
+        mock_start.assert_called_once()
+
+        with (
+            self._parse_args(stop_options),
+            patch("dhara.__main__.stop_durus") as mock_stop,
+            patch("dhara.__main__.SocketAddress.new", return_value="addr"),
+        ):
+            run_durus_main()
+        mock_stop.assert_called_once_with("addr")
+
+    def test_run_durus_main_tls_generation_and_error(self):
+        from dhara.__main__ import run_durus_main
+
+        generate_options = SimpleNamespace(
+            port=2970,
+            file=None,
+            host="localhost",
+            storage=None,
+            gcbytes=1000,
+            address=None,
+            owner=None,
+            group=None,
+            umask=None,
+            logginglevel=20,
+            logfile=None,
+            repair=False,
+            readonly=False,
+            stop=False,
+            tls_certfile=None,
+            tls_keyfile=None,
+            tls_cafile=None,
+            tls_capath=None,
+            generate_tls_cert="example.com",
+        )
+        error_options = SimpleNamespace(**{**generate_options.__dict__, "generate_tls_cert": None, "tls_certfile": "cert.pem", "tls_keyfile": "key.pem"})
+
+        with (
+            self._parse_args(generate_options),
+            patch("dhara.__main__.generate_self_signed_cert") as mock_gen,
+            patch("dhara.__main__.log"),
+        ):
+            run_durus_main()
+        mock_gen.assert_called_once_with("server.crt", "server.key", hostname="example.com")
+
+        with (
+            self._parse_args(generate_options),
+            patch("dhara.__main__.generate_self_signed_cert", side_effect=RuntimeError("boom")),
+            patch("dhara.__main__.log") as mock_log,
+        ):
+            run_durus_main()
+        assert mock_log.called
+
+        with (
+            self._parse_args(error_options),
+            patch("dhara.__main__.TLSConfig", side_effect=ValueError("bad tls")),
+            patch("dhara.__main__.log") as mock_log,
+        ):
+            run_durus_main()
+        assert mock_log.called
+
+    def test_run_durus_main_tls_config_and_unix_address(self):
+        from dhara.__main__ import run_durus_main
+
+        options = SimpleNamespace(
+            port=2970,
+            file="server.dhara",
+            host="localhost",
+            storage=None,
+            gcbytes=1000,
+            address="/tmp/durus.sock",
+            owner="owner",
+            group="group",
+            umask=0o077,
+            logginglevel=20,
+            logfile=None,
+            repair=False,
+            readonly=False,
+            stop=False,
+            tls_certfile="cert.pem",
+            tls_keyfile="key.pem",
+            tls_cafile="ca.pem",
+            tls_capath=None,
+            generate_tls_cert=None,
+        )
+        with (
+            self._parse_args(options),
+            patch("dhara.__main__.TLSConfig", return_value=MagicMock()) as mock_tls,
+            patch("dhara.__main__.get_storage", return_value=MagicMock()),
+            patch("dhara.__main__.start_durus") as mock_start,
+            patch("dhara.__main__.SocketAddress.new", return_value="addr") as mock_sa,
+        ):
+            run_durus_main()
+
+        mock_tls.assert_called_once()
+        mock_sa.assert_called_once_with(
+            address="/tmp/durus.sock", owner="owner", group="group", umask=0o077
+        )
+        mock_start.assert_called_once()
+
+    def test_run_durus_main_without_af_unix_uses_tcp_address(self):
+        from dhara.__main__ import run_durus_main
+
+        options = SimpleNamespace(
+            port=2970,
+            file="server.dhara",
+            host="localhost",
+            storage=None,
+            gcbytes=1000,
+            address=None,
+            owner=None,
+            group=None,
+            umask=None,
+            logginglevel=20,
+            logfile=None,
+            repair=False,
+            readonly=False,
+            stop=False,
+            tls_certfile=None,
+            tls_keyfile=None,
+            tls_cafile=None,
+            tls_capath=None,
+            generate_tls_cert=None,
+        )
+
+        with (
+            self._parse_args(options),
+            patch("dhara.__main__.get_storage", return_value=MagicMock()),
+            patch("dhara.__main__.start_durus") as mock_start,
+            patch("dhara.__main__.socket") as mock_socket,
+        ):
+            del mock_socket.AF_UNIX
+            run_durus_main()
+
+        mock_start.assert_called_once()
+
+    def test_pack_storage_main_file_and_socket_paths(self):
+        from dhara.__main__ import pack_storage_main
+
+        file_options = SimpleNamespace(
+            file="pack.dhara",
+            port=2970,
+            host="localhost",
+            tls_cafile=None,
+            tls_certfile=None,
+            tls_keyfile=None,
+        )
+        socket_options = SimpleNamespace(
+            file=None,
+            port=2999,
+            host="127.0.0.1",
+            tls_cafile=None,
+            tls_certfile=None,
+            tls_keyfile=None,
+        )
+
+        with (
+            self._parse_args(file_options),
+            patch("dhara.__main__.get_storage", return_value=MagicMock()) as mock_get_storage,
+            patch("dhara.__main__.Connection") as mock_connection,
+        ):
+            pack_storage_main()
+        mock_get_storage.assert_called_once_with("pack.dhara")
+        mock_connection.assert_called_once()
+
+        with (
+            self._parse_args(socket_options),
+            patch("dhara.__main__.wait_for_server") as mock_wait,
+            patch("dhara.__main__.ClientStorage", return_value=MagicMock()) as mock_client,
+            patch("dhara.__main__.Connection") as mock_connection2,
+        ):
+            pack_storage_main()
+        mock_wait.assert_called_once_with("127.0.0.1", 2999)
+        mock_client.assert_called_once()
+        mock_connection2.assert_called()
+
+    def test_pack_storage_main_tls_error(self):
+        from dhara.__main__ import pack_storage_main
+
+        options = SimpleNamespace(
+            file=None,
+            port=2999,
+            host="127.0.0.1",
+            tls_cafile="ca.pem",
+            tls_certfile=None,
+            tls_keyfile=None,
+        )
+
+        with (
+            self._parse_args(options),
+            patch("dhara.__main__.TLSConfig", side_effect=ValueError("bad tls")),
+            patch("dhara.__main__.log") as mock_log,
+        ):
+            pack_storage_main()
+
+        assert mock_log.called
+
+    def test_interactive_client_fallback_console_and_socket_paths(self, monkeypatch):
+        from dhara.__main__ import interactive_client
+
+        class FakeConsole:
+            def __init__(self, ns):
+                self.ns = ns
+                self.runsource = MagicMock()
+                self.interact = MagicMock()
+
+        fake_console = MagicMock(return_value=FakeConsole({}))
+        fake_storage = MagicMock()
+        fake_connection = MagicMock()
+        fake_connection.get_root.return_value = {"root": True}
+        fake_registry = MagicMock()
+        fake_registry.store_adapter = MagicMock()
+        fake_registry.get_adapter = MagicMock()
+        fake_registry.list_adapters = MagicMock()
+        fake_registry.list_adapter_versions = MagicMock()
+        fake_registry.validate_adapter = MagicMock()
+        fake_registry.check_adapter_health = MagicMock()
+        fake_registry.count = 0
+
+        monkeypatch.setitem(sys.modules, "IPython", None)
+        monkeypatch.setitem(sys.modules, "IPython.terminal.embed", None)
+        monkeypatch.setitem(sys.modules, "IPython.terminal.ipapp", None)
+
+        with (
+            patch("dhara.__main__.get_storage", return_value=fake_storage),
+            patch("dhara.__main__.Connection", return_value=fake_connection),
+            patch("dhara.mcp.adapter_tools.AdapterRegistry", return_value=fake_registry),
+            patch("code.InteractiveConsole", fake_console),
+            patch("dhara.__main__.configure_readline"),
+            patch("dhara.__main__.warn"),
+        ):
+            interactive_client(
+                file="client.dhara",
+                address=None,
+                cache_size=42,
+                readonly=False,
+                repair=False,
+                startup="startup.py",
+                storage_class=None,
+                tls_config=None,
+            )
+
+        fake_console.return_value.runsource.assert_called_once()
+        fake_console.return_value.interact.assert_called_once()
+
+        with (
+            patch("dhara.__main__.SocketAddress.new", return_value="sockaddr"),
+            patch("dhara.__main__.wait_for_server"),
+            patch("dhara.__main__.ClientStorage", return_value=fake_storage) as mock_client,
+            patch("dhara.__main__.Connection", return_value=fake_connection),
+            patch("dhara.mcp.adapter_tools.AdapterRegistry", side_effect=ImportError),
+            patch("code.InteractiveConsole", fake_console),
+            patch("dhara.__main__.configure_readline"),
+        ):
+            interactive_client(
+                file=None,
+                address=("localhost", 2970),
+                cache_size=11,
+                readonly=False,
+                repair=False,
+                startup="",
+                storage_class=None,
+                tls_config=None,
+            )
+
+        mock_client.assert_called_once()
+
+    def test_interactive_client_ipython_path(self, monkeypatch):
+        from types import ModuleType
+
+        from dhara.__main__ import interactive_client
+
+        fake_ipython = ModuleType("IPython")
+        fake_terminal = ModuleType("IPython.terminal")
+        fake_embed = ModuleType("IPython.terminal.embed")
+        fake_ipapp = ModuleType("IPython.terminal.ipapp")
+        shell = MagicMock()
+        fake_embed.InteractiveShellEmbed = MagicMock(return_value=shell)
+        fake_ipapp.load_default_config = MagicMock()
+        fake_terminal.embed = fake_embed
+        fake_terminal.ipapp = fake_ipapp
+        fake_ipython.terminal = fake_terminal
+
+        fake_storage = MagicMock()
+        fake_connection = MagicMock()
+        fake_connection.get_root.return_value = {"root": True}
+
+        monkeypatch.setitem(sys.modules, "IPython", fake_ipython)
+        monkeypatch.setitem(sys.modules, "IPython.terminal", fake_terminal)
+        monkeypatch.setitem(sys.modules, "IPython.terminal.embed", fake_embed)
+        monkeypatch.setitem(sys.modules, "IPython.terminal.ipapp", fake_ipapp)
+
+        with (
+            patch("dhara.__main__.get_storage", return_value=fake_storage),
+            patch("dhara.__main__.Connection", return_value=fake_connection),
+            patch("dhara.mcp.adapter_tools.AdapterRegistry", side_effect=ImportError),
+        ):
+            interactive_client(
+                file="client.dhara",
+                address=None,
+                cache_size=42,
+                readonly=False,
+                repair=False,
+                startup="",
+                storage_class=None,
+                tls_config=None,
+            )
+
+        shell.assert_called_once()

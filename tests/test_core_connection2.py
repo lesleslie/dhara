@@ -77,6 +77,23 @@ class TestObjectDictionary:
         assert "a" not in keys
         assert "b" in keys
 
+    def test_iter_skips_dead_entry_in_mapping(self):
+        od = ObjectDictionary()
+        obj = MagicMock()
+        od["a"] = obj
+        od.dead.add("a")
+        keys = list(od)
+        assert keys == []
+
+    def test_iter_skips_dead_entry_when_clear_dead_disabled(self):
+        od = ObjectDictionary()
+        obj = MagicMock()
+        od["a"] = obj
+        od.dead.add("a")
+        with patch.object(od, "clear_dead", lambda: None):
+            keys = list(od)
+        assert keys == []
+
     def test_setitem_revives_dead_key(self):
         od = ObjectDictionary()
         obj1 = MagicMock()
@@ -187,6 +204,11 @@ class TestCacheGetSet:
         del c["oid1"]
         assert c.get("oid1") is None
 
+    def test_delitem_missing_key_is_noop(self):
+        c = Cache(100)
+        del c["missing"]
+        assert c.get("missing") is None
+
     def test_delitem_nonexistent_no_error(self):
         c = Cache(100)
         # Should not raise even if key doesn't exist
@@ -255,6 +277,57 @@ class TestCacheShrink:
         conn = _mock_connection()
         # Should not raise even with empty cache
         c.shrink(conn)
+
+    def test_shrink_cleans_missing_and_ghostifies_saved(self):
+        c = Cache(1)
+        conn = _mock_connection(transaction_serial=5)
+
+        ghosted = MagicMock()
+        ghosted._p_oid = "oid-ghost"
+        ghosted._p_serial = 0
+        ghosted._p_is_saved.return_value = True
+        ghosted._p_set_status_ghost = MagicMock()
+
+        skipped = MagicMock()
+        skipped._p_oid = "oid-skip"
+        skipped._p_serial = 5
+        skipped._p_is_saved.return_value = True
+        skipped._p_set_status_ghost = MagicMock()
+
+        c.objects.mapping["oid-missing"] = None
+        c["oid-ghost"] = ghosted
+        c["oid-skip"] = skipped
+        c._lru["oid-missing"] = None
+        c._lru["oid-ghost"] = None
+        c._lru["oid-skip"] = None
+
+        c.shrink(conn)
+
+        ghosted._p_set_status_ghost.assert_called_once()
+        skipped._p_set_status_ghost.assert_not_called()
+        assert "oid-missing" not in c._lru
+
+    def test_shrink_skips_non_saved_object(self):
+        c = Cache(1)
+        conn = _mock_connection(transaction_serial=0)
+
+        unsaved = MagicMock()
+        unsaved._p_oid = "oid-unsaved"
+        unsaved._p_serial = 1
+        unsaved._p_is_saved.return_value = False
+        unsaved._p_set_status_ghost = MagicMock()
+
+        saved = MagicMock()
+        saved._p_oid = "oid-saved"
+        saved._p_serial = 2
+        saved._p_is_saved.return_value = True
+        saved._p_set_status_ghost = MagicMock()
+
+        c["oid-unsaved"] = unsaved
+        c["oid-saved"] = saved
+        c.shrink(conn)
+
+        unsaved._p_set_status_ghost.assert_not_called()
 
 
 class TestCacheIter:

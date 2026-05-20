@@ -52,11 +52,13 @@ def test_get_logger_and_storage_logger(isolated_logger):
     child_logger = logger_mod.get_logger("storage")
     conn_logger = logger_mod.get_connection_logger("conn-001")
     storage_logger = logger_mod.get_storage_logger("file", "/data/my.db")
+    bare_storage_logger = logger_mod.get_storage_logger("sqlite")
 
     assert root_logger is test_logger
     assert child_logger.name == "durus.test.logger.storage"
     assert conn_logger.name == "durus.test.logger.connection.conn-001"
     assert storage_logger.name == "durus.test.logger.storage.file._data_my_db"
+    assert bare_storage_logger.name == "durus.test.logger.storage.sqlite"
 
 
 def test_log_operation_logs_success_and_failure(isolated_logger, monkeypatch):
@@ -121,3 +123,18 @@ def test_log_context_returns_adapter(isolated_logger):
 
     assert adapter.logger is test_logger
     assert adapter.extra == {"request_id": "req-1", "user": "alice"}
+
+
+def test_import_time_setup_logging_runs_when_logger_has_no_handlers(monkeypatch):
+    logger_mod = importlib.import_module("dhara.logging.logger")
+    original_handlers = list(logger_mod.logger.handlers)
+    logger_mod.logger.handlers.clear()
+
+    try:
+        reloaded = importlib.reload(logger_mod)
+        assert reloaded is logger_mod
+        assert reloaded.logger.handlers
+    finally:
+        logger_mod.logger.handlers.clear()
+        logger_mod.logger.handlers.extend(original_handlers)
+        importlib.reload(logger_mod)

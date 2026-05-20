@@ -584,6 +584,60 @@ class TestProbeBackups:
         finally:
             _stop_patches()
 
+    def test_probe_backups_enabled_empty_catalog(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        patches_for_init = [
+            patch("dhara.mcp.server_core.FastMCP"),
+            patch("dhara.mcp.server_core.build_token_verifier", return_value=None),
+            patch("dhara.mcp.server_core.register_health_tools"),
+            patch("dhara.mcp.server_core.get_adapter_health_impl"),
+            patch("dhara.mcp.server_core.get_adapter_impl"),
+            patch("dhara.mcp.server_core.list_adapter_versions_impl"),
+            patch("dhara.mcp.server_core.list_adapters_impl"),
+            patch("dhara.mcp.server_core.store_adapter_impl"),
+            patch("dhara.mcp.server_core.validate_adapter_impl"),
+        ]
+        started = [p.start() for p in patches_for_init]
+        try:
+            from dhara.core import Connection as RealConnection
+            from dhara.storage import FileStorage as RealFileStorage
+            from dhara.collections.dict import PersistentDict
+
+            config = _make_config(
+                storage=StorageConfig(path=tmp_path / "test.dhara"),
+                backups=BackupRuntimeConfig(
+                    enabled=True,
+                    directory=tmp_path / "backups",
+                ),
+            )
+
+            backup_dir = tmp_path / "backups"
+            backup_dir.mkdir(parents=True, exist_ok=True)
+            catalog_path = backup_dir / "backup_catalog.durus"
+
+            real_storage = RealFileStorage(str(catalog_path))
+            real_conn = RealConnection(real_storage)
+            root = real_conn.get_root()
+            root["backups"] = PersistentDict()
+            real_conn.commit()
+            real_storage.close()
+
+            from dhara.mcp.server_core import DharaMCPServer
+
+            server = DharaMCPServer(config)
+            result = server._probe_backups()
+
+            assert result["configured"] is True
+            assert result["catalog_exists"] is True
+            assert result["total_backups"] == 0
+            assert result["latest_backup_id"] is None
+            assert result["latest_backup_at"] is None
+        finally:
+            for p in patches_for_init:
+                p.stop()
+
     def test_probe_backups_with_catalog(
         self,
         tmp_path: Path,
@@ -643,6 +697,10 @@ class TestProbeBackups:
                 backup_id="bk-002",
                 timestamp="2026-04-25T12:00:00",
             )
+            backups["bk-003"] = PersistentDict(
+                backup_id="bk-003",
+                timestamp="2026-04-21T12:00:00",
+            )
             root["backups"] = backups
             real_conn.commit()
             real_storage.close()
@@ -655,12 +713,43 @@ class TestProbeBackups:
 
             assert result["configured"] is True
             assert result["catalog_exists"] is True
-            assert result["total_backups"] == 2
+            assert result["total_backups"] == 3
             assert result["latest_backup_id"] == "bk-002"
             assert result["latest_backup_at"] == "2026-04-25T12:00:00"
         finally:
             for p in patches_for_init:
                 p.stop()
+
+    def test_probe_backups_catalog_error(
+        self,
+        mock_config_with_backups: DharaSettings,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        (
+            mock_conn, mock_fs, mock_fm_cls, mock_build_auth,
+            mock_reg_health, *_impls
+        ) = _apply_patches()
+        try:
+            from dhara.mcp.server_core import DharaMCPServer
+
+            server = DharaMCPServer(mock_config_with_backups)
+            monkeypatch.setattr(
+                "dhara.mcp.server_core.FileStorage",
+                MagicMock(side_effect=RuntimeError("catalog broken")),
+            )
+            monkeypatch.setattr(
+                Path,
+                "exists",
+                MagicMock(return_value=True),
+            )
+
+            result = server._probe_backups()
+
+            assert result["configured"] is True
+            assert result["catalog_accessible"] is False
+            assert "catalog broken" in result["error"]
+        finally:
+            _stop_patches()
 
 
 # ---------------------------------------------------------------------------

@@ -14,7 +14,10 @@ from dhara.core.connection import (
     Connection,
     ObjectDictionary,
     ReferenceContainer,
+    gen_every_instance,
+    touch_every_reference,
 )
+from dhara.error import ConflictError, DruvaKeyError, ReadConflictError
 from dhara.storage.sqlite import SqliteStorage
 from dhara.utils import int8_to_str
 
@@ -125,6 +128,19 @@ class TestConnectionGet:
     def test_get_with_int_oid(self, conn):
         obj = conn.get(0)
         assert obj is not None
+
+    def test_get_stored_pickle_retries_after_read_conflict(self, conn):
+        oid = ROOT_OID
+        record = (oid, b"pickle-data", b"refs")
+        conn.storage.load = MagicMock(side_effect=[ReadConflictError([oid]), record])
+        conn.storage.sync = MagicMock(return_value=[])
+        conn._handle_invalidations = MagicMock()
+
+        with patch("dhara.core.connection.unpack_record", return_value=(oid, b"pickle-data", b"refs")):
+            assert conn.get_stored_pickle(oid) == b"pickle-data"
+
+        conn.storage.sync.assert_called_once()
+        conn._handle_invalidations.assert_called_once_with([], read_oid=oid)
 
 
 # ===========================================================================
@@ -249,6 +265,26 @@ class TestConnectionSync:
         conn._sync()
         assert len(conn.invalid_oids) == 0
 
+    def test_sync_ghostifies_invalid_cached_object(self, conn):
+        root = conn.get_root()
+        root._p_oid = ROOT_OID
+        root._p_serial = 0
+        root._p_set_status_saved()
+        conn.invalid_oids.add(ROOT_OID)
+
+        conn._sync()
+
+        assert root._p_is_ghost()
+
+    def test_handle_invalidations_ignores_existing_ghost(self, conn):
+        root = conn.get_root()
+        root._p_oid = ROOT_OID
+        root._p_serial = 0
+        root._p_set_status_ghost()
+
+        conn._handle_invalidations([ROOT_OID])
+        assert root._p_is_ghost()
+
 
 # ===========================================================================
 # Connection._handle_invalidations
@@ -316,6 +352,55 @@ class TestConnectionGetCrawler:
         c.abort()
         store.close()
 
+    def test_crawler_uses_cached_and_loaded_objects(self):
+        conn = Connection.__new__(Connection)
+        conn.reader = MagicMock()
+        conn.storage = MagicMock()
+        conn.cache = Cache(10)
+
+        cached = MagicMock()
+        cached._p_is_ghost.return_value = False
+        conn.cache[ROOT_OID] = cached
+
+        loaded = MagicMock()
+        loaded.__setstate__ = MagicMock()
+        loaded._p_set_status_saved = MagicMock()
+        conn.cache.get_instance = MagicMock(return_value=loaded)
+        conn.reader.get_state.return_value = {"value": "loaded"}
+        conn.storage.gen_oid_record.return_value = [
+            (ROOT_OID, b"record1"),
+            (int8_to_str(2), b"record2"),
+        ]
+
+        with patch("dhara.core.connection.unpack_record", side_effect=lambda record: (record[0], b"data", b"refs")):
+            with patch("dhara.core.connection.loads", side_effect=[MagicMock, MagicMock]):
+                items = list(Connection.get_crawler(conn))
+
+        assert items[0] is cached
+        assert items[1] is loaded
+        loaded.__setstate__.assert_called_once_with({"value": "loaded"})
+
+    def test_crawler_cached_ghost_object_loads_state(self):
+        conn = Connection.__new__(Connection)
+        conn.reader = MagicMock()
+        conn.storage = MagicMock()
+        conn.cache = Cache(10)
+
+        ghost = MagicMock()
+        ghost._p_is_ghost.return_value = True
+        ghost.__setstate__ = MagicMock()
+        ghost._p_set_status_saved = MagicMock()
+        conn.cache[ROOT_OID] = ghost
+        conn.reader.get_state.return_value = {"value": "ghost"}
+        conn.storage.gen_oid_record.return_value = [(ROOT_OID, b"record1")]
+
+        with patch("dhara.core.connection.unpack_record", return_value=(ROOT_OID, b"data", b"refs")):
+            items = list(Connection.get_crawler(conn))
+
+        assert items[0] is ghost
+        ghost.__setstate__.assert_called_once_with({"value": "ghost"})
+
+
 
 # ===========================================================================
 # Connection.load_state
@@ -338,6 +423,13 @@ class TestConnectionLoadState:
         conn.storage = None
         with pytest.raises(AssertionError, match="connection is closed"):
             conn.load_state(root)
+
+    def test_load_state_missing_record_raises_read_conflict(self, conn):
+        root = conn.get_root()
+        root._p_set_status_ghost()
+        with patch.object(conn, "get_stored_pickle", side_effect=DruvaKeyError("missing")):
+            with pytest.raises(ReadConflictError):
+                conn.load_state(root)
 
 
 # ===========================================================================
@@ -394,6 +486,82 @@ class TestCacheDelitemReal:
         assert len(c.cache.recent_objects) == 0
         c.abort()
         store.close()
+
+
+class TestCommitRollbackConflict:
+    def test_commit_rolls_back_new_objects_on_conflict(self):
+        conn = Connection.__new__(Connection)
+        conn.storage = MagicMock()
+        conn.storage.begin = MagicMock()
+        conn.storage.store = MagicMock()
+        conn.storage.end.side_effect = ConflictError(["oid2"])
+        conn.cache = Cache(10)
+        conn.changed = {}
+        conn.invalid_oids = set()
+        conn.transaction_serial = 0
+        conn.shrink_cache = MagicMock()
+
+        changed_obj = MagicMock()
+        changed_obj._p_oid = b"oid1"
+        changed_obj._p_set_status_saved = MagicMock()
+
+        new_obj = MagicMock()
+        new_obj._p_oid = b"oid2"
+        new_obj._p_set_status_saved = MagicMock()
+        new_obj._p_set_status_unsaved = MagicMock()
+        new_obj._p_connection = conn
+
+        conn.changed[b"oid1"] = changed_obj
+
+        writer = MagicMock()
+        writer.gen_new_objects.return_value = [changed_obj, new_obj, new_obj]
+        writer.get_state.side_effect = [(b"data1", b"refs1"), (b"data2", b"refs2")]
+        writer.close = MagicMock()
+
+        with patch("dhara.core.connection.ObjectWriter", return_value=writer):
+            with patch("dhara.core.connection.pack_record", side_effect=lambda oid, data, refs: (oid, data, refs)):
+                with pytest.raises(ConflictError):
+                    Connection.commit(conn)
+
+        assert new_obj._p_oid is None
+        assert new_obj._p_connection is None
+        new_obj._p_set_status_unsaved.assert_called_once()
+        conn.shrink_cache.assert_not_called()
+
+    def test_commit_new_object_flow_without_rollback(self):
+        conn = Connection.__new__(Connection)
+        conn.storage = MagicMock()
+        conn.storage.begin = MagicMock()
+        conn.storage.store = MagicMock()
+        conn.storage.end = MagicMock()
+        conn.cache = Cache(10)
+        conn.changed = {}
+        conn.invalid_oids = set()
+        conn.transaction_serial = 0
+        conn.shrink_cache = MagicMock()
+
+        changed_obj = MagicMock()
+        changed_obj._p_oid = b"oid1"
+        changed_obj._p_set_status_saved = MagicMock()
+
+        unsaved_obj = MagicMock()
+        unsaved_obj._p_oid = b"oid2"
+        unsaved_obj._p_set_status_saved = MagicMock()
+        unsaved_obj._p_is_saved.return_value = False
+
+        conn.changed[b"oid1"] = changed_obj
+
+        writer = MagicMock()
+        writer.gen_new_objects.return_value = [changed_obj, unsaved_obj]
+        writer.get_state.side_effect = [(b"data1", b"refs1"), (b"data2", b"refs2")]
+        writer.close = MagicMock()
+
+        with patch("dhara.core.connection.ObjectWriter", return_value=writer):
+            with patch("dhara.core.connection.pack_record", side_effect=lambda oid, data, refs: (oid, data, refs)):
+                Connection.commit(conn)
+
+        conn.storage.end.assert_called_once()
+        conn.shrink_cache.assert_called_once()
 
 
 # ===========================================================================
@@ -467,6 +635,52 @@ class TestStandaloneFunctions:
             instances = list(gen_every_instance(c, PersistentDict))
         assert len(instances) >= 1
         assert all(isinstance(obj, PersistentDict) for obj in instances)
+        c.abort()
+        store.close()
+
+    def test_touch_every_reference_and_gen_every_instance_skip_nonmatches(self, store):
+        c = Connection(store, cache_size=100)
+        root = c.get_root()
+        root["a"] = "b"
+        c.commit()
+
+        storage = c.get_storage()
+        records = [
+            (ROOT_OID, (ROOT_OID, b"needle", b"refs")),
+            (int8_to_str(3), (int8_to_str(3), b"other", b"refs")),
+        ]
+
+        class _Reader:
+            def get_state_pickle(self, data):
+                return b"state:" + data
+
+        c.get_storage().gen_oid_record = MagicMock(return_value=records)
+        with patch("dhara.core.connection.ObjectReader", return_value=_Reader()):
+            with patch(
+                "dhara.core.connection.unpack_record",
+                side_effect=lambda record: record,
+            ):
+                target = MagicMock()
+                target._p_note_change = MagicMock()
+                c.get = MagicMock(return_value=target)
+                touch_every_reference(c, "needle", "absent")
+                assert target._p_note_change.call_count == 1
+
+        class _Other:
+            pass
+
+        with patch("dhara.core.connection.ObjectReader", return_value=_Reader()):
+            c.get_storage().gen_oid_record = MagicMock(
+                return_value=[
+                    (ROOT_OID, (ROOT_OID, b"data", b"refs")),
+                    (int8_to_str(4), (int8_to_str(4), b"data", b"refs")),
+                ]
+            )
+            c.get = MagicMock(side_effect=[target, MagicMock()])
+            with patch("dhara.core.connection.unpack_record", side_effect=lambda record: record):
+                with patch("dhara.core.connection.loads", side_effect=[PersistentDict, _Other]):
+                    instances = list(gen_every_instance(c, PersistentDict))
+        assert len(instances) == 1
         c.abort()
         store.close()
 

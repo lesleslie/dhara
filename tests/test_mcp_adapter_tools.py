@@ -202,6 +202,15 @@ class TestAdapter:
         a = Adapter(domain="a", key="b", provider="c", version="1.0.0")
         assert a.rollback_to_version("99.99.99") is False
 
+    def test_rollback_to_older_version_iterates_history(self) -> None:
+        a = Adapter(domain="a", key="b", provider="c", version="1.0.0")
+        a.update_version("2.0.0", changelog="second")
+        a.update_version("3.0.0", changelog="third")
+
+        assert a.rollback_to_version("1.0.0") is True
+        assert a.version == "1.0.0"
+        assert a.version_history[-1]["version"] == "2.0.0"
+
     def test_to_dict_last_health_check_with_value(self) -> None:
         a = Adapter(domain="a", key="b", provider="c")
         now = datetime.now()
@@ -239,6 +248,41 @@ class TestAdapterRegistryInit:
         # Re-init should not wipe
         registry2 = AdapterRegistry(connection)
         assert registry2.count() == 1
+
+    def test_readonly_storage_skips_structure_creation(self, file_connection: Any, monkeypatch) -> None:
+        root = file_connection.get_root()
+        root.clear()
+
+        monkeypatch.setattr(file_connection.storage.shelf.file, "is_readonly", lambda: True)
+
+        registry = AdapterRegistry(file_connection)
+
+        assert "adapters" not in root
+        assert "health_checks" not in root
+        assert registry.connection is file_connection
+
+    def test_storage_probe_exception_defaults_to_writable(self, monkeypatch) -> None:
+        class _Connection:
+            def __init__(self) -> None:
+                self._root: dict[str, Any] = {}
+
+            def get_root(self) -> dict[str, Any]:
+                return self._root
+
+            @property
+            def storage(self) -> Any:
+                raise RuntimeError("probe failed")
+
+            def commit(self) -> None:
+                self._root["committed"] = True
+
+        connection = _Connection()
+
+        registry = AdapterRegistry(connection)
+
+        assert "adapters" in connection.get_root()
+        assert "health_checks" in connection.get_root()
+        assert registry.connection is connection
 
 
 class TestAdapterRegistryStore:
@@ -283,6 +327,35 @@ class TestAdapterRegistryStore:
         version_strs = [v["version"] for v in versions]
         assert "1.0.0" in version_strs
         assert "2.0.0" in version_strs
+
+    def test_store_updates_existing_adapter_fields(self, connection: Any) -> None:
+        registry = AdapterRegistry(connection)
+        first_id = _store_sample_adapter(
+            registry,
+            version="1.0.0",
+            factory_path="os.path.join",
+            capabilities=["cache"],
+        )
+        second_id = registry.store_adapter(
+            domain="adapter",
+            key="cache",
+            provider="redis",
+            version="2.0.0",
+            factory_path="os.path.join",
+            config={"enabled": True},
+            dependencies=["dep-a"],
+            capabilities=["cache", "write"],
+            metadata={"category": "storage", "changelog": "Upgrade", "owner": "ops"},
+        )
+
+        assert first_id == second_id == "adapter:cache:redis"
+        stored = connection.get_root()["adapters"][first_id]
+        assert stored.version == "2.0.0"
+        assert stored.config == {"enabled": True}
+        assert stored.dependencies == ["dep-a"]
+        assert stored.capabilities == ["cache", "write"]
+        assert len(stored.version_history) == 1
+        assert stored.version_history[0]["changelog"] == "Upgrade"
 
     def test_store_multiple_providers(self, connection: Any) -> None:
         registry = AdapterRegistry(connection)
@@ -331,6 +404,17 @@ class TestAdapterRegistryGet:
         _store_sample_adapter(registry, version="1.0.0")
         assert registry.get_adapter("adapter", "cache", version="9.9.9") is None
 
+    def test_get_without_provider_specific_version(self, connection: Any) -> None:
+        registry = AdapterRegistry(connection)
+        _store_sample_adapter(registry, provider="redis", version="1.0.0")
+        _store_sample_adapter(registry, provider="memcached", version="2.0.0")
+
+        result = registry.get_adapter("adapter", "cache", version="2.0.0")
+
+        assert result is not None
+        assert result["provider"] == "memcached"
+        assert result["version"] == "2.0.0"
+
 
 class TestAdapterRegistryList:
     """Tests for AdapterRegistry.list_adapters."""
@@ -343,6 +427,15 @@ class TestAdapterRegistryList:
 
     def test_list_empty(self, connection: Any) -> None:
         registry = AdapterRegistry(connection)
+        assert registry.list_adapters() == []
+
+    def test_list_empty_when_readonly_skips_structure(self, file_connection: Any, monkeypatch) -> None:
+        root = file_connection.get_root()
+        root.clear()
+        monkeypatch.setattr(file_connection.storage.shelf.file, "is_readonly", lambda: True)
+
+        registry = AdapterRegistry(file_connection)
+
         assert registry.list_adapters() == []
 
     def test_list_filter_by_domain(self, connection: Any) -> None:
@@ -478,6 +571,50 @@ class TestAdapterRegistryValidate:
         # The dependency should be found, so no warning for it
         dep_warnings = [w for w in result["warnings"] if "Dependency not found" in w]
         assert len(dep_warnings) == 0
+
+    def test_validate_with_dependency_without_colon(self, connection: Any) -> None:
+        registry = AdapterRegistry(connection)
+        _store_sample_adapter(
+            registry,
+            factory_path="os.path.join",
+            dependencies=["missingdep"],
+            capabilities=["cache"],
+        )
+
+        result = registry.validate_adapter("adapter", "cache", "redis")
+
+        assert "Dependency not found: missingdep" in result["warnings"]
+
+    def test_validate_with_attribute_error(self, connection: Any) -> None:
+        registry = AdapterRegistry(connection)
+        _store_sample_adapter(
+            registry,
+            factory_path="os.path.missing_attr",
+            capabilities=["cache"],
+        )
+
+        result = registry.validate_adapter("adapter", "cache", "redis")
+
+        assert result["valid"] is False
+        assert any("Factory class not found" in error for error in result["errors"])
+
+    def test_validate_with_generic_factory_error(self, connection: Any, monkeypatch) -> None:
+        registry = AdapterRegistry(connection)
+        _store_sample_adapter(
+            registry,
+            factory_path="os.path.join",
+            capabilities=["cache"],
+        )
+
+        monkeypatch.setattr(
+            "dhara.mcp.adapter_tools._import_factory",
+            lambda factory_path: (_ for _ in ()).throw(RuntimeError("boom")),
+        )
+
+        result = registry.validate_adapter("adapter", "cache", "redis")
+
+        assert result["valid"] is False
+        assert any("Factory validation error" in error for error in result["errors"])
 
 
 class TestAdapterRegistryHealth:

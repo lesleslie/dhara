@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import os
 from io import BytesIO
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -1143,3 +1144,105 @@ class TestEdgeCases:
         """All keys in the index are bytes."""
         for key in storage.index:
             assert isinstance(key, bytes)
+
+
+# ── 25. Coverage gaps ──
+
+
+class TestCoverageGaps:
+    """Target the remaining branch-only gaps in FileStorage2."""
+
+    def test_end_logs_when_enabled(self, storage, monkeypatch):
+        monkeypatch.setattr("dhara.file_storage2.is_logging", lambda level: True)
+        log_mock = MagicMock()
+        monkeypatch.setattr("dhara.file_storage2.log", log_mock)
+
+        oid = int8_to_str(0)
+        storage.store(oid, _make_record(oid, b"log_branch"))
+        storage.end()
+
+        assert log_mock.called
+
+    def test_end_skips_logging_when_disabled(self, storage, monkeypatch):
+        monkeypatch.setattr("dhara.file_storage2.is_logging", lambda level: False)
+        log_mock = MagicMock()
+        monkeypatch.setattr("dhara.file_storage2.log", log_mock)
+
+        oid = int8_to_str(0)
+        storage.store(oid, _make_record(oid, b"no_log_branch"))
+        storage.end()
+
+        assert log_mock.called is False
+
+    def test_build_index_converts_string_keys(self, storage, monkeypatch):
+        monkeypatch.setattr("dhara.file_storage2.loads", lambda data: {"abc": 123})
+
+        storage._build_index(repair=False)
+
+        assert b"abc" in storage.index
+        assert storage.index[b"abc"] == 123
+
+    def test_build_index_bad_magic_raises(self, storage, tmp_path):
+        from dhara.file import File
+
+        path = str(tmp_path / "bad_magic_build_index.durus")
+        bad = File(path)
+        bad.write(b"BADMAGIC")
+        bad.close()
+
+        original_fp = storage.fp
+        try:
+            storage.fp = File(path, readonly=True)
+            with pytest.raises(OSError):
+                storage._build_index(repair=False)
+        finally:
+            storage.fp.close()
+            storage.fp = original_fp
+
+    def test_build_index_short_record_repair_and_no_repair(self, temp_storage_path):
+        from dhara.utils import write_int4_str
+
+        storage = FileStorage2(temp_storage_path)
+        storage.fp.seek(0, 2)
+        write_int4_str(storage.fp, b"abcd")
+        storage.fp.flush()
+        storage.fp.fsync()
+        storage.close()
+
+        with pytest.raises(ShortRead):
+            FileStorage2(temp_storage_path, repair=False)
+
+        repaired = FileStorage2(temp_storage_path, repair=True)
+        repaired.close()
+
+    def test_packer_hits_duplicate_pack_extra_and_temp_close(self, temp_storage, monkeypatch):
+        from dhara.core.connection import ROOT_OID
+        from dhara.file import File
+
+        child_oid = int8_to_str(1)
+        stale_oid = int8_to_str(9)
+        original_fp = temp_storage.fp
+
+        root_record = _make_record(ROOT_OID, b"root", child_oid)
+        child_record = _make_record(child_oid, b"child")
+
+        def load(oid):
+            if oid == ROOT_OID:
+                return root_record
+            if oid == child_oid:
+                return child_record
+            raise KeyError(oid)
+
+        monkeypatch.setattr(temp_storage, "load", load)
+        temp_storage.index = {stale_oid: 123}
+        temp_storage.pack_extra = [ROOT_OID]
+
+        pack_name = temp_storage.fp.get_name() + ".pack"
+        packed = File(pack_name)
+        packed.write(b"stale")
+        packed.close()
+
+        list(temp_storage._packer())
+
+        assert stale_oid in temp_storage.invalid
+        assert original_fp.file.closed is True

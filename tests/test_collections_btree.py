@@ -516,6 +516,11 @@ class TestBTreeRangeQueries:
         result = list(t.items_range(100, 200))
         assert result == []
 
+    def test_items_range_backward_empty_tree(self) -> None:
+        t = BTree(node_constructor=BNode4)
+        result = list(t.items_range(10, 5))
+        assert result == []
+
 
 # ---------------------------------------------------------------------------
 # BTree.update — various input types
@@ -1019,6 +1024,30 @@ class TestBNodeInsertSplitDuplicate:
         assert t[10] == "overwritten"
         assert len(t) == original_len  # overwrite does not increase count
 
+    def test_direct_insert_item_overwrites_split_median(self) -> None:
+        """Hit the post-split overwrite branch directly on BNode.
+
+        This is the most deterministic way to cover the `key == promoted`
+        branch in `insert_item`: split a full child whose median is the same
+        key being inserted.
+        """
+        parent = BNode4()
+        parent.items = [(50, "parent")]
+        left = BNode4()
+        left.items = [(0, "v0"), (1, "v1"), (2, "v2"), (3, "v3"), (4, "v4"), (5, "v5"), (6, "v6")]
+        left._count = 7
+        right = BNode4()
+        right.items = [(100, "vr")]
+        right._count = 1
+        parent.nodes = [left, right]
+        parent._count = 9
+
+        parent.insert_item((3, "updated"))
+
+        assert parent.items[0] == (3, "updated")
+        assert left.search(3) is None
+        assert len(parent) == 9
+
 
 class TestBNodeDeleteEdgeCases:
     """Cover remaining delete branches (lines 242, 266)."""
@@ -1041,6 +1070,30 @@ class TestBNodeDeleteEdgeCases:
         # All remaining items should be accessible
         for i in range(25, 50):
             assert t[i] == f"v{i}"
+
+    def test_delete_adjusts_p_when_child_array_is_short(self) -> None:
+        """Hit the defensive `p >= len(self.nodes)` guard directly.
+
+        The guard exists to keep deletion working if a prior merge shortened
+        the child array before recursion. A small synthetic tree lets us cover
+        the branch without depending on a specific balancing sequence.
+        """
+        root = BNode4()
+        root.items = [(10, "a"), (20, "b")]
+        left = BNode4()
+        left.items = [(0, "l0"), (1, "l1"), (2, "l2"), (3, "l3")]
+        left._count = 4
+        right = BNode4()
+        right.items = [(30, "r0"), (31, "r1"), (32, "r2"), (33, "r3")]
+        right._count = 4
+        root.nodes = [left, right]
+        root._count = 10
+
+        root.delete(30)
+
+        assert root.items[1] == (20, "b")
+        assert right.search(30) is None
+        assert len(root) == 9
 
     def test_delete_case_2c_with_children(self) -> None:
         """Cover line 266: case 2c merge with upper_sibling that has children.

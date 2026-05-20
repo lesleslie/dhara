@@ -186,8 +186,14 @@ class TestPersistentListConcat:
         assert result == [1, 2, 3, 4]
 
     def test_radd_persistent_list(self):
-        result = _make_list([1]) + _make_list([2])
-        assert result == [1, 2]
+        result = _make_list([1, 2]).__radd__(_make_list([3, 4]))
+        assert isinstance(result, PersistentList)
+        assert result == [3, 4, 1, 2]
+
+    def test_radd_iterable(self):
+        result = (1, 2) + _make_list([3, 4])  # type: ignore[operator]
+        assert isinstance(result, PersistentList)
+        assert result == [1, 2, 3, 4]
 
     def test_iadd_persistent_list(self):
         pl = _make_list([1])

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+import builtins
 import sys
 from types import ModuleType
 
@@ -60,6 +61,13 @@ class TestDurusAliasFinder:
         spec = finder.find_spec("durus.nonexistent_target_xyz", None)
         assert spec is None
 
+    def test_find_spec_returns_none_when_target_import_missing(
+        self, monkeypatch
+    ):
+        finder = _DurusAliasFinder()
+        monkeypatch.setattr(importlib.util, "find_spec", lambda *_args, **_kwargs: None)
+        assert finder.find_spec("durus.persistent", None) is None
+
 
 class TestModuleAliases:
     def test_aliases_dict_has_expected_keys(self):
@@ -94,3 +102,58 @@ class TestLegacyShims:
         sys.modules.pop(module_name, None)
         with pytest.raises(ModuleNotFoundError):
             importlib.import_module(module_name)
+
+
+class TestCompatReload:
+    def test_reload_uses_fallback_and_skips_duplicate_registration(self, monkeypatch):
+        fake_backend = ModuleType("dhara._persistent")
+        original_backend = sys.modules.get("dhara._persistent")
+        try:
+            monkeypatch.setitem(sys.modules, "dhara._persistent", fake_backend)
+            compat = importlib.import_module("dhara._compat")
+            importlib.reload(compat)
+
+            assert "durus" in sys.modules
+            assert any(isinstance(f, _DurusAliasFinder) for f in sys.meta_path)
+        finally:
+            if original_backend is not None:
+                sys.modules["dhara._persistent"] = original_backend
+            else:
+                sys.modules.pop("dhara._persistent", None)
+            importlib.reload(importlib.import_module("dhara._compat"))
+
+
+class TestCompatModuleBody:
+    def test_module_body_skips_duplicate_registration(self):
+        compat_path = importlib.import_module("dhara._compat").__file__
+        assert compat_path is not None
+        source = open(compat_path, "r", encoding="utf-8").read()
+        code = compile(source, compat_path, "exec")
+        original_durus = sys.modules.get("durus")
+        original_meta_path = list(sys.meta_path)
+        original_any = builtins.any
+        sys.modules["durus"] = ModuleType("durus")
+        sys.modules["durus"].__path__ = []  # type: ignore[attr-defined]
+
+        try:
+            sys.modules.pop("dhara._compat", None)
+            builtins.any = lambda _iterable: True  # type: ignore[assignment]
+            module_globals = {
+                "__name__": "dhara._compat_temp",
+                "__file__": compat_path,
+                "__package__": "dhara",
+                "ModuleType": ModuleType,
+                "sys": sys,
+                "importlib": importlib,
+                "_DurusAliasFinder": _DurusAliasFinder,
+            }
+            exec(code, module_globals)
+            assert "durus" in sys.modules
+            assert hasattr(sys.modules["durus"], "__path__")
+        finally:
+            builtins.any = original_any
+            if original_durus is not None:
+                sys.modules["durus"] = original_durus
+            else:
+                sys.modules.pop("durus", None)
+            sys.meta_path[:] = original_meta_path

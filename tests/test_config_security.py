@@ -130,11 +130,34 @@ class TestSecurityConfigFallbackInit:
 
 
 class TestSecurityConfigSignature:
+    @patch("dhara.config.security.ONEIRIC_AVAILABLE", False)
+    def test_create_signature_uses_fallback_path(self):
+        key = b"k" * 32
+        cfg = SecurityConfig(fallback_enabled=True, fallback_signing_key=key)
+        cfg._initialized = True
+
+        sig = cfg.create_signature(b"hello")
+
+        assert isinstance(sig, bytes)
+        assert sig == hmac_mod.new(key, b"hello", hashlib.sha256).digest()
+
     def test_create_signature_fallback(self):
         cfg = _make_fallback_config()
         sig = cfg.create_signature(b"hello world")
         assert isinstance(sig, bytes)
         assert len(sig) == 32
+
+    def test_create_signature_bad_algorithm_rejected(self):
+        cfg = SecurityConfig(fallback_enabled=True)
+        cfg._initialized = True
+        with pytest.raises(ValueError, match="not in allowed algorithms"):
+            cfg.create_signature(b"hello", algorithm="md5")
+
+    def test_create_signature_non_bytes_rejected(self):
+        cfg = SecurityConfig(fallback_enabled=True)
+        cfg._initialized = True
+        with pytest.raises(ValueError, match="Message must be bytes"):
+            cfg.create_signature("hello")
 
     def test_create_signature_sha384(self):
         cfg = _make_fallback_config()
@@ -175,10 +198,29 @@ class TestSecurityConfigSignature:
 
 
 class TestSecurityConfigVerify:
+    @patch("dhara.config.security.ONEIRIC_AVAILABLE", False)
+    def test_verify_signature_uses_fallback_path(self):
+        key = b"k" * 32
+        cfg = SecurityConfig(fallback_enabled=True, fallback_signing_key=key)
+        cfg._initialized = True
+        sig = hmac_mod.new(key, b"hello", hashlib.sha256).digest()
+
+        assert cfg.verify_signature(b"hello", sig) is True
+
     def test_verify_valid_signature(self):
         cfg = _make_fallback_config()
         sig = cfg.create_signature(b"hello")
         assert cfg.verify_signature(b"hello", sig) is True
+
+    def test_verify_bad_algorithm_returns_false(self):
+        cfg = SecurityConfig(fallback_enabled=True)
+        cfg._initialized = True
+        assert cfg.verify_signature(b"hello", b"sig", algorithm="not-a-real-hash") is False
+
+    def test_verify_non_bytes_message_returns_false(self):
+        cfg = SecurityConfig(fallback_enabled=True)
+        cfg._initialized = True
+        assert cfg.verify_signature("hello", b"sig") is False
 
     def test_verify_invalid_signature(self):
         cfg = _make_fallback_config()
@@ -200,6 +242,18 @@ class TestSecurityConfigVerify:
 
     def test_verify_non_bytes_message_returns_false(self):
         cfg = _make_fallback_config()
+        assert cfg.verify_signature("not bytes", b"x" * 32) is False
+
+    def test_verify_bad_algorithm_returns_false_on_real_method(self):
+        cfg = SecurityConfig()
+        cfg._initialized = True
+        cfg.fallback_enabled = False
+        assert cfg.verify_signature(b"test", b"x" * 32, algorithm="md5") is False
+
+    def test_verify_non_bytes_message_returns_false_on_real_method(self):
+        cfg = SecurityConfig()
+        cfg._initialized = True
+        cfg.fallback_enabled = False
         assert cfg.verify_signature("not bytes", b"x" * 32) is False
 
 

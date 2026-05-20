@@ -251,9 +251,11 @@ class TestDharaConfig:
         cfg = DharaConfig(
             storage={"backend": "file", "path": str(tmp_path / "test.dhara")},
             cache={"size": 500},
+            connection={"timeout": 12.5},
         )
         assert cfg.storage.backend == "file"
         assert cfg.cache.size == 500
+        assert cfg.connection.timeout == 12.5
 
     def test_legacy_alias(self):
         from dhara.config.defaults import DruvaConfig

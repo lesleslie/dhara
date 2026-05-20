@@ -129,3 +129,16 @@ class TestModuleInit:
             assert len(logger_module.logger.handlers) >= 1
         finally:
             logger_module.logger.handlers[:] = original_handlers
+
+    def test_module_skips_default_output_when_handlers_exist(self):
+        import dhara.logger as logger_module
+
+        original_handlers = list(logger_module.logger.handlers)
+        handler = io.StringIO()
+        try:
+            logger_module.logger.handlers[:] = [handler]  # type: ignore[list-item]
+            importlib.reload(logger_module)
+            assert logger_module.logger.handlers
+            assert logger_module.logger.handlers[0] is handler
+        finally:
+            logger_module.logger.handlers[:] = original_handlers
