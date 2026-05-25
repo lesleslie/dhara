@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 import asyncpg
 
@@ -66,28 +65,29 @@ class PostgresStorageAdapter:
     async def load(self, oid: str) -> bytes:
         if self._pool is None:
             raise StorageError("adapter not initialized")
-        try:
-            async with self._pool.acquire() as conn:
-                row = await conn.fetchrow(
-                    "SELECT data FROM dhara_objects WHERE oid = $1", int(oid)
-                )
-            if row is None:
-                raise KeyError(oid)
-            return row["data"]
-        except KeyError:
-            raise
-        except Exception as e:
-            raise StorageError(f"load failed for oid {oid}") from e
+        async with self._pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT data FROM dhara_objects WHERE oid = $1", int(oid)
+            )
+        if row is None:
+            raise KeyError(oid)
+        return row["data"]
 
     async def begin(self) -> None:
         if self._pool is None:
             raise StorageError("adapter not initialized")
         if self._in_transaction:
             raise RuntimeError("begin() called while already in transaction")
-        self._conn = await self._pool.acquire()
-        self._tx = self._conn.transaction()
-        await self._tx.start()
-        self._in_transaction = True
+        try:
+            self._conn = await self._pool.acquire()
+            self._tx = self._conn.transaction()
+            await self._tx.start()
+            self._in_transaction = True
+        except Exception:
+            if self._conn and self._pool:
+                await self._pool.release(self._conn)
+                self._conn = None
+            raise
 
     async def store(self, oid: str, record: bytes) -> None:
         if not self._in_transaction or self._conn is None:
@@ -106,7 +106,7 @@ class PostgresStorageAdapter:
             oid_int,
         )
 
-    async def end(self, handle_invalidations: Any | None = None) -> None:
+    async def end(self) -> None:
         if not self._in_transaction:
             raise RuntimeError("end() called without begin()")
         tx = self._tx

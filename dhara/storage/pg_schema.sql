@@ -17,3 +17,4 @@ CREATE TABLE IF NOT EXISTS dhara_dirty_oids (
     marked_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_dhara_dirty_oids_marked_at ON dhara_dirty_oids (marked_at);
+CREATE INDEX IF NOT EXISTS idx_dhara_dirty_oids_oid ON dhara_dirty_oids (oid);
