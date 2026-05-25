@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
+import pytest  # noqa: F401 - monkeypatch fixture is provided by pytest
+
 from dhara.core.config import DharaSettings
 
 
@@ -45,3 +46,27 @@ class TestDharaSettingsBackendConfig:
         monkeypatch.setenv("DHARA_CACHE_BACKEND", "redis")
         settings = DharaSettings.load()
         assert settings.cache_backend == "redis"
+
+    def test_env_overrides_redis_url(self, monkeypatch):
+        monkeypatch.setenv("DHARA_CACHE_REDIS_URL", "redis://token@host:6379")
+        settings = DharaSettings.load()
+        assert settings.cache_redis_url == "redis://token@host:6379"
+
+    def test_env_overrides_cache_ttl(self, monkeypatch):
+        monkeypatch.setenv("DHARA_CACHE_TTL", "7200")
+        settings = DharaSettings.load()
+        assert settings.cache_ttl == 7200
+
+    def test_env_overrides_cache_stampede_jitter(self, monkeypatch):
+        monkeypatch.setenv("DHARA_CACHE_STAMPEDE_JITTER_MS", "300")
+        settings = DharaSettings.load()
+        assert settings.cache_stampede_jitter_ms == 300
+
+    def test_cache_redis_token_default_empty(self):
+        settings = DharaSettings()
+        assert settings.cache_redis_token == ""
+
+    def test_env_overrides_redis_token(self, monkeypatch):
+        monkeypatch.setenv("DHARA_CACHE_REDIS_TOKEN", "my_secret_token")
+        settings = DharaSettings.load()
+        assert settings.cache_redis_token == "my_secret_token"
