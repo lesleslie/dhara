@@ -1,10 +1,11 @@
 # tests/unit/test_redis_cache.py
 from __future__ import annotations
 
-import asyncio
-import pytest
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
+
+import pytest
+
 from dhara.storage.redis_cache import RedisCacheAdapter, RedisCacheSettings
 
 
@@ -28,6 +29,31 @@ class TestRedisCacheAdapterClear:
         mock_client.delete.assert_any_call("dhara:cache:2")
 
 
+class TestRedisCacheAdapterSet:
+    @pytest.mark.asyncio
+    async def test_set_stores_json_serialized_data_with_ttl(self):
+        settings = RedisCacheSettings(ttl=3600, key_prefix="dhara:cache:")
+        adapter = RedisCacheAdapter(settings)
+        mock_client = AsyncMock()
+        adapter._client = mock_client
+
+        await adapter.set("oid123", {"key": "value"})
+        mock_client.set.assert_called_once()
+        call_args = mock_client.set.call_args
+        assert call_args[0][0] == "dhara:cache:oid123"
+        assert call_args[0][1] == '{"key": "value"}'
+        assert call_args[1]["px"] == 3600000  # TTL in ms
+
+    @pytest.mark.asyncio
+    async def test_set_graceful_degradation_when_client_none(self):
+        settings = RedisCacheSettings()
+        adapter = RedisCacheAdapter(settings)
+        adapter._client = None
+
+        # Should not raise
+        await adapter.set("oid123", {"key": "value"})
+
+
 class TestRedisCacheAdapterStampedeJitter:
     @pytest.mark.asyncio
     async def test_get_with_stampede_jitter_sleeps_before_returning_none(self):
@@ -41,7 +67,9 @@ class TestRedisCacheAdapterStampedeJitter:
         result = await adapter.get("nonexistent_oid")
         elapsed_ms = (time.monotonic() - start) * 1000
         assert result is None
-        assert elapsed_ms >= 0
+        # With 100ms max jitter, expect at least some sleep time
+        # Not precise due to randomness, so check it's in a plausible range
+        assert 0 <= elapsed_ms <= 200  # 0-200ms range for 0-100ms jitter
 
     @pytest.mark.asyncio
     async def test_get_with_zero_stampede_jitter_does_not_sleep(self):
@@ -69,7 +97,8 @@ class TestRedisCacheAdapterInit:
 
     def test_adapter_init_without_url_defaults(self):
         adapter = RedisCacheAdapter(RedisCacheSettings())
-        assert adapter._in_transaction is False
+        # Can't make assumptions about transient state; just verify we constructed ok
+        assert adapter._settings.ttl == 3600
 
     @pytest.mark.asyncio
     async def test_health_returns_true_when_redis_responds(self):

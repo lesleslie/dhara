@@ -1,6 +1,9 @@
 # dhara/storage/redis_cache.py
 from __future__ import annotations
 
+import asyncio
+import json
+import random
 from dataclasses import dataclass
 from typing import Any
 
@@ -35,7 +38,6 @@ class RedisCacheAdapter:
     def __init__(self, settings: RedisCacheSettings) -> None:
         self._settings = settings
         self._client = None
-        self._in_transaction = False
 
     async def init(self) -> None:
         if coredis is None:
@@ -69,12 +71,9 @@ class RedisCacheAdapter:
             key = f"{self._settings.key_prefix}{oid}"
             data = await self._client.get(key)
             if data is None:
-                import asyncio
-                import random
                 if self._settings.stampede_jitter_ms > 0:
                     await asyncio.sleep(random.uniform(0, self._settings.stampede_jitter_ms) / 1000.0)
                 return None
-            import json
             return json.loads(data)
         except Exception:
             return None
@@ -84,11 +83,10 @@ class RedisCacheAdapter:
             return
         try:
             key = f"{self._settings.key_prefix}{oid}"
-            import json
             data = json.dumps(obj)
             await self._client.set(key, data, px=self._settings.ttl * 1000)
         except Exception:
-            pass
+            pass  # graceful degradation — don't crash on serialization errors
 
     async def shrink(self) -> None:
         # Phase 1: no-op. TTL handles time-based expiration.
