@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import pytest
-from unittest.mock import MagicMock, AsyncMock
+from unittest.mock import MagicMock
+
 from dhara.core.connection import Connection
 from dhara.storage import MemoryStorage
+
 
 class TestConnectionCacheInjection:
     def test_connection_accepts_external_cache(self):
