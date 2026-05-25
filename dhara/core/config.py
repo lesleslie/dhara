@@ -127,6 +127,17 @@ class DharaSettings(MCPServerSettings):
     authentication: AuthenticationConfig = Field(default_factory=AuthenticationConfig)
     backups: BackupRuntimeConfig = Field(default_factory=BackupRuntimeConfig)
 
+    # Storage backend config (file or postgres)
+    storage_backend: str = Field(default="file", description="file or postgres")
+    storage_pg_url: str = Field(default="", description="Postgres DSN for serverless mode")
+
+    # Cache backend config (memory or redis)
+    cache_backend: str = Field(default="memory", description="memory or redis")
+    cache_redis_url: str = Field(default="", description="Redis URL for serverless cache")
+    cache_redis_token: str = Field(default="", description="Redis token (from env, not in URL)")
+    cache_ttl: int = Field(default=3600, ge=1, description="Cache TTL in seconds")
+    cache_stampede_jitter_ms: int = Field(default=0, ge=0, description="Cold-start stampede jitter in ms")
+
     # Oneiric integration (optional)
     oneiric_config_path: Path | None = Field(
         default=None,
@@ -190,7 +201,7 @@ class DharaSettings(MCPServerSettings):
 
         # Load settings using parent class
         try:
-            settings = super().load(config_file)
+            settings = super().load(config_file, env_prefix="DHARA")
             logger.debug(f"Loaded settings from {config_file}.yaml")
         except Exception as e:
             logger.warning(f"Could not load {config_file}.yaml: {e}, using defaults")
