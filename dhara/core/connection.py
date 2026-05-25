@@ -52,7 +52,7 @@ class Connection(ConnectionBase):
         in the cache.
     """
 
-    def __init__(self, storage, cache_size=100000, root_class=None):
+    def __init__(self, storage, cache_size=100000, root_class=None, cache=None):
         """(storage:Storage|str, cache_size:int=100000,
             root_class:class|None=None)
         Make a connection to `storage`.
@@ -74,7 +74,7 @@ class Connection(ConnectionBase):
         self.changed = {}
         self.invalid_oids = set()
         self.new_oid = storage.new_oid  # needed by serialize
-        self.cache = Cache(cache_size)
+        self.cache = cache if cache is not None else Cache(cache_size)
         self.root = self.get(ROOT_OID)
         if self.root is None:
             new_oid = self.new_oid()
@@ -266,6 +266,14 @@ class Connection(ConnectionBase):
         self._sync()
         self.shrink_cache()
         self.transaction_serial += 1
+
+        # Invalidate cache for uncommitted oids
+        if self.cache is not None and hasattr(self.cache, "clear"):
+            import asyncio
+            if asyncio.iscoroutinefunction(self.cache.clear):
+                asyncio.create_task(self.cache.clear())
+            else:
+                self.cache.clear()
 
     def commit(self):
         """
