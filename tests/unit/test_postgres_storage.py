@@ -48,6 +48,81 @@ class TestPostgresStorageAdapterInit:
         assert result is False
 
 
+class TestPostgresStorageAdapterSync:
+    """Test sync() returns dirty OIDs and deletes them atomically."""
+
+    @pytest.mark.asyncio
+    async def test_sync_returns_dirty_oids_and_deletes_them(self):
+        settings = PostgresStorageSettings(pg_url="postgresql://localhost/dhara")
+        adapter = PostgresStorageAdapter(settings)
+        mock_pool = MagicMock()
+        mock_conn = AsyncMock()
+        # First call to fetch dirty oids, second call to delete
+        mock_conn.fetch.return_value = [{"oid": 1}, {"oid": 2}]
+        ctx = MagicMock()
+        ctx.__aenter__ = AsyncMock(return_value=mock_conn)
+        ctx.__aexit__ = AsyncMock(return_value=None)
+        mock_pool.acquire.return_value = ctx
+        adapter._pool = mock_pool
+
+        result = await adapter.sync()
+        assert result == ["1", "2"]  # string format
+        # Verify delete was called
+        mock_conn.execute.assert_called()
+
+
+class TestPostgresStorageAdapterTransaction:
+    """Test transaction lifecycle: begin, store, end."""
+
+    @pytest.mark.asyncio
+    async def test_begin_twice_raises_runtime_error(self):
+        settings = PostgresStorageSettings(pg_url="postgresql://localhost/dhara")
+        adapter = PostgresStorageAdapter(settings)
+        mock_pool = MagicMock()
+        mock_conn = MagicMock()
+        mock_tx = AsyncMock()
+        # Override transaction to return mock_tx synchronously (it's a sync method on connection)
+        mock_conn.transaction.return_value = mock_tx
+        mock_pool.acquire = AsyncMock(return_value=mock_conn)
+        adapter._pool = mock_pool
+
+        await adapter.begin()
+        with pytest.raises(RuntimeError, match="already in transaction"):
+            await adapter.begin()
+
+    @pytest.mark.asyncio
+    async def test_store_without_begin_raises_runtime_error(self):
+        settings = PostgresStorageSettings(pg_url="postgresql://localhost/dhara")
+        adapter = PostgresStorageAdapter(settings)
+        # No pool set, so any call that reaches the guard will fail
+
+        with pytest.raises(RuntimeError, match="outside transaction"):
+            await adapter.store("123", b"data")
+
+    @pytest.mark.asyncio
+    async def test_full_transaction_lifecycle(self):
+        settings = PostgresStorageSettings(pg_url="postgresql://localhost/dhara")
+        adapter = PostgresStorageAdapter(settings)
+        mock_pool = MagicMock()
+        mock_conn = MagicMock()
+        mock_tx = AsyncMock()
+        mock_conn.transaction.return_value = mock_tx
+        mock_conn.execute = AsyncMock()
+        mock_pool.acquire = AsyncMock(return_value=mock_conn)
+        mock_pool.release = AsyncMock()
+        adapter._pool = mock_pool
+
+        await adapter.begin()
+        await adapter.store("123", b"test_data")
+        await adapter.end()
+
+        # Verify execute was called for insert and dirty_mark
+        assert mock_conn.execute.call_count >= 2
+        # Verify commit was called
+        mock_tx.start.assert_called_once()
+        mock_tx.commit.assert_called_once()
+
+
 class TestPostgresStorageAdapterLoad:
     """Test load raises KeyError for missing oid."""
 
