@@ -141,10 +141,47 @@ class DharaMCPServer:
         storage_path = config.storage.path.expanduser()
         storage_path.parent.mkdir(parents=True, exist_ok=True)
 
-        self.storage = FileStorage(
-            str(storage_path),
-            readonly=config.storage.read_only,
-        )
+        # ── Storage backend selection ─────────────────────────────────────────
+        storage_backend = getattr(config, "storage_backend", "file")
+
+        if storage_backend == "postgres":
+            from dhara.storage.postgres import (
+                PostgresStorageAdapter,
+                PostgresStorageSettings,
+            )
+
+            if not config.storage_pg_url:
+                raise ValueError(
+                    "DHARA__STORAGE__PG_URL is required when storage_backend=postgres"
+                )
+
+            pg_settings = PostgresStorageSettings(pg_url=config.storage_pg_url)
+            self.storage = PostgresStorageAdapter(pg_settings)
+        else:
+            # Default: FileStorage (existing behavior)
+            self.storage = FileStorage(
+                str(storage_path),
+                readonly=config.storage.read_only,
+            )
+
+        # ── Cache backend selection ─────────────────────────────────────────
+        cache_backend = getattr(config, "cache_backend", "memory")
+        self.cache = None
+
+        if cache_backend == "redis":
+            from dhara.storage.redis_cache import (
+                RedisCacheAdapter,
+                RedisCacheSettings,
+            )
+
+            redis_settings = RedisCacheSettings(
+                redis_url=config.cache_redis_url or "redis://localhost:6379",
+                redis_token=config.cache_redis_token or None,
+                ttl=config.cache_ttl or 3600,
+                stampede_jitter_ms=getattr(config, "cache_stampede_jitter_ms", 0),
+            )
+            self.cache = RedisCacheAdapter(redis_settings)
+
         self.connection = Connection(self.storage)
 
         # Initialize adapter registry
