@@ -52,6 +52,8 @@ class RedisCacheAdapter:
 
     async def health(self) -> bool:
         if self._client is None:
+            await self.init()
+        if self._client is None:
             return False
         try:
             await self._client.ping()
@@ -65,6 +67,8 @@ class RedisCacheAdapter:
             self._client = None
 
     async def get(self, oid: str) -> object | None:
+        if self._client is None:
+            await self.init()
         if self._client is None:
             return None
         try:
@@ -80,6 +84,8 @@ class RedisCacheAdapter:
 
     async def set(self, oid: str, obj: object) -> None:
         if self._client is None:
+            await self.init()
+        if self._client is None:
             return
         try:
             key = f"{self._settings.key_prefix}{oid}"
@@ -94,6 +100,8 @@ class RedisCacheAdapter:
 
     async def clear(self) -> None:
         """Delete all keys with our prefix. Used for abort invalidation."""
+        if self._client is None:
+            await self.init()
         if self._client is None:
             return
         try:

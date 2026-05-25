@@ -64,6 +64,8 @@ class PostgresStorageAdapter:
 
     async def load(self, oid: str) -> bytes:
         if self._pool is None:
+            await self.init()
+        if self._pool is None:
             raise StorageError("adapter not initialized")
         async with self._pool.acquire() as conn:
             row = await conn.fetchrow(
@@ -74,6 +76,8 @@ class PostgresStorageAdapter:
         return row["data"]
 
     async def begin(self) -> None:
+        if self._pool is None:
+            await self.init()
         if self._pool is None:
             raise StorageError("adapter not initialized")
         if self._in_transaction:
@@ -123,6 +127,8 @@ class PostgresStorageAdapter:
 
     async def sync(self) -> list[str]:
         if self._pool is None:
+            await self.init()
+        if self._pool is None:
             raise StorageError("adapter not initialized")
         async with self._pool.acquire() as conn:
             rows = await conn.fetch(
@@ -137,6 +143,8 @@ class PostgresStorageAdapter:
         return dirty_oids
 
     async def new_oid(self) -> str:
+        if self._pool is None:
+            await self.init()
         if self._pool is None:
             raise StorageError("adapter not initialized")
         async with self._pool.acquire() as conn:

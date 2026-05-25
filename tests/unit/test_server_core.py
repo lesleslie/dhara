@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from dhara.mcp.server_core import DharaMCPServer
+from unittest.mock import MagicMock, patch
+
 from dhara.core.config import DharaSettings
+from dhara.mcp.server_core import DharaMCPServer
 
 
 class TestDharaMCPServerBackendSelection:
@@ -19,7 +19,7 @@ class TestDharaMCPServerBackendSelection:
             mock_instance.new_oid = MagicMock(return_value="test_oid")
             mock_fs.return_value = mock_instance
             mock_conn.return_value = MagicMock()
-            server = DharaMCPServer(settings)
+            DharaMCPServer(settings)
             mock_fs.assert_called_once()
 
     @patch("dhara.storage.postgres.PostgresStorageAdapter")
@@ -81,5 +81,5 @@ class TestDharaMCPServerBackendSelection:
         mock_fs.return_value = mock_adapter
         mock_conn.return_value = MagicMock()
         with patch("pathlib.Path.mkdir"):
-            server = DharaMCPServer(settings)
+            DharaMCPServer(settings)
         mock_redis_class.assert_not_called()
