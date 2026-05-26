@@ -124,8 +124,8 @@ class BNode(PersistentObject):
             return self.items[position]
         elif self.is_leaf():
             return None
-        else:
-            return self.nodes[position].search(key)
+
+        return self.nodes[position].search(key)
 
     def insert_item(self, item: tuple[Any, Any]) -> None:
         """(item:(key:anything, value:anything))"""
@@ -202,8 +202,8 @@ class BNode(PersistentObject):
         """
         if self.is_leaf():
             return self.items[0]
-        else:
-            return self.nodes[0].get_min_item()
+
+        return self.nodes[0].get_min_item()
 
     def get_max_item(self) -> tuple[Any, Any]:
         """() -> (key:anything, value:anything)
@@ -211,8 +211,8 @@ class BNode(PersistentObject):
         """
         if self.is_leaf():
             return self.items[-1]
-        else:
-            return self.nodes[-1].get_max_item()
+
+        return self.nodes[-1].get_max_item()
 
     def delete(self, key: Any) -> None:  # noqa: C901
         """(key:anything)
@@ -351,8 +351,8 @@ class BNode(PersistentObject):
         """
         if self.is_leaf():
             return 0
-        else:
-            return 1 + self.nodes[0].get_level()
+
+        return 1 + self.nodes[0].get_level()
 
 
 class BNode4(BNode):
@@ -388,7 +388,7 @@ class BNode512(BNode):
 
 
 # Set narrow specifications of BNode instance attributes.
-for bnode_class in [BNode] + BNode.__subclasses__():
+for bnode_class in (BNode, *BNode.__subclasses__()):
     bnode_class.items_is = [tuple]
     bnode_class.nodes_is = (None, [bnode_class])
 del bnode_class
