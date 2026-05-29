@@ -177,7 +177,7 @@ class FileStorage2(Storage):
 
     def sync(self):
         """() -> [str]"""
-        result = list(self.invalid)
+        result = self.invalid.copy()
         self.invalid.clear()
         return result
 
@@ -215,7 +215,7 @@ class FileStorage2(Storage):
         prepack_name = name + ".prepack"
         pack_name = name + ".pack"
         packed = File(pack_name)
-        if len(packed) > 0:
+        if packed:
             # packed contains data left from an incomplete pack attempt.
             packed.seek(0)
             packed.truncate()
@@ -305,8 +305,8 @@ class FileStorage2(Storage):
         def oid_as_bytes(oid):
             if isinstance(oid, byte_string):
                 return oid
-            else:
-                return oid.encode("latin1")
+
+            return oid.encode("latin1")
 
         for tmp_oid in tmp_index:
             self.index[oid_as_bytes(tmp_oid)] = tmp_index[tmp_oid]
@@ -319,7 +319,7 @@ class FileStorage2(Storage):
                 while 1:
                     object_record_offset = self.fp.tell()
                     record = self._read_block()
-                    if len(record) == 0:
+                    if not record:
                         break  # normal termination
                     if len(record) < 12:
                         raise ShortRead("Bad record size")

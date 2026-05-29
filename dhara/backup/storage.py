@@ -524,13 +524,13 @@ class AzureBlobStorageAdapter(_DelegatingStorageAdapter):
     def upload_file(self, local_path: str, remote_path: str) -> bool:
         try:
             blob_client = self.container_client.get_blob_client(remote_path)
-            with open(local_path, "rb") as f:
+            with local_path.open("rb") as f:
                 blob_client.upload_blob(f.read())
             return True
         except self._resource_exists_error:
             try:
                 blob_client = self.container_client.get_blob_client(remote_path)
-                with open(local_path, "rb") as f:
+                with local_path.open("rb") as f:
                     blob_client.upload_blob(f.read(), overwrite=True)
                 return True
             except Exception:
@@ -542,7 +542,7 @@ class AzureBlobStorageAdapter(_DelegatingStorageAdapter):
         try:
             blob_client = self.container_client.get_blob_client(remote_path)
             data = blob_client.download_blob().readall()
-            with open(local_path, "wb") as f:
+            with local_path.open("wb") as f:
                 f.write(data)
             return True
         except Exception:

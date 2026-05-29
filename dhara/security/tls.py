@@ -73,7 +73,7 @@ class TLSConfig:
         # Validate configuration
         self._validate()
 
-    def _validate(self) -> None:
+    def _validate(self) -> None:  # noqa: C901
         """Validate TLS configuration."""
         # For server mode, both certfile and keyfile are required
         if self.certfile and not self.keyfile:

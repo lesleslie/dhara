@@ -5,9 +5,9 @@ This file provides common fixtures used across multiple test files,
 migrated from the legacy test/ directory.
 """
 
+import asyncio
 from os import unlink
 from os.path import exists
-import asyncio
 
 import pytest
 

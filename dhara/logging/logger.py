@@ -1,8 +1,15 @@
-"""Structured logger for Durus using standard library logging.
+"""Structured logger for Durus using structlog via Oneiric.
 
 This module provides structured logging utilities for Durus,
 following Oneiric patterns for context-aware logging.
+
+Public API (must be preserved):
+- get_logger(name) -> BoundLogger
+- log_operation(operation, **context) -> context manager
+- log_context(**context) -> LoggerAdapter
 """
+
+from __future__ import annotations
 
 import logging
 import sys
@@ -10,56 +17,20 @@ from contextlib import contextmanager
 from functools import wraps
 from typing import Any
 
-# Create Durus logger
-logger = logging.getLogger("durus")
+from oneiric.core.logging import LoggingConfig, configure_logging
+from oneiric.core.logging import get_logger as _oneiric_get_logger
+
+# === Public API: preserved signatures ===
 
 
-def setup_logging(
-    level: int = logging.INFO,
-    format: str = "%(asctime)s %(name)s %(levelname)s %(message)s",
-    output: Any = sys.stderr,
-) -> None:
-    """Setup structured logging for Durus.
-
-    This function configures the root Durus logger with a handler
-    and formatter. It respects the existing logger setup if already
-    configured (matching the pattern in durus.logger.py).
-
-    Args:
-        level: Logging level (default: INFO)
-        format: Log format string
-        output: Output file-like object
-
-    Examples:
-        Basic setup:
-        >>> setup_logging()
-
-        Custom level and format:
-        >>> setup_logging(logging.DEBUG, "%(name)s - %(message)s")
-
-        Log to file:
-        >>> with open('durus.log', 'w') as f:
-        ...     setup_logging(output=f)
-    """
-    # Only setup if not already configured
-    if logger.handlers:
-        return
-
-    handler = logging.StreamHandler(output)
-    handler.setFormatter(logging.Formatter(format))
-    logger.addHandler(handler)
-    logger.setLevel(level)
-    logger.propagate = False
-
-
-def get_logger(name: str | None = None) -> logging.Logger:
+def get_logger(name: str | None = None) -> Any:
     """Get a Durus logger with optional name.
 
     Args:
         name: Optional logger name (auto-prefixed with 'durus.')
 
     Returns:
-        Logger instance
+        structlog BoundLogger
 
     Examples:
         Get root Durus logger:
@@ -69,63 +40,12 @@ def get_logger(name: str | None = None) -> logging.Logger:
         >>> log = get_logger('storage')
         >>> # Returns 'durus.storage' logger
     """
-    if name:
-        return logger.getChild(name)
-    return logger
-
-
-def get_connection_logger(connection_id: str) -> logging.Logger:
-    """Get a logger with connection context.
-
-    This creates a child logger specifically for a connection,
-    allowing for connection-specific log filtering and analysis.
-
-    Args:
-        connection_id: Unique connection identifier
-
-    Returns:
-        Logger bound with connection context
-
-    Examples:
-        >>> conn_logger = get_connection_logger('conn-001')
-        >>> conn_logger.info("Connection established")
-        # Logs: "durus.connection.conn-001 - Connection established"
-    """
-    return logger.getChild(f"connection.{connection_id}")
-
-
-def get_storage_logger(backend: str, path: str | None = None) -> logging.Logger:
-    """Get a logger with storage context.
-
-    This creates a child logger specifically for a storage backend,
-    allowing for backend-specific log filtering and analysis.
-
-    Args:
-        backend: Storage backend name
-        path: Optional storage path
-
-    Returns:
-        Logger bound with storage context
-
-    Examples:
-        Basic storage logger:
-        >>> storage_logger = get_storage_logger('file')
-        >>> # Returns 'durus.storage.file' logger
-
-        With path context:
-        >>> storage_logger = get_storage_logger('file', '/data/mydb.durus')
-        >>> # Returns 'durus.storage.file./data_mydb.durus' logger
-    """
-    name = f"storage.{backend}"
-    if path:
-        # Sanitize path for logger name
-        safe_path = path.replace("/", "_").replace(".", "_")
-        name = f"{name}.{safe_path}"
-    return logger.getChild(name)
+    prefixed = f"durus.{name}" if name else "durus"
+    return _oneiric_get_logger(prefixed)
 
 
 @contextmanager
-def log_operation(operation: str, **context):
+def log_operation(operation: str, **context: Any) -> contextmanager:
     """Context manager for logging operations.
 
     This context manager logs the start and completion (or failure)
@@ -153,60 +73,17 @@ def log_operation(operation: str, **context):
         ...     pass
         # Logs: "Failed load: Invalid data" with traceback
     """
-    logger.debug("Started %s", operation, extra=context)
+    log = get_logger()
+    log.debug("Started %s", operation, **context)
     try:
         yield
-        logger.debug("Completed %s", operation)
+        log.debug("Completed %s", operation)
     except Exception as e:
-        logger.error("Failed %s: %s", operation, e, exc_info=True)
+        log.exception("Failed %s: %s", operation, e)
         raise
 
 
-def log_operation_decorator(operation: str | None = None):
-    """Decorator for logging function operations.
-
-    This decorator wraps a function with operation logging,
-    similar to log_operation context manager but as a decorator.
-
-    Args:
-        operation: Operation name (defaults to function name)
-
-    Returns:
-        Decorated function
-
-    Examples:
-        @log_operation_decorator()
-        def commit_transaction():
-            # ... do commit work ...
-            pass
-
-        @log_operation_decorator("backup")
-        def create_backup():
-            # ... do backup work ...
-            pass
-    """
-
-    def decorator(func):
-        op_name = operation or func.__name__
-
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            func_logger = get_logger(func.__module__)
-            func_logger.debug("Started %s", op_name)
-            try:
-                result = func(*args, **kwargs)
-                func_logger.debug("Completed %s", op_name)
-                return result
-            except Exception as e:
-                func_logger.error("Failed %s: %s", op_name, e, exc_info=True)
-                raise
-
-        return wrapper
-
-    return decorator
-
-
-def log_context(**context):
+def log_context(**context: Any) -> Any:
     """Create a logging adapter with additional context.
 
     This function creates a logging adapter that automatically
@@ -216,17 +93,150 @@ def log_context(**context):
         **context: Context key-value pairs to include in logs
 
     Returns:
-        LoggingAdapter with context
+        structlog BoundLogger with bound context
 
     Examples:
         >>> log = log_context(connection_id="conn-001", user="alice")
         >>> log.info("Processing request")
         # Logs with connection_id and user context
     """
-    return logging.LoggerAdapter(logger, context)
+    log = get_logger()
+    return log.bind(**context)
 
 
-# Ensure logging is setup on module import
-# This matches the pattern in durus.logger.py
-if not logger.handlers:
-    setup_logging()
+def get_connection_logger(connection_id: str) -> Any:
+    """Get a logger with connection context.
+
+    Args:
+        connection_id: Unique connection identifier
+
+    Returns:
+        structlog BoundLogger bound with connection context
+    """
+    return get_logger(f"connection.{connection_id}")
+
+
+def get_storage_logger(backend: str, path: str | None = None) -> Any:
+    """Get a logger with storage context.
+
+    Args:
+        backend: Storage backend name
+        path: Optional storage path
+
+    Returns:
+        structlog BoundLogger bound with storage context
+    """
+    name = f"storage.{backend}"
+    if path:
+        safe_path = path.replace("/", "_").replace(".", "_")
+        name = f"{name}.{safe_path}"
+    return get_logger(name)
+
+
+def log_operation_decorator(operation: str | None = None) -> Any:
+    """Decorator for logging function operations.
+
+    Args:
+        operation: Operation name (defaults to function name)
+
+    Returns:
+        Decorated function with operation logging
+    """
+
+    def decorator(func):
+        op_name = operation or func.__name__
+
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            log = get_logger(func.__module__)
+            log.debug("Started %s", op_name)
+            try:
+                result = func(*args, **kwargs)
+                log.debug("Completed %s", op_name)
+                return result
+            except Exception as e:
+                log.exception("Failed %s: %s", op_name, e)
+                raise
+
+        return wrapper
+
+    return decorator
+
+
+def setup_logging(
+    level: int | str = "INFO",
+    format: str = "%(asctime)s %(name)s %(levelname)s %(message)s",
+    output: Any = sys.stderr,
+    emit_json: bool = False,
+    traceback_style: str = "string",
+) -> None:
+    """Setup structured logging for Durus via Oneiric.
+
+    Args:
+        level: Logging level (default: INFO)
+        format: Log format string (passed as info only; structlog uses its own)
+        output: Output file-like object (target sink)
+        emit_json: Emit JSON logs (default: False → ConsoleRenderer)
+        traceback_style: 'string' for human-readable, 'dict' for AI-friendly (default: string)
+
+    Examples:
+        Basic setup:
+        >>> setup_logging()
+
+        JSON output:
+        >>> setup_logging(emit_json=True)
+
+        Dict tracebacks:
+        >>> setup_logging(emit_json=True, traceback_style="dict")
+    """
+    # Map string level to int for LoggingConfig
+    if isinstance(level, str):
+        level_upper = level.upper()
+    else:
+        level_upper = logging.getLevelName(level)
+
+    # Determine sink target
+    if output in (sys.stderr, None):
+        target = "stderr"
+    elif output == sys.stdout:
+        target = "stdout"
+    else:
+        # File-like object — route to stderr (Console output)
+        target = "stderr"
+
+    from oneiric.core.logging import LoggingSinkConfig
+
+    configure_logging(
+        LoggingConfig(
+            level=level_upper,
+            emit_json=emit_json,
+            traceback_style=traceback_style,
+            sinks=[LoggingSinkConfig(target=target)],
+        )
+    )
+
+
+# === Module-level logger (backward compatibility) ===
+# Keep a stdlib logger reference for code that imports `logger` directly from this module.
+# Internal code should use get_logger() / log_operation() etc.
+import logging as _stdlib_logging
+
+logger: _stdlib_logging.Logger = _stdlib_logging.getLogger("durus")
+
+
+# Ensure logging is initialized on module import
+# (lazy init — only configure once)
+_log_initialized = False
+
+
+def _ensure_logging() -> None:
+    global _log_initialized
+    if not _log_initialized:
+        setup_logging()
+        _log_initialized = True
+
+
+# Trigger logging init on first get_logger / log_operation call
+# but NOT on plain module import (don't auto-init stdlib logger)
+# Uncomment if you need Dhara logging to auto-init on import:
+# _ensure_logging()

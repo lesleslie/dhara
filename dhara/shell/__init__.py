@@ -106,9 +106,9 @@ class DharaShell(AdminShell):
                 "commit": self.connection.commit,
                 "pack": self.connection.pack,
                 # Async helpers
-                "push_adapters": lambda: self._push_adapters(),
-                "show_storage_info": lambda: self._show_storage_info(),
-                "show_adapter_summary": lambda: self._show_adapter_summary(),
+                "push_adapters": self._push_adapters,
+                "show_storage_info": self._show_storage_info,
+                "show_adapter_summary": self._show_adapter_summary,
             }
         )
 

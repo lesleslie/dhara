@@ -232,7 +232,7 @@ class FallbackSerializer(Serializer):
         Raises:
             ValueError: If serializer ID is invalid or data exceeds max_size
         """
-        if len(data) == 0:
+        if not data:
             raise ValueError("Cannot deserialize empty data")
 
         # Read serializer ID from first byte

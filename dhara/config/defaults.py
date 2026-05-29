@@ -31,7 +31,7 @@ class StorageConfig:
     def __post_init__(self):
         """Validate storage configuration after initialization."""
         # Validate path for backends that require it
-        if self.backend in ["file", "sqlite"] and not self.path:
+        if self.backend in ("file", "sqlite") and not self.path:
             raise ValueError(
                 f"{self.backend.capitalize()} storage requires 'path' to be specified"
             )

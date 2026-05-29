@@ -160,7 +160,7 @@ class DharaMCPServer:
         else:
             # Default: FileStorage (existing behavior)
             self.storage = FileStorage(
-                str(storage_path),
+                storage_path,
                 readonly=config.storage.read_only,
             )
 
@@ -287,10 +287,10 @@ class DharaMCPServer:
                 provider=provider,
                 version=version,
                 factory_path=factory_path,
-                config=config or {},
+                config=config,
                 dependencies=dependencies or [],
                 capabilities=capabilities or [],
-                metadata=metadata or {},
+                metadata=metadata,
             )
 
         @_tool(TOOL_GROUP_ADAPTER_REGISTRY, auth=auth("read"))
@@ -716,7 +716,7 @@ class DharaMCPServer:
         try:
             root = self.connection.get_root()
             return {
-                "path": str(storage_path),
+                "path": storage_path,
                 "exists": storage_path.exists(),
                 "accessible": True,
                 "read_only": self.config.storage.read_only,
@@ -724,7 +724,7 @@ class DharaMCPServer:
             }
         except Exception as exc:
             return {
-                "path": str(storage_path),
+                "path": storage_path,
                 "exists": storage_path.exists(),
                 "accessible": False,
                 "read_only": self.config.storage.read_only,
@@ -745,7 +745,7 @@ class DharaMCPServer:
             total_backups = 0
 
             if catalog_path.exists():
-                with FileStorage(str(catalog_path), readonly=True) as storage:
+                with FileStorage(catalog_path, readonly=True) as storage:
                     connection = Connection(storage)
                     root = connection.get_root()
                     backups = root.get("backups", {})

@@ -173,7 +173,7 @@ class ClientStorage(Storage):
         tdata = join_bytes(tdata)
         write_int4_str(self.s, tdata)
         self.records.clear()
-        if len(tdata) > 0:
+        if tdata:
             status = read(self.s, 1)
             if status == STATUS_OKAY:
                 pass

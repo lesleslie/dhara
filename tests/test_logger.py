@@ -117,6 +117,20 @@ class TestLogFunction:
     def test_log_callable(self):
         assert callable(log)
 
+    def test_log_routes_levels(self):
+        fake_logger = MagicMock()
+        with patch("dhara.logger._structlog_get_logger", return_value=fake_logger):
+            log._log = None
+            log(INFO - 10, "debug %s", "message")
+            log(INFO, "info %s", "message")
+            log(INFO + 10, "warning %s", "message")
+            log(INFO + 20, "error %s", "message")
+
+        fake_logger.debug.assert_called_once_with("debug %s", "message")
+        fake_logger.info.assert_called_once_with("info %s", "message")
+        fake_logger.warning.assert_called_once_with("warning %s", "message")
+        fake_logger.error.assert_called_once_with("error %s", "message")
+
 
 class TestModuleInit:
     def test_module_initializes_default_output_when_handlers_empty(self):

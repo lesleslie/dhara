@@ -100,7 +100,7 @@ def load_config(
     # Auto-detect format from extension
     if format == "auto":
         suffix = path.suffix.lower()
-        if suffix in [".yaml", ".yml"]:
+        if suffix in (".yaml", ".yml"):
             format = "yaml"
         elif suffix == ".json":
             format = "json"

@@ -5,7 +5,6 @@ $Id$
 
 import functools
 import struct
-import sys
 from types import MethodType
 from zlib import compress, decompress
 from zlib import error as zlib_error
@@ -72,14 +71,8 @@ def extract_class_name(record):
         return "?"
 
 
-if sys.version < "3":
-
-    def method(a, b):
-        return MethodType(a, b, object)
-else:
-
-    def method(a, b):
-        return MethodType(a, b)
+def method(a, b):
+    return MethodType(a, b)
 
 
 class _PersistentPickler(Pickler):
@@ -210,8 +203,8 @@ class ObjectReader:
                 s.seek(position)
         if load:
             return unpickler.load()
-        else:
-            return s.read()
+
+        return s.read()
 
     def get_state_pickle(self, data):
         return self.get_state(data, load=False)

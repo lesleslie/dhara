@@ -270,6 +270,7 @@ class Connection(ConnectionBase):
         # Invalidate cache for uncommitted oids
         if self.cache is not None and hasattr(self.cache, "clear"):
             import asyncio
+
             if asyncio.iscoroutinefunction(self.cache.clear):
                 asyncio.create_task(self.cache.clear())
             else:

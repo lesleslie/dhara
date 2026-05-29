@@ -108,14 +108,14 @@ class CompressionEngine:
 
     def compress_file(self, input_path: str, output_path: str) -> None:
         """Compress a file."""
-        with open(input_path, "rb") as f_in, open(output_path, "wb") as f_out:
+        with input_path.open("rb") as f_in, output_path.open("wb") as f_out:
             data = f_in.read()
             compressed = self.compress(data)
             f_out.write(compressed)
 
     def decompress_file(self, input_path: str, output_path: str) -> None:
         """Decompress a file."""
-        with open(input_path, "rb") as f_in, open(output_path, "wb") as f_out:
+        with input_path.open("rb") as f_in, output_path.open("wb") as f_out:
             data = f_in.read()
             decompressed = self.decompress(data)
             f_out.write(decompressed)
@@ -141,14 +141,14 @@ class EncryptionEngine:
 
     def encrypt_file(self, input_path: str, output_path: str) -> None:
         """Encrypt a file."""
-        with open(input_path, "rb") as f_in, open(output_path, "wb") as f_out:
+        with input_path.open("rb") as f_in, output_path.open("wb") as f_out:
             data = f_in.read()
             encrypted = self.encrypt(data)
             f_out.write(encrypted)
 
     def decrypt_file(self, input_path: str, output_path: str) -> None:
         """Decrypt a file."""
-        with open(input_path, "rb") as f_in, open(output_path, "wb") as f_out:
+        with input_path.open("rb") as f_in, output_path.open("wb") as f_out:
             data = f_in.read()
             decrypted = self.decrypt(data)
             f_out.write(decrypted)
@@ -192,8 +192,8 @@ class BackupManager:
     def _calculate_checksum(self, file_path: str) -> str:
         """Calculate SHA256 checksum of a file."""
         sha256_hash = hashlib.sha256()
-        with open(file_path, "rb") as f:
-            for byte_block in iter(lambda: f.read(4096), b""):
+        with file_path.open("rb") as f:
+            for byte_block in iter(f.read(4096), b""):
                 sha256_hash.update(byte_block)
         return sha256_hash.hexdigest()
 
@@ -278,7 +278,7 @@ class BackupManager:
             # Create metadata
             metadata = self._create_backup_metadata(
                 BackupType.FULL,
-                str(final_backup_path),
+                final_backup_path,
                 os.path.getsize(final_backup_path),
             )
 
@@ -338,7 +338,7 @@ class BackupManager:
             # Create metadata with parent reference
             metadata = self._create_backup_metadata(
                 BackupType.INCREMENTAL,
-                str(final_backup_path),
+                final_backup_path,
                 os.path.getsize(final_backup_path),
                 last_backup.backup_id,
             )
@@ -394,7 +394,7 @@ class BackupManager:
             # Create metadata
             metadata = self._create_backup_metadata(
                 BackupType.DIFFERENTIAL,
-                str(final_backup_path),
+                final_backup_path,
                 os.path.getsize(final_backup_path),
                 last_full.backup_id,
             )
@@ -418,7 +418,7 @@ class BackupManager:
 
             # Upload file and metadata
             self.cloud_adapter.upload_file(
-                str(backup_path),
+                backup_path,
                 f"durus_backups/{backup_metadata.backup_id}/{backup_path.name}",
             )
 

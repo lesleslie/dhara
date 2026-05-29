@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import operator
+
 """Adapter distribution MCP tools for Dhara.
 
 This module provides tools for storing, retrieving, and managing Oneiric adapters
@@ -64,10 +66,10 @@ class Adapter(Persistent):
         self.provider = provider
         self.version = version
         self.factory_path = factory_path or f"{domain}.{key}.{provider}"
-        self.config = config or {}
+        self.config = config
         self.dependencies = dependencies or []
         self.capabilities = capabilities or []
-        self.metadata = metadata or {}
+        self.metadata = metadata
 
         # Version history for rollback support
         self.version_history: list[dict[str, Any]] = []
@@ -403,7 +405,7 @@ class AdapterRegistry:
         )
 
         # Sort by timestamp descending
-        history.sort(key=lambda x: x["updated_at"], reverse=True)
+        history.sort(key=operator.itemgetter("updated_at"), reverse=True)
 
         return history
 
@@ -468,7 +470,7 @@ class AdapterRegistry:
             warnings.append("No capabilities declared")
 
         return {
-            "valid": len(errors) == 0,
+            "valid": not errors,
             "errors": errors,
             "warnings": warnings,
         }

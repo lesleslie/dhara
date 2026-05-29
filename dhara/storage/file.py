@@ -95,7 +95,7 @@ class FileStorage(Storage):
 
     def sync(self):
         """() -> [str]"""
-        result = list(self.invalid)
+        result = self.invalid.copy()
         self.invalid.clear()
         return result
 

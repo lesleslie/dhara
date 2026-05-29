@@ -47,8 +47,8 @@ def as_bytes(s):
     """Return a byte_string produced from the string s."""
     if isinstance(s, byte_string):
         return s
-    else:
-        return s.encode("latin1")
+
+    return s.encode("latin1")
 
 
 empty_byte_string = as_bytes("")
@@ -80,8 +80,9 @@ def read(f, n):
             hunk = f.recv(min(remaining, 1000000))
             if not hunk:
                 raise ShortRead()
-            remaining -= len(hunk)
-            data.append(hunk)
+            chunk = hunk[:remaining]
+            remaining -= len(chunk)
+            data.append(chunk)
         result = join_bytes(data)
     if TRACE:
         sys.stdout.write(f"-> {result!r}\n")
@@ -281,8 +282,8 @@ class Byte:
         if 0 <= j <= 7:
             if self.value & (0x80 >> j):
                 return 1
-            else:
-                return 0
+
+            return 0
         raise IndexError(j)
 
     def __setitem__(self, j, v):
@@ -493,8 +494,8 @@ class IntArray:
             return default
         if word == self.blank:
             return default
-        else:
-            return str_to_int8(self.pad + self.word_array[j])
+
+        return str_to_int8(self.pad + self.word_array[j])
 
     def __getitem__(self, j):
         return str_to_int8(self.pad + self.word_array[j])

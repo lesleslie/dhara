@@ -98,8 +98,8 @@ class BackupVerification:
 
             # Calculate checksum
             sha256_hash = hashlib.sha256()
-            with open(backup_path, "rb") as f:
-                for byte_block in iter(lambda: f.read(4096), b""):
+            with backup_path.open("rb") as f:
+                for byte_block in iter(f.read(4096), b""):
                     sha256_hash.update(byte_block)
 
             actual_checksum = sha256_hash.hexdigest()

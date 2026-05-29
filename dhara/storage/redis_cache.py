@@ -24,6 +24,7 @@ class RedisCacheSettings:
 
 class CacheError(Exception):
     """Raised on cache operation failures."""
+
     pass
 
 
@@ -76,7 +77,9 @@ class RedisCacheAdapter:
             data = await self._client.get(key)
             if data is None:
                 if self._settings.stampede_jitter_ms > 0:
-                    await asyncio.sleep(random.uniform(0, self._settings.stampede_jitter_ms) / 1000.0)
+                    await asyncio.sleep(
+                        random.uniform(0, self._settings.stampede_jitter_ms) / 1000.0
+                    )
                 return None
             return json.loads(data)
         except Exception:
@@ -105,7 +108,9 @@ class RedisCacheAdapter:
         if self._client is None:
             return
         try:
-            async for key in self._client.scan_iter(match=f"{self._settings.key_prefix}*"):
+            async for key in self._client.scan_iter(
+                match=f"{self._settings.key_prefix}*"
+            ):
                 await self._client.delete(key)
         except Exception:
             pass

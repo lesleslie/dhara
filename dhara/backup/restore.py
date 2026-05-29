@@ -97,19 +97,19 @@ class RestoreManager:
             # Step 1: Decrypt if encrypted
             if backup_metadata.encryption_enabled and self.encryption:
                 decrypted_path = os.path.join(temp_dir, "decrypted_backup.durus.zst")
-                self.encryption.decrypt_file(str(backup_path), decrypted_path)
+                self.encryption.decrypt_file(backup_path, decrypted_path)
                 backup_path = Path(decrypted_path)
 
             # Step 2: Decompress if compressed
             if backup_path.suffix == ".zst":
                 decompressed_path = os.path.join(temp_dir, "decompressed_backup.durus")
                 compression_engine = CompressionEngine()
-                compression_engine.decompress_file(str(backup_path), decompressed_path)
+                compression_engine.decompress_file(backup_path, decompressed_path)
                 backup_path = Path(decompressed_path)
 
             # Step 3: Restore to target location
             self._ensure_target_directory()
-            shutil.copy2(str(backup_path), self.target_path)
+            shutil.copy2(backup_path, self.target_path)
 
             self.logger.info(
                 f"Database restored from backup: {backup_metadata.backup_id}"
@@ -261,7 +261,7 @@ class RestoreManager:
         """Merge incremental restore into final path."""
         # This is a simplified version - in practice, you'd need to handle
         # the specific Durus storage format properly
-        shutil.copy2(str(incremental_path), str(final_path))
+        shutil.copy2(incremental_path, final_path)
 
     def restore_emergency(self, backup_id: str) -> str:
         """Perform emergency restore from backup."""
@@ -310,8 +310,8 @@ class RestoreManager:
         import hashlib
 
         sha256_hash = hashlib.sha256()
-        with open(file_path, "rb") as f:
-            for byte_block in iter(lambda: f.read(4096), b""):
+        with file_path.open("rb") as f:
+            for byte_block in iter(f.read(4096), b""):
                 sha256_hash.update(byte_block)
         return sha256_hash.hexdigest()
 

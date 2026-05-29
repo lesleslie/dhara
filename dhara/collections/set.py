@@ -21,13 +21,13 @@ class PersistentSet(PersistentObject, collections.abc.MutableSet):
             identifier = f"@{id(self):x}"
         else:
             identifier = self._p_format_oid()
-        return f"<{self.__class__.__name__} {identifier} {list(self.s)!r}>"
+        return f"<{self.__class__.__name__} {identifier} {self.s.copy()!r}>"
 
     def __and__(self, other):
         if isinstance(other, PersistentSet):
             return self.__class__(self.s & other.s)
-        else:
-            return self.__class__(self.s & other)
+
+        return self.__class__(self.s & other)
 
     def __contains__(self, item):
         return item in self.s
@@ -103,8 +103,8 @@ class PersistentSet(PersistentObject, collections.abc.MutableSet):
     def __or__(self, other):
         if isinstance(other, PersistentSet):
             return self.__class__(self.s | other.s)
-        else:
-            return self.__class__(self.s | other)
+
+        return self.__class__(self.s | other)
 
     def __rand__(self, other):
         return self.__class__(other & self.s)
@@ -121,14 +121,14 @@ class PersistentSet(PersistentObject, collections.abc.MutableSet):
     def __sub__(self, other):
         if isinstance(other, PersistentSet):
             return self.__class__(self.s - other.s)
-        else:
-            return self.__class__(self.s - other)
+
+        return self.__class__(self.s - other)
 
     def __xor__(self, other):
         if isinstance(other, PersistentSet):
             return self.__class__(self.s ^ other.s)
-        else:
-            return self.__class__(self.s ^ other)
+
+        return self.__class__(self.s ^ other)
 
     def add(self, item):
         self._p_note_change()

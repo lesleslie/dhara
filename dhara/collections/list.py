@@ -24,8 +24,8 @@ class PersistentList(PersistentObject, collections.abc.MutableSequence):
     def __cast(self, other):
         if isinstance(other, PersistentList):
             return other.data
-        else:
-            return other
+
+        return other
 
     def __lt__(self, other):
         return self is not other and self.data < self.__cast(other)
@@ -83,16 +83,16 @@ class PersistentList(PersistentObject, collections.abc.MutableSequence):
             return self.__class__(self.data + other.data)
         elif isinstance(other, type(self.data)):
             return self.__class__(self.data + other)
-        else:
-            return self.__class__(self.data + list(other))
+
+        return self.__class__(self.data + list(other))
 
     def __radd__(self, other):
         if isinstance(other, PersistentList):
             return self.__class__(other.data + self.data)
         elif isinstance(other, type(self.data)):
             return self.__class__(other + self.data)
-        else:
-            return self.__class__(list(other) + self.data)
+
+        return self.__class__(list(other) + self.data)
 
     def __iadd__(self, other):
         self._p_note_change()

@@ -220,7 +220,7 @@ def generate_encryption_key(key_file: str):
     key_path = Path(key_file)
     key_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(key_path, "wb") as f:
+    with key_path.open("wb") as f:
         f.write(key)
 
     logger.info(f"Encryption key generated and saved to: {key_file}")
@@ -496,7 +496,7 @@ def cmd_schedule(args):
             logger.error(f"Schedule status failed: {e}")
             return 1
 
-    elif args.action in ["start", "stop", "add"]:
+    elif args.action in ("start", "stop", "add"):
         logger.warning(f"Schedule {args.action} not fully implemented in this demo")
         print(f"Scheduled backup management would {args.action} here")
         return 1

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import operator
+
 """Minimal key/value and time-series storage for Dhara MCP tools.
 
 Implements:
@@ -199,7 +201,7 @@ class KVTimeSeriesStore:
             for pattern, count in counts.items()
             if count >= min_occurrences
         ]
-        results.sort(key=lambda x: x["count"], reverse=True)
+        results.sort(key=operator.itemgetter("count"), reverse=True)
         return results
 
     def _purge_time_series(self, ts_list: PersistentList) -> None:

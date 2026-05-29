@@ -41,7 +41,9 @@ class BackupCatalog:
         connection = Connection(storage)
         root = connection.get_root()
         backups = root.get("backups", {})
-        catalog = {backup_id: dict(metadata) for backup_id, metadata in backups.items()}
+        catalog = {
+            backup_id: metadata.copy() for backup_id, metadata in backups.items()
+        }
         storage.close()
         return catalog
 
@@ -246,7 +248,7 @@ class BackupCatalog:
             "statistics": self.get_backup_statistics(),
         }
 
-        with open(export_path, "w") as f:
+        with export_path.open("w") as f:
             json.dump(export_data, f, indent=2)
 
     def import_catalog(self, import_path: str) -> int:
@@ -276,7 +278,7 @@ class BackupCatalog:
 
         # Check for orphaned backups (missing parent backup)
         for backup in self.get_all_backups():
-            if backup.backup_type in [BackupType.INCREMENTAL, BackupType.DIFFERENTIAL]:
+            if backup.backup_type in (BackupType.INCREMENTAL, BackupType.DIFFERENTIAL):
                 if not backup.parent_backup_id:
                     issues.append(f"Orphaned backup: {backup.backup_id} missing parent")
                 else:

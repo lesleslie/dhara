@@ -53,8 +53,8 @@ class File:
     def read(self, n=None):
         if n is None:
             return self.file.read()
-        else:
-            return self.file.read(n)
+
+        return self.file.read(n)
 
     def tell(self):
         return self.file.tell()

@@ -62,7 +62,7 @@ def _probe_storage_runtime(settings: DharaSettings) -> dict[str, object]:
 
     storage_path = settings.storage.path.expanduser()
     try:
-        with FileStorage(str(storage_path), readonly=True) as storage:
+        with FileStorage(storage_path, readonly=True) as storage:
             connection = Connection(storage)
             root = connection.get_root()
             return {
@@ -97,7 +97,7 @@ def _probe_backup_runtime(settings: DharaSettings) -> dict[str, object]:
         backup_count = 0
 
         if catalog_path.exists():
-            with FileStorage(str(catalog_path), readonly=True) as storage:
+            with FileStorage(catalog_path, readonly=True) as storage:
                 connection = Connection(storage)
                 root = connection.get_root()
                 backups = root.get("backups", {})
@@ -340,7 +340,7 @@ def _validate_path(file_path: str | None) -> Path | None:
         raise typer.Exit(1)
 
     # Check for suspicious patterns in the original path
-    original_str = str(path)
+    original_str = path
     if ".." in original_str.split(os.sep):
         typer.echo(
             f"Error: Path traversal not allowed in '{file_path}'",

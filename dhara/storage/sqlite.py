@@ -1,17 +1,17 @@
 """
-from __future__ import annotations
 An sqlite-based storage module.  Uses a sqlite as the on-disc storage of
 persistent data.
 
+from __future__ import annotations
 SqliteStorage compares favourably with ShelfStorage/FileStorage2 for
 performance, based on limited tests. The main downside is that it does not
 provide point-in-timem recovery, easy backups and asynchronous replication.
 """
 
 import collections
-import os
 import sqlite3
 from datetime import datetime
+from pathlib import Path
 
 from dhara.core import connection
 from dhara.logger import is_logging, log
@@ -56,7 +56,7 @@ class SqliteStorage(Storage):
         if readonly:
             raise NotImplementedError
         self.filename = filename
-        if not os.path.exists(filename):
+        if not Path(filename).exists():
             self._init()
         else:
             self._conn = sqlite3.connect(filename)
@@ -138,7 +138,7 @@ class SqliteStorage(Storage):
 
     def sync(self):
         """() -> [str]"""
-        result = list(self.invalid)
+        result = self.invalid.copy()
         self.invalid.clear()
         return result
 

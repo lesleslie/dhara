@@ -69,7 +69,7 @@ class BackupJob:
         else:
             logger.error(f"Invalid schedule spec: {self.schedule_spec}")
 
-    def run(self) -> dict[str, Any]:
+    def run(self) -> dict[str, Any]:  # noqa: C901
         """Run the backup job."""
         if not self.enabled or not self.backup_manager:
             return {"status": "skipped", "reason": "job disabled or no backup manager"}
@@ -93,8 +93,8 @@ class BackupJob:
                 backup_metadata = self.backup_manager.perform_differential_backup(
                     last_full.backup_id if last_full else None
                 )
-            else:
-                return {"status": "failed", "reason": "unsupported backup type"}
+
+            return {"status": "failed", "reason": "unsupported backup type"}
 
             # Update job status
             self.last_run = datetime.now()

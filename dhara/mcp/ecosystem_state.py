@@ -104,7 +104,7 @@ class EcosystemStateStore:
             "service_id": service_id,
             "service_type": service_type,
             "capabilities": list(capabilities or []),
-            "metadata": dict(metadata or {}),
+            "metadata": metadata.copy(),
             "status": status,
             "lease_expires_at": lease_expires_at,
             "heartbeat_at": heartbeat_at or now,

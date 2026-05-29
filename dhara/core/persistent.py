@@ -45,8 +45,8 @@ except ImportError:
             _getattribute(obj, name)
         except AttributeError:
             return False
-        else:
-            return True
+
+        return True
 
     class ConnectionBase:
         """
@@ -136,8 +136,8 @@ except ImportError:
     def call_if_persistent(f: Any, x: Any) -> Any:
         if isinstance(x, PersistentBase):
             return f(x)
-        else:
-            return None
+
+        return None
 
 
 class PersistentObject(PersistentBase):

@@ -179,11 +179,65 @@ class TestObjectWriter:
         data2, refs2 = writer.get_state(obj)
         assert isinstance(data2, bytes)
 
+    def test_get_state_without_compression(self, monkeypatch):
+        monkeypatch.setattr("dhara.serialize_legacy.WRITE_COMPRESSED_STATE_PICKLES", False)
+        writer, _ = self._make_writer()
+        obj = _TestPersistentObj(key="value")
+
+        data, refs = writer.get_state(obj)
+
+        assert isinstance(data, bytes)
+        assert isinstance(refs, bytes)
+        assert data
+
+    def test_persistent_id_assigns_new_oid_and_tracks_object(self):
+        writer, conn = self._make_writer()
+        obj = _TestPersistentObj(key="value")
+
+        oid, klass = writer._persistent_id(obj)
+
+        assert oid == b"\x01" * 8
+        assert klass is _TestPersistentObj
+        assert obj._p_oid == oid
+        assert obj in writer.objects_found
+        assert oid in writer.refs
+
+    def test_persistent_id_keeps_existing_oid_for_same_connection(self):
+        writer, conn = self._make_writer()
+        obj = _TestPersistentObj(key="value")
+        obj._p_oid = b"\x05" * 8
+        obj._p_connection = conn
+
+        oid, klass = writer._persistent_id(obj)
+
+        assert oid == b"\x05" * 8
+        assert klass is _TestPersistentObj
+        assert obj not in writer.objects_found
+        assert oid in writer.refs
+
+    def test_persistent_id_rejects_cross_connection_reference(self):
+        writer, conn = self._make_writer()
+        obj = _TestPersistentObj(key="value")
+        obj._p_oid = b"\x02" * 8
+        obj._p_connection = MagicMock()
+
+        with pytest.raises(ValueError, match="different connection"):
+            writer._persistent_id(obj)
+
     def test_gen_new_objects_yields_obj(self):
         writer, conn = self._make_writer()
         obj = _TestPersistentObjEmpty()
         results = list(writer.gen_new_objects(obj))
         assert obj in results
+
+    def test_gen_new_objects_includes_tracked_objects(self):
+        writer, _ = self._make_writer()
+        obj = _TestPersistentObj(key="value")
+        writer._persistent_id(obj)
+
+        results = list(writer.gen_new_objects(obj))
+
+        assert results.count(obj) == 2
 
     def test_gen_new_objects_cannot_call_twice(self):
         writer, conn = self._make_writer()
@@ -225,6 +279,33 @@ class TestObjectReader:
         result = reader.get_state_pickle(data)
         assert isinstance(result, bytes)
 
+    def test_get_state_roundtrip_with_compression(self):
+        writer, _ = TestObjectWriter()._make_writer()
+        obj = _TestPersistentObjLarge()
+        data, _ = writer.get_state(obj)
+        reader, _ = self._make_reader()
+
+        result = reader.get_state(data)
+
+        assert result["key"] == "x" * 100
+        assert reader.get_load_count() == 1
+
+    def test_get_state_handles_decompress_error(self, monkeypatch):
+        writer, _ = TestObjectWriter()._make_writer()
+        obj = _TestPersistentObjLarge()
+        data, _ = writer.get_state(obj)
+        reader, _ = self._make_reader()
+
+        def raise_zlib_error(*args, **kwargs):
+            raise zlib.error("bad compressed data")
+
+        monkeypatch.setattr("dhara.serialize_legacy.decompress", raise_zlib_error)
+
+        result = reader.get_state(data, load=False)
+
+        assert isinstance(result, bytes)
+        assert reader.get_load_count() == 1
+
 
 class TestPersistentLoad:
     def test_loads_from_cache(self):
@@ -245,6 +326,20 @@ class TestPersistentLoad:
         result = persistent_load(conn, cache_objects, (oid, _TestPersistentObj))
         assert isinstance(result, _TestPersistentObj)
         assert oid in cache_objects
+
+    def test_replaces_cached_object_of_wrong_class(self):
+        cache_objects = {}
+        conn = MagicMock()
+        oid = b"\x03" * 8
+        cache_objects[oid] = _TestPersistentObj(key="stale")
+
+        class _OtherPersistentObj(_TestPersistentObj):
+            pass
+
+        result = persistent_load(conn, cache_objects, (oid, _OtherPersistentObj))
+
+        assert isinstance(result, _OtherPersistentObj)
+        assert cache_objects[oid] is result
 
 
 class TestCompressedStartByte:

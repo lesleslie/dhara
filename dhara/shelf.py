@@ -245,8 +245,8 @@ class Shelf:
         self.file.seek(current)
         if result is None or result >= self.offset_map.get_start():
             return None
-        else:
-            return result
+
+        return result
 
     def get_item_at_position(self, position):
         """(int) -> str, str"""
@@ -373,15 +373,15 @@ class OffsetMap:
         result = self.int_array.get(j, default=None)
         if result is None or result >= self.start:
             return default
-        else:
-            return result
+
+        return result
 
     def __getitem__(self, j):
         result = self.get(j)
         if result is None:
             raise IndexError(j)
-        else:
-            return result
+
+        return result
 
     def __setitem__(self, j, value):
         """

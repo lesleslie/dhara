@@ -92,8 +92,8 @@ class SocketAddress:
             return HostPortAddress(host=host, port=port)
         elif address.startswith("@"):
             return UnixAbstractAddress(address, **kwargs)
-        else:
-            return UnixDomainSocketAddress(address, **kwargs)
+
+        return UnixDomainSocketAddress(address, **kwargs)
 
     new = staticmethod(new)
 
@@ -113,14 +113,14 @@ class HostPortAddress(SocketAddress):
     def __str__(self):
         if ":" in self.host:
             return f"[{self.host}]:{self.port}"
-        else:
-            return f"{self.host}:{self.port}"
+
+        return f"{self.host}:{self.port}"
 
     def get_address_family(self):
         if ":" in self.host:
             return socket.AF_INET6
-        else:
-            return socket.AF_INET
+
+        return socket.AF_INET
 
     def bind_socket(self, socket):
         socket.bind((self.host, self.port))
@@ -199,7 +199,7 @@ class UnixDomainSocketAddress(UnixAbstractAddress):
             result += f" ({rwx[filestat.st_mode >> 6 & 7]}{rwx[filestat.st_mode >> 3 & 7]}{rwx[filestat.st_mode & 7]} {owner} {group})"
         return result
 
-    def bind_socket(self, s):
+    def bind_socket(self, s):  # noqa: C901
         if self.umask is not None:
             old_umask = umask(self.umask)
         try:
@@ -263,11 +263,11 @@ class InheritedSocket(SocketAddress):
             port = self.name[1]
             if ":" in addr:
                 return f"[{addr}]:{port}"
-            else:
-                return f"{addr}:{port}"
+
+            return f"{addr}:{port}"
 
     def set_connection_options(self, s):
-        if s.family in [socket.AF_INET, socket.AF_INET6]:
+        if s.family in (socket.AF_INET, socket.AF_INET6):
             s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         s.settimeout(TIMEOUT)
 
@@ -624,7 +624,7 @@ class StorageServer:
         write_all(s, int4_to_str(len(client.invalid)), join_bytes(client.invalid))
         client.invalid.clear()
         tdata = read_int4_str(s)
-        if len(tdata) == 0:
+        if not tdata:
             return  # client decided not to commit (e.g. conflict)
         logging_debug = is_logging(10)
         logging_debug and log(10, "Committing %s bytes", len(tdata))

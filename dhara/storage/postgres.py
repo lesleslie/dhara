@@ -19,6 +19,7 @@ class PostgresStorageSettings:
 
 class StorageError(Exception):
     """Raised on storage operation failures."""
+
     pass
 
 

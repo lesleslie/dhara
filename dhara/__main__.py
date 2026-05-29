@@ -51,7 +51,7 @@ def configure_readline(namespace, history_path):
             readline.write_history_file(history_path)
 
         atexit.register(save_history)
-        if os.path.exists(history_path):
+        if Path(history_path).exists():
             readline.read_history_file(history_path)
     except ImportError:
         pass
@@ -337,11 +337,11 @@ def get_storage_class(file):
     The legacy DFS20 header remains supported via FileStorage2 for older
     databases, while SHELF-1 maps to the canonical FileStorage backend.
     """
-    if not os.path.exists(file):
+    if not Path(file).exists():
         from dhara.storage.file import FileStorage
 
         return FileStorage
-    fp = open(file, "rb")
+    fp = file.open("rb")
     d = fp.read(20)
     fp.close()
     if d.startswith(b"DFS20"):
@@ -384,7 +384,7 @@ def start_durus(logfile, logginglevel, address, storage, gcbytes, tls_config=Non
     if logfile is None:
         logfile = sys.stderr
     else:
-        logfile = open(logfile, "a+")
+        logfile = logfile.open("a+")
     direct_output(logfile)
     logger.setLevel(logginglevel)
     socket_address = SocketAddress.new(address)

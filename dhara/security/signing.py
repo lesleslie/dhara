@@ -97,7 +97,7 @@ class ObjectSigner:
             FileNotFoundError: If key file doesn't exist
             ValueError: If key file is invalid
         """
-        with open(path, "rb") as f:
+        with path.open("rb") as f:
             key = f.read()
 
         if len(key) != 32:
@@ -128,7 +128,7 @@ class ObjectSigner:
             os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True
         )
 
-        with open(path, "wb") as f:
+        with path.open("wb") as f:
             f.write(key)
 
         # Restrict file permissions to owner-only
@@ -317,7 +317,7 @@ def create_signer_from_env(env_var: str = "DHARA_SIGNING_KEY") -> ObjectSigner:
         raise ValueError(f"Environment variable {env_var} not set")
 
     # Check if it's a file path
-    if value.startswith("/") or value.startswith("."):
+    if value.startswith(("/", ".")):
         return ObjectSigner.from_file(value)
     else:
         # Treat as password

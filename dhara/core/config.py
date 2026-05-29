@@ -129,14 +129,20 @@ class DharaSettings(MCPServerSettings):
 
     # Storage backend config (file or postgres)
     storage_backend: str = Field(default="file", description="file or postgres")
-    storage_pg_url: str = Field(default="", description="Postgres DSN for serverless mode")
+    storage_pg_url: str = Field(
+        default="", description="Postgres DSN for serverless mode"
+    )
 
     # Cache backend config (memory or redis)
     cache_backend: str = Field(default="memory", description="memory or redis")
-    cache_redis_url: str = Field(default="", description="Redis URL for serverless cache")
+    cache_redis_url: str = Field(
+        default="", description="Redis URL for serverless cache"
+    )
     cache_redis_token: str = Field(default="", description="Redis AUTH token")
     cache_ttl: int = Field(default=3600, ge=1, description="Cache TTL in seconds")
-    cache_stampede_jitter_ms: int = Field(default=0, ge=0, description="Cold-start stampede jitter in ms")
+    cache_stampede_jitter_ms: int = Field(
+        default=0, ge=0, description="Cold-start stampede jitter in ms"
+    )
 
     # Oneiric integration (optional)
     oneiric_config_path: Path | None = Field(
@@ -224,8 +230,8 @@ class DharaSettings(MCPServerSettings):
             return Path(__file__).parent.parent.parent / "settings" / "lite.yaml"
         elif self.mode == "standard":
             return Path(__file__).parent.parent.parent / "settings" / "standard.yaml"
-        else:
-            return Path(__file__).parent.parent.parent / "settings" / "dhara.yaml"
+
+        return Path(__file__).parent.parent.parent / "settings" / "dhara.yaml"
 
     def health_snapshot_path(self) -> Path:
         """Get path to health snapshot file for this mode.

@@ -1,6 +1,7 @@
 """
 Dhara MCP authentication — delegated to mcp_common.auth with Dhara-specific extensions.
 
+from __future__ import annotations
 This module provides a thin delegation to mcp_common.auth for new code, while
 maintaining backward-compatible exports for legacy code that depends on the old
 custom implementation.
@@ -9,13 +10,12 @@ New Code: Use DharaPermission and require_dhara_auth
 Legacy Code: TokenAuth, Role, AuthResult, AuthContext remain available
 """
 
-from __future__ import annotations
-
 import logging
 from collections.abc import Callable
 from datetime import UTC, datetime
 from enum import Enum
 from functools import wraps
+from pathlib import Path
 from typing import Any
 
 from mcp_common.auth.audit import AuditLogger, AuthAuditEvent
@@ -262,7 +262,7 @@ class TokenAuth:
         self._rate_limit_tracker: dict[str, list[float]] = {}
         self._rate_limit_lock = asyncio.Lock()
 
-        if tokens_file and os.path.exists(tokens_file):
+        if tokens_file and Path(tokens_file).exists():
             self.load_tokens(tokens_file)
 
     def load_tokens(self, filepath: str) -> None:
@@ -316,7 +316,7 @@ class TokenAuth:
                 }
             }
 
-            with open(filepath, "w") as f:
+            with filepath.open("w") as f:
                 json.dump(data, f, indent=2)
 
             logger.info(f"Saved {len(self.tokens)} tokens to {filepath}")
@@ -346,7 +346,7 @@ class TokenAuth:
             created_at=datetime.now(UTC),
             expires_at=expires_at,
             rate_limit=rate_limit,
-            metadata=metadata or {},
+            metadata=metadata,
         )
 
         self.tokens[token_id] = token_info
@@ -445,7 +445,7 @@ class HMACAuth:
         self.secrets_file = secrets_file
         self.require_auth = require_auth
 
-        if secrets_file and os.path.exists(secrets_file):
+        if secrets_file and Path(secrets_file).exists():
             self.load_secrets(secrets_file)
 
     def load_secrets(self, filepath: str) -> None:
@@ -666,8 +666,8 @@ class AuthMiddleware:
 
             if asyncio.iscoroutinefunction(func):
                 return async_wrapper
-            else:
-                return sync_wrapper
+
+            return sync_wrapper
 
         return decorator
 
