@@ -1,4 +1,6 @@
 """
+from __future__ import annotations
+from typing import Dict
 Oneiric Secrets Adapter for HMAC Signing Keys
 
 This module provides a secure secrets management interface using Oneiric secrets adapters.
@@ -12,7 +14,6 @@ import threading
 import time
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Optional
 
 try:
     from oneiric import secrets
@@ -45,7 +46,7 @@ class SecretKey:
     expires_at: datetime | None = None
     is_active: bool = True
     rotation_interval: timedelta = timedelta(days=90)
-    fallback_key: Optional["SecretKey"] = None
+    fallback_key: "SecretKey | None" = None
 
     @property
     def is_expired(self) -> bool:
@@ -74,7 +75,9 @@ class SecretKey:
 class OneiricSecretsAdapter:
     """Oneiric secrets adapter with automatic key rotation and validation."""
 
-    def __init__(self, secret_prefix: str = "durus/hmac", rotation_interval: int = 90):
+    def __init__(
+        self, secret_prefix: str = "durus/hmac", rotation_interval: int = 90
+    ) -> None:
         """
         Initialize the Oneiric secrets adapter.
 
@@ -222,7 +225,7 @@ class OneiricSecretsAdapter:
     def _start_rotation_timer(self) -> None:
         """Start the automatic rotation timer."""
 
-        def rotation_task():
+        def rotation_task() -> None:
             while True:
                 try:
                     self._auto_rotate_keys()
