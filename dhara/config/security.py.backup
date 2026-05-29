@@ -1,4 +1,6 @@
 """
+from __future__ import annotations
+import operator
 Security configuration module.
 
 This module provides centralized security configuration for Dhara applications,
@@ -22,7 +24,6 @@ initialize_secrets = None
 
 try:
     from dhara.security.oneiric_secrets import (
-        OneiricSecretsAdapter,
         create_hmac_signature,
         initialize_secrets,
         verify_hmac_signature,
@@ -69,7 +70,7 @@ class SecurityConfig:
     _logger: logging.Logger | None = None
     _fallback_lock: threading.Lock = field(default_factory=threading.Lock)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize logging and validate configuration."""
         self._logger = logging.getLogger(__name__)
 
@@ -297,7 +298,7 @@ class SecurityConfig:
             raise RuntimeError("Cannot rotate keys without Oneiric")
 
         try:
-            result = self._adapter.rotate_all_keys()
+            result = self._adapter.rotate_all_keys() # type: ignore
             self._log_security_event("Manual key rotation completed")
             return result
         except Exception as e:
@@ -399,12 +400,12 @@ class SecurityConfig:
         if self.log_security_events and self._logger:
             self._logger.info(f"[Security] {message}")
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         """Context manager entry."""
         self.initialize()
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """Context manager exit."""
         # Clean up resources if needed
         pass

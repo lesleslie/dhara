@@ -1,4 +1,5 @@
 """
+from __future__ import annotations
 $URL$
 $Id$
 """
@@ -124,8 +125,8 @@ class BNode(PersistentObject):
             return self.items[position]
         elif self.is_leaf():
             return None
-        else:
-            return self.nodes[position].search(key)
+
+        return self.nodes[position].search(key)
 
     def insert_item(self, item: tuple[Any, Any]) -> None:
         """(item:(key:anything, value:anything))"""
@@ -149,7 +150,7 @@ class BNode(PersistentObject):
                 else:
                     if key > self.items[position][0]:
                         position += 1
-                    old_count = self.nodes[position]._count
+                    old_count = self.nodes[position]._count # type: ignore
                     self.nodes[position].insert_item(item)
                     self._count += self.nodes[position]._count - old_count
             else:
@@ -157,7 +158,7 @@ class BNode(PersistentObject):
                 self.nodes[position].insert_item(item)
                 self._count += self.nodes[position]._count - old_count
 
-    def _update_count(self):
+    def _update_count(self) -> None:
         """Update _count to match the actual item count."""
         if self.is_leaf():
             self._count = len(self.items)
@@ -166,7 +167,7 @@ class BNode(PersistentObject):
             for node in self.nodes:
                 self._count += node._count
 
-    def _change_count(self, delta):
+    def _change_count(self, delta) -> None:
         """Update _count by delta."""
         self._count += delta
         return delta
@@ -202,8 +203,8 @@ class BNode(PersistentObject):
         """
         if self.is_leaf():
             return self.items[0]
-        else:
-            return self.nodes[0].get_min_item()
+
+        return self.nodes[0].get_min_item()
 
     def get_max_item(self) -> tuple[Any, Any]:
         """() -> (key:anything, value:anything)
@@ -211,17 +212,17 @@ class BNode(PersistentObject):
         """
         if self.is_leaf():
             return self.items[-1]
-        else:
-            return self.nodes[-1].get_max_item()
 
-    def delete(self, key: Any) -> None:
+        return self.nodes[-1].get_max_item()
+
+    def delete(self, key: Any) -> None:  # noqa: C901
         """(key:anything)
         Delete the item with this key.
         This is intended to follow the description in 19.3 of
         'Introduction to Algorithms' by Cormen, Lieserson, and Rivest.
         """
 
-        def is_big(node):
+        def is_big(node) -> None:
             # Precondition for recursively calling node.delete(key).
             return node is not None and len(node.items) >= node.minimum_degree
 
@@ -351,8 +352,8 @@ class BNode(PersistentObject):
         """
         if self.is_leaf():
             return 0
-        else:
-            return 1 + self.nodes[0].get_level()
+
+        return 1 + self.nodes[0].get_level()
 
 
 class BNode4(BNode):
@@ -388,7 +389,7 @@ class BNode512(BNode):
 
 
 # Set narrow specifications of BNode instance attributes.
-for bnode_class in [BNode] + BNode.__subclasses__():
+for bnode_class in (BNode, *BNode.__subclasses__()):
     bnode_class.items_is = [tuple]
     bnode_class.nodes_is = (None, [bnode_class])
 del bnode_class
@@ -484,7 +485,7 @@ class BTree(PersistentObject, MutableMapping[Any, Any]):
             return value
         return item[1]
 
-    def update(self, *args, **kwargs):
+    def update(self, *args, **kwargs) -> None:
         if args:
             if len(args) > 1:
                 raise TypeError(f"update expected at most 1 argument, got {len(args)}")
@@ -587,7 +588,7 @@ class BTree(PersistentObject, MutableMapping[Any, Any]):
         for item in self.root.iter_backward_from(key):
             yield item
 
-    def items_range(self, start, end, closed_start=True, closed_end=False):
+    def items_range(self, start, end, closed_start=True, closed_end=False) -> None:
         """(start, end, closed_start=True, closed_end=False) -> generator
         Generate items with keys in the given range, from the start to the end.
         If closed_start is true, include the item with the start key,

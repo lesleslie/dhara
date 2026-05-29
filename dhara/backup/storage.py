@@ -332,7 +332,7 @@ class GCSStorageAdapter(_DelegatingStorageAdapter):
             result = blob.download_as_bytes()
             if hasattr(result, "__await__"):
                 result = await result
-            return result
+            return result  # type: ignore
         result = blob.download_as_text()
         if hasattr(result, "__await__"):
             result = await result

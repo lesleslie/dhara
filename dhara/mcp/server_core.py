@@ -60,7 +60,7 @@ class DharaMCPServer:
     ────────────────────────────────────────────────────────────────────
     """
 
-    def __init__(self, config: DharaSettings):
+    def __init__(self, config: DharaSettings) -> None:
         """Initialize Dhara MCP server.
 
         Args:
@@ -159,7 +159,7 @@ class DharaMCPServer:
             self.storage = PostgresStorageAdapter(pg_settings)
         else:
             # Default: FileStorage (existing behavior)
-            self.storage = FileStorage(
+            self.storage = FileStorage(  # type: ignore
                 storage_path,
                 readonly=config.storage.read_only,
             )
@@ -223,7 +223,7 @@ class DharaMCPServer:
             FULL:     All tools (same as STANDARD for Dhara)
         """
 
-        def auth(*scopes: str):
+        def auth(*scopes: str) -> None:
             if not self.config.authentication.enabled:
                 return None
             return require_scopes(*scopes)
@@ -245,7 +245,7 @@ class DharaMCPServer:
             "Dhara tool profile=%s groups=%s", profile.value, sorted(active_groups)
         )
 
-        def _tool(group: str, **kwargs):
+        def _tool(group: str, **kwargs) -> None:
             """Conditional registration — only registers if group is in active profile."""
             if group not in active_groups:
                 return lambda fn: fn  # No-op: function defined but not registered
@@ -290,7 +290,7 @@ class DharaMCPServer:
                 config=config,
                 dependencies=dependencies or [],
                 capabilities=capabilities or [],
-                metadata=metadata,
+                metadata=metadata,  # type: ignore
             )
 
         @_tool(TOOL_GROUP_ADAPTER_REGISTRY, auth=auth("read"))

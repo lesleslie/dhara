@@ -1,5 +1,6 @@
 """Configuration loader for Dhara.
 
+from __future__ import annotations
 This module provides utilities for loading Dhara configuration from
 various sources (files, dictionaries, environment variables).
 """

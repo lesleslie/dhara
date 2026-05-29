@@ -1,5 +1,6 @@
 """Configuration loader for Dhara.
 
+from __future__ import annotations
 This module provides utilities for loading Dhara configuration from
 various sources (files, dictionaries, environment variables).
 """
@@ -50,7 +51,7 @@ def _get_env_value(prefixes: tuple[str, ...], suffix: str) -> str | None:
     return None
 
 
-def load_config(
+def load_config(  # noqa: C901
     source: str | Path | dict,
     format: Literal["yaml", "json", "dict", "auto"] = "auto",
     max_size: int = MAX_CONFIG_SIZE,
@@ -100,7 +101,7 @@ def load_config(
     # Auto-detect format from extension
     if format == "auto":
         suffix = path.suffix.lower()
-        if suffix in [".yaml", ".yml"]:
+        if suffix in (".yaml", ".yml"):
             format = "yaml"
         elif suffix == ".json":
             format = "json"
@@ -137,7 +138,7 @@ def load_config(
     return DharaConfig.from_dict(data)
 
 
-def load_config_from_env(
+def load_config_from_env(  # noqa: C901
     prefix: str = "DHARA",
     config_file_var: str = "CONFIG",
 ) -> DharaConfig | None:

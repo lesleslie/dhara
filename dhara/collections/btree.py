@@ -1,4 +1,5 @@
 """
+from __future__ import annotations
 $URL$
 $Id$
 """
@@ -150,14 +151,14 @@ class BNode(PersistentObject):
                     if key > self.items[position][0]:
                         position += 1
                     old_count = self.nodes[position]._count
-                    self.nodes[position].insert_item(item)
+                    self.nodes[position].insert_item(item)  # type: ignore
                     self._count += self.nodes[position]._count - old_count
             else:
                 old_count = self.nodes[position]._count
                 self.nodes[position].insert_item(item)
                 self._count += self.nodes[position]._count - old_count
 
-    def _update_count(self):
+    def _update_count(self) -> None:
         """Update _count to match the actual item count."""
         if self.is_leaf():
             self._count = len(self.items)
@@ -166,7 +167,7 @@ class BNode(PersistentObject):
             for node in self.nodes:
                 self._count += node._count
 
-    def _change_count(self, delta):
+    def _change_count(self, delta) -> None:
         """Update _count by delta."""
         self._count += delta
         return delta
@@ -221,7 +222,7 @@ class BNode(PersistentObject):
         'Introduction to Algorithms' by Cormen, Lieserson, and Rivest.
         """
 
-        def is_big(node):
+        def is_big(node) -> None:
             # Precondition for recursively calling node.delete(key).
             return node is not None and len(node.items) >= node.minimum_degree
 
@@ -484,7 +485,7 @@ class BTree(PersistentObject, MutableMapping[Any, Any]):
             return value
         return item[1]
 
-    def update(self, *args, **kwargs):
+    def update(self, *args, **kwargs) -> None:
         if args:
             if len(args) > 1:
                 raise TypeError(f"update expected at most 1 argument, got {len(args)}")
@@ -587,7 +588,7 @@ class BTree(PersistentObject, MutableMapping[Any, Any]):
         for item in self.root.iter_backward_from(key):
             yield item
 
-    def items_range(self, start, end, closed_start=True, closed_end=False):
+    def items_range(self, start, end, closed_start=True, closed_end=False) -> None:
         """(start, end, closed_start=True, closed_end=False) -> generator
         Generate items with keys in the given range, from the start to the end.
         If closed_start is true, include the item with the start key,

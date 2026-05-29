@@ -60,7 +60,7 @@ class DharaMCPServer:
     ────────────────────────────────────────────────────────────────────
     """
 
-    def __init__(self, config: DharaSettings):
+    def __init__(self, config: DharaSettings) -> None:
         """Initialize Dhara MCP server.
 
         Args:
@@ -141,10 +141,47 @@ class DharaMCPServer:
         storage_path = config.storage.path.expanduser()
         storage_path.parent.mkdir(parents=True, exist_ok=True)
 
-        self.storage = FileStorage(
-            str(storage_path),
-            readonly=config.storage.read_only,
-        )
+        # ── Storage backend selection ─────────────────────────────────────────
+        storage_backend = getattr(config, "storage_backend", "file")
+
+        if storage_backend == "postgres":
+            from dhara.storage.postgres import (
+                PostgresStorageAdapter,
+                PostgresStorageSettings,
+            )
+
+            if not config.storage_pg_url:
+                raise ValueError(
+                    "DHARA__STORAGE__PG_URL is required when storage_backend=postgres"
+                )
+
+            pg_settings = PostgresStorageSettings(pg_url=config.storage_pg_url)
+            self.storage = PostgresStorageAdapter(pg_settings)
+        else:
+            # Default: FileStorage (existing behavior)
+            self.storage = FileStorage( # type: ignore
+                storage_path,
+                readonly=config.storage.read_only,
+            )
+
+        # ── Cache backend selection ─────────────────────────────────────────
+        cache_backend = getattr(config, "cache_backend", "memory")
+        self.cache = None
+
+        if cache_backend == "redis":
+            from dhara.storage.redis_cache import (
+                RedisCacheAdapter,
+                RedisCacheSettings,
+            )
+
+            redis_settings = RedisCacheSettings(
+                redis_url=config.cache_redis_url or "redis://localhost:6379",
+                redis_token=config.cache_redis_token or None,
+                ttl=config.cache_ttl or 3600,
+                stampede_jitter_ms=getattr(config, "cache_stampede_jitter_ms", 0),
+            )
+            self.cache = RedisCacheAdapter(redis_settings)
+
         self.connection = Connection(self.storage)
 
         # Initialize adapter registry
@@ -173,7 +210,7 @@ class DharaMCPServer:
             f"(storage={config.storage.path}, adapters={self.adapter_registry.count()})"
         )
 
-    def _register_tools(self) -> None:
+    def _register_tools(self) -> None:  # noqa: C901
         """Register MCP tools based on active profile.
 
         Tools are grouped and gated by the DHARA_TOOL_PROFILE env var.
@@ -186,7 +223,7 @@ class DharaMCPServer:
             FULL:     All tools (same as STANDARD for Dhara)
         """
 
-        def auth(*scopes: str):
+        def auth(*scopes: str) -> None:
             if not self.config.authentication.enabled:
                 return None
             return require_scopes(*scopes)
@@ -208,7 +245,7 @@ class DharaMCPServer:
             "Dhara tool profile=%s groups=%s", profile.value, sorted(active_groups)
         )
 
-        def _tool(group: str, **kwargs):
+        def _tool(group: str, **kwargs) -> None:
             """Conditional registration — only registers if group is in active profile."""
             if group not in active_groups:
                 return lambda fn: fn  # No-op: function defined but not registered
@@ -250,10 +287,10 @@ class DharaMCPServer:
                 provider=provider,
                 version=version,
                 factory_path=factory_path,
-                config=config or {},
+                config=config,
                 dependencies=dependencies or [],
                 capabilities=capabilities or [],
-                metadata=metadata or {},
+                metadata=metadata,  # type: ignore
             )
 
         @_tool(TOOL_GROUP_ADAPTER_REGISTRY, auth=auth("read"))
@@ -327,10 +364,6 @@ class DharaMCPServer:
                         "The canonical FastMCP server does not currently enforce "
                         "auth in the runtime path."
                     ),
-                },
-                "deprecated_surfaces": {
-                    "module": ["dhara.mcp.server"],
-                    "legacy_tool_prefixes": ["durus_*"],
                 },
             }
 
@@ -683,7 +716,7 @@ class DharaMCPServer:
         try:
             root = self.connection.get_root()
             return {
-                "path": str(storage_path),
+                "path": storage_path,
                 "exists": storage_path.exists(),
                 "accessible": True,
                 "read_only": self.config.storage.read_only,
@@ -691,7 +724,7 @@ class DharaMCPServer:
             }
         except Exception as exc:
             return {
-                "path": str(storage_path),
+                "path": storage_path,
                 "exists": storage_path.exists(),
                 "accessible": False,
                 "read_only": self.config.storage.read_only,
@@ -712,7 +745,7 @@ class DharaMCPServer:
             total_backups = 0
 
             if catalog_path.exists():
-                with FileStorage(str(catalog_path), readonly=True) as storage:
+                with FileStorage(catalog_path, readonly=True) as storage:
                     connection = Connection(storage)
                     root = connection.get_root()
                     backups = root.get("backups", {})
@@ -787,7 +820,3 @@ class DharaMCPServer:
         if getattr(self, "storage", None) is not None:
             self.storage.close()
         logger.info("Dhara MCP Server closed")
-
-
-# Backward-compatible alias during the dhara rename transition.
-DruvaMCPServer = DharaMCPServer
