@@ -9,6 +9,7 @@ Provides adapter pattern for multiple storage implementations:
 """
 
 from dhara.storage.base import (
+    AsyncStorage,
     MemoryStorage,
     Storage,
     gen_referring_oid_record,
@@ -17,13 +18,15 @@ from dhara.storage.base import (
 )
 from dhara.storage.client import ClientStorage
 from dhara.storage.file import FileStorage
-from dhara.storage.sqlite import SqliteStorage
+from dhara.storage.sqlite import AsyncSqliteStorage, SqliteStorage
 
 __all__ = [
     "Storage",
     "MemoryStorage",
+    "AsyncStorage",
     "FileStorage",
     "SqliteStorage",
+    "AsyncSqliteStorage",
     "ClientStorage",
     "gen_referring_oid_record",
     "get_census",
