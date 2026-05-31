@@ -71,6 +71,14 @@ The plan was reviewed by three agents (architecture, API design, Python quality)
 8. **conftest.py fixture conflict resolved** — remove deprecated `event_loop` fixture
 9. **Missing AsyncConnection methods added** — `get_crawler`, `load_state`, `get_storage`, `get_load_count`, `note_access`, `note_change`, `pack`, `touch_every_reference`, `gen_every_instance`
 10. **gen_oid_record async generator** — non-trivial; gets its own implementation detail
+11. **AsyncConnection factory pattern** — `__init__` cannot be async; use `async def new()` classmethod instead
+12. **shrink_cache() awaits fixed** — `abort()` and `commit()` now properly `await self.shrink_cache()`
+13. **cache.clear() fix** — Cache has no `clear()` method; uses `clear_dead()` from ObjectDictionary instead
+14. **new_oid shadowing fixed** — AsyncConnection no longer sets `self.new_oid` instance attribute
+15. **Protocol test uses inspect.iscoroutinefunction** — verifies methods are truly async, not just named
+16. **Task 15 test redesigned** — `BackupCatalog` takes `backup_dir: str | Path`, not a storage object
+17. **Dependency edges added** — Task 7 depends on Task 1; Tasks 9-11 depend on Task 7
+18. **BTree test coverage expanded** — now tests `delete`, `items`, `keys`, `values`, `update`
 
 ---
 
@@ -134,19 +142,49 @@ The plan was reviewed by three agents (architecture, API design, Python quality)
 ```python
 # tests/storage/test_async_storage_protocol.py
 import pytest
+import inspect
 from typing import AsyncIterator
 from dhara.storage.base import AsyncStorage
 
 @pytest.mark.asyncio
 async def test_async_storage_protocol_interface():
-    """Verify AsyncStorage has all required methods."""
+    """Verify AsyncStorage has all required methods and they are async coroutines."""
     methods = [
         'init', 'load', 'begin', 'store', 'end', 'sync',
         'new_oid', 'gen_oid_record', 'pack', 'health',
-        'cleanup', 'close', 'bulk_load', 'get_packer'
+        'cleanup', 'close', 'bulk_load'
     ]
     for method in methods:
         assert hasattr(AsyncStorage, method), f"AsyncStorage missing {method}"
+        attr = getattr(AsyncStorage, method)
+        assert inspect.iscoroutinefunction(attr), f"{method} is not async (is {type(attr).__name__})"
+
+@pytest.mark.asyncio
+async def test_async_storage_protocol_gen_oid_record_is_async_iterator():
+    """Verify gen_oid_record returns an AsyncIterator."""
+    # Create a minimal mock implementing the protocol
+    class MockStorage:
+        async def init(self): pass
+        async def load(self, oid): pass
+        async def begin(self): pass
+        async def store(self, oid, record): pass
+        async def end(self, handle_invalidations=None): pass
+        async def sync(self): return []
+        async def new_oid(self): return b'\x00\x00\x00\x00\x00\x00\x00\x01'
+        async def gen_oid_record(self, start_oid=None, batch_size=100):
+            return  # empty async generator
+        async def bulk_load(self, oids):
+            return  # empty async generator
+        async def pack(self): pass
+        async def health(self): return True
+        async def cleanup(self): pass
+        async def close(self): pass
+        def get_packer(self): return None
+
+    storage = MockStorage()
+    result = storage.gen_oid_record()
+    # Verify it's an async generator
+    assert inspect.isasyncgen(result), "gen_oid_record must return an async generator"
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -557,7 +595,7 @@ from dhara.core.connection import AsyncConnection
 async def test_async_connection_get_set():
     storage = MemoryStorage()
     await storage.init()
-    conn = AsyncConnection(storage)
+    conn = await AsyncConnection.new(storage)
     root = await conn.get_root()
     await root.set("key", "value")
     await conn.commit()
@@ -568,7 +606,7 @@ async def test_async_connection_get_set():
 async def test_async_connection_abort():
     storage = MemoryStorage()
     await storage.init()
-    conn = AsyncConnection(storage)
+    conn = await AsyncConnection.new(storage)
     root = await conn.get_root()
     await root.set("key", "value")
     await conn.abort()
@@ -579,7 +617,7 @@ async def test_async_connection_abort():
 async def test_async_connection_get_crawler():
     storage = MemoryStorage()
     await storage.init()
-    conn = AsyncConnection(storage)
+    conn = await AsyncConnection.new(storage)
     root = await conn.get_root()
     for i in range(5):
         root.set(f"key{i}", f"value{i}")
@@ -591,8 +629,18 @@ async def test_async_connection_get_crawler():
 async def test_async_connection_pack():
     storage = MemoryStorage()
     await storage.init()
-    conn = AsyncConnection(storage)
+    conn = await AsyncConnection.new(storage)
     await conn.pack()  # Should not raise
+
+@pytest.mark.asyncio
+async def test_async_connection_factory_returns_instance():
+    """Verify AsyncConnection.new() returns an initialized AsyncConnection."""
+    storage = MemoryStorage()
+    await storage.init()
+    conn = await AsyncConnection.new(storage)
+    assert conn is not None
+    assert conn.storage is storage
+    assert conn.root is not None
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -608,15 +656,19 @@ Expected: FAIL — AsyncConnection not defined
 class AsyncConnection:
     """Fully async Connection — all storage operations are awaited."""
 
-    def __init__(self, storage: AsyncStorage, cache_size: int = 100000, root_class=None, cache=None):
+    # Factory coroutine — __init__ cannot be async in Python
+    @classmethod
+    async def new(cls, storage: AsyncStorage, cache_size: int = 100000, root_class=None, cache=None):
+        """Async factory — creates and initializes AsyncConnection."""
         if isinstance(storage, str):
             raise TypeError("AsyncConnection requires an AsyncStorage instance, not a path string")
-        assert isinstance(storage, AsyncStorage)
+        assert isinstance(storage, AsyncStorage), f"Expected AsyncStorage, got {type(storage).__name__}"
+        self = cls.__new__(cls)
         self.storage = storage
         self.reader = ObjectReader(self)
         self.changed = {}
         self.invalid_oids = set()
-        self.new_oid = storage.new_oid
+        # Don't set self.new_oid — keep the async method from being shadowed
         self.cache = cache if cache is not None else Cache(cache_size)
         self.root = await self.get(ROOT_OID)
         if self.root is None:
@@ -631,6 +683,7 @@ class AsyncConnection:
             self.root._p_note_change()
             await self.commit()
         assert root_class in (None, self.root.__class__)
+        return self
 
     # ── Core async methods ──────────────────────────────────────
 
@@ -748,10 +801,12 @@ class AsyncConnection:
             obj._p_set_status_ghost()
         self.changed.clear()
         await self._sync()
-        self.shrink_cache()
+        await self.shrink_cache()
         self.transaction_serial += 1
-        if self.cache is not None and hasattr(self.cache, "clear"):
-            await self.cache.clear()
+        # Cache.clear() doesn't exist — ObjectDictionary has clear_dead()
+        # Clear dead references on abort to maintain cache integrity
+        if self.cache is not None and hasattr(self.cache.objects, 'clear_dead'):
+            self.cache.objects.clear_dead()
 
     async def commit(self):
         if not self.changed:
@@ -785,7 +840,7 @@ class AsyncConnection:
                     obj._p_connection = None
                 raise
             self.changed.clear()
-        self.shrink_cache()
+        await self.shrink_cache()
         self.transaction_serial += 1
 
     def _handle_invalidations(self, oids, read_oid=None):
@@ -812,6 +867,32 @@ class AsyncConnection:
 
     async def new_oid(self) -> OID:
         return await self.storage.new_oid()
+
+    async def touch_every_reference(self, *words):
+        """Mark as changed every object whose pickled class/state contains any of the given words."""
+        get = self.get
+        reader = ObjectReader(self)
+        words = [as_bytes(w) for w in words]
+        async for oid, record in self.storage.gen_oid_record():
+            record_oid, data, refs = unpack_record(record)
+            state = reader.get_state_pickle(data)
+            for word in words:
+                if word in data or word in state:
+                    (await get(oid))._p_note_change()
+
+    async def gen_every_instance(self, *classes):
+        """Generate all PersistentObject instances that are instances of any of the given classes."""
+        async for oid, record in self.storage.gen_oid_record():
+            record_oid, state, refs = unpack_record(record)
+            record_class = loads(state)
+            if issubclass(record_class, classes):
+                yield await self.get(oid)
+```
+
+**Usage:**
+```python
+conn = await AsyncConnection.new(storage)
+root = await conn.get_root()
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -1014,9 +1095,50 @@ from dhara.collections.btree import BTree
 @pytest.mark.asyncio
 async def test_btree_async_wrapper_set_get():
     tree = BTree()
-    await tree.set("key", "value")  # wrapper is async
-    result = await tree.get("key") # get is sync, but wrapper is async
+    await tree.set("key", "value")
+    result = await tree.get("key")
     assert result == "value"
+
+@pytest.mark.asyncio
+async def test_btree_async_wrapper_delete():
+    tree = BTree()
+    await tree.set("key", "value")
+    result = await tree.delete("key")
+    assert result is True
+    assert await tree.get("key") is None
+
+@pytest.mark.asyncio
+async def test_btree_async_wrapper_update():
+    tree = BTree()
+    await tree.set("key", "value1")
+    result = await tree.update("key", "value2")
+    assert result is True
+    assert await tree.get("key") == "value2"
+
+@pytest.mark.asyncio
+async def test_btree_async_wrapper_items():
+    tree = BTree()
+    await tree.set("a", "1")
+    await tree.set("b", "2")
+    await tree.set("c", "3")
+    items = [item async for item in tree.items()]
+    assert len(items) == 3
+
+@pytest.mark.asyncio
+async def test_btree_async_wrapper_keys():
+    tree = BTree()
+    await tree.set("x", "1")
+    await tree.set("y", "2")
+    keys = [k async for k in tree.keys()]
+    assert len(keys) == 2
+
+@pytest.mark.asyncio
+async def test_btree_async_wrapper_values():
+    tree = BTree()
+    await tree.set("a", "one")
+    await tree.set("b", "two")
+    values = [v async for v in tree.values()]
+    assert len(values) == 2
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1207,17 +1329,20 @@ git commit -m "feat: update MCP adapter tools to use AsyncConnection"
 ```python
 # tests/test_backup_catalog.py
 import pytest
-from dhara.storage.memory import MemoryStorage
+import tempfile
+from pathlib import Path
 from dhara.backup.catalog import BackupCatalog
 
 @pytest.mark.asyncio
-async def test_backup_catalog_async():
-    storage = MemoryStorage()
-    await storage.init()
-    catalog = BackupCatalog(storage)
-    await catalog.add_entry("key", "value")
-    await catalog.save()
-    assert await catalog.has_entry("key")
+async def test_backup_catalog_with_memory_storage():
+    """BackupCatalog accepts a backup_dir path, not a storage object."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        catalog = BackupCatalog(tmpdir)
+        # BackupCatalog uses AsyncSqliteStorage internally at backup_dir
+        await catalog.init()
+        await catalog.add_entry("key", "value")
+        await catalog.save()
+        assert await catalog.has_entry("key")
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1398,13 +1523,18 @@ git commit -m "feat: update db_to_py3k to use AsyncConnection"
 import pytest
 
 def test_no_deprecated_event_loop_fixture():
-    """Verify conftest.py does not have deprecated event_loop fixture."""
+    """Verify conftest.py does not define an event_loop fixture (deprecated in pytest-asyncio)."""
     import ast
     with open("tests/conftest.py") as f:
-        tree = ast.parse(f.read())
+        content = f.read()
+    # Check that no FunctionDef named 'event_loop' exists in the module
+    tree = ast.parse(content)
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef) and node.name == "event_loop":
-            pytest.fail("conftest.py still has deprecated event_loop fixture")
+            pytest.fail("conftest.py still defines event_loop fixture — must be removed for pytest-asyncio compatibility")
+    # Also verify pytest_asyncio is configured (asyncio_mode = "auto")
+    import pytest_asyncio
+    assert hasattr(pytest_asyncio, 'pytest_configure'), "pytest-asyncio not properly loaded"
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1599,17 +1729,19 @@ Task 1 (AsyncStorage protocol — complete)
   └─ Task 4 (AsyncMemoryStorage — native async)
   └─ Task 6 (Update exports)
         └─ Task 15 (catalog.py update — uses AsyncConnection)
+ └─ Task 7 (AsyncConnection — depends on Task 1 for type annotations)
+      └─ Task 8 (Async PersistentObject)
+      └─ Tasks 9-11 (Async collections — depend on Task 7)
+            └─ Tasks 12-14 (MCP async)
  └─ Task 5 (Delete FileStorage — AFTER catalog.py)
- └─ Task 7 (AsyncConnection)
-                          └─ Task 8 (Async PersistentObject)
- └─ Tasks 9-11 (Async collections)
-                          └─ Tasks 12-14 (MCP async)
- └─ Tasks 16-20 (Backup/CLI/Bin async)
-                                      └─ Task 21 (conftest fix)
-                                            └─ Tasks 22-24 (Tests)
- └─ Task 25 (Crackerjack MCP client)
- └─ Task 26 (Crackerjack tests)
+      └─ Tasks 16-20 (Backup/CLI/Bin async)
+            └─ Task 21 (conftest fix)
+                  └─ Tasks 22-24 (Tests)
+                        └─ Task 25 (Crackerjack MCP client)
+                              └─ Task 26 (Crackerjack tests)
 ```
+
+**Note:** Task 7 (AsyncConnection) imports from `dhara/storage/base.py` for the `AsyncStorage` type annotation, so it must run after Task 1 completes. Tasks 9, 10, 11 use `AsyncConnection` in their tests, so they must run after Task 7.
 
 ---
 
