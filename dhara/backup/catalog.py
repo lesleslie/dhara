@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 Backup catalog for managing backup metadata.
 
@@ -6,16 +8,17 @@ This module provides:
 - Backup chain management
 - Search and filter capabilities
 - Persistence using Durus itself
+- AsyncBackupCatalog for async tool dispatch via asyncio.to_thread
 """
 
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
 from dhara.collections.dict import PersistentDict
-from dhara.core import Connection
+from dhara.core.connection import AsyncConnection, Connection
 from dhara.storage.file import FileStorage
 
 from .manager import BackupMetadata, BackupType
@@ -293,3 +296,133 @@ class BackupCatalog:
                 )
 
         return issues
+
+
+class AsyncBackupCatalog:
+    """Async Dhara-backed backup catalog using AsyncConnection.
+
+    Accepts an optional pre-configured AsyncConnection for testing,
+    or creates one from the backup_dir on first use.
+
+    Uses plain dicts for backup metadata (not PersistentDict) to avoid
+    async persistence complexity — backup catalog is a cache, not
+    the primary store.
+    """
+
+    def __init__(
+        self,
+        backup_dir: str | Path,
+        connection: AsyncConnection | None = None,
+    ) -> None:
+        self.backup_dir = Path(backup_dir)
+        self.backup_dir.mkdir(parents=True, exist_ok=True)
+        self.catalog_path = self.backup_dir / "backup_catalog.durus"
+        self._provided_connection = connection
+        self._connection: AsyncConnection | None = connection
+
+    async def _get_connection(self) -> AsyncConnection:
+        if self._connection is None:
+            from dhara.storage.file import FileStorage
+            storage = FileStorage(str(self.catalog_path))
+            self._connection = await AsyncConnection.new(storage)
+        return self._connection
+
+    async def _load_catalog(self) -> dict[str, dict[str, Any]]:
+        conn = await self._get_connection()
+        root = await conn.get_root()
+        backups = root.get("backups", {})
+        return dict(backups) if backups else {}
+
+    async def _save_catalog(self, catalog: dict[str, dict[str, Any]]) -> None:
+        conn = await self._get_connection()
+        root = await conn.get_root()
+        root["backups"] = catalog  # plain dict - catalog is a cache, not primary store
+
+    async def add_backup_async(self, metadata: BackupMetadata) -> None:
+        """Add backup to catalog (async)."""
+        catalog = await self._load_catalog()
+        catalog[metadata.backup_id] = metadata.to_dict()
+        await self._save_catalog(catalog)
+
+    async def get_backup_async(self, backup_id: str) -> BackupMetadata | None:
+        """Get backup by ID (async)."""
+        catalog = await self._load_catalog()
+        if backup_id in catalog:
+            data = catalog[backup_id]
+            return BackupMetadata.from_dict(data)
+        return None
+
+    async def get_all_backups_async(self) -> list[BackupMetadata]:
+        """Get all backups (async)."""
+        catalog = await self._load_catalog()
+        return [BackupMetadata.from_dict(data) for data in catalog.values()]
+
+    async def remove_backup_async(self, backup_id: str) -> bool:
+        """Remove backup from catalog (async)."""
+        catalog = await self._load_catalog()
+        if backup_id in catalog:
+            del catalog[backup_id]
+            await self._save_catalog(catalog)
+            return True
+        return False
+
+    async def get_backups_by_type_async(
+        self, backup_type: BackupType
+    ) -> list[BackupMetadata]:
+        """Get backups of specific type (async)."""
+        backups = await self.get_all_backups_async()
+        return [b for b in backups if b.backup_type == backup_type]
+
+    async def get_last_backup_async(self) -> BackupMetadata | None:
+        """Get the most recent backup (async)."""
+        backups = await self.get_all_backups_async()
+        if not backups:
+            return None
+        return max(backups, key=lambda b: b.timestamp)
+
+    async def search_backups_async(
+        self,
+        start_time: Any = None,
+        end_time: Any = None,
+        backup_type: BackupType | None = None,
+        contains_string: str | None = None,
+    ) -> list[BackupMetadata]:
+        """Search backups with various filters (async)."""
+        results = await self.get_all_backups_async()
+
+        # Filter by time range
+        if start_time:
+            results = [b for b in results if b.timestamp >= start_time]
+        if end_time:
+            results = [b for b in results if b.timestamp <= end_time]
+
+        # Filter by type
+        if backup_type:
+            results = [b for b in results if b.backup_type == backup_type]
+
+        # Filter by string in backup ID
+        if contains_string:
+            results = [
+                b for b in results if contains_string.lower() in b.backup_id.lower()
+            ]
+
+        return results
+
+    def close(self) -> None:
+        """Close the connection if we created it (not if provided)."""
+        if self._connection is not None and self._provided_connection is None:
+            # We created this connection ourselves; close it
+            self._connection = None
+        # If _provided_connection was set, caller owns it
+
+    def __enter__(self) -> "AsyncBackupCatalog":
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        self.close()
+
+    async def __aenter__(self) -> "AsyncBackupCatalog":
+        return self
+
+    async def __aexit__(self, *args: Any) -> None:
+        self.close()
