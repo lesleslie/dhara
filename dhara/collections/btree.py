@@ -18,6 +18,32 @@ class BNode:
         """Returns True if this is a leaf node."""
         return self.nodes is None
 
+    def is_full(self) -> bool:
+        """Returns True if node has maximum items (2*t - 1)."""
+        return len(self.items) == 2 * self.minimum_degree - 1
+
+    def is_big(self) -> bool:
+        """Returns True if node has >= t keys (safe for deletion without underflow)."""
+        return len(self.items) >= self.minimum_degree
+
+    def _find_position(self, key: K) -> tuple[int, bool]:
+        """Binary search for key position. Returns (index, found).
+
+        If found=True, index points to the matching item.
+        If found=False, index points to where the key should be inserted.
+        """
+        lo, hi = 0, len(self.items) - 1
+        while lo <= hi:
+            mid = (lo + hi) // 2
+            mid_key = self.items[mid][0]
+            if mid_key == key:
+                return (mid, True)
+            elif mid_key < key:
+                lo = mid + 1
+            else:
+                hi = mid - 1
+        return (lo, False)
+
 
 # Placeholder - full BTree implementation in later task
 class BTree:
