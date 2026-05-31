@@ -4,8 +4,8 @@ $Id$
 """
 
 import heapq
-from collections.abc import Iterator
-from typing import TYPE_CHECKING, Any
+from collections.abc import AsyncIterator, Iterator
+from typing import TYPE_CHECKING, Any, Protocol
 
 from dhara.core import connection
 from dhara.serialize import extract_class_name, split_oids, unpack_record
@@ -194,3 +194,69 @@ class MemoryStorage(Storage):
 
     def sync(self) -> list[OID]:
         return []
+
+
+class AsyncStorage(Protocol):
+    """Async storage protocol — OID-based object storage with async I/O.
+
+    All methods are async coroutines. The protocol mirrors Storage but
+    with async I/O for serverless-compatible deployment.
+    """
+
+    async def init(self) -> None:
+        """Initialize the storage (async constructor)."""
+        ...
+
+    async def load(self, oid: OID) -> bytes:
+        """Load record for oid. Raises KeyError if not found."""
+        ...
+
+    async def begin(self) -> None:
+        """Begin a commit transaction."""
+        ...
+
+    async def store(self, oid: OID, record: bytes) -> None:
+        """Store record for oid within the current transaction."""
+        ...
+
+    async def end(self, handle_invalidations: Any | None = None) -> None:
+        """End the transaction, committing or rolling back."""
+        ...
+
+    async def sync(self) -> list[OID]:
+        """Sync and return list of invalidated OIDs."""
+        ...
+
+    async def new_oid(self) -> OID:
+        """Allocate and return a new OID."""
+        ...
+
+    async def gen_oid_record(
+        self, start_oid: OID | None = None, batch_size: int = 100
+    ) -> AsyncIterator[tuple[OID, bytes]]:
+        """Async generator yielding (oid, record) pairs."""
+        ...
+
+    async def bulk_load(self, oids: list[OID]) -> AsyncIterator[bytes]:
+        """Async bulk load — yields bytes records for each oid."""
+        ...
+
+    async def pack(self) -> None:
+        """Pack storage, removing obsolete records."""
+        ...
+
+    async def health(self) -> bool:
+        """Return True if storage is healthy."""
+        ...
+
+    async def cleanup(self) -> None:
+        """Clean up resources (close connections, etc.)."""
+        ...
+
+    async def close(self) -> None:
+        """Close and release all resources."""
+        ...
+
+    def get_packer(self) -> Any | None:
+        """Return incremental packer generator, or None."""
+        ...
