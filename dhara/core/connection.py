@@ -4,12 +4,13 @@ $Id$
 """
 
 from collections import OrderedDict
+from collections.abc import AsyncIterator
 from os import getpid
 from time import time
+from typing import Any
 from weakref import KeyedRef, ref
 
 import dhara.storage.base as dhara_storage
-from dhara.collections.dict import PersistentDict
 from dhara.core.persistent import ConnectionBase
 from dhara.error import (
     ConflictError,
@@ -25,6 +26,7 @@ from dhara.serialize import (
     persistent_load,
     unpack_record,
 )
+from dhara.storage.base import AsyncStorage, OID
 from dhara.utils import as_bytes, byte_string, int8_to_str, iteritems, loads
 
 try:
@@ -79,6 +81,9 @@ class Connection(ConnectionBase):
         if self.root is None:
             new_oid = self.new_oid()
             assert ROOT_OID == new_oid
+            # Import here to avoid circular reference between core.connection and collections.dict
+            from dhara.collections.dict import PersistentDict
+
             self.root = self.get_cache().get_instance(
                 ROOT_OID, root_class or PersistentDict, self
             )
@@ -342,6 +347,322 @@ class Connection(ConnectionBase):
         """Clear any uncommitted changes and pack the storage."""
         self.abort()
         self.storage.pack()
+
+
+class AsyncConnection(ConnectionBase):
+    """
+    Async connection for managing persistent objects in async storage.
+
+    This is the async counterpart to the sync Connection class, designed for
+    use with AsyncStorage backends (e.g., AsyncMemoryStorage, AsyncSqliteStorage).
+
+    Instance attributes:
+      storage: AsyncStorage
+      cache: Cache
+      reader: ObjectReader
+      changed: {oid:str : PersistentObject}
+      invalid_oids: set([str])
+        Set of oids of objects known to have obsolete state.
+      transaction_serial: int
+        Number of calls to commit() or abort() since this instance was created.
+        This is used to maintain consistency, and to implement LRU replacement
+        in the cache.
+    """
+
+    @classmethod
+    async def new(cls, storage, cache_size=100000, root_class=None, cache=None):
+        """Async factory method to create an AsyncConnection.
+
+        (storage: AsyncStorage, cache_size:int=100000,
+            root_class:class|None=None, cache=None)
+
+        Make a connection to `storage`.
+        Set the target number of non-ghosted persistent objects to keep in
+        the cache at `cache_size`.
+        If there is no root object yet, create it as an instance
+        of the root_class (or PersistentDict, if root_class is None),
+        calling the constructor with no arguments.
+
+        Note: Python __init__ cannot be async, so use AsyncConnection.new() instead.
+        """
+        # Check for required async storage methods
+        required_methods = ['init', 'load', 'begin', 'store', 'end', 'sync', 'new_oid', 'gen_oid_record']
+        for method in required_methods:
+            if not hasattr(storage, method):
+                raise TypeError(f"Expected AsyncStorage, got {type(storage)} - missing {method}")
+        if not callable(getattr(storage, 'new_oid', None)):
+            raise TypeError(f"Expected AsyncStorage, got {type(storage)} - new_oid not callable")
+
+        # Create instance via __new__ (bypass __init__)
+        instance = object.__new__(cls)
+        instance.storage = storage
+        instance.reader = ObjectReader(instance)
+        instance.changed = {}
+        instance.invalid_oids = set()
+        instance.cache = cache if cache is not None else Cache(cache_size)
+        instance.transaction_serial = 0
+
+        # Load or create root
+        root = await instance.get(ROOT_OID)
+        if root is None:
+            # Import here to avoid circular reference
+            from dhara.collections.dict import PersistentDict
+
+            new_oid = await instance.storage.new_oid()
+            assert ROOT_OID == new_oid, f"Expected ROOT_OID {ROOT_OID!r}, got {new_oid!r}"
+            root = instance.cache.get_instance(
+                ROOT_OID, root_class or PersistentDict, instance
+            )
+            root._p_set_status_saved()
+            root.__class__.__init__(root)
+            root._p_note_change()
+            await instance.commit()
+
+        instance.root = root
+        return instance
+
+    async def get_storage(self):
+        """() -> AsyncStorage"""
+        return self.storage
+
+    async def get_cache_count(self):
+        """() -> int
+        Return the number of PersistentObject instances currently in the cache.
+        """
+        return self.cache.get_count()
+
+    async def get_cache_size(self):
+        """() -> cache_size:int
+        Return the target size for the cache.
+        """
+        return self.cache.get_size()
+
+    async def set_cache_size(self, size):
+        """(size:int)
+        Set the target size for the cache.
+        """
+        self.cache.set_size(size)
+
+    async def get_transaction_serial(self):
+        """() -> int
+        Return the number of calls to commit() or abort() on this instance.
+        """
+        return self.transaction_serial
+
+    async def get_root(self):
+        """() -> PersistentObject
+        Returns the root object.
+        """
+        return self.root
+
+    async def get_stored_pickle(self, oid):
+        """(oid:str) -> str
+        Retrieve the pickle from storage.  Will raise ReadConflictError if
+        the oid is invalid.
+        """
+        assert oid not in self.invalid_oids, "still conflicted: missing abort()"
+        try:
+            record = await self.storage.load(oid)
+        except ReadConflictError:
+            invalid_oids = await self.storage.sync()
+            await self._handle_invalidations(invalid_oids, read_oid=oid)
+            record = await self.storage.load(oid)
+        oid2, data, refdata = unpack_record(record)
+        assert as_bytes(oid) == oid2, (oid, oid2)
+        return data
+
+    async def get(self, oid):
+        """(oid:str|int|long) -> PersistentObject | None
+        Return object for `oid`.
+
+        The object may be a ghost.
+        """
+        if not isinstance(oid, byte_string):
+            oid = int8_to_str(oid)
+        obj = self.cache.get(oid)
+        if obj is not None:
+            return obj
+        try:
+            data = await self.get_stored_pickle(oid)
+        except KeyError:
+            return None
+        klass = loads(data)
+        obj = self.cache.get_instance(oid, klass, self)
+        state = self.reader.get_state(data, load=True)
+        obj.__setstate__(state)
+        obj._p_set_status_saved()
+        return obj
+
+    async def get_crawler(self, start_oid=ROOT_OID, batch_size=100):
+        """(start_oid:str = ROOT_OID, batch_size:int = 100) ->
+            AsyncIterator(PersistentObject)
+        Returns an async generator for the sequence of objects in a breadth first
+        traversal of the object graph, starting at the given start_oid.
+        The objects in the sequence have their state loaded at the same time,
+        so this can be used to initialize the object cache.
+        This uses the storage's bulk_load() method to make it faster.  The
+        batch_size argument sets the number of object records loaded on each
+        call to bulk_load().
+        """
+        async for oid, record in self.storage.gen_oid_record(
+            start_oid=start_oid, batch_size=batch_size
+        ):
+            obj = self.cache.get(oid)
+            if obj is not None and not obj._p_is_ghost():
+                yield obj
+            else:
+                record_oid, data, refdata = unpack_record(record)
+                if obj is None:
+                    klass = loads(data)
+                    obj = self.cache.get_instance(oid, klass, self)
+                state = self.reader.get_state(data, load=True)
+                obj.__setstate__(state)
+                obj._p_set_status_saved()
+                yield obj
+
+    async def get_cache(self):
+        return self.cache
+
+    async def load_state(self, obj):
+        """(obj:PersistentObject)
+        Load the state for the given ghost object.
+        """
+        assert self.storage is not None, "connection is closed"
+        assert obj._p_is_ghost()
+        oid = obj._p_oid
+        try:
+            pickle = await self.get_stored_pickle(oid)
+        except DruvaKeyError:
+            # We have a ghost but cannot find the state for it.  This can
+            # happen if the object was removed from the storage as a result
+            # of packing.
+            raise ReadConflictError([oid])
+        state = self.reader.get_state(pickle)
+        obj.__setstate__(state)
+        obj._p_set_status_saved()
+
+    async def get_load_count(self):
+        """() -> int
+        Returns the number of times that any object's state has been loaded.
+        """
+        return self.reader.get_load_count()
+
+    async def note_access(self, obj):
+        assert obj._p_connection is self
+        assert obj._p_oid is not None
+        _setattribute(obj, "_p_serial", self.transaction_serial)
+        self.cache.recent_objects.add(obj)
+        # Update LRU order - this is called when object state is accessed
+        self.cache._lru[obj._p_oid] = None
+        self.cache._lru.move_to_end(obj._p_oid)
+
+    async def note_change(self, obj):
+        """(obj:PersistentObject)
+        This is done when any persistent object is changed.  Changed objects
+        will be stored when the transaction is committed or rolled back, i.e.
+        made into ghosts, on abort.
+        """
+        # assert obj._p_connection is self
+        self.changed[obj._p_oid] = obj
+
+    async def shrink_cache(self):
+        """
+        If the number of saved and unsaved objects is more than
+        twice the target cache size (and the target cache size is positive),
+        try to ghostify enough of the saved objects to achieve
+        the target cache size.
+        """
+        self.cache.shrink(self)
+
+    async def _sync(self):
+        """
+        Process all invalid_oids so that all non-ghost objects are current.
+        """
+        invalid_oids = await self.storage.sync()
+        self.invalid_oids.update(invalid_oids)
+        for oid in self.invalid_oids:
+            obj = self.cache.get(oid)
+            if obj is not None:
+                obj._p_set_status_ghost()
+        self.invalid_oids.clear()
+
+    async def _handle_invalidations(self, oids, read_oid=None):
+        """(oids:[str], read_oid:str=None)
+        Check if any of the oids are for objects that were accessed during
+        this transaction.  If so, raise the appropriate conflict exception.
+        """
+        conflicts = []
+        for oid in oids:
+            obj = self.cache.get(oid)
+            if obj is None:
+                continue
+            if obj._p_serial == self.transaction_serial:
+                conflicts.append(oid)
+                self.invalid_oids.add(oid)
+            elif not obj._p_is_ghost():
+                assert oid not in self.changed
+                obj._p_set_status_ghost()
+        if conflicts:
+            if read_oid is None:
+                raise WriteConflictError(conflicts)
+            else:
+                raise ReadConflictError([read_oid])
+
+    async def abort(self):
+        """
+        Abort uncommitted changes, sync, and try to shrink the cache.
+        """
+        for oid, obj in iteritems(self.changed):
+            obj._p_set_status_ghost()
+        self.changed.clear()
+        await self._sync()
+        await self.shrink_cache()
+        self.transaction_serial += 1
+
+    async def commit(self):
+        """
+        If there are any changes, try to store them, and
+        raise WriteConflictError if there are any invalid oids saved
+        or if there are any invalid oids for non-ghost objects.
+        """
+        if not self.changed:
+            await self._sync()
+        else:
+            assert not self.invalid_oids, "still conflicted: missing abort()"
+            await self.storage.begin()
+            new_objects = {}
+            for oid, changed_object in iteritems(self.changed):
+                writer = ObjectWriter(self)
+                try:
+                    for obj in writer.gen_new_objects(changed_object):
+                        oid = obj._p_oid
+                        if oid in new_objects:
+                            continue
+                        elif oid not in self.changed:
+                            new_objects[oid] = obj
+                            self.cache[oid] = obj
+                        data, refs = writer.get_state(obj)
+                        await self.storage.store(oid, pack_record(oid, data, refs))
+                        obj._p_set_status_saved()
+                finally:
+                    writer.close()
+            try:
+                await self.storage.end(self._handle_invalidations)
+            except ConflictError:
+                for oid, obj in iteritems(new_objects):
+                    obj._p_oid = None
+                    del self.cache[oid]
+                    obj._p_set_status_unsaved()
+                    obj._p_connection = None
+                raise
+            self.changed.clear()
+        await self.shrink_cache()
+        self.transaction_serial += 1
+
+    async def pack(self):
+        """Clear any uncommitted changes and pack the storage."""
+        await self.abort()
+        await self.storage.pack()
 
 
 class ObjectDictionary:
