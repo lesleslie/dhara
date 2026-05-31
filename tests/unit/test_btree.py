@@ -110,3 +110,23 @@ def test_btree_get_after_direct_insert():
     assert tree.get(2) == "two"
     assert tree.get(3) == "three"
     assert tree.get(99) is None
+
+
+def test_btree_root_split():
+    """Insert enough items to force root split (height increase)."""
+    tree = BTree(minimum_degree=3)  # max 5 items per node
+    # Insert 6 items — root will split
+    for i in range(6):
+        tree.set(i, i)
+    # All items should be retrievable after split
+    for i in range(6):
+        assert tree.get(i) == i
+    assert tree.height() == 2  # root split means 2 levels
+
+
+def test_btree_set_overwrites_existing():
+    from dhara.collections.btree import BTree
+    tree = BTree(minimum_degree=3)
+    tree.set(1, "original")
+    tree.set(1, "updated")
+    assert tree.get(1) == "updated"

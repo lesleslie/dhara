@@ -63,3 +63,85 @@ class BTree:
                 return None
             node = node.nodes[pos]
         return None
+
+    def set(self, key: K, value: V) -> None:
+        """Insert or update key-value pair."""
+        root = self._root
+        if root.is_full():
+            new_root = BNode(minimum_degree=self._minimum_degree)
+            new_root.nodes = [root]
+            self._split_child(new_root, 0)
+            self._root = new_root
+            # After split, descend from NEW root (not the old root)
+            self._insert_nonfull(self._root, key, value)
+        else:
+            self._insert_nonfull(root, key, value)
+
+    def _split_child(self, parent: BNode, idx: int) -> None:
+        """Split parent.nodes[idx] which is full (2t-1 items).
+
+        After split:
+        - Left child retains t-1 items (first half)
+        - Middle key promoted to parent
+        - Right child receives t-1 items (second half)
+        """
+        t = parent.minimum_degree
+        full_child = parent.nodes[idx]
+
+        # EXTRACT MIDDLE KEY BEFORE TRIMMING (order matters!)
+        middle_key_idx = t - 1  # 0-indexed position of middle key
+        middle_key, middle_val = full_child.items[middle_key_idx]
+
+        # Create new right node with second half of items
+        right_node = BNode(
+            items=full_child.items[t:],  # t items (indices t to 2t-1)
+            nodes=full_child.nodes[t:] if full_child.nodes else None,
+            minimum_degree=t,
+        )
+
+        # Trim left node to t-1 items
+        full_child.items = full_child.items[:t - 1]
+        if full_child.nodes is not None:
+            full_child.nodes = full_child.nodes[:t]
+
+        # Insert new child pointer to the right of idx
+        if parent.nodes is None:
+            parent.nodes = [None] * (len(parent.items) + 1)
+        parent.nodes.insert(idx + 1, right_node)
+
+        # Insert middle key at parent's position idx
+        parent.items.insert(idx, (middle_key, middle_val))
+
+    def _insert_nonfull(self, node: BNode, key: K, value: V) -> None:
+        """Insert key-value into non-full node."""
+        i = len(node.items) - 1
+
+        if node.is_leaf():
+            # Check if key already exists (update case)
+            while i >= 0:
+                if node.items[i][0] == key:
+                    node.items[i] = (key, value)
+                    return
+                if node.items[i][0] < key:
+                    break
+                i -= 1
+            node.items.insert(i + 1, (key, value))
+        else:
+            # Find child to descend into
+            while i >= 0 and key < node.items[i][0]:
+                i -= 1
+            i += 1
+            if node.nodes[i].is_full():
+                self._split_child(node, i)
+                if key > node.items[i][0]:
+                    i += 1
+            self._insert_nonfull(node.nodes[i], key, value)
+
+    def height(self) -> int:
+        """Return the height of the tree."""
+        node = self._root
+        h = 0
+        while not node.is_leaf():
+            node = node.nodes[0]
+            h += 1
+        return h + 1
