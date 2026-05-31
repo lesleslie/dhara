@@ -169,3 +169,41 @@ def test_btree_empty_iteration():
     assert list(tree.items()) == []
     assert list(tree.keys()) == []
     assert list(tree.values()) == []
+
+
+def test_btree_delete_existing():
+    from dhara.collections.btree import BTree
+    tree = BTree(minimum_degree=3)
+    tree.set(1, "one")
+    tree.set(2, "two")
+    assert tree.delete(1) is True
+    assert tree.get(1) is None
+    assert tree.get(2) == "two"
+
+
+def test_btree_delete_nonexistent():
+    from dhara.collections.btree import BTree
+    tree = BTree(minimum_degree=3)
+    tree.set(1, "one")
+    assert tree.delete(99) is False
+    assert tree.delete(99) is False  # still False
+
+
+def test_btree_update_existing():
+    from dhara.collections.btree import BTree
+    tree = BTree(minimum_degree=3)
+    tree.set(1, "original")
+    assert tree.update(1, "updated") is True
+    assert tree.get(1) == "updated"
+
+
+def test_btree_update_nonexistent():
+    from dhara.collections.btree import BTree
+    tree = BTree(minimum_degree=3)
+    assert tree.update(1, "new") is False
+
+
+def test_btree_delete_empty_tree():
+    from dhara.collections.btree import BTree
+    tree = BTree(minimum_degree=3)
+    assert tree.delete(1) is False
