@@ -18,6 +18,7 @@ from dhara.storage.base import (
 )
 from dhara.storage.client import ClientStorage
 from dhara.storage.file import FileStorage
+from dhara.storage.memory import AsyncMemoryStorage
 from dhara.storage.sqlite import AsyncSqliteStorage, SqliteStorage
 
 __all__ = [
@@ -27,6 +28,7 @@ __all__ = [
     "FileStorage",
     "SqliteStorage",
     "AsyncSqliteStorage",
+    "AsyncMemoryStorage",
     "ClientStorage",
     "gen_referring_oid_record",
     "get_census",

@@ -37,7 +37,15 @@ from dhara.error import (
 from dhara.server import StorageServer, wait_for_server
 
 # Storage backends
-from dhara.storage import ClientStorage, FileStorage, SqliteStorage, Storage
+from dhara.storage import (
+    AsyncMemoryStorage,
+    AsyncSqliteStorage,
+    AsyncStorage,
+    ClientStorage,
+    FileStorage,
+    SqliteStorage,
+    Storage,
+)
 
 # Utilities
 from dhara.utils import (
@@ -54,8 +62,11 @@ __all__ = [
     "Persistent",
     "PersistentBase",
     "Storage",
+    "AsyncStorage",
     "FileStorage",
     "SqliteStorage",
+    "AsyncSqliteStorage",
+    "AsyncMemoryStorage",
     "ClientStorage",
     "PersistentDict",
     "PersistentList",
