@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TypeVar, Iterator, Generic
+from typing import TypeVar, Iterator, Generic, AsyncIterator
 
 K = TypeVar("K")
 V = TypeVar("V")
@@ -72,7 +72,7 @@ class BTree(Generic[K, V]):
         self._root: BNode[K, V] = BNode(minimum_degree=minimum_degree)
         self._minimum_degree = minimum_degree
 
-    def get(self, key: K) -> V | None:
+    def _get_impl(self, key: K) -> V | None:
         """Get value by key. Returns None if not found."""
         node: BNode[K, V] | None = self._root
         while node is not None:
@@ -85,7 +85,11 @@ class BTree(Generic[K, V]):
             node = node.nodes[pos]
         return None
 
-    def set(self, key: K, value: V) -> None:
+    def get(self, key: K) -> V | None:
+        """Get value by key. Delegates to _get_impl."""
+        return self._get_impl(key)
+
+    def _set_impl(self, key: K, value: V) -> None:
         """Insert or update key-value pair."""
         root = self._root
         if root.is_full():
@@ -93,10 +97,13 @@ class BTree(Generic[K, V]):
             new_root.nodes = [root]
             self._split_child(new_root, 0)
             self._root = new_root
-            # After split, descend from NEW root (not the old root)
             self._insert_nonfull(self._root, key, value)
         else:
             self._insert_nonfull(root, key, value)
+
+    def set(self, key: K, value: V) -> None:
+        """Insert or update key-value pair. Delegates to _set_impl."""
+        self._set_impl(key, value)
 
     def is_full(self) -> bool:
         """Check if root needs splitting."""
@@ -199,11 +206,15 @@ class BTree(Generic[K, V]):
         for _, v in self.items():
             yield v
 
-    def delete(self, key: K) -> bool:
+    def _delete_impl(self, key: K) -> bool:
         """Delete key. Returns True if found and deleted, False if not found."""
         return self._delete_from_node(self._root, key)
 
-    def update(self, key: K, value: V) -> bool:
+    def delete(self, key: K) -> bool:
+        """Delete key. Returns True if found and deleted, False if not found."""
+        return self._delete_impl(key)
+
+    def _update_impl(self, key: K, value: V) -> bool:
         """Update existing key's value. Returns True if found, False if not."""
         node: BNode[K, V] | None = self._root
         while node is not None:
@@ -216,6 +227,10 @@ class BTree(Generic[K, V]):
             assert node.nodes is not None  # type narrowing
             node = node.nodes[pos]
         return False
+
+    def update(self, key: K, value: V) -> bool:
+        """Update existing key's value. Returns True if found, False if not."""
+        return self._update_impl(key, value)
 
     def _get_min(self, node: BNode[K, V]) -> tuple[K, V]:
         """Get smallest (key, value) in subtree rooted at node."""
@@ -421,3 +436,39 @@ class BTree(Generic[K, V]):
         # Root underflow check: if root now has 0 items and 1 child, reduce height
         if parent is self._root and not parent.items and len(parent.nodes) == 1:
             self._root = parent.nodes[0]
+
+    # ── Async wrappers ─────────────────────────────────────────────
+    # BTree is pure in-memory; these async wrappers delegate to the
+    # sync impl methods. They exist for compatibility with async
+    # storage pipelines that use await across all collection types.
+
+    async def set_async(self, key: K, value: V) -> None:
+        """Async insert/update — delegates to _set_impl."""
+        self._set_impl(key, value)
+
+    async def get_async(self, key: K) -> V | None:
+        """Async get — delegates to _get_impl."""
+        return self._get_impl(key)
+
+    async def delete_async(self, key: K) -> bool:
+        """Async delete — delegates to _delete_impl."""
+        return self._delete_impl(key)
+
+    async def update_async(self, key: K, value: V) -> bool:
+        """Async update — delegates to _update_impl."""
+        return self._update_impl(key, value)
+
+    async def items_async(self) -> AsyncIterator[tuple[K, V]]:
+        """Async items — yields from sync items iterator."""
+        for item in self.items():
+            yield item
+
+    async def keys_async(self) -> AsyncIterator[K]:
+        """Async keys — yields from sync keys iterator."""
+        for k in self.keys():
+            yield k
+
+    async def values_async(self) -> AsyncIterator[V]:
+        """Async values — yields from sync values iterator."""
+        for v in self.values():
+            yield v

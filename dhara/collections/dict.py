@@ -4,7 +4,9 @@ $Id$
 """
 
 import collections.abc
+import inspect
 from copy import copy
+from typing import Any
 
 from dhara.core.persistent import PersistentObject
 from dhara.utils import iteritems
@@ -129,3 +131,24 @@ class PersistentDict(PersistentObject, collections.abc.MutableMapping):
 
     def __iter__(self):
         return iter(self.data)
+
+    # ── Async persistence methods ─────────────────────────────────
+    # The sync dict operations (__getitem__, __setitem__, __contains__,
+    # etc.) are already non-blocking (operate on in-memory object state).
+    # These async methods handle the connection.commit() / abort() calls.
+
+    async def commit_async(self) -> None:
+        """Async commit — awaits connection.commit() if it's a coroutine."""
+        if self._p_connection is not None:
+            conn = self._p_connection
+            c = conn.commit()
+            if inspect.iscoroutine(c):
+                await c
+
+    async def abort_async(self) -> None:
+        """Async abort — awaits connection.abort() if it's a coroutine."""
+        if self._p_connection is not None:
+            conn = self._p_connection
+            a = conn.abort()
+            if inspect.iscoroutine(a):
+                await a

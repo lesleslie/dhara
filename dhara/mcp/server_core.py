@@ -37,9 +37,13 @@ from dhara.mcp.adapter_tools import (
     store_adapter_impl,
     validate_adapter_impl,
 )
-from dhara.mcp.ecosystem_state import EcosystemStateStore, EventRetention
+from dhara.mcp.ecosystem_state import (
+    AsyncEcosystemStateStore,
+    EcosystemStateStore,
+    EventRetention,
+)
 from dhara.mcp.fastmcp_auth import build_token_verifier
-from dhara.mcp.kv_timeseries import KVTimeSeriesStore, TimeSeriesRetention
+from dhara.mcp.kv_timeseries import AsyncKVTimeSeriesStore, KVTimeSeriesStore, TimeSeriesRetention
 from dhara.storage.file import FileStorage
 
 logger = get_logger(__name__)
@@ -229,6 +233,10 @@ class DharaMCPServer:
             ),
         )
 
+        # Async stores (created lazily on first async tool call)
+        self._async_kv_store: AsyncKVTimeSeriesStore | None = None
+        self._async_ecosystem_state: AsyncEcosystemStateStore | None = None
+
         # Register tools using FastMCP decorators
         self._register_tools()
 
@@ -409,7 +417,7 @@ class DharaMCPServer:
             heartbeat_at: str | None = None,
         ) -> dict[str, Any]:
             """Create or update a durable ecosystem service record."""
-            return self.ecosystem_state.upsert_service(
+            return await self._async_ecosystem_state.upsert_service_async(
                 service_id=service_id,
                 service_type=service_type,
                 capabilities=capabilities,
@@ -422,7 +430,7 @@ class DharaMCPServer:
         @_tool(TOOL_GROUP_ECOSYSTEM_STATE, auth=auth("read"))
         async def get_service(service_id: str) -> dict[str, Any]:  # type: ignore
             """Fetch a durable ecosystem service record."""
-            service = self.ecosystem_state.get_service(service_id)
+            service = await self._async_ecosystem_state.get_service_async(service_id)
             return {"ok": True, "service": service}
 
         @_tool(TOOL_GROUP_ECOSYSTEM_STATE, auth=auth("list"))
@@ -432,7 +440,7 @@ class DharaMCPServer:
             status: str | None = None,
         ) -> dict[str, Any]:
             """List durable ecosystem service records."""
-            services = self.ecosystem_state.list_services(
+            services = await self._async_ecosystem_state.list_services_async(
                 service_type=service_type,
                 capability=capability,
                 status=status,
@@ -448,7 +456,7 @@ class DharaMCPServer:
             timestamp: str | None = None,
         ) -> dict[str, Any]:
             """Append a durable ecosystem event."""
-            return self.ecosystem_state.record_event(
+            return await self._async_ecosystem_state.record_event_async(
                 event_type=event_type,
                 source_service=source_service,
                 payload=payload,
@@ -464,7 +472,7 @@ class DharaMCPServer:
             limit: int | None = 100,
         ) -> dict[str, Any]:
             """List durable ecosystem events."""
-            events = self.ecosystem_state.list_events(
+            events = await self._async_ecosystem_state.list_events_async(
                 event_type=event_type,
                 source_service=source_service,
                 related_service=related_service,
@@ -480,14 +488,14 @@ class DharaMCPServer:
             ttl: int | None = None,
         ) -> dict[str, Any]:
             """Store a key/value record with optional TTL (seconds)."""
-            return self.kv_store.put(key=key, value=value, ttl=ttl)
+            return await self._async_kv_store.put_async(key=key, value=value, ttl=ttl)
 
         @_tool(TOOL_GROUP_KV_TIME_SERIES, auth=auth("read"))
         async def get(
             key: str,
         ) -> dict[str, Any]:
             """Get a key/value record."""
-            return self.kv_store.get(key=key)
+            return await self._async_kv_store.get_async(key=key)
 
         @_tool(TOOL_GROUP_KV_TIME_SERIES, auth=auth("read"))
         async def list_prefix(
@@ -498,7 +506,7 @@ class DharaMCPServer:
             Used by Akosha FitnessAnalyzer to discover component endpoints
             registered under 'component_endpoint/' prefix.
             """
-            results = self.kv_store.list_prefix(prefix)
+            results = await self._async_kv_store.list_prefix_async(prefix)
             return {"ok": True, "count": len(results), "items": results}
 
         @_tool(TOOL_GROUP_KV_TIME_SERIES, auth=auth("write"))
@@ -509,7 +517,7 @@ class DharaMCPServer:
             timestamp: str | None = None,
         ) -> dict[str, Any]:
             """Append a time-series record."""
-            return self.kv_store.record_time_series(
+            return await self._async_kv_store.record_time_series_async(
                 metric_type=metric_type,
                 entity_id=entity_id,
                 record=record,
@@ -524,7 +532,7 @@ class DharaMCPServer:
             limit: int | None = None,
         ) -> list[dict[str, Any]]:
             """Query time-series records."""
-            return self.kv_store.query_time_series(
+            return await self._async_kv_store.query_time_series_async(
                 metric_type=metric_type,
                 entity_id=entity_id,
                 start_date=start_date,
@@ -537,7 +545,7 @@ class DharaMCPServer:
             min_occurrences: int = 2,
         ) -> list[dict[str, Any]]:
             """Aggregate patterns across time-series records."""
-            return self.kv_store.aggregate_patterns(
+            return await self._async_kv_store.aggregate_patterns_async(
                 start_date=start_date,
                 min_occurrences=min_occurrences,
             )
@@ -924,8 +932,29 @@ class DharaMCPServer:
 
         logger.info(f"Starting Dhara MCP server on {host}:{port}")
 
+        # Initialize async stores before the event loop starts
+        asyncio.run(self._init_async_stores())
+
         # FastMCP 3.x uses run_http_async() for HTTP transport
         asyncio.run(self.server.run_http_async(host=host, port=port))
+
+    async def _init_async_stores(self) -> None:
+        """Initialize async stores from the sync connection for async tool dispatch."""
+        from dhara.core.connection import AsyncConnection
+
+        async_conn = await AsyncConnection.new(self.storage)
+        self._async_kv_store = AsyncKVTimeSeriesStore(
+            async_conn,
+            retention=TimeSeriesRetention(
+                retention_days=self.config.time_series.retention_days
+            ),
+        )
+        self._async_ecosystem_state = AsyncEcosystemStateStore(
+            async_conn,
+            event_retention=EventRetention(
+                retention_days=self.config.ecosystem_state.event_retention_days
+            ),
+        )
 
     def close(self) -> None:
         """Close the server and cleanup resources."""

@@ -3,7 +3,11 @@ $URL$
 $Id$
 """
 
+from __future__ import annotations
+
 import collections.abc
+import inspect
+from typing import Any
 
 from dhara.core.persistent import PersistentObject
 
@@ -148,3 +152,43 @@ class PersistentList(PersistentObject, collections.abc.MutableSequence):
             self.data.extend(other.data)
         else:
             self.data.extend(other)
+
+    # ── Async persistence methods ─────────────────────────────────
+    # The sync list operations are already non-blocking (in-memory).
+    # These async methods handle connection.commit() / abort() calls.
+
+    async def append_async(self, item: Any) -> None:
+        """Async append — delegates to sync append()."""
+        self.append(item)
+
+    async def get_async(self, i: int) -> Any:
+        """Async getitem — delegates to sync __getitem__."""
+        return self[i]
+
+    async def set_async(self, i: int, item: Any) -> None:
+        """Async setitem — delegates to sync __setitem__."""
+        self[i] = item
+
+    async def delete_async(self, i: int) -> Any:
+        """Async delitem — delegates to sync __delitem__."""
+        del self[i]
+
+    async def length_async(self) -> int:
+        """Async len — delegates to sync __len__."""
+        return len(self)
+
+    async def commit_async(self) -> None:
+        """Async commit — awaits connection.commit() if it's a coroutine."""
+        if self._p_connection is not None:
+            conn = self._p_connection
+            c = conn.commit()
+            if inspect.iscoroutine(c):
+                await c
+
+    async def abort_async(self) -> None:
+        """Async abort — awaits connection.abort() if it's a coroutine."""
+        if self._p_connection is not None:
+            conn = self._p_connection
+            a = conn.abort()
+            if inspect.iscoroutine(a):
+                await a
