@@ -207,3 +207,73 @@ def test_btree_delete_empty_tree():
     from dhara.collections.btree import BTree
     tree = BTree(minimum_degree=3)
     assert tree.delete(1) is False
+
+
+def test_btree_delete_internal_node():
+    """Delete key from internal node (predecessor/successor replacement)."""
+    from dhara.collections.btree import BTree
+    tree = BTree(minimum_degree=3)
+    for k in [1, 2, 3, 4, 5, 6, 7]:
+        tree.set(k, k)
+    # Delete 3 which is in an internal node — should use successor/predecessor
+    result = tree.delete(3)
+    assert result is True
+    assert tree.get(3) is None
+    for k in [1, 2, 4, 5, 6, 7]:
+        assert tree.get(k) == k
+
+
+def test_btree_delete_triggers_case3():
+    """Delete key that causes underflow in child (borrow/merge scenario)."""
+    from dhara.collections.btree import BTree
+    tree = BTree(minimum_degree=3)
+    for k in [1, 2, 3, 4, 5, 6, 7]:
+        tree.set(k, k)
+    result = tree.delete(1)
+    assert result is True
+    assert tree.get(1) is None  # deleted
+    for k in [2, 3, 4, 5, 6, 7]:
+        assert tree.get(k) == k  # others still present
+
+
+def test_btree_delete_last_key():
+    """Delete the last key in tree."""
+    from dhara.collections.btree import BTree
+    tree = BTree(minimum_degree=3)
+    tree.set("a", 1)
+    tree.delete("a")
+    assert tree.get("a") is None
+    assert list(tree.items()) == []
+
+
+def test_btree_none_value_vs_missing():
+    """Verify None as value is distinguishable from missing."""
+    from dhara.collections.btree import BTree
+    tree = BTree(minimum_degree=3)
+    tree.set("key", None)  # value is None
+    assert tree.get("key") is None  # retrieves None value
+    assert tree.delete("key") is True  # can still delete
+    assert tree.get("key") is None  # now missing
+
+
+def test_btree_duplicate_key_overwrites():
+    from dhara.collections.btree import BTree
+    tree = BTree(minimum_degree=3)
+    tree.set("key", "first")
+    tree.set("key", "second")
+    assert tree.get("key") == "second"
+    tree.delete("key")
+    assert tree.get("key") is None
+
+
+def test_btree_height_reduction_on_root():
+    """Tree height should reduce when root loses all keys and has one child."""
+    from dhara.collections.btree import BTree
+    tree = BTree(minimum_degree=3)
+    for i in range(6):  # trigger root split
+        tree.set(i, i)
+    # Delete all keys — tree should reduce height back to 1
+    for i in range(6):
+        tree.delete(i)
+    assert tree.height() == 1
+    assert list(tree.items()) == []
