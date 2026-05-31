@@ -130,3 +130,42 @@ def test_btree_set_overwrites_existing():
     tree.set(1, "original")
     tree.set(1, "updated")
     assert tree.get(1) == "updated"
+
+
+def test_btree_items_sorted_order():
+    from dhara.collections.btree import BTree
+    tree = BTree(minimum_degree=3)
+    tree.set(3, "c")
+    tree.set(1, "a")
+    tree.set(2, "b")
+    items = list(tree.items())
+    assert items == [(1, "a"), (2, "b"), (3, "c")]
+
+
+def test_btree_keys_sorted():
+    from dhara.collections.btree import BTree
+    tree = BTree(minimum_degree=3)
+    tree.set(5, "e")
+    tree.set(3, "c")
+    tree.set(1, "a")
+    tree.set(2, "b")
+    keys = list(tree.keys())
+    assert keys == [1, 2, 3, 5]
+
+
+def test_btree_values_sorted():
+    from dhara.collections.btree import BTree
+    tree = BTree(minimum_degree=3)
+    tree.set(2, "b")
+    tree.set(1, "a")
+    tree.set(3, "c")
+    vals = list(tree.values())
+    assert vals == ["a", "b", "c"]
+
+
+def test_btree_empty_iteration():
+    from dhara.collections.btree import BTree
+    tree = BTree(minimum_degree=3)
+    assert list(tree.items()) == []
+    assert list(tree.keys()) == []
+    assert list(tree.values()) == []

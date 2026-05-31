@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TypeVar
+from typing import TypeVar, Iterator
 
 K = TypeVar("K")
 V = TypeVar("V")
@@ -145,3 +145,26 @@ class BTree:
             node = node.nodes[0]
             h += 1
         return h + 1
+
+    def items(self) -> Iterator[tuple[K, V]]:
+        """Yield all (key, value) pairs in sorted key order."""
+        yield from self._traverse(self._root)
+
+    def _traverse(self, node: BNode) -> Iterator[tuple[K, V]]:
+        """In-order traversal of subtree rooted at node."""
+        for i, item in enumerate(node.items):
+            if node.nodes is not None:
+                yield from self._traverse(node.nodes[i])
+            yield item
+        if node.nodes is not None:
+            yield from self._traverse(node.nodes[-1])
+
+    def keys(self) -> Iterator[K]:
+        """Yield all keys in sorted order."""
+        for k, _ in self.items():
+            yield k
+
+    def values(self) -> Iterator[V]:
+        """Yield all values in key-sorted order."""
+        for _, v in self.items():
+            yield v
