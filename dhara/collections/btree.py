@@ -7,6 +7,26 @@ K = TypeVar("K")
 V = TypeVar("V")
 
 
+class BTreeError(Exception):
+    """Base exception for BTree operations."""
+    pass
+
+
+class KeyNotFoundError(BTreeError):
+    """Raised when delete/update targets a non-existent key."""
+    pass
+
+
+class DuplicateKeyError(BTreeError):
+    """Raised when insert finds existing key (if strict mode)."""
+    pass
+
+
+class TreeCorruptedError(BTreeError):
+    """Raised when B-Tree invariant is violated."""
+    pass
+
+
 @dataclass
 class BNode:
     """A B-Tree node with items and optional children."""
@@ -76,6 +96,10 @@ class BTree:
             self._insert_nonfull(self._root, key, value)
         else:
             self._insert_nonfull(root, key, value)
+
+    def is_full(self) -> bool:
+        """Check if root needs splitting."""
+        return self._root.is_full()
 
     def _split_child(self, parent: BNode, idx: int) -> None:
         """Split parent.nodes[idx] which is full (2t-1 items).

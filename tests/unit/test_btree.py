@@ -17,6 +17,10 @@ _spec.loader.exec_module(_btree_module)
 
 BNode = _btree_module.BNode
 BTree = _btree_module.BTree
+BTreeError = _btree_module.BTreeError
+KeyNotFoundError = _btree_module.KeyNotFoundError
+DuplicateKeyError = _btree_module.DuplicateKeyError
+TreeCorruptedError = _btree_module.TreeCorruptedError
 
 
 def test_bnode_default_creation():
@@ -277,3 +281,31 @@ def test_btree_height_reduction_on_root():
         tree.delete(i)
     assert tree.height() == 1
     assert list(tree.items()) == []
+
+
+# =============================================================================
+# Error Classes Tests
+# =============================================================================
+
+
+def test_btree_error_classes_exist():
+    assert issubclass(KeyNotFoundError, BTreeError)
+    assert issubclass(DuplicateKeyError, BTreeError)
+    assert issubclass(TreeCorruptedError, BTreeError)
+
+
+def test_btree_is_full():
+    tree = BTree(minimum_degree=3)
+    assert tree.is_full() is False  # root not full
+
+
+def test_btree_height_single_node():
+    tree = BTree(minimum_degree=3)
+    assert tree.height() == 1  # single root node
+
+
+def test_btree_height_after_root_split():
+    tree = BTree(minimum_degree=3)
+    for i in range(6):  # enough to force root split
+        tree.set(i, i)
+    assert tree.height() == 2
