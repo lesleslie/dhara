@@ -30,12 +30,13 @@ from dhara.core.config import DharaSettings
 from dhara.core.connection import Connection
 from dhara.mcp.adapter_tools import (
     AdapterRegistry,
-    get_adapter_health_impl,
-    get_adapter_impl,
-    list_adapter_versions_impl,
-    list_adapters_impl,
-    store_adapter_impl,
-    validate_adapter_impl,
+    AsyncAdapterRegistry,
+    get_adapter_health_async_impl,
+    get_adapter_async_impl,
+    list_adapter_versions_async_impl,
+    list_adapters_async_impl,
+    store_adapter_async_impl,
+    validate_adapter_async_impl,
 )
 from dhara.mcp.ecosystem_state import (
     AsyncEcosystemStateStore,
@@ -236,6 +237,7 @@ class DharaMCPServer:
         # Async stores (created lazily on first async tool call)
         self._async_kv_store: AsyncKVTimeSeriesStore | None = None
         self._async_ecosystem_state: AsyncEcosystemStateStore | None = None
+        self._async_adapter_registry: AsyncAdapterRegistry | None = None
 
         # Register tools using FastMCP decorators
         self._register_tools()
@@ -318,8 +320,8 @@ class DharaMCPServer:
             Returns:
                 Result dict with adapter_id and version
             """
-            return await store_adapter_impl(
-                registry=self.adapter_registry,
+            return await store_adapter_async_impl(
+                registry=self._async_adapter_registry,
                 domain=domain,
                 key=key,
                 provider=provider,
@@ -569,8 +571,8 @@ class DharaMCPServer:
             Returns:
                 Adapter dict with full configuration
             """
-            return await get_adapter_impl(
-                registry=self.adapter_registry,
+            return await get_adapter_async_impl(
+                registry=self._async_adapter_registry,
                 domain=domain,
                 key=key,
                 provider=provider,
@@ -591,8 +593,8 @@ class DharaMCPServer:
             Returns:
                 Dict with count, filters, and adapters list
             """
-            return await list_adapters_impl(
-                registry=self.adapter_registry,
+            return await list_adapters_async_impl(
+                registry=self._async_adapter_registry,
                 domain=domain,
                 category=category,
             )
@@ -616,8 +618,8 @@ class DharaMCPServer:
             Returns:
                 Dict with version history (timestamp, version, changelog)
             """
-            return await list_adapter_versions_impl(
-                registry=self.adapter_registry,
+            return await list_adapter_versions_async_impl(
+                registry=self._async_adapter_registry,
                 domain=domain,
                 key=key,
                 provider=provider,
@@ -647,8 +649,8 @@ class DharaMCPServer:
             Returns:
                 Validation result with errors/warnings
             """
-            return await validate_adapter_impl(
-                registry=self.adapter_registry,
+            return await validate_adapter_async_impl(
+                registry=self._async_adapter_registry,
                 domain=domain,
                 key=key,
                 provider=provider,
@@ -674,8 +676,8 @@ class DharaMCPServer:
             Returns:
                 Health check result with status and last check timestamp
             """
-            return await get_adapter_health_impl(
-                registry=self.adapter_registry,
+            return await get_adapter_health_async_impl(
+                registry=self._async_adapter_registry,
                 domain=domain,
                 key=key,
                 provider=provider,
@@ -955,6 +957,7 @@ class DharaMCPServer:
                 retention_days=self.config.ecosystem_state.event_retention_days
             ),
         )
+        self._async_adapter_registry = AsyncAdapterRegistry(async_conn)
 
     def close(self) -> None:
         """Close the server and cleanup resources."""
