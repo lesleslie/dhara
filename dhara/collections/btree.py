@@ -45,7 +45,21 @@ class BNode:
         return (lo, False)
 
 
-# Placeholder - full BTree implementation in later task
 class BTree:
-    """B-Tree placeholder - full implementation in later tasks."""
-    pass
+    """B-Tree with borrow-first deletion (Cormen case 3)."""
+
+    def __init__(self, minimum_degree: int = 3) -> None:
+        self._root = BNode(minimum_degree=minimum_degree)
+        self._minimum_degree = minimum_degree
+
+    def get(self, key: K) -> V | None:
+        """Get value by key. Returns None if not found."""
+        node = self._root
+        while node is not None:
+            pos, found = node._find_position(key)
+            if found:
+                return node.items[pos][1]
+            if node.is_leaf():
+                return None
+            node = node.nodes[pos]
+        return None

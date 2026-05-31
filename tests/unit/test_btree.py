@@ -16,6 +16,7 @@ sys.modules["btree_module"] = _btree_module
 _spec.loader.exec_module(_btree_module)
 
 BNode = _btree_module.BNode
+BTree = _btree_module.BTree
 
 
 def test_bnode_default_creation():
@@ -82,3 +83,30 @@ def test_bnode_find_position_after_last():
     pos, found = node._find_position(10)
     assert found is False
     assert pos == 2  # insert at end
+
+
+# =============================================================================
+# BTree Tests
+# =============================================================================
+
+
+def test_btree_default_creation():
+    tree = BTree(minimum_degree=3)
+    assert tree._root is not None
+    assert tree._root.is_leaf()
+
+
+def test_btree_get_nonexistent():
+    tree = BTree(minimum_degree=3)
+    assert tree.get(42) is None
+
+
+def test_btree_get_after_direct_insert():
+    """Test get() using direct node construction (no set() needed)."""
+    tree = BTree(minimum_degree=3)
+    # Directly insert items into root to test get() without set()
+    tree._root.items = [(1, "one"), (2, "two"), (3, "three")]
+    assert tree.get(1) == "one"
+    assert tree.get(2) == "two"
+    assert tree.get(3) == "three"
+    assert tree.get(99) is None
