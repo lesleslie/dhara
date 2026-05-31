@@ -309,3 +309,102 @@ def test_btree_height_after_root_split():
     for i in range(6):  # enough to force root split
         tree.set(i, i)
     assert tree.height() == 2
+
+
+# =============================================================================
+# Hypothesis Property-Based Tests
+# =============================================================================
+
+
+from hypothesis import given, strategies as st
+
+MIN_DEGREES = st.sampled_from([2, 3, 4])
+
+
+class TestBTreeProperties:
+    @given(
+        keys=st.lists(st.integers(), min_size=1, max_size=100),
+        values=st.lists(st.integers(), min_size=1, max_size=100),
+        t=MIN_DEGREES,
+    )
+    def test_insert_then_get(self, keys, values, t):
+        tree = BTree(minimum_degree=t)
+        # Dedupe keys, keeping last value for each key
+        key_val = {}
+        for k, v in zip(keys, values):
+            key_val[k] = v
+        for k, v in key_val.items():
+            tree.set(k, v)
+        for k, v in key_val.items():
+            assert tree.get(k) == v
+
+    @given(keys=st.lists(st.integers(), min_size=1))
+    def test_delete_removes_key(self, keys):
+        tree = BTree(minimum_degree=3)
+        deduped = list(dict.fromkeys(keys))
+        for k in deduped:
+            tree.set(k, k)
+        for k in deduped:
+            assert tree.delete(k) is True
+            assert tree.get(k) is None
+
+    @given(keys=st.lists(st.integers()))
+    def test_all_keys_recoverable_after_insert(self, keys):
+        tree = BTree(minimum_degree=3)
+        deduped = list(dict.fromkeys(keys))
+        for k in deduped:
+            tree.set(k, k * 2)
+        result = list(tree.keys())
+        assert result == sorted(deduped)
+
+    @given(
+        keys=st.lists(st.integers()),
+        delete_order=st.lists(st.integers()),
+    )
+    def test_interleaved_insert_delete(self, keys, delete_order):
+        tree = BTree(minimum_degree=3)
+        # Track insertion state by checking tree contents
+        for k in keys:
+            tree.set(k, k)
+
+        for k in delete_order:
+            # Only delete if key exists in tree
+            if tree.get(k) is not None:
+                result = tree.delete(k)
+                assert result is True
+
+        remaining_keys = list(tree.keys())
+        for k in remaining_keys:
+            assert tree.get(k) is not None
+
+    @given(keys=st.lists(st.integers()))
+    def test_delete_nonexistent_returns_false(self, keys):
+        tree = BTree(minimum_degree=3)
+        deduped = list(dict.fromkeys(keys))
+        for k in deduped:
+            tree.set(k, k)
+        for k in deduped:
+            first_delete = tree.delete(k)
+            second_delete = tree.delete(k)
+            assert first_delete is True
+            assert second_delete is False
+
+    @given(keys=st.lists(st.integers()))
+    def test_update_returns_true_for_existing(self, keys):
+        tree = BTree(minimum_degree=3)
+        deduped = list(dict.fromkeys(keys))
+        for k in deduped:
+            tree.set(k, k)
+        for k in deduped:
+            result = tree.update(k, k * 10)
+            assert result is True
+            assert tree.get(k) == k * 10
+
+    @given(keys=st.lists(st.integers()))
+    def test_update_returns_false_for_missing(self, keys):
+        tree = BTree(minimum_degree=3)
+        for k in keys:
+            tree.set(k, k)
+        never_inserted = list(range(max(keys or [0]) + 100, max(keys or [0]) + 110))
+        for k in never_inserted:
+            assert tree.update(k, "new") is False
