@@ -49,7 +49,7 @@ except ImportError:
 
         return True
 
-    class ConnectionBase:  # type: ignore[name-defined]
+    class ConnectionBase:
         """
         The faster implementation of this class is in _persistent.c.
         """
@@ -67,7 +67,7 @@ except ImportError:
         "__setstate__": 1,
     }
 
-    class PersistentBase:  # type: ignore[name-defined]
+    class PersistentBase:
         """
         The faster implementation of this class is in _persistent.c.
         The __slots__ and methods of this class are the ones that typical
@@ -227,7 +227,7 @@ class PersistentObject(PersistentBase):
         return self._p_status == UNSAVED
 
     def _p_is_saved(self) -> bool:
-        return self._p_status == SAVED
+        return self._p_status == SAVED # type: ignore
 
 
 class Persistent(PersistentObject):
@@ -237,7 +237,7 @@ class Persistent(PersistentObject):
     """
 
     def __getstate__(self) -> dict[str, Any]:
-        return _getattribute(self, "__dict__")  # type: ignore
+        return _getattribute(self, "__dict__")
 
     def __setstate__(self, state: dict[str, Any] | None) -> None:
         self_dict = _getattribute(self, "__dict__")
@@ -261,7 +261,7 @@ class ComputedAttribute(PersistentObject):
 
     __slots__ = ["value"]
 
-    def __getstate__(self) -> None:  # type: ignore[override]
+    def __getstate__(self) -> None:
         return None
 
     def _p_load_state(self) -> None:

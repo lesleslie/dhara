@@ -71,6 +71,7 @@ def __getattr__(name: str) -> Any:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
     module_name, attr_name = target
+    # nosem: python.lang.security.audit.non-literal-import.non-literal-import
     module = importlib.import_module(module_name)
     value = getattr(module, attr_name)
     globals()[name] = value

@@ -39,10 +39,9 @@ class BackupCatalog:
 
         storage = FileStorage(str(self.catalog_path))
         connection = Connection(storage)
-        root = connection.get_root()
-        backups = root.get("backups", {})
         catalog = {
-            backup_id: metadata.copy() for backup_id, metadata in backups.items()
+            backup_id: metadata.copy()
+            for backup_id, metadata in connection.get_root().get("backups", {}).items()
         }
         storage.close()
         return catalog
@@ -79,10 +78,7 @@ class BackupCatalog:
     def get_all_backups(self) -> list[BackupMetadata]:
         """Get all backups."""
         self._refresh_catalog()
-        backups = []
-        for data in self.catalog.values():
-            backups.append(BackupMetadata.from_dict(data))
-        return backups
+        return [BackupMetadata.from_dict(data) for data in self.catalog.values()]
 
     def remove_backup(self, backup_id: str) -> bool:
         """Remove backup from catalog."""

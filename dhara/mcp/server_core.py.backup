@@ -1,5 +1,6 @@
 """Dhara MCP Server using FastMCP framework.
 
+import operator
 This module implements the canonical Dhara MCP server using FastMCP patterns
 consistent with Mahavishnu, Session-Buddy, and Crackerjack.
 
@@ -92,8 +93,17 @@ class DharaMCPServer:
             """HTTP health check endpoint for Claude Code `mcp list` compatibility."""
             from starlette.responses import JSONResponse
 
-            runtime = self._runtime_status()
-            return JSONResponse(runtime, status_code=200 if runtime["ready"] else 503)
+            try:
+                runtime = self._runtime_status()
+                return JSONResponse(
+                    runtime, status_code=200 if runtime["ready"] else 503
+                )
+            except Exception as exc:
+                # Surface the error so health checks don't silently fail
+                return JSONResponse(
+                    {"status": "error", "service": "dhara", "error": str(exc)},
+                    status_code=503,
+                )
 
         @self.server.custom_route("/healthz", methods=["GET"])
         async def healthz_check(request: Any) -> Any:
@@ -107,16 +117,32 @@ class DharaMCPServer:
             """HTTP readiness endpoint on the main service port."""
             from starlette.responses import JSONResponse
 
-            runtime = self._runtime_status()
-            return JSONResponse(runtime, status_code=200 if runtime["ready"] else 503)
+            try:
+                runtime = self._runtime_status()
+                return JSONResponse(
+                    runtime, status_code=200 if runtime["ready"] else 503
+                )
+            except Exception as exc:
+                return JSONResponse(
+                    {"status": "error", "service": "dhara", "error": str(exc)},
+                    status_code=503,
+                )
 
         @self.server.custom_route("/readyz", methods=["GET"])
         async def readyz_check(request: Any) -> Any:
             """Kubernetes-style readiness endpoint."""
             from starlette.responses import JSONResponse
 
-            runtime = self._runtime_status()
-            return JSONResponse(runtime, status_code=200 if runtime["ready"] else 503)
+            try:
+                runtime = self._runtime_status()
+                return JSONResponse(
+                    runtime, status_code=200 if runtime["ready"] else 503
+                )
+            except Exception as exc:
+                return JSONResponse(
+                    {"status": "error", "service": "dhara", "error": str(exc)},
+                    status_code=503,
+                )
 
         @self.server.custom_route("/metrics", methods=["GET"])
         async def metrics_check(request: Any) -> Any:
@@ -135,6 +161,10 @@ class DharaMCPServer:
                 media_type = "text/plain; version=0.0.4; charset=utf-8"
 
             return Response(content=metrics, media_type=media_type)
+
+        # NOTE: /tools/call route is registered AFTER storage is initialized
+        # so self.kv_store, self.ecosystem_state are available.
+        # See tools_call_route below after _register_tools() completes.
 
         # Initialize storage and connection
         # Expand ~ to home directory
@@ -159,7 +189,7 @@ class DharaMCPServer:
             self.storage = PostgresStorageAdapter(pg_settings)
         else:
             # Default: FileStorage (existing behavior)
-            self.storage = FileStorage( # type: ignore
+            self.storage = FileStorage(  # type: ignore
                 storage_path,
                 readonly=config.storage.read_only,
             )
@@ -252,7 +282,7 @@ class DharaMCPServer:
             return self.server.tool(**kwargs)
 
         # --- Adapter Registry tools (STANDARD+) ---
-        @_tool(TOOL_GROUP_ADAPTER_REGISTRY, auth=auth("write"))
+        @_tool(TOOL_GROUP_ADAPTER_REGISTRY, auth=auth("write"))  # type: ignore
         async def store_adapter(
             domain: str,
             key: str,
@@ -390,7 +420,7 @@ class DharaMCPServer:
             )
 
         @_tool(TOOL_GROUP_ECOSYSTEM_STATE, auth=auth("read"))
-        async def get_service(service_id: str) -> dict[str, Any]:
+        async def get_service(service_id: str) -> dict[str, Any]:  # type: ignore
             """Fetch a durable ecosystem service record."""
             service = self.ecosystem_state.get_service(service_id)
             return {"ok": True, "service": service}
@@ -409,7 +439,7 @@ class DharaMCPServer:
             )
             return {"ok": True, "count": len(services), "services": services}
 
-        @_tool(TOOL_GROUP_ECOSYSTEM_STATE, auth=auth("write"))
+        @_tool(TOOL_GROUP_ECOSYSTEM_STATE, auth=auth("write")) # type: ignore
         async def record_event(
             event_type: str,
             source_service: str,
@@ -443,7 +473,7 @@ class DharaMCPServer:
             return {"ok": True, "count": len(events), "events": events}
 
         # --- KV/Time Series tools (MINIMAL) ---
-        @_tool(TOOL_GROUP_KV_TIME_SERIES, auth=auth("write"))
+        @_tool(TOOL_GROUP_KV_TIME_SERIES, auth=auth("write"))  # type: ignore
         async def put(
             key: str,
             value: dict[str, Any] | str | int | float | bool | list[Any] | None,
@@ -458,6 +488,18 @@ class DharaMCPServer:
         ) -> dict[str, Any]:
             """Get a key/value record."""
             return self.kv_store.get(key=key)
+
+        @_tool(TOOL_GROUP_KV_TIME_SERIES, auth=auth("read"))
+        async def list_prefix(
+            prefix: str,
+        ) -> dict[str, Any]:
+            """List all key/value records under a key prefix.
+
+            Used by Akosha FitnessAnalyzer to discover component endpoints
+            registered under 'component_endpoint/' prefix.
+            """
+            results = self.kv_store.list_prefix(prefix)
+            return {"ok": True, "count": len(results), "items": results}
 
         @_tool(TOOL_GROUP_KV_TIME_SERIES, auth=auth("write"))
         async def record_time_series(
@@ -669,6 +711,76 @@ class DharaMCPServer:
             }
 
         logger.info("Dhara MCP tools registration complete (profile=%s)", profile.value)
+
+        # Register REST-style /tools/call endpoint for Akosha client compatibility.
+        # Akosha's DharaServiceRegistryClient calls /tools/call (not /mcp) with
+        # {"name": "...", "arguments": {...}}. We call underlying store methods directly.
+        self._register_tools_call_route()
+
+    def _register_tools_call_route(self) -> None:
+        """Register /tools/call REST-style endpoint for Akosha client compatibility."""
+
+        import asyncio
+        import json
+
+        @self.server.custom_route("/tools/call", methods=["POST"])
+        async def tools_call(request: Any) -> Any:
+            """REST-style tool call endpoint for Akosha client compatibility.
+
+            Akosha's DharaServiceRegistryClient calls /tools/call with a JSON body
+            containing {"name": "...", "arguments": {...}}.
+            This route translates REST-style calls into store method invocations.
+            """
+            from starlette.responses import JSONResponse
+
+            try:
+                body = await request.json()
+            except Exception:
+                return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+
+            tool_name = body.get("name")
+            arguments = body.get("arguments", {})
+
+            if not tool_name:
+                return JSONResponse({"error": "Missing tool name"}, status_code=400)
+
+            # Map tool names to store methods (sync, must run in thread pool)
+            sync_tool_map: dict[str, Any] = {
+                "get": self.kv_store.get,
+                "put": self.kv_store.put,
+                "list_prefix": self.kv_store.list_prefix,
+                "list_services": self.ecosystem_state.list_services,
+                "get_service": self.ecosystem_state.get_service,
+                "record_event": self.ecosystem_state.record_event,
+                "list_events": self.ecosystem_state.list_events,
+            }
+
+            if tool_name not in sync_tool_map:
+                return JSONResponse(
+                    {"error": f"Unknown tool: {tool_name}"}, status_code=404
+                )
+
+            try:
+                # Run sync store methods in thread pool to avoid blocking event loop
+                result = await asyncio.to_thread(sync_tool_map[tool_name], **arguments)
+                # Return in Akosha client format: {"content": [{"type": "text", "text": "..."}]}
+                text = json.dumps(result)
+                return JSONResponse(
+                    {
+                        "content": [{"type": "text", "text": text}],
+                        "isError": False,
+                    }
+                )
+            except Exception as exc:
+                return JSONResponse(
+                    {
+                        "content": [
+                            {"type": "text", "text": json.dumps({"error": str(exc)})}
+                        ],
+                        "isError": True,
+                    },
+                    status_code=500,
+                )
 
     def _register_health_tools(self) -> None:
         """Register health check tools using mcp-common.

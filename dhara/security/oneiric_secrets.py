@@ -12,6 +12,7 @@ import hmac
 import secrets
 import threading
 import time
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
@@ -123,7 +124,7 @@ class OneiricSecretsAdapter:
                     self._validate_keys()
 
                 except Exception as e:
-                    raise RuntimeError(f"Failed to load secrets from Oneiric: {str(e)}")
+                    raise RuntimeError(f"Failed to load secrets from Oneiric: {e}")
 
     def _get_or_create_key(self, key_name: str) -> SecretKey:
         """Get an existing key or create a new one."""
@@ -168,7 +169,7 @@ class OneiricSecretsAdapter:
             secrets.set(f"{full_secret_name}_expires", key.expires_at.isoformat())
 
         except Exception as e:
-            raise RuntimeError(f"Failed to handle key {key_name}: {str(e)}")
+            raise RuntimeError(f"Failed to handle key {key_name}: {e}")
 
         return key
 
@@ -191,7 +192,7 @@ class OneiricSecretsAdapter:
         backup_keys = []
 
         # Look for rotated keys
-        try:
+        with suppress(Exception):
             secret_names = secrets.list(prefix=f"{self.secret_prefix}/")
 
             for secret_name in secret_names:
@@ -199,10 +200,6 @@ class OneiricSecretsAdapter:
                     key_name = secret_name.split("/")[-1]
                     key = self._get_or_create_key(key_name)
                     backup_keys.append(key)
-
-        except Exception:
-            # If listing fails, ignore and continue
-            pass
 
         return backup_keys
 
@@ -425,7 +422,7 @@ def create_hmac_signature(message: bytes, algorithm: str = "sha256") -> bytes:
         h = hmac.new(key_material, message, getattr(hashlib, algorithm))
         return h.digest()
     except Exception as e:
-        raise ValueError(f"Failed to create HMAC signature: {str(e)}")
+        raise ValueError(f"Failed to create HMAC signature: {e}")
 
 
 def verify_hmac_signature(

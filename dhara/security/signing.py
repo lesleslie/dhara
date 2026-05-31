@@ -80,8 +80,7 @@ class ObjectSigner:
             backend=default_backend(),
         )
 
-        key = kdf.derive(password)
-        return cls(key)
+        return cls(kdf.derive(password))
 
     @classmethod
     def from_file(cls, path: str) -> "ObjectSigner":
@@ -124,9 +123,9 @@ class ObjectSigner:
         key = cls.generate_key()
 
         # Create parent directories if needed
-        os.makedirs(
-            os.path.dirname(path) if os.path.dirname(path) else ".", exist_ok=True
-        )
+        parent = Path(path).parent
+        if parent != Path("."):
+            parent.mkdir(parents=True, exist_ok=True)
 
         with path.open("wb") as f:
             f.write(key)
@@ -319,9 +318,7 @@ def create_signer_from_env(env_var: str = "DHARA_SIGNING_KEY") -> ObjectSigner:
     # Check if it's a file path
     if value.startswith(("/", ".")):
         return ObjectSigner.from_file(value)
-    else:
-        # Treat as password
-        return ObjectSigner.from_password(value.encode())
+    return ObjectSigner.from_password(value.encode())
 
 
 __all__ = [

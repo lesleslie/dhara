@@ -270,7 +270,7 @@ class TokenAuth:
         try:
             with open(filepath) as f:
                 content = f.read().strip()
-                data = json.loads(content) if content else {}
+                data = json.loads(content) if content else {}  # type: ignore
 
             for token_id, token_data in data.get("tokens", {}).items():
                 self.tokens[token_id] = TokenInfo(
@@ -612,13 +612,12 @@ class AuthMiddleware:
 
         if self.require_auth:
             return AuthResult(success=False, error_message="Authentication required")
-        else:
-            return AuthResult(
-                success=True,
-                token_id="default",
-                role=Role.READONLY,
-                permissions=Role.READONLY.get_permissions(),
-            )
+        return AuthResult(
+            success=True,
+            token_id="default",
+            role=Role.READONLY,
+            permissions=Role.READONLY.get_permissions(),
+        )
 
     def check_permission(
         self,

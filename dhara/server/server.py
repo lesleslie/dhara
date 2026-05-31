@@ -19,8 +19,10 @@ import socket
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import suppress
 from datetime import datetime
 from os.path import exists
+from pathlib import Path
 from time import sleep
 
 from dhara.error import ConflictError, ReadConflictError
@@ -97,7 +99,7 @@ class SocketAddress:
 
     new = staticmethod(new)
 
-    def get_listening_socket(self) -> None:
+    def get_listening_socket(self) -> socket.socket:
         sock = socket.socket(self.get_address_family(), socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.bind_socket(sock)
@@ -110,22 +112,22 @@ class HostPortAddress(SocketAddress):
         self.host = host
         self.port = port
 
-    def __str__(self) -> None:
+    def __str__(self) -> str:
         if ":" in self.host:
             return f"[{self.host}]:{self.port}"
 
         return f"{self.host}:{self.port}"
 
-    def get_address_family(self) -> None:
+    def get_address_family(self) -> int:
         if ":" in self.host:
             return socket.AF_INET6  # type: ignore
 
         return socket.AF_INET
 
-    def bind_socket(self, socket) -> None:
-        socket.bind((self.host, self.port))
+    def bind_socket(self, s: socket.socket) -> None:
+        s.bind((self.host, self.port))
 
-    def get_connected_socket(self) -> None:
+    def get_connected_socket(self) -> socket.socket | None:
         sock = socket.socket(self.get_address_family(), socket.SOCK_STREAM)
         sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         try:
@@ -151,16 +153,16 @@ class UnixAbstractAddress(SocketAddress):
     def __init__(self, filename) -> None:
         self.filename = filename.replace("@", "\0")
 
-    def __str__(self) -> None:
+    def __str__(self) -> str:
         return self.filename.replace("\0", "@")
 
-    def get_address_family(self) -> None:
+    def get_address_family(self) -> int:
         return socket.AF_UNIX
 
-    def bind_socket(self, s) -> None:
+    def bind_socket(self, s: socket.socket) -> None:
         s.bind(self.filename)
 
-    def get_connected_socket(self) -> None:
+    def get_connected_socket(self) -> socket.socket | None:
         sock = socket.socket(self.get_address_family(), socket.SOCK_STREAM)
         try:
             sock.connect(self.filename)
@@ -187,9 +189,9 @@ class UnixDomainSocketAddress(UnixAbstractAddress):
         self.group = group
         self.umask = umask
 
-    def __str__(self) -> None:
+    def __str__(self) -> str:
         result = self.filename
-        if exists(self.filename):
+        if Path(self.filename).exists():
             filestat = stat(self.filename)
             uid = filestat.st_uid
             gid = filestat.st_gid
@@ -199,7 +201,33 @@ class UnixDomainSocketAddress(UnixAbstractAddress):
             result += f" ({rwx[filestat.st_mode >> 6 & 7]}{rwx[filestat.st_mode >> 3 & 7]}{rwx[filestat.st_mode & 7]} {owner} {group})"
         return result
 
-    def bind_socket(self, s):  # noqa: C901 -> None:
+    def _cleanup_existing_socket(self, s: socket.socket, filename: str) -> None:
+        """Handle EADDRINUSE cleanup for socket binding."""
+        connected = self.get_connected_socket()
+        if connected:
+            connected.close()
+            raise
+        Path(filename).unlink()
+        s.bind(self.filename)
+
+    def _apply_socket_ownership(self, filename: str, owner: str | int | None, group: str | int | None) -> None:
+        """Apply chown ownership to socket file."""
+        uid = geteuid()
+        if owner is not None:
+            if isinstance(owner, int):
+                uid = owner
+            else:
+                uid = getpwnam(owner).pw_uid
+        gid = getegid()
+        if group is not None:
+            if isinstance(group, int):
+                gid = group
+            else:
+                gid = getgrnam(group).gr_gid
+        if owner is not None or group is not None:
+            chown(filename, uid, gid)
+
+    def bind_socket(self, s: socket.socket) -> None:
         if self.umask is not None:
             old_umask = umask(self.umask)
         try:
@@ -207,60 +235,41 @@ class UnixDomainSocketAddress(UnixAbstractAddress):
         except OSError:
             exc = sys.exc_info()[1]
             error = exc.args[0]
-            if not exists(self.filename):
+            if not Path(self.filename).exists():
                 raise
             if stat(self.filename).st_size > 0:
                 raise
             if error == errno.EADDRINUSE:
-                connected = self.get_connected_socket()
-                if connected:
-                    connected.close()
-                    raise
-                unlink(self.filename)
-                s.bind(self.filename)
+                self._cleanup_existing_socket(s, self.filename)
             else:
                 raise
-        uid = geteuid()
-        if self.owner is not None:
-            if isinstance(self.owner, int):
-                uid = self.owner
-            else:
-                uid = getpwnam(self.owner).pw_uid
-        gid = getegid()
-        if self.group is not None:
-            if isinstance(self.group, int):
-                gid = self.group
-            else:
-                gid = getgrnam(self.group).gr_gid
-        if self.owner is not None or self.group is not None:
-            chown(self.filename, uid, gid)
+        self._apply_socket_ownership(self.filename, self.owner, self.group)
         if self.umask is not None:
             umask(old_umask)
 
     def close(self, s) -> None:
         s.close()
-        if exists(self.filename):
-            unlink(self.filename)
+        if Path(self.filename).exists():
+            Path(self.filename).unlink()
 
 
 class InheritedSocket(SocketAddress):
     def __init__(self, sock) -> None:
         self.name = sock.getsockname()
 
-    def __str__(self) -> None:
-        if isinstance(self.name, bytes) and "\0" in self.name:
+    def __str__(self) -> str:
+        name = self.name
+        if isinstance(name, bytes) and b"\0" in name:
             # Linux extension, abstract namespace
-            path = self.name.replace("\0", "@")
-            try:
+            path = name.replace(b"\0", b"@")
+            with suppress(Exception):
                 path = path.decode(sys.getfilesystemencoding())
-            except Exception:
-                pass
             return path
-        elif isinstance(self.name, str):
-            return self.name
+        elif isinstance(name, str):
+            return name
         else:
-            addr = self.name[0]
-            port = self.name[1]
+            addr = name[0]
+            port = name[1]
             if ":" in addr:
                 return f"[{addr}]:{port}"
 
@@ -412,7 +421,7 @@ class StorageServer:
                         self.packer = None  # done packing
                         self.bytes_since_pack = 0  # reset
         finally:
-            self.address.close(sock)
+            self.address.close(sock)  # type: ignore[attr-defined]
 
     def serve_threaded(self) -> None:
         """Multi-threaded server with thread pool for concurrent client handling.
@@ -506,10 +515,8 @@ class StorageServer:
             with self.clients_lock:
                 if client in self.clients:
                     self.clients.remove(client)
-            try:
+            with suppress(Exception):
                 s.close()
-            except Exception:
-                pass
 
     def _handle_command_threaded(self, s, client: _Client, command_code: str) -> None:
         """Handle a single command with thread-safe storage access.
@@ -587,7 +594,7 @@ class StorageServer:
         # new OIDs
         count = ord(read(s, 1))
         log(10, "oids: %s", count)
-        write(s, join_bytes(self._new_oids(s, count)))
+        write(s, join_bytes(self._new_oids(s, count)))  # type: ignore
 
     def handle_L(self, s) -> None:
         # load
@@ -620,8 +627,8 @@ class StorageServer:
     def handle_C(self, s) -> None:
         # commit
         self._sync_storage()
-        client = self._find_client(s)
-        write_all(s, int4_to_str(len(client.invalid)), join_bytes(client.invalid))
+        client = self._find_client(s) # type: ignore
+        write_all(s, int4_to_str(len(client.invalid)), join_bytes(client.invalid))  # type: ignore[attr-defined]
         client.invalid.clear()
         tdata = read_int4_str(s)
         if not tdata:

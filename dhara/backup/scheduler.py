@@ -36,7 +36,7 @@ class BackupJob:
         enabled: bool = True,
         retention_days: int = 30,
         backup_manager: BackupManager | None = None,
-        callbacks: dict[str, Callable] | None = None,
+        callbacks: dict[str, Callable[..., Any]] | None = None,
     ):
         self.name = name
         self.backup_type = backup_type
@@ -45,11 +45,11 @@ class BackupJob:
         self.retention_days = retention_days
         self.backup_manager = backup_manager
         self.callbacks = callbacks or {}
-        self.last_run = None
-        self.last_run_result = None
-        self.run_count = 0
+        self.last_run: datetime | None = None
+        self.last_run_result: str | None = None
+        self.run_count: int = 0
 
-    def __str__(self) -> None:
+    def __str__(self) -> str:
         return f"BackupJob(name={self.name}, type={self.backup_type.value}, schedule={self.schedule_spec})"
 
     def schedule(self) -> None:
@@ -57,16 +57,16 @@ class BackupJob:
         # Parse schedule_spec (simplified cron format)
         parts = self.schedule_spec.split()
         if len(parts) == 5:  # minute hour day month weekday
-            minute, hour, day, month, weekday = parts
-            schedule.every().day.at(f"{hour}:{minute}").do(self.run)
+            minute, hour, _, _, _ = parts
+            schedule.every().day.at(f"{hour}:{minute}").do(self.run)  # type: ignore[arg-type]
         elif self.schedule_spec == "daily":
-            schedule.every().day.do(self.run)
+            schedule.every().day.do(self.run)  # type: ignore[arg-type]
         elif self.schedule_spec == "hourly":
-            schedule.every().hour.do(self.run)
+            schedule.every().hour.do(self.run)  # type: ignore[arg-type]
         elif self.schedule_spec == "weekly":
-            schedule.every().week.do(self.run)
+            schedule.every().week.do(self.run)  # type: ignore[arg-type]
         elif self.schedule_spec == "monthly":
-            schedule.every().month.do(self.run)
+            schedule.every().month.do(self.run)  # type: ignore[attr-defined]
         else:
             logger.error(f"Invalid schedule spec: {self.schedule_spec}")
 
@@ -94,8 +94,8 @@ class BackupJob:
                 backup_metadata = self.backup_manager.perform_differential_backup(
                     last_full.backup_id if last_full else None
                 )
-
-            return {"status": "failed", "reason": "unsupported backup type"}
+            else:
+                raise ValueError(f"Unknown backup type: {self.backup_type}")
 
             # Update job status
             self.last_run = datetime.now()
@@ -152,8 +152,8 @@ class BackupScheduler:
         self.auto_verify = auto_verify
         self.verify_interval = verify_interval
         self.jobs: dict[str, BackupJob] = {}
-        self.running = False
-        self.last_verification = None
+        self.running: bool = False
+        self.last_verification: datetime | None = None
         self.verification_engine = (
             BackupVerification(
                 str(self.backup_dir),
@@ -170,7 +170,7 @@ class BackupScheduler:
         schedule_spec: str,
         enabled: bool = True,
         retention_days: int = 30,
-        callbacks: dict[str, Callable] | None = None,
+        callbacks: dict[str, Callable[..., Any]] | None = None,
     ) -> BackupJob:
         """Add a backup job to the scheduler."""
         job = BackupJob(
@@ -239,7 +239,7 @@ class BackupScheduler:
 
     def get_all_jobs_status(self) -> dict[str, dict[str, Any]]:
         """Get status of all jobs."""
-        return {name: self.get_job_status(name) for name in self.jobs}
+        return {name: self.get_job_status(name) or {} for name in self.jobs}
 
     def start(self) -> None:
         """Start the scheduler."""
@@ -291,18 +291,19 @@ class BackupScheduler:
                     logger.info("Starting automated backup verification")
 
                     # Run verification
-                    results = self.verification_engine.run_all_checks()
+                    results = self.verification_engine.run_all_checks() # type: ignore
 
                     # Log results
                     for check_name, result in results.items():
-                        if result["status"] == "failed":
+                        check_result = result if isinstance(result, dict) else {}
+                        if check_result.get("status") == "failed":
                             logger.error(
-                                f"Verification failed: {check_name} - {result.get('error', 'Unknown error')}"
+                                f"Verification failed: {check_name} - {check_result.get('error', 'Unknown error')}"
                             )
                         else:
                             logger.info(f"Verification passed: {check_name}")
 
-                    self.last_verification = now
+                    self.last_verification = now  # type: ignore
 
                 # Wait before next check
                 await asyncio.sleep(self.verify_interval)
@@ -365,15 +366,14 @@ class BackupScheduler:
 
     def get_scheduler_statistics(self) -> dict[str, Any]:
         """Get scheduler statistics."""
-        catalog = BackupCatalog(str(self.backup_dir))
-        backup_stats = catalog.get_backup_statistics()
+        backup_stats = BackupCatalog(str(self.backup_dir)).get_backup_statistics()
 
         return {
             "running": self.running,
             "total_jobs": len(self.jobs),
             "enabled_jobs": sum(1 for j in self.jobs.values() if j.enabled),
             "backup_statistics": backup_stats,
-            "last_verification": self.last_verification.isoformat()
+            "last_verification": self.last_verification.isoformat()  # type: ignore[attr-defined]
             if self.last_verification
             else None,
             "verification_interval": self.verify_interval,

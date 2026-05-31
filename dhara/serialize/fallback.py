@@ -254,6 +254,7 @@ class FallbackSerializer(Serializer):
             return self._pickle.deserialize(payload, max_size)
         elif serializer_id == SERIALIZER_DILL:
             logger.warning("Deserializing dill data (ensure data is trusted!)")
+            assert self._dill is not None
             return self._dill.deserialize(payload, max_size)
         else:
             raise ValueError(

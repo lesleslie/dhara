@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import ClassVar
+from typing import ClassVar, Self
 
 from mcp_common import MCPServerSettings
 from pydantic import BaseModel, Field
@@ -178,7 +178,7 @@ class DharaSettings(MCPServerSettings):
                 os.environ.setdefault(canonical_name, value)
 
     @classmethod
-    def load(cls, config_name: str = "dhara") -> DharaSettings:
+    def load(cls, config_name: str = "dhara") -> Self:  # type: ignore[override]
         """Load settings with mode-aware configuration.
 
         Detects mode from environment and loads appropriate config file:
@@ -207,7 +207,7 @@ class DharaSettings(MCPServerSettings):
 
         # Load settings using parent class
         try:
-            settings = super().load(config_file, env_prefix="DHARA")
+            settings = super().load(config_file, env_prefix="DHARA")  # type: ignore[call-arg]
             logger.debug(f"Loaded settings from {config_file}.yaml")
         except Exception as e:
             logger.warning(f"Could not load {config_file}.yaml: {e}, using defaults")
@@ -215,10 +215,10 @@ class DharaSettings(MCPServerSettings):
 
         # Override mode from environment if set
         if mode:
-            settings.mode = mode
+            settings.mode = mode  # type: ignore[attr-defined]
             logger.debug(f"Mode overridden from environment: {mode}")
 
-        return settings
+        return settings  # type: ignore[return-value]
 
     def get_mode_config_path(self) -> Path:
         """Get path to mode-specific configuration file.

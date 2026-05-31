@@ -150,8 +150,8 @@ class BNode(PersistentObject):
                 else:
                     if key > self.items[position][0]:
                         position += 1
-                    old_count = self.nodes[position]._count # type: ignore
-                    self.nodes[position].insert_item(item)
+                    old_count = self.nodes[position]._count
+                    self.nodes[position].insert_item(item)  # type: ignore
                     self._count += self.nodes[position]._count - old_count
             else:
                 old_count = self.nodes[position]._count
@@ -262,7 +262,7 @@ class BNode(PersistentObject):
                     # Case 2c.
                     extreme = upper_sibling.get_min_item()
                     upper_sibling.delete(extreme[0])
-                    node.items = node.items + [extreme] + upper_sibling.items
+                    node.items = node.items + [extreme] + upper_sibling.items  # type: ignore
                     if not node.is_leaf():
                         node.nodes = (node.nodes or []) + (upper_sibling.nodes or [])
                     node._count += upper_sibling._count
@@ -311,14 +311,14 @@ class BNode(PersistentObject):
                         node.items = node.items + [self.items[p]] + upper_sibling.items
                         if not node.is_leaf():
                             node.nodes = (node.nodes or []) + (
-                                upper_sibling.nodes or []
+                                upper_sibling.nodes or []  # type: ignore
                             )
-                        node._count += upper_sibling._count + 1
+                        node._count += upper_sibling._count + 1 # type: ignore
                         del self.items[p]
                         del self.nodes[p + 1]
                     self._p_note_change()
                     node._p_note_change()
-                assert is_big(node)
+                assert is_big(node)  # type: ignore
                 old_count = node._count
                 node.delete(key)
                 self._count += node._count - old_count

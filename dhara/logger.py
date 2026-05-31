@@ -65,7 +65,7 @@ def direct_output(file: Any) -> None:
             sinks=[],
         )
     )
-    logger.handlers[:] = []
+    logger.handlers.clear()
     handler = logging.StreamHandler(file)
     handler.setFormatter(logging.Formatter("%(message)s"))
     logger.addHandler(handler)

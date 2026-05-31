@@ -6,7 +6,7 @@ $Id$
 import fcntl
 import os
 import os.path
-from os.path import exists
+from pathlib import Path
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
 
 
@@ -20,7 +20,7 @@ class File:
         if name is None:
             self.file = NamedTemporaryFile(**kwargs)
         else:
-            if exists(name):
+            if Path(name).exists():
                 if readonly:
                     self.file = open(name, "rb")
                 else:
@@ -72,8 +72,8 @@ class File:
         assert not self.is_temporary()
         self.obtain_lock()
         self.close()
-        if exists(name):
-            os.unlink(name)
+        if Path(name).exists():
+            Path(name).unlink()
         os.rename(old_name, name)
         self.file = open(name, "r+b")
         self.obtain_lock()

@@ -12,6 +12,7 @@ import hmac
 import logging
 import secrets
 import threading
+from contextlib import suppress
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -22,7 +23,7 @@ create_hmac_signature = None
 verify_hmac_signature = None
 initialize_secrets = None
 
-try:
+with suppress(ImportError):
     from dhara.security.oneiric_secrets import (
         create_hmac_signature,
         initialize_secrets,
@@ -30,9 +31,6 @@ try:
     )
 
     ONEIRIC_AVAILABLE = True
-except ImportError:
-    # Oneiric not available, will use fallback mode
-    pass
 
 
 @dataclass
@@ -106,7 +104,7 @@ class SecurityConfig:
                         "Please install the Oneiric SDK or enable fallback mode."
                     )
                 else:
-                    self._logger.warning(
+                    self._logger.warning(  # type: ignore[union-attr]
                         "Oneiric not available, using fallback mode. "
                         "This is less secure than production setup."
                     )
@@ -114,7 +112,7 @@ class SecurityConfig:
                     return
 
             # Initialize Oneiric secrets
-            self._adapter = initialize_secrets(
+            self._adapter = initialize_secrets(  # type: ignore[assignment]
                 self.secret_prefix, self.rotation_interval_days
             )
 
@@ -126,7 +124,7 @@ class SecurityConfig:
             self._log_security_event("Security configuration initialized successfully")
 
         except Exception as e:
-            error_msg = f"Failed to initialize security configuration: {str(e)}"
+            error_msg = f"Failed to initialize security configuration: {e}"
             self._logger.error(error_msg)
             raise RuntimeError(error_msg)
 
@@ -180,7 +178,7 @@ class SecurityConfig:
                 )
 
         except Exception as e:
-            self._logger.error(f"Security validation failed: {str(e)}")
+            self._logger.error(f"Security validation failed: {e}")
             raise
 
     def create_signature(self, message: bytes, algorithm: str = "sha256") -> bytes:
@@ -220,7 +218,7 @@ class SecurityConfig:
             return create_hmac_signature(message, algorithm)
 
         except Exception as e:
-            error_msg = f"Failed to create signature: {str(e)}"
+            error_msg = f"Failed to create signature: {e}"
             if self.log_security_events:
                 self._logger.error(error_msg)
             raise ValueError(error_msg)
@@ -260,7 +258,7 @@ class SecurityConfig:
 
         except Exception as e:
             if self.log_security_events:
-                self._logger.warning(f"Signature verification failed: {str(e)}")
+                self._logger.warning(f"Signature verification failed: {e}")
             return False
 
     def _create_fallback_signature(self, message: bytes, algorithm: str) -> bytes:
@@ -268,8 +266,7 @@ class SecurityConfig:
         if self.fallback_signing_key is None:
             raise RuntimeError("No fallback signing key available")
 
-        h = hmac.new(self.fallback_signing_key, message, getattr(hashlib, algorithm))
-        return h.digest()
+        return hmac.new(self.fallback_signing_key, message, getattr(hashlib, algorithm)).digest()
 
     def _verify_fallback_signature(
         self, message: bytes, signature: bytes, algorithm: str
@@ -302,7 +299,7 @@ class SecurityConfig:
             self._log_security_event("Manual key rotation completed")
             return result
         except Exception as e:
-            error_msg = f"Failed to rotate keys: {str(e)}"
+            error_msg = f"Failed to rotate keys: {e}"
             self._logger.error(error_msg)
             raise RuntimeError(error_msg)
 
@@ -366,8 +363,8 @@ class SecurityConfig:
             self._log_security_event(f"Cleaned up {cleaned_count} expired keys")
             return cleaned_count
         except Exception as e:
-            error_msg = f"Failed to cleanup expired keys: {str(e)}"
-            self._logger.error(error_msg)
+            error_msg = f"Failed to cleanup expired keys: {e}"
+            self._logger.error(error_msg) # type: ignore
             return 0
 
     def create_backup_key(self) -> str:
@@ -387,12 +384,12 @@ class SecurityConfig:
             raise RuntimeError("Cannot create backup keys without Oneiric")
 
         try:
-            key_id = self._adapter.create_backup_key()
+            key_id = self._adapter.create_backup_key()  # type: ignore
             self._log_security_event(f"Created backup key: {key_id}")
             return key_id
         except Exception as e:
-            error_msg = f"Failed to create backup key: {str(e)}"
-            self._logger.error(error_msg)
+            error_msg = f"Failed to create backup key: {e}"
+            self._logger.error(error_msg)  # type: ignore
             raise RuntimeError(error_msg)
 
     def _log_security_event(self, message: str) -> None:
@@ -403,7 +400,7 @@ class SecurityConfig:
     def __enter__(self) -> None:
         """Context manager entry."""
         self.initialize()
-        return self
+        return self  # type: ignore
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """Context manager exit."""

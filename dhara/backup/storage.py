@@ -79,7 +79,7 @@ class _DelegatingStorageAdapter(StorageAdapter):
         return self._adapter.download_file(remote_path, local_path)
 
     def upload_json(self, data: Any, remote_path: str) -> bool:
-        return self._adapter.upload_json(data, remote_path)
+        return self._adapter.upload_json(data, remote_path)  # type: ignore
 
     def download_json(self, remote_path: str) -> Any:
         return self._adapter.download_json(remote_path)
@@ -374,16 +374,14 @@ class GCSStorageAdapter(_DelegatingStorageAdapter):
 
     def list_files(self, prefix: str = "") -> list[dict[str, Any]]:
         try:
-            files: list[dict[str, Any]] = []
-            for blob in self.bucket.list_blobs(prefix=prefix):
-                files.append(
-                    {
-                        "name": getattr(blob, "name", None),
-                        "size": getattr(blob, "size", None),
-                        "last_modified": getattr(blob, "time_created", None),
-                    }
-                )
-            return files
+            return [
+                {
+                    "name": getattr(blob, "name", None),
+                    "size": getattr(blob, "size", None),
+                    "last_modified": getattr(blob, "time_created", None),
+                }
+                for blob in self.bucket.list_blobs(prefix=prefix)
+            ]
         except Exception:
             return []
 
@@ -513,18 +511,18 @@ class AzureBlobStorageAdapter(_DelegatingStorageAdapter):
 
     async def download(self, remote_path: str) -> bytes:
         blob_client = self.container_client.get_blob_client(remote_path)
-        download_blob = blob_client.download_blob()
+        download_blob = blob_client.download_blob()  # noqa: FURB184
         if hasattr(download_blob, "__await__"):
             download_blob = await download_blob
         readall = download_blob.readall()
         if hasattr(readall, "__await__"):
-            readall = await readall
-        return readall
+            return (await readall).readall()  # type: ignore
+        return readall.readall()  # type: ignore
 
     def upload_file(self, local_path: str, remote_path: str) -> bool:
         try:
             blob_client = self.container_client.get_blob_client(remote_path)
-            with local_path.open("rb") as f:
+            with local_path.open("rb") as f:  # type: ignore[attr-defined]
                 blob_client.upload_blob(f.read())
             return True
         except self._resource_exists_error:
@@ -542,7 +540,7 @@ class AzureBlobStorageAdapter(_DelegatingStorageAdapter):
         try:
             blob_client = self.container_client.get_blob_client(remote_path)
             data = blob_client.download_blob().readall()
-            with local_path.open("wb") as f:
+            with local_path.open("wb") as f: # type: ignore[attr-defined]
                 f.write(data)
             return True
         except Exception:
@@ -570,16 +568,14 @@ class AzureBlobStorageAdapter(_DelegatingStorageAdapter):
 
     def list_files(self, prefix: str = "") -> list[dict[str, Any]]:
         try:
-            files: list[dict[str, Any]] = []
-            for blob in self.container_client.list_blobs(name_starts_with=prefix):
-                files.append(
-                    {
-                        "name": getattr(blob, "name", None),
-                        "size": getattr(blob, "size", None),
-                        "last_modified": getattr(blob, "last_modified", None),
-                    }
-                )
-            return files
+            return [
+                {
+                    "name": getattr(blob, "name", None),
+                    "size": getattr(blob, "size", None),
+                    "last_modified": getattr(blob, "last_modified", None),
+                }
+                for blob in self.container_client.list_blobs(name_starts_with=prefix)
+            ]
         except Exception:
             return []
 
@@ -596,6 +592,13 @@ S3Storage = S3StorageAdapter
 GCSStorage = GCSStorageAdapter
 AzureBlobStorage = AzureBlobStorageAdapter
 
+
+_ADAPTER_CLASSES: dict[str, type] = {
+    "S3Storage": S3Storage,
+    "GCSStorage": GCSStorage,
+    "AzureBlobStorage": AzureBlobStorage,
+    "LocalStorageAdapter": LocalStorageAdapter,
+}
 
 _PROVIDERS: dict[str, tuple[str, type]] = {
     "s3": ("S3Storage", S3StorageSettings),
@@ -656,7 +659,7 @@ def create_storage_adapter(provider: str, *, settings: Any) -> Any:
             f"Unsupported storage provider: {provider!r}. Choose from: {sorted(_PROVIDERS)}"
         )
     adapter_name, _ = _PROVIDERS[key]
-    adapter_cls = globals()[adapter_name]
+    adapter_cls = _ADAPTER_CLASSES[adapter_name]
     if adapter_name == "LocalStorageAdapter":
         return adapter_cls(settings)
     return adapter_cls(**_settings_to_kwargs(settings))
@@ -673,7 +676,7 @@ class StorageAdapterFactory:
                 f"Unsupported storage provider: {provider!r}. Choose from: {sorted(_PROVIDERS)}"
             )
         adapter_name, settings_cls = _PROVIDERS[key]
-        adapter_cls = globals()[adapter_name]
+        adapter_cls = _ADAPTER_CLASSES[adapter_name]
         if adapter_name == "LocalStorageAdapter":
             settings = settings_cls(**kwargs)
             return adapter_cls(settings)

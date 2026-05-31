@@ -65,7 +65,7 @@ class PickleSerializer(Serializer):
             raise ValueError(f"Data too large: {len(data)} > {max_size}")
         return pickle.loads(data)
 
-    def get_state(self, obj: Any) -> dict:
+    def get_state(self, obj: Any) -> dict[str, Any]:
         """Extract serializable state from object.
 
         Args:
@@ -76,7 +76,7 @@ class PickleSerializer(Serializer):
         """
         # Try __getstate__ method first
         if hasattr(obj, "__getstate__"):
-            state = obj.__getstate__()
+            state: dict[str, Any] | None = obj.__getstate__()
             if isinstance(state, dict):
                 return state
 

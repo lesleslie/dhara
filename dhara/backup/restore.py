@@ -43,7 +43,7 @@ class RestorePoint:
         self.backup_path = backup_path
         self.metadata = metadata
 
-    def __str__(self) -> None:
+    def __str__(self) -> str:
         return f"RestorePoint(id={self.backup_id}, type={self.restore_type}, time={self.timestamp})"
 
 
@@ -98,14 +98,14 @@ class RestoreManager:
             # Step 1: Decrypt if encrypted
             if backup_metadata.encryption_enabled and self.encryption:
                 decrypted_path = os.path.join(temp_dir, "decrypted_backup.durus.zst")
-                self.encryption.decrypt_file(backup_path, decrypted_path)
+                self.encryption.decrypt_file(str(backup_path), decrypted_path)
                 backup_path = Path(decrypted_path)
 
             # Step 2: Decompress if compressed
             if backup_path.suffix == ".zst":
                 decompressed_path = os.path.join(temp_dir, "decompressed_backup.durus")
                 compression_engine = CompressionEngine()
-                compression_engine.decompress_file(backup_path, decompressed_path)
+                compression_engine.decompress_file(str(backup_path), decompressed_path)
                 backup_path = Path(decompressed_path)
 
             # Step 3: Restore to target location
@@ -143,10 +143,9 @@ class RestoreManager:
         backup_type: BackupType | None = None,
     ) -> list[RestorePoint]:
         """Find available restore points."""
-        catalog = BackupCatalog(self.backup_dir)
-        backups = catalog.get_all_backups()
+        backups = BackupCatalog(self.backup_dir).get_all_backups()
 
-        restore_points = []
+        restore_points: list[RestorePoint] = []
 
         for backup in backups:
             # Filter by time range
@@ -169,7 +168,7 @@ class RestoreManager:
             restore_points.append(restore_point)
 
         # Sort by timestamp (newest first)
-        restore_points.sort(key=lambda x: x.timestamp, reverse=True)
+        restore_points.sort(key=lambda x: x.timestamp, reverse=True)  # type: ignore[arg-type]
 
         return restore_points
 
@@ -207,6 +206,8 @@ class RestoreManager:
                 restore_points[0].backup_id
             )
 
+        if not backup:
+            raise ValueError(f"Backup not found for id")
         self.logger.info(f"Restoring from backup: {backup.backup_id}")
         return self._restore_from_backup(backup)
 
@@ -268,8 +269,7 @@ class RestoreManager:
         """Perform emergency restore from backup."""
         self.logger.warning(f"Starting emergency restore from backup: {backup_id}")
 
-        catalog = BackupCatalog(self.backup_dir)
-        backup = catalog.get_backup(backup_id)
+        backup = BackupCatalog(self.backup_dir).get_backup(backup_id)
 
         if not backup:
             raise ValueError(f"Backup not found: {backup_id}")
@@ -311,15 +311,14 @@ class RestoreManager:
         import hashlib
 
         sha256_hash = hashlib.sha256()
-        with file_path.open("rb") as f:
-            for byte_block in iter(f.read(4096), b""):
-                sha256_hash.update(byte_block)
+        with open(file_path, "rb") as f:
+            for byte_block in iter(lambda: f.read(4096), b""):  # type: ignore[arg-type]
+                sha256_hash.update(byte_block)  # type: ignore[arg-type]
         return sha256_hash.hexdigest()
 
     def get_restore_summary(self) -> dict[str, Any]:
         """Get summary of restore capabilities and available backups."""
-        catalog = BackupCatalog(self.backup_dir)
-        backups = catalog.get_all_backups()
+        backups = BackupCatalog(self.backup_dir).get_all_backups()
 
         # Group by type
         by_type = {

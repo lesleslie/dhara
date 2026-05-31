@@ -135,7 +135,7 @@ class FileStorage(Storage):
             or self.shelf.get_file().is_temporary()
             or self.shelf.get_file().is_readonly()
         ):
-            return (x for x in [])  # Don't pack.
+            return (x for x in ())  # Don't pack.
         self.pack_extra = set()
         file_path = self.shelf.get_file().get_name()
         file = File(file_path + ".pack")

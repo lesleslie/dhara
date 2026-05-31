@@ -74,7 +74,12 @@ class TLSConfig:
         # Validate configuration
         self._validate()
 
-    def _validate(self) -> None:  # noqa: C901
+    def _check_file_exists(self, path: Path | None, name: str) -> None:
+        """Check that a file exists; raise FileNotFoundError if not."""
+        if path and not path.exists():
+            raise FileNotFoundError(f"{name} file not found: {path}")
+
+    def _validate(self) -> None:
         """Validate TLS configuration."""
         # For server mode, both certfile and keyfile are required
         if self.certfile and not self.keyfile:
@@ -93,20 +98,12 @@ class TLSConfig:
             )
 
         # Check that certificate files exist
-        if self.certfile and not self.certfile.exists():
-            raise FileNotFoundError(f"Certificate file not found: {self.certfile}")
-        if self.keyfile and not self.keyfile.exists():
-            raise FileNotFoundError(f"Key file not found: {self.keyfile}")
-        if self.cafile and not self.cafile.exists():
-            raise FileNotFoundError(f"CA file not found: {self.cafile}")
-        if self.capath and not self.capath.exists():
-            raise FileNotFoundError(f"CA directory not found: {self.capath}")
-        if self.client_certfile and not self.client_certfile.exists():
-            raise FileNotFoundError(
-                f"Client certificate not found: {self.client_certfile}"
-            )
-        if self.client_keyfile and not self.client_keyfile.exists():
-            raise FileNotFoundError(f"Client key not found: {self.client_keyfile}")
+        self._check_file_exists(self.certfile, "Certificate")
+        self._check_file_exists(self.keyfile, "Key")
+        self._check_file_exists(self.cafile, "CA")
+        self._check_file_exists(self.capath, "CA directory")
+        self._check_file_exists(self.client_certfile, "Client certificate")
+        self._check_file_exists(self.client_keyfile, "Client key")
 
     def create_server_context(self) -> ssl.SSLContext:
         """
@@ -206,9 +203,7 @@ def wrap_server_socket(
     Raises:
         ssl.SSLError: If TLS handshake fails
     """
-    context = config.create_server_context()
-    secure_sock = context.wrap_socket(sock, server_side=server_side)
-    return secure_sock
+    return config.create_server_context().wrap_socket(sock, server_side=server_side)
 
 
 def wrap_client_socket(
@@ -230,13 +225,11 @@ def wrap_client_socket(
     Raises:
         ssl.SSLError: If TLS handshake fails
     """
-    context = config.create_client_context()
-    secure_sock = context.wrap_socket(
+    return config.create_client_context().wrap_socket(
         sock,
         server_side=False,
         server_hostname=server_hostname if config.check_hostname else None,
     )
-    return secure_sock
 
 
 def generate_self_signed_cert(

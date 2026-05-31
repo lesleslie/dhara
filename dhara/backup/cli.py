@@ -262,8 +262,7 @@ def cmd_backup(args):
         from cryptography.fernet import Fernet
 
         if args.key_file:
-            with open(args.key_file, "rb") as f:
-                encryption_key = f.read()
+            encryption_key = Path(args.key_file).read_bytes()
         else:
             encryption_key = Fernet.generate_key()
         logger.info("Encryption enabled")
@@ -318,8 +317,7 @@ def cmd_restore(args):
     # Load encryption key if specified
     encryption_key = None
     if args.key_file:
-        with open(args.key_file, "rb") as f:
-            encryption_key = f.read()
+        encryption_key = Path(args.key_file).read_bytes()
 
     # Create restore manager
     restore_manager = RestoreManager(

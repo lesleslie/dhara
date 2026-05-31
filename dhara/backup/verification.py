@@ -85,7 +85,7 @@ class BackupVerification:
                 )
 
             # Check file size
-            actual_size = os.path.getsize(backup_path)
+            actual_size = backup_path.stat().st_size
             if actual_size != backup_metadata.size_bytes:
                 return CheckResult(
                     "integrity_check",
@@ -131,7 +131,7 @@ class BackupVerification:
             return CheckResult(
                 "integrity_check",
                 "failed",
-                f"Integrity check failed: {str(e)}",
+                f"Integrity check failed: {e}",
                 {"error": str(e)},
                 duration_seconds=duration,
             )
@@ -167,7 +167,7 @@ class BackupVerification:
             return CheckResult(
                 "compression_check",
                 "failed",
-                f"Compression check failed: {str(e)}",
+                f"Compression check failed: {e}",
                 {"error": str(e)},
                 duration_seconds=duration,
             )
@@ -243,7 +243,7 @@ class BackupVerification:
             return CheckResult(
                 "test_restore",
                 "failed",
-                f"Test restore failed: {str(e)}",
+                f"Test restore failed: {e}",
                 {"error": str(e)},
                 duration_seconds=duration,
             )
@@ -284,7 +284,7 @@ class BackupVerification:
             return CheckResult(
                 "retention_check",
                 "failed",
-                f"Retention check failed: {str(e)}",
+                f"Retention check failed: {e}",
                 {"error": str(e)},
                 duration_seconds=duration,
             )
@@ -342,7 +342,7 @@ class BackupVerification:
             return CheckResult(
                 "chain_check",
                 "failed",
-                f"Chain check failed: {str(e)}",
+                f"Chain check failed: {e}",
                 {"error": str(e)},
                 duration_seconds=duration,
             )
@@ -378,10 +378,10 @@ class BackupVerification:
         results["retention"] = self.check_retention_policy(backup_metadata)
 
         # 5. Chain check (for incremental backups)
-        if backup_metadata.backup_type in [
+        if backup_metadata.backup_type in (
             BackupType.INCREMENTAL,
             BackupType.DIFFERENTIAL,
-        ]:
+        ):
             results["chain"] = self.check_backup_chain(backup_metadata)
 
         return results

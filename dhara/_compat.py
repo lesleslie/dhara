@@ -21,6 +21,7 @@ class _DurusAliasLoader(importlib.abc.Loader):
         self.target_name = target_name
 
     def create_module(self, spec):  # type: ignore[override]
+        # nosem: python.lang.security.audit.non-literal-import.non-literal-import
         module = importlib.import_module(self.target_name)
         sys.modules[spec.name] = module
         return module

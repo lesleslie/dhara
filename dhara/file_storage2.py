@@ -4,6 +4,7 @@ $Id: file_storage.py 31299 2008-11-19 19:52:31Z dbinger $
 """
 
 import heapq
+from contextlib import suppress
 from datetime import datetime
 from zlib import compress, decompress
 
@@ -127,11 +128,9 @@ class FileStorage2(Storage):
     @classmethod
     def has_format(klass, file):
         file.seek(0)
-        try:
+        with suppress(ShortRead):
             if klass.MAGIC == read(file, len(klass.MAGIC)):
                 return True
-        except ShortRead:
-            pass
         return False
 
     def _write_header(self, fp):

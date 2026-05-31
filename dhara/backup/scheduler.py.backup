@@ -239,7 +239,7 @@ class BackupScheduler:
 
     def get_all_jobs_status(self) -> dict[str, dict[str, Any]]:
         """Get status of all jobs."""
-        return {name: self.get_job_status(name) for name in self.jobs}
+        return {name: self.get_job_status(name) for name in self.jobs} # type: ignore
 
     def start(self) -> None:
         """Start the scheduler."""
@@ -295,14 +295,14 @@ class BackupScheduler:
 
                     # Log results
                     for check_name, result in results.items():
-                        if result["status"] == "failed":
+                        if result["status"] == "failed":  # type: ignore
                             logger.error(
                                 f"Verification failed: {check_name} - {result.get('error', 'Unknown error')}"
                             )
                         else:
                             logger.info(f"Verification passed: {check_name}")
 
-                    self.last_verification = now
+                    self.last_verification = now  # type: ignore
 
                 # Wait before next check
                 await asyncio.sleep(self.verify_interval)
@@ -373,7 +373,7 @@ class BackupScheduler:
             "total_jobs": len(self.jobs),
             "enabled_jobs": sum(1 for j in self.jobs.values() if j.enabled),
             "backup_statistics": backup_stats,
-            "last_verification": self.last_verification.isoformat()
+            "last_verification": self.last_verification.isoformat()  # type: ignore[attr-defined]
             if self.last_verification
             else None,
             "verification_interval": self.verify_interval,

@@ -79,7 +79,7 @@ class _DelegatingStorageAdapter(StorageAdapter):
         return self._adapter.download_file(remote_path, local_path)
 
     def upload_json(self, data: Any, remote_path: str) -> bool:
-        return self._adapter.upload_json(data, remote_path)
+        return self._adapter.upload_json(data, remote_path)  # type: ignore
 
     def download_json(self, remote_path: str) -> Any:
         return self._adapter.download_json(remote_path)
@@ -332,11 +332,11 @@ class GCSStorageAdapter(_DelegatingStorageAdapter):
             result = blob.download_as_bytes()
             if hasattr(result, "__await__"):
                 result = await result
-            return result # type: ignore
+            return result  # type: ignore
         result = blob.download_as_text()
         if hasattr(result, "__await__"):
             result = await result
-        return result.encode("utf-8")
+        return result.encode("utf-8") # type: ignore
 
     def upload_file(self, local_path: str, remote_path: str) -> bool:
         try:
@@ -519,12 +519,12 @@ class AzureBlobStorageAdapter(_DelegatingStorageAdapter):
         readall = download_blob.readall()
         if hasattr(readall, "__await__"):
             readall = await readall
-        return readall
+        return readall  # type: ignore
 
     def upload_file(self, local_path: str, remote_path: str) -> bool:
         try:
             blob_client = self.container_client.get_blob_client(remote_path)
-            with local_path.open("rb") as f:
+            with local_path.open("rb") as f:  # type: ignore[attr-defined]
                 blob_client.upload_blob(f.read())
             return True
         except self._resource_exists_error:

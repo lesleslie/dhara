@@ -100,8 +100,7 @@ def log_context(**context: Any) -> Any:
         >>> log.info("Processing request")
         # Logs with connection_id and user context
     """
-    log = get_logger()
-    return log.bind(**context)
+    return get_logger().bind(**context)
 
 
 def get_connection_logger(connection_id: str) -> Any:

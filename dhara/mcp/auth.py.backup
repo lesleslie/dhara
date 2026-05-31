@@ -346,7 +346,7 @@ class TokenAuth:
             created_at=datetime.now(UTC),
             expires_at=expires_at,
             rate_limit=rate_limit,
-            metadata=metadata, # type: ignore
+            metadata=metadata,
         )
 
         self.tokens[token_id] = token_info
@@ -684,7 +684,7 @@ class AuthMiddleware:
         }
 
         if context:
-            log_data["client_id"] = context.client_id
+            log_data["client_id"] = context.client_id  # type: ignore
 
         if extra:
             log_data.update(extra)

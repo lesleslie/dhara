@@ -279,7 +279,7 @@ class BackupManager:
             # Create metadata
             metadata = self._create_backup_metadata(
                 BackupType.FULL,
-                final_backup_path,
+                final_backup_path, # type: ignore
                 os.path.getsize(final_backup_path),
             )
 
@@ -395,7 +395,7 @@ class BackupManager:
             # Create metadata
             metadata = self._create_backup_metadata(
                 BackupType.DIFFERENTIAL,
-                final_backup_path,
+                final_backup_path,  # type: ignore
                 os.path.getsize(final_backup_path),
                 last_full.backup_id,
             )

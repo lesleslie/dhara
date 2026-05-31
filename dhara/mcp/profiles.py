@@ -16,6 +16,7 @@ TOOL_GROUP_TOOLS: dict[str, list[str]] = {
     TOOL_GROUP_KV_TIME_SERIES: [
         "put",
         "get",
+        "list_prefix",
         "record_time_series",
         "query_time_series",
         "aggregate_patterns",

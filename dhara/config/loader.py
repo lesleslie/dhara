@@ -51,6 +51,35 @@ def _get_env_value(prefixes: tuple[str, ...], suffix: str) -> str | None:
     return None
 
 
+def _detect_config_format(path: Path) -> Literal["yaml", "json"]:
+    """Detect config format from file extension."""
+    suffix = path.suffix.lower()
+    if suffix in (".yaml", ".yml"):
+        return "yaml"
+    elif suffix == ".json":
+        return "json"
+    raise ValueError(
+        f"Cannot detect format from extension '{suffix}'. "
+        "Please specify format explicitly."
+    )
+
+
+def _parse_config_content(content: str, fmt: Literal["yaml", "json"]) -> dict:
+    """Parse config content based on format."""
+    if fmt == "yaml":
+        import yaml
+        try:
+            return yaml.safe_load(content)
+        except yaml.YAMLError as e:
+            raise yaml.YAMLError(f"Failed to parse YAML file: {e}")
+    else:
+        import json
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Failed to parse JSON file: {e}")
+
+
 def load_config(
     source: str | Path | dict,
     format: Literal["yaml", "json", "dict", "auto"] = "auto",
@@ -91,43 +120,9 @@ def load_config(
     if not path.exists():
         raise FileNotFoundError(f"Configuration file not found: {path}")
 
-    # Check file size before reading to prevent DoS attacks
-    file_size = path.stat().st_size
-    if file_size > max_size:
-        raise ValueError(
-            f"Config file too large: {file_size:,} bytes > {max_size:,} bytes maximum"
-        )
-
-    # Auto-detect format from extension
-    if format == "auto":
-        suffix = path.suffix.lower()
-        if suffix in (".yaml", ".yml"):
-            format = "yaml"
-        elif suffix == ".json":
-            format = "json"
-        else:
-            raise ValueError(
-                f"Cannot detect format from extension '{suffix}'. "
-                "Please specify format explicitly."
-            )
-
     # Read and parse file
     content = path.read_text()
-
-    if format == "yaml":
-        try:
-            data = yaml.safe_load(content)
-        except yaml.YAMLError as e:
-            raise yaml.YAMLError(f"Failed to parse YAML file {path}: {e}")
-    elif format == "json":
-        import json
-
-        try:
-            data = json.loads(content)
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Failed to parse JSON file {path}: {e}")
-    else:
-        raise ValueError(f"Unsupported format: {format}")
+    data = _parse_config_content(content, format)
 
     # Ensure we got a dictionary
     if not isinstance(data, dict):
@@ -138,7 +133,114 @@ def load_config(
     return DharaConfig.from_dict(data)
 
 
-def load_config_from_env(  # noqa: C901
+def _validate_storage_backend(prefixes: tuple[str, ...], config: DharaConfig) -> None:
+    """Validate and apply storage backend from environment."""
+    backend = _get_env_value(prefixes, "STORAGE_BACKEND")
+    if backend is not None:
+        if backend not in VALID_STORAGE_BACKENDS:
+            raise ValueError(
+                f"Invalid DHARA_STORAGE_BACKEND: {backend}. "
+                f"Must be one of: {', '.join(sorted(VALID_STORAGE_BACKENDS))}"
+            )
+        config.storage.backend = backend
+
+
+def _validate_storage_path(prefixes: tuple[str, ...], config: DharaConfig) -> None:
+    """Validate and apply storage path from environment."""
+    path_str = _get_env_value(prefixes, "STORAGE_PATH")
+    if path_str is not None:
+        # Check for path traversal attempts
+        if "../" in path_str or "..\\" in path_str:
+            raise ValueError(
+                f"Invalid DHARA_STORAGE_PATH: {path_str}. "
+                f"Path traversal with '..' is not allowed from environment."
+            )
+
+        # Don't allow home directory expansion from env vars for security
+        if path_str.startswith("~"):
+            raise ValueError(
+                f"Invalid DHARA_STORAGE_PATH: {path_str}. "
+                f"Home directory expansion not allowed from environment variables."
+            )
+
+        # Resolve to absolute path and validate
+        try:
+            path = Path(path_str).resolve()
+        except (OSError, RuntimeError) as e:
+            raise ValueError(
+                f"Invalid DHARA_STORAGE_PATH: {path_str}. Error resolving path: {e}"
+            )
+
+        config.storage.path = path
+
+
+def _validate_storage_host(prefixes: tuple[str, ...], config: DharaConfig) -> None:
+    """Validate and apply storage host from environment."""
+    host_value = _get_env_value(prefixes, "STORAGE_HOST")
+    if host_value is not None:
+        host = host_value.strip()
+        if not host:
+            raise ValueError("DHARA_STORAGE_HOST cannot be empty")
+        config.storage.host = host
+
+
+def _validate_storage_port(prefixes: tuple[str, ...], config: DharaConfig) -> None:
+    """Validate and apply storage port from environment."""
+    port_str = _get_env_value(prefixes, "STORAGE_PORT")
+    if port_str is not None:
+        try:
+            port = int(port_str)
+        except ValueError as e:
+            raise TypeError(
+                f"DHARA_STORAGE_PORT must be an integer: {port_str!r}"
+            ) from e
+
+        if not MIN_PORT <= port <= MAX_PORT:
+            raise ValueError(
+                f"Invalid DHARA_STORAGE_PORT: {port}. "
+                f"Must be between {MIN_PORT} and {MAX_PORT}"
+            )
+        config.storage.port = port
+
+
+def _validate_cache_size(prefixes: tuple[str, ...], config: DharaConfig) -> None:
+    """Validate and apply cache size from environment."""
+    size_str = _get_env_value(prefixes, "CACHE_SIZE")
+    if size_str is not None:
+        try:
+            size = int(size_str)
+        except ValueError as e:
+            raise TypeError(
+                f"DHARA_CACHE_SIZE must be an integer: {size_str!r}"
+            ) from e
+
+        if size < 0:
+            raise ValueError(f"DHARA_CACHE_SIZE must be non-negative: {size}")
+        if size > MAX_CACHE_SIZE:
+            raise ValueError(
+                f"DHARA_CACHE_SIZE too large: {size:,} (max: {MAX_CACHE_SIZE:,})"
+            )
+        config.cache.size = size
+
+
+def _validate_debug_mode(prefixes: tuple[str, ...], config: DharaConfig) -> None:
+    """Validate and apply debug mode from environment."""
+    debug_raw = _get_env_value(prefixes, "DEBUG")
+    if debug_raw is not None:
+        debug_str = debug_raw.lower()
+        valid_true_values = {"1", "true", "yes", "on", "enabled"}
+        valid_false_values = {"0", "false", "no", "off", "disabled"}
+
+        if debug_str not in valid_true_values | valid_false_values:
+            raise ValueError(
+                f"Invalid DHARA_DEBUG: {debug_raw!r}. "
+                f"Valid values: {', '.join(sorted(valid_true_values | valid_false_values))}"
+            )
+
+        config.debug_mode = debug_str in valid_true_values
+
+
+def load_config_from_env(
     prefix: str = "DHARA",
     config_file_var: str = "CONFIG",
 ) -> DharaConfig | None:
@@ -183,100 +285,13 @@ def load_config_from_env(  # noqa: C901
     # Override with specific environment variables if present
     # e.g., DURUS_STORAGE_BACKEND, DURUS_CACHE_SIZE
 
-    # Validate storage backend
-    backend = _get_env_value(prefixes, "STORAGE_BACKEND")
-    if backend is not None:
-        if backend not in VALID_STORAGE_BACKENDS:
-            raise ValueError(
-                f"Invalid {prefix}_STORAGE_BACKEND: {backend}. "
-                f"Must be one of: {', '.join(sorted(VALID_STORAGE_BACKENDS))}"
-            )
-        config.storage.backend = backend
-
-    # Validate and sanitize storage path
-    path_str = _get_env_value(prefixes, "STORAGE_PATH")
-    if path_str is not None:
-        # Check for path traversal attempts
-        if "../" in path_str or "..\\\\" in path_str:
-            raise ValueError(
-                f"Invalid {prefix}_STORAGE_PATH: {path_str}. "
-                f"Path traversal with '..' is not allowed from environment."
-            )
-
-        # Don't allow home directory expansion from env vars for security
-        if path_str.startswith("~"):
-            raise ValueError(
-                f"Invalid {prefix}_STORAGE_PATH: {path_str}. "
-                f"Home directory expansion not allowed from environment variables."
-            )
-
-        # Resolve to absolute path and validate
-        try:
-            path = Path(path_str).resolve()
-        except (OSError, RuntimeError) as e:
-            raise ValueError(
-                f"Invalid {prefix}_STORAGE_PATH: {path_str}. Error resolving path: {e}"
-            )
-
-        config.storage.path = path
-
-    # Validate storage host (basic validation)
-    host_value = _get_env_value(prefixes, "STORAGE_HOST")
-    if host_value is not None:
-        host = host_value.strip()
-        if not host:
-            raise ValueError(f"{prefix}_STORAGE_HOST cannot be empty")
-        config.storage.host = host
-
-    # Validate storage port with proper error handling
-    port_str = _get_env_value(prefixes, "STORAGE_PORT")
-    if port_str is not None:
-        try:
-            port = int(port_str)
-        except ValueError as e:
-            raise TypeError(
-                f"{prefix}_STORAGE_PORT must be an integer: {port_str!r}"
-            ) from e
-
-        if not MIN_PORT <= port <= MAX_PORT:
-            raise ValueError(
-                f"Invalid {prefix}_STORAGE_PORT: {port}. "
-                f"Must be between {MIN_PORT} and {MAX_PORT}"
-            )
-        config.storage.port = port
-
-    # Validate cache size with bounds checking
-    size_str = _get_env_value(prefixes, "CACHE_SIZE")
-    if size_str is not None:
-        try:
-            size = int(size_str)
-        except ValueError as e:
-            raise TypeError(
-                f"{prefix}_CACHE_SIZE must be an integer: {size_str!r}"
-            ) from e
-
-        if size < 0:
-            raise ValueError(f"{prefix}_CACHE_SIZE must be non-negative: {size}")
-        if size > MAX_CACHE_SIZE:
-            raise ValueError(
-                f"{prefix}_CACHE_SIZE too large: {size:,} (max: {MAX_CACHE_SIZE:,})"
-            )
-        config.cache.size = size
-
-    # Validate debug mode flag
-    debug_raw = _get_env_value(prefixes, "DEBUG")
-    if debug_raw is not None:
-        debug_str = debug_raw.lower()
-        valid_true_values = {"1", "true", "yes", "on", "enabled"}
-        valid_false_values = {"0", "false", "no", "off", "disabled"}
-
-        if debug_str not in valid_true_values | valid_false_values:
-            raise ValueError(
-                f"Invalid {prefix}_DEBUG: {debug_raw!r}. "
-                f"Valid values: {', '.join(sorted(valid_true_values | valid_false_values))}"
-            )
-
-        config.debug_mode = debug_str in valid_true_values
+    # Validate each configuration value from environment
+    _validate_storage_backend(prefixes, config)
+    _validate_storage_path(prefixes, config)
+    _validate_storage_host(prefixes, config)
+    _validate_storage_port(prefixes, config)
+    _validate_cache_size(prefixes, config)
+    _validate_debug_mode(prefixes, config)
 
     return config
 

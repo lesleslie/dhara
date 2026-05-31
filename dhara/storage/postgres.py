@@ -1,6 +1,7 @@
 # dhara/storage/postgres.py
 from __future__ import annotations
 
+from contextlib import suppress
 from dataclasses import dataclass
 
 import asyncpg
@@ -158,10 +159,8 @@ class PostgresStorageAdapter:
     async def _rollback(self) -> None:
         """Rollback the current transaction. Used by abort path."""
         if self._in_transaction and self._tx:
-            try:
+            with suppress(Exception):
                 await self._tx.rollback()
-            except Exception:
-                pass
         if self._conn and self._pool:
             await self._pool.release(self._conn)
         self._conn = None

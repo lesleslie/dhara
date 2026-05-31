@@ -114,11 +114,11 @@ class HostPortAddress(SocketAddress):
         if ":" in self.host:
             return f"[{self.host}]:{self.port}"
 
-        return f"{self.host}:{self.port}" # type: ignore
+        return f"{self.host}:{self.port}"
 
     def get_address_family(self) -> None:
         if ":" in self.host:
-            return socket.AF_INET6
+            return socket.AF_INET6  # type: ignore
 
         return socket.AF_INET
 
@@ -412,7 +412,7 @@ class StorageServer:
                         self.packer = None  # done packing
                         self.bytes_since_pack = 0  # reset
         finally:
-            self.address.close(sock)
+            self.address.close(sock)  # type: ignore[attr-defined]
 
     def serve_threaded(self) -> None:
         """Multi-threaded server with thread pool for concurrent client handling.
@@ -587,7 +587,7 @@ class StorageServer:
         # new OIDs
         count = ord(read(s, 1))
         log(10, "oids: %s", count)
-        write(s, join_bytes(self._new_oids(s, count)))
+        write(s, join_bytes(self._new_oids(s, count)))  # type: ignore
 
     def handle_L(self, s) -> None:
         # load
@@ -595,7 +595,7 @@ class StorageServer:
         self._send_load_response(s, oid)
 
     def _send_load_response(self, s, oid) -> None:
-        if oid in self._find_client(s).invalid:
+        if oid in self._find_client(s).invalid: # type: ignore
             write(s, STATUS_INVALID)
         else:
             try:
@@ -621,7 +621,7 @@ class StorageServer:
         # commit
         self._sync_storage()
         client = self._find_client(s)
-        write_all(s, int4_to_str(len(client.invalid)), join_bytes(client.invalid))
+        write_all(s, int4_to_str(len(client.invalid)), join_bytes(client.invalid))  # type: ignore[attr-defined]
         client.invalid.clear()
         tdata = read_int4_str(s)
         if not tdata:

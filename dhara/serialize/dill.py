@@ -16,20 +16,20 @@ from dhara.serialize.base import DEFAULT_MAX_SIZE, Serializer
 try:
     import dill
 
-    DILL_AVAILABLE = True
+    DILL_AVAILABLE = True  # type: ignore[no-redef]
 except ImportError:
-    DILL_AVAILABLE = False
+    DILL_AVAILABLE = False  # type: ignore[no-redef]
 
     # Create a dummy dill module for type hints
     class DummyDill:
         DEFAULT_PROTOCOL = 2
 
-        def dumps(self, obj, protocol=None):
+        def dumps(self, obj: object, protocol: int | None = None) -> bytes:
             raise ImportError(
                 "dill is not installed. Install it with: pip install dill"
             )
 
-        def loads(self, data):
+        def loads(self, data: bytes) -> object:
             raise ImportError(
                 "dill is not installed. Install it with: pip install dill"
             )
@@ -104,7 +104,7 @@ class DillSerializer(Serializer):
             raise ValueError(f"Data too large: {len(data)} > {max_size}")
         return dill.loads(data)  # type: ignore
 
-    def get_state(self, obj: Any) -> dict:
+    def get_state(self, obj: Any) -> dict[str, Any]:
         """Extract serializable state from object.
 
         Args:
@@ -115,7 +115,7 @@ class DillSerializer(Serializer):
         """
         # Try __getstate__ method first
         if hasattr(obj, "__getstate__"):
-            state = obj.__getstate__()
+            state: dict[str, Any] | None = obj.__getstate__()
             if isinstance(state, dict):
                 return state
 

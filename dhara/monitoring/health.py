@@ -315,8 +315,7 @@ def get_health_status(storage=None) -> dict:
     Returns:
         Dictionary with health status information
     """
-    checker = get_health_checker(storage)
-    report = checker.check_health()
+    report = get_health_checker(storage).check_health()
 
     return {
         "status": report.status.value,

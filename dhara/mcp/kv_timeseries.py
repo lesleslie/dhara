@@ -27,7 +27,7 @@ def _utcnow() -> datetime:
 
 def _parse_iso(ts: str) -> datetime | None:
     try:
-        dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        dt = datetime.fromisoformat(ts)
         if dt.tzinfo is None:
             return dt.replace(tzinfo=UTC)
         return dt.astimezone(UTC)
@@ -108,6 +108,31 @@ class KVTimeSeriesStore:
 
         return {"ok": True, "key": key, "value": kv[key]}
 
+    def list_prefix(self, prefix: str) -> list[dict[str, Any]]:
+        """List all key/value records under a key prefix.
+
+        Used by Akosha FitnessAnalyzer to discover component endpoints
+        registered under 'component_endpoint/' prefix.
+
+        Args:
+            prefix: Key prefix to scan (e.g. "component_endpoint/")
+
+        Returns:
+            List of dicts with key/value for each matching record
+        """
+        kv = self._kv()
+        results: list[dict[str, Any]] = []
+        for key in kv:
+            if key.startswith(prefix):
+                value = kv[key]
+                # Skip expired entries
+                ttl_map = self._kv_ttl()
+                expires_at = ttl_map.get(key)
+                if expires_at and int(time.time()) >= int(expires_at):
+                    continue
+                results.append({"key": key, "value": value})
+        return results
+
     def _ts_key(self, metric_type: str, entity_id: str) -> str:
         return f"{metric_type}:{entity_id}"
 
@@ -133,7 +158,7 @@ class KVTimeSeriesStore:
         ts = timestamp or _utcnow().isoformat()
 
         payload = {"ts": ts}
-        payload.update(record or {})
+        payload.update(record)
         ts_list.append(payload)
 
         self._purge_time_series(ts_list)
@@ -177,7 +202,7 @@ class KVTimeSeriesStore:
 
         counts: dict[str, int] = {}
 
-        for _key, ts_list in ts_map.items():
+        for ts_list in ts_map.values():
             for item in ts_list:
                 ts_raw = item.get("ts")
                 ts_dt = _parse_iso(ts_raw) if isinstance(ts_raw, str) else None

@@ -123,7 +123,7 @@ class StandardMode(OperationalMode):
             # Backend-specific validation
             backend = self.settings.storage.backend if self.settings else "file"
 
-            if backend == "file" or backend == "sqlite":
+            if backend in ("file", "sqlite"):
                 self._validate_file_storage()
             elif backend == "s3":
                 self._validate_s3_storage()

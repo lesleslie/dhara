@@ -206,7 +206,7 @@ class SqliteStorage(Storage):
             or self.is_temporary()
             or self.is_readonly()
         ):
-            return [x for x in []]  # Don't pack.
+            return [x for x in ()]  # Don't pack.
         self.pack_extra = []
         alive = set()  # will contain OIDs of all reachable from root
 

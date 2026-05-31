@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 import random
+from contextlib import suppress
 from dataclasses import dataclass
 from typing import Any
 
@@ -90,12 +91,10 @@ class RedisCacheAdapter:
             await self.init()
         if self._client is None:
             return
-        try:
+        with suppress(Exception):
             key = f"{self._settings.key_prefix}{oid}"
             data = json.dumps(obj)
             await self._client.set(key, data, px=self._settings.ttl * 1000)
-        except Exception:
-            pass  # graceful degradation — don't crash on serialization errors
 
     async def shrink(self) -> None:
         # Phase 1: no-op. TTL handles time-based expiration.
@@ -107,10 +106,8 @@ class RedisCacheAdapter:
             await self.init()
         if self._client is None:
             return
-        try:
+        with suppress(Exception):
             async for key in self._client.scan_iter(
                 match=f"{self._settings.key_prefix}*"
             ):
                 await self._client.delete(key)
-        except Exception:
-            pass

@@ -298,7 +298,7 @@ class SecurityConfig:
             raise RuntimeError("Cannot rotate keys without Oneiric")
 
         try:
-            result = self._adapter.rotate_all_keys() # type: ignore
+            result = self._adapter.rotate_all_keys()  # type: ignore
             self._log_security_event("Manual key rotation completed")
             return result
         except Exception as e:
@@ -364,7 +364,7 @@ class SecurityConfig:
         try:
             cleaned_count = self._adapter.cleanup_expired_keys()
             self._log_security_event(f"Cleaned up {cleaned_count} expired keys")
-            return cleaned_count
+            return cleaned_count # type: ignore
         except Exception as e:
             error_msg = f"Failed to cleanup expired keys: {str(e)}"
             self._logger.error(error_msg)
@@ -387,12 +387,12 @@ class SecurityConfig:
             raise RuntimeError("Cannot create backup keys without Oneiric")
 
         try:
-            key_id = self._adapter.create_backup_key()
+            key_id = self._adapter.create_backup_key()  # type: ignore
             self._log_security_event(f"Created backup key: {key_id}")
             return key_id
         except Exception as e:
             error_msg = f"Failed to create backup key: {str(e)}"
-            self._logger.error(error_msg)
+            self._logger.error(error_msg)  # type: ignore
             raise RuntimeError(error_msg)
 
     def _log_security_event(self, message: str) -> None:
@@ -403,7 +403,7 @@ class SecurityConfig:
     def __enter__(self) -> None:
         """Context manager entry."""
         self.initialize()
-        return self
+        return self  # type: ignore
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """Context manager exit."""

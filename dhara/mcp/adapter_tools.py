@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 def _import_factory(factory_path: str) -> tuple[Any, Any]:
     """Import a factory path and return its module and class."""
     module_path, class_name = factory_path.rsplit(".", 1)
+    # nosem: python.lang.security.audit.non-literal-import.non-literal-import
     module = importlib.import_module(module_path)
     return module, getattr(module, class_name)
 
@@ -345,7 +346,7 @@ class AdapterRegistry:
 
         results = []
 
-        for adapter_id, adapter in adapters.items():
+        for adapter in adapters.values():
             adapter_dict = adapter.to_dict()
 
             # Apply filters

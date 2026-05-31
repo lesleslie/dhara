@@ -22,9 +22,9 @@ class MetricsHandler(BaseHTTPRequestHandler):
         """Handle GET requests."""
         if self.path == "/metrics":
             self._serve_metrics()
-        elif self.path == "/health" or self.path == "/healthz":
+        elif self.path in ("/health", "/healthz"):
             self._serve_health()
-        elif self.path == "/ready" or self.path == "/readyz":
+        elif self.path in ("/ready", "/readyz"):
             self._serve_ready()
         else:
             self.send_error(404, "Not Found")

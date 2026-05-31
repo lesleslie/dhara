@@ -281,8 +281,7 @@ def get_server_metrics() -> str:
         Prometheus metrics text. When the richer collector is disabled,
         emit a minimal health payload so /metrics still remains scrapeable.
     """
-    collector = get_metrics_collector()
-    metrics = collector.get_metrics()
+    metrics = get_metrics_collector().get_metrics()
 
     if metrics is not None:
         return metrics
@@ -320,11 +319,11 @@ class OperationTimer:
 
     def __enter__(self) -> None:
         self.start_time = time.time()
-        return self
+        return self  # type: ignore
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         if self.start_time is not None:
             duration = time.time() - self.start_time
             self.success = exc_type is None
             self.collector.record_operation(self.operation, self.success, duration)
-        return False
+        return False  # type: ignore

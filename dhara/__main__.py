@@ -39,7 +39,9 @@ from dhara.utils import int8_to_str, str_to_int8, write
 
 
 def configure_readline(namespace, history_path):
-    try:
+    from contextlib import suppress
+
+    with suppress(ImportError):
         import atexit
         import readline
         import rlcompleter
@@ -53,8 +55,6 @@ def configure_readline(namespace, history_path):
         atexit.register(save_history)
         if Path(history_path).exists():
             readline.read_history_file(history_path)
-    except ImportError:
-        pass
 
 
 def interactive_client(
@@ -399,7 +399,7 @@ def stop_durus(address):
     socket_address = SocketAddress.new(address)
     sock = socket_address.get_connected_socket()
     if sock is None:
-        log(20, f"Durus server {str(address)} doesn't seem to be running.")
+        log(20, f"Durus server {address} doesn't seem to be running")
         return False
     write(sock, "Q")  # graceful exit message
     sock.close()

@@ -70,7 +70,7 @@ class EcosystemStateStore:
         return root["ecosystem_events"]  # type: ignore[return-value]
 
     def _normalize_service_record(self, service: dict[str, Any]) -> dict[str, Any]:
-        payload = dict(service)
+        payload = service.copy()
         payload.setdefault("schema_version", self.REGISTRY_SCHEMA_VERSION)
         payload.setdefault("capabilities", [])
         payload.setdefault("metadata", {})
@@ -78,7 +78,7 @@ class EcosystemStateStore:
         return payload
 
     def _normalize_event_record(self, event: dict[str, Any]) -> dict[str, Any]:
-        payload = dict(event)
+        payload = event.copy()
         payload.setdefault("schema_version", self.EVENT_SCHEMA_VERSION)
         payload.setdefault("payload", {})
         return payload
@@ -96,8 +96,7 @@ class EcosystemStateStore:
         services = self._services()
         now = _utcnow().isoformat()
 
-        existing = dict(services.get(service_id, {}))
-        created_at = existing.get("created_at", now)
+        created_at = services.get(service_id, {}).get("created_at", now)
 
         record = {
             "schema_version": self.REGISTRY_SCHEMA_VERSION,
@@ -132,7 +131,7 @@ class EcosystemStateStore:
         results: list[dict[str, Any]] = []
 
         for service in services.values():
-            payload = self._normalize_service_record(dict(service))
+            payload = self._normalize_service_record(service.copy())
             if service_type and payload.get("service_type") != service_type:
                 continue
             if status and payload.get("status") != status:

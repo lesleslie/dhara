@@ -173,23 +173,11 @@ ignore-regex = '(b"help"|b"he")'
 [tool.creosote]
 paths = ["dhara"]
 deps-file = "pyproject.toml"
-exclude-deps = [
-    "hatchling",
-    "pytest",
-    "pytest-asyncio",
-    "pytest-cov",
-    "pytest-mock",
-    "pytest-xdist",
-    "pytest-timeout",
-    "pytest-benchmark",
-    "ruff",
-    "pyright",
-    "bandit",
-    "creosote",
-    "codespell",
-    "refurb",
-    "complexipy",
-]
+# These are intentionally declared but not directly imported in dhara/ code:
+# - ipython: admin shell with IPython
+# - rich: pretty tables and console output
+# - uvicorn: ASGI server for FastMCP
+exclude-deps = ["ipython", "rich", "uvicorn"]
 
 [tool.refurb]
 enable_all = false

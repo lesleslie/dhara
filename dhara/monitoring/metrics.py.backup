@@ -319,7 +319,7 @@ class OperationTimer:
         self.success = False
 
     def __enter__(self) -> None:
-        self.start_time = time.time()
+        self.start_time = time.time() # type: ignore
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -327,4 +327,4 @@ class OperationTimer:
             duration = time.time() - self.start_time
             self.success = exc_type is None
             self.collector.record_operation(self.operation, self.success, duration)
-        return False
+        return False  # type: ignore

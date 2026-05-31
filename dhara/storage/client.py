@@ -86,7 +86,7 @@ class ClientStorage(Storage):
         if self.tls_enabled and self.tls_config:
             try:
                 server_hostname = (
-                    host if isinstance(address, (type(None), tuple)) else None
+                    host if address is None or isinstance(address, tuple) else None
                 )
                 self.s = wrap_client_socket(
                     self.s,
@@ -113,7 +113,7 @@ class ClientStorage(Storage):
     def new_oid(self):
         if not self.oid_pool:
             batch = self.oid_pool_size
-            write(self.s, f"M{chr(batch)}")
+            write(self.s, f"M{batch:c}")
             self.oid_pool = split_oids(read(self.s, 8 * batch))
             self.oid_pool.reverse()
             assert len(self.oid_pool) == len(set(self.oid_pool))

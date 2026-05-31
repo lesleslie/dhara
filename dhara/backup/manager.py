@@ -52,7 +52,7 @@ class BackupMetadata:
         encryption_enabled: bool = False,
         parent_backup_id: str | None = None,
         retention_days: int = 30,
-        **kwargs,
+        metadata: dict[str, Any] | None = None,
     ):
         self.backup_id = backup_id
         self.backup_type = backup_type
@@ -64,11 +64,11 @@ class BackupMetadata:
         self.encryption_enabled = encryption_enabled
         self.parent_backup_id = parent_backup_id
         self.retention_days = retention_days
-        self.metadata = kwargs
+        self.metadata: dict[str, Any] = metadata if metadata is not None else {}
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
-        return {
+        result = {
             "backup_id": self.backup_id,
             "backup_type": self.backup_type.value,
             "timestamp": self.timestamp.isoformat(),
@@ -79,8 +79,9 @@ class BackupMetadata:
             "encryption_enabled": self.encryption_enabled,
             "parent_backup_id": self.parent_backup_id,
             "retention_days": self.retention_days,
-            **self.metadata,
         }
+        result.update(self.metadata)
+        return result
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "BackupMetadata":
@@ -228,8 +229,8 @@ class BackupManager:
         self.compression.compress_file(backup_path, compressed_path)
 
         # Update compression ratio in metadata
-        original_size = os.path.getsize(backup_path)
-        compressed_size = os.path.getsize(compressed_path)
+        original_size = Path(backup_path).stat().st_size
+        compressed_size = Path(compressed_path).stat().st_size
         1.0 - (compressed_size / original_size)
 
         return compressed_path
@@ -280,7 +281,7 @@ class BackupManager:
             metadata = self._create_backup_metadata(
                 BackupType.FULL,
                 final_backup_path,
-                os.path.getsize(final_backup_path),
+                Path(final_backup_path).stat().st_size,
             )
 
             self.logger.info(f"Full backup completed: {metadata.backup_id}")
@@ -339,8 +340,8 @@ class BackupManager:
             # Create metadata with parent reference
             metadata = self._create_backup_metadata(
                 BackupType.INCREMENTAL,
-                final_backup_path,
-                os.path.getsize(final_backup_path),
+                final_backup_path,  # type: ignore
+                Path(final_backup_path).stat().st_size,
                 last_backup.backup_id,
             )
 
@@ -395,8 +396,8 @@ class BackupManager:
             # Create metadata
             metadata = self._create_backup_metadata(
                 BackupType.DIFFERENTIAL,
-                final_backup_path,
-                os.path.getsize(final_backup_path),
+                final_backup_path,  # type: ignore
+                Path(final_backup_path).stat().st_size,
                 last_full.backup_id,
             )
 

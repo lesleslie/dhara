@@ -630,8 +630,6 @@ def create_cli() -> typer.Typer:
     )
 
     # Create Typer app with MCP lifecycle commands under 'mcp' subcommand
-    app = factory.create_app()
-
     # Add version option to the app callback
     @app.callback()
     def global_options(
