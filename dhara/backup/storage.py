@@ -2,6 +2,13 @@
 
 This module preserves the legacy Dhara backup storage API while delegating to
 the current Oneiric storage adapters under the hood.
+
+Async note: These cloud storage adapters are inherently async-native (S3, GCS,
+Azure SDKs use botocore/aiohttp, google-cloud-storage, azure-sdk Python async
+methods). They do NOT manage Dhara state via AsyncConnection — they are external
+cloud operations. The existing ``upload()`` and ``download()`` async methods
+on each adapter are the async entry points. No AsyncBackupStorage wrapper is
+needed since these are not Dhara-state-backed stores.
 """
 
 from __future__ import annotations
