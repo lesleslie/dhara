@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 from __future__ import annotations
 Restore manager for Dhara databases.
@@ -7,8 +9,10 @@ This module implements restore functionality including:
 - Incremental restore
 - Rollback verification
 - Emergency restore procedures
+- AsyncRestoreManager for async tool dispatch
 """
 
+import asyncio
 import logging
 import os
 import shutil
@@ -17,10 +21,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from dhara.core import Connection
+from dhara.core.connection import AsyncConnection, Connection
 from dhara.storage.file import FileStorage
 
-from .catalog import BackupCatalog
+from .catalog import AsyncBackupCatalog, BackupCatalog
 from .manager import BackupMetadata, BackupType, CompressionEngine, EncryptionEngine
 
 logger = logging.getLogger(__name__)
@@ -340,3 +344,233 @@ class RestoreManager:
             "cloud_enabled": self.cloud_adapter is not None,
             "encryption_enabled": self.encryption is not None,
         }
+
+
+class AsyncRestoreManager:
+    """Async Dhara-backed restore manager using AsyncConnection.
+
+    Delegates blocking I/O to a thread pool so that async tool dispatch
+    remains event-loop-friendly. Uses AsyncBackupCatalog for catalog access.
+    """
+
+    def __init__(
+        self,
+        target_path: str,
+        backup_dir: str = "./backups",
+        encryption_key: bytes | None = None,
+        cloud_adapter: Any | None = None,
+    ) -> None:
+        self.target_path = Path(target_path)
+        self.backup_dir = Path(backup_dir)
+        self.encryption = (
+            EncryptionEngine(key=encryption_key) if encryption_key else None
+        )
+        self.cloud_adapter = cloud_adapter
+        self._catalog: AsyncBackupCatalog | None = None
+        self.logger = logging.getLogger(__name__)
+
+    async def _get_catalog(self) -> AsyncBackupCatalog:
+        if self._catalog is None:
+            self._catalog = AsyncBackupCatalog(self.backup_dir)
+        return self._catalog
+
+    def _ensure_target_directory(self) -> None:
+        """Ensure target directory exists and is empty."""
+        self.target_path.parent.mkdir(parents=True, exist_ok=True)
+        if self.target_path.exists():
+            if self.target_path.is_dir():
+                shutil.rmtree(self.target_path)
+            else:
+                self.target_path.unlink()
+        self.target_path.parent.mkdir(parents=True, exist_ok=True)
+
+    def _restore_from_backup(self, backup_metadata: BackupMetadata) -> str:
+        """Restore database from a backup file (blocking, runs in thread pool)."""
+        backup_path = Path(backup_metadata.source_path)
+
+        if not backup_path.exists():
+            if self.cloud_adapter:
+                self.logger.info(
+                    f"Downloading backup from cloud: {backup_metadata.backup_id}"
+                )
+                backup_path = self._download_backup_from_cloud(backup_metadata)
+            else:
+                raise FileNotFoundError(f"Backup file not found: {backup_path}")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            if backup_metadata.encryption_enabled and self.encryption:
+                decrypted_path = os.path.join(temp_dir, "decrypted_backup.durus.zst")
+                self.encryption.decrypt_file(str(backup_path), decrypted_path)
+                backup_path = Path(decrypted_path)
+
+            if backup_path.suffix == ".zst":
+                decompressed_path = os.path.join(temp_dir, "decompressed_backup.durus")
+                compression_engine = CompressionEngine()
+                compression_engine.decompress_file(str(backup_path), decompressed_path)
+                backup_path = Path(decompressed_path)
+
+            self._ensure_target_directory()
+            shutil.copy2(backup_path, self.target_path)
+
+            self.logger.info(
+                f"Database restored from backup: {backup_metadata.backup_id}"
+            )
+            return str(self.target_path)
+
+    def _download_backup_from_cloud(self, backup_metadata: BackupMetadata) -> Path:
+        """Download backup from cloud storage."""
+        if not self.cloud_adapter:
+            raise ValueError("No cloud adapter configured")
+        temp_dir = tempfile.mkdtemp()
+        backup_filename = os.path.basename(backup_metadata.source_path)
+        local_path = os.path.join(temp_dir, backup_filename)
+        try:
+            self.cloud_adapter.download_file(
+                f"durus_backups/{backup_metadata.backup_id}/{backup_filename}",
+                local_path,
+            )
+            return Path(local_path)
+        except Exception as e:
+            self.logger.error(f"Failed to download backup from cloud: {e}")
+            raise
+
+    async def find_restore_points_async(
+        self,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        backup_type: BackupType | None = None,
+    ) -> list[RestorePoint]:
+        """Find available restore points (async)."""
+        catalog = await self._get_catalog()
+        backups = await catalog.get_all_backups_async()
+
+        restore_points: list[RestorePoint] = []
+        for backup in backups:
+            if start_time and backup.timestamp < start_time:
+                continue
+            if end_time and backup.timestamp > end_time:
+                continue
+            if backup_type and backup.backup_type != backup_type:
+                continue
+            restore_points.append(RestorePoint(
+                backup_id=backup.backup_id,
+                timestamp=backup.timestamp,
+                restore_type=backup.backup_type.value,
+                backup_path=backup.source_path,
+                metadata=backup.to_dict(),
+            ))
+
+        restore_points.sort(key=lambda x: x.timestamp, reverse=True)
+        return restore_points
+
+    async def restore_point_in_time_async(
+        self, target_time: datetime, use_incremental: bool = False
+    ) -> str:
+        """Restore database to a specific point in time (async)."""
+        self.logger.info(f"Starting async point-in-time restore to {target_time}")
+        restore_points = await self.find_restore_points_async(end_time=target_time)
+
+        if not restore_points:
+            raise ValueError(
+                f"No backup available for point-in-time restore to {target_time}"
+            )
+
+        if use_incremental:
+            incremental_points = [
+                rp for rp in restore_points if rp.restore_type == "incremental"
+            ]
+            if incremental_points:
+                catalog = await self._get_catalog()
+                backup = await catalog.get_backup_async(incremental_points[0].backup_id)
+            else:
+                catalog = await self._get_catalog()
+                backup = await catalog.get_backup_async(restore_points[0].backup_id)
+        else:
+            catalog = await self._get_catalog()
+            backup = await catalog.get_backup_async(restore_points[0].backup_id)
+
+        if not backup:
+            raise ValueError("Backup not found for id")
+        self.logger.info(f"Restoring from backup: {backup.backup_id}")
+
+        # Run blocking restore in thread pool
+        return await asyncio.to_thread(self._restore_from_backup, backup)
+
+    async def restore_emergency_async(self, backup_id: str) -> str:
+        """Perform emergency restore from backup (async)."""
+        self.logger.warning(f"Starting async emergency restore from backup: {backup_id}")
+        catalog = await self._get_catalog()
+        backup = await catalog.get_backup_async(backup_id)
+
+        if not backup:
+            raise ValueError(f"Backup not found: {backup_id}")
+
+        try:
+            return await asyncio.to_thread(self._restore_from_backup, backup)
+        except Exception as e:
+            self.logger.error(f"Emergency restore failed: {e}")
+            raise
+
+    async def verify_restore_async(self, backup_metadata: BackupMetadata) -> bool:
+        """Verify that restore was successful (async)."""
+        try:
+            if not self.target_path.exists():
+                self.logger.error("Restored file does not exist")
+                return False
+
+            if self.backup_dir.name == "file" or not hasattr(self, "storage_type"):
+                # Simple verification: try to open as FileStorage
+                try:
+                    storage = FileStorage(str(self.target_path))
+                    conn = await AsyncConnection.new(storage)
+                    await conn.get_root()
+                    await conn.close()
+                    return True
+                except Exception as e:
+                    self.logger.error(f"Failed to open restored storage: {e}")
+                    return False
+            return True
+        except Exception as e:
+            self.logger.error(f"Restore verification failed: {e}")
+            return False
+
+    async def get_restore_summary_async(self) -> dict[str, Any]:
+        """Get summary of restore capabilities and available backups (async)."""
+        catalog = await self._get_catalog()
+        backups = await catalog.get_all_backups_async()
+
+        by_type: dict[str, list[BackupMetadata]] = {
+            "full": [],
+            "incremental": [],
+            "differential": [],
+        }
+        for b in backups:
+            by_type[b.backup_type.value].append(b)
+
+        return {
+            "total_backups": len(backups),
+            "by_type": {k: len(v) for k, v in by_type.items()},
+            "oldest_backup": min((b.timestamp for b in backups), default=None),
+            "newest_backup": max((b.timestamp for b in backups), default=None),
+            "storage_type": "file",
+            "cloud_enabled": self.cloud_adapter is not None,
+            "encryption_enabled": self.encryption is not None,
+        }
+
+    def close(self) -> None:
+        """Close the catalog connection."""
+        if self._catalog is not None:
+            self._catalog.close()
+            self._catalog = None
+
+    def __enter__(self) -> "AsyncRestoreManager":
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        self.close()
+
+    async def __aenter__(self) -> "AsyncRestoreManager":
+        return self
+
+    async def __aexit__(self, *args: Any) -> None:
+        self.close()
