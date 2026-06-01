@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """
 from __future__ import annotations
 Backup verification system for Durus backups.
@@ -7,8 +9,10 @@ This module provides:
 - Test restores
 - Performance testing
 - Automated validation
+- AsyncBackupVerification for async tool dispatch
 """
 
+import asyncio
 import hashlib
 import logging
 import os
@@ -18,9 +22,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from .catalog import BackupCatalog
+from .catalog import AsyncBackupCatalog, BackupCatalog
 from .manager import BackupMetadata, BackupType
-from .restore import RestoreManager
+from .restore import AsyncRestoreManager, RestoreManager
 
 logger = logging.getLogger(__name__)
 
@@ -447,3 +451,281 @@ class BackupVerification:
                     removed_count += 1
 
         return removed_count
+
+
+class AsyncBackupVerification:
+    """Async Dhara-backed backup verification using AsyncConnection.
+
+    Provides async versions of verification methods using AsyncBackupCatalog
+    and AsyncRestoreManager for async tool dispatch.
+    """
+
+    def __init__(
+        self,
+        backup_dir: str = "./backups",
+        test_restore_dir: str = "./test_restores",
+        timeout_seconds: int = 300,
+        max_test_size_mb: int = 100,
+    ) -> None:
+        self.backup_dir = Path(backup_dir)
+        self.test_restore_dir = Path(test_restore_dir)
+        self.timeout_seconds = timeout_seconds
+        self.max_test_size_mb = max_test_size_mb
+        self._catalog: AsyncBackupCatalog | None = None
+        self.test_restore_dir.mkdir(parents=True, exist_ok=True)
+        logger.info("Async backup verification initialized")
+
+    async def _get_catalog(self) -> AsyncBackupCatalog:
+        if self._catalog is None:
+            self._catalog = AsyncBackupCatalog(self.backup_dir)
+        return self._catalog
+
+    async def check_backup_integrity_async(
+        self, backup_metadata: BackupMetadata
+    ) -> CheckResult:
+        """Check backup file integrity (async)."""
+        start_time = time.time()
+
+        try:
+            backup_path = Path(backup_metadata.source_path)
+            if not backup_path.exists():
+                return CheckResult(
+                    "integrity_check", "failed", f"Backup file not found: {backup_path}"
+                )
+
+            actual_size = backup_path.stat().st_size
+            if actual_size != backup_metadata.size_bytes:
+                return CheckResult(
+                    "integrity_check",
+                    "failed",
+                    f"File size mismatch: expected {backup_metadata.size_bytes}, got {actual_size}",
+                    {"expected_size": backup_metadata.size_bytes, "actual_size": actual_size},
+                )
+
+            sha256_hash = hashlib.sha256()
+            with backup_path.open("rb") as f:
+                for byte_block in iter(f.read(4096), b""):
+                    sha256_hash.update(byte_block)
+
+            actual_checksum = sha256_hash.hexdigest()
+            if actual_checksum != backup_metadata.checksum:
+                return CheckResult(
+                    "integrity_check",
+                    "failed",
+                    f"Checksum mismatch: expected {backup_metadata.checksum}, got {actual_checksum}",
+                    {"expected_checksum": backup_metadata.checksum, "actual_checksum": actual_checksum},
+                )
+
+            duration = time.time() - start_time
+            return CheckResult(
+                "integrity_check",
+                "passed",
+                "Backup integrity verified successfully",
+                {"duration_seconds": duration, "file_size_mb": actual_size / (1024 * 1024)},
+            )
+
+        except Exception as e:
+            duration = time.time() - start_time
+            return CheckResult(
+                "integrity_check",
+                "failed",
+                f"Integrity check failed: {e}",
+                {"error": str(e)},
+                duration_seconds=duration,
+            )
+
+    async def check_backup_chain_async(
+        self, backup_metadata: BackupMetadata
+    ) -> CheckResult:
+        """Check if backup chain is intact (async)."""
+        start_time = time.time()
+
+        try:
+            if backup_metadata.backup_type == BackupType.INCREMENTAL:
+                catalog = await self._get_catalog()
+
+                if not backup_metadata.parent_backup_id:
+                    return CheckResult(
+                        "chain_check", "failed", "Incremental backup missing parent backup ID",
+                    )
+
+                parent_backup = await catalog.get_backup_async(backup_metadata.parent_backup_id)
+                if not parent_backup:
+                    return CheckResult(
+                        "chain_check",
+                        "failed",
+                        f"Parent backup not found: {backup_metadata.parent_backup_id}",
+                    )
+
+                if parent_backup.backup_type != BackupType.FULL:
+                    return CheckResult(
+                        "chain_check",
+                        "failed",
+                        f"Parent backup is not a full backup: {parent_backup.backup_type}",
+                    )
+
+                if parent_backup.timestamp > backup_metadata.timestamp:
+                    return CheckResult(
+                        "chain_check",
+                        "warning",
+                        "Parent backup timestamp is newer than current backup",
+                    )
+
+            duration = time.time() - start_time
+            return CheckResult(
+                "chain_check",
+                "passed",
+                "Backup chain integrity verified",
+                {"duration_seconds": duration},
+            )
+
+        except Exception as e:
+            duration = time.time() - start_time
+            return CheckResult(
+                "chain_check",
+                "failed",
+                f"Chain check failed: {e}",
+                {"error": str(e)},
+                duration_seconds=duration,
+            )
+
+    async def perform_test_restore_async(
+        self, backup_metadata: BackupMetadata
+    ) -> CheckResult:
+        """Perform a test restore to verify backup is valid (async)."""
+        start_time = time.time()
+
+        try:
+            backup_path = Path(backup_metadata.source_path)
+            if not backup_path.exists():
+                return CheckResult(
+                    "test_restore", "failed", f"Backup file not found: {backup_path}"
+                )
+
+            if backup_path.stat().st_size > self.max_test_size_mb * 1024 * 1024:
+                return CheckResult(
+                    "test_restore",
+                    "warning",
+                    f"Backup file too large for testing ({backup_path.stat().st_size / (1024 * 1024):.1f}MB > {self.max_test_size_mb}MB)",
+                )
+
+            restore_path = self.test_restore_dir / f"test_restore_{backup_metadata.backup_id}"
+            restore_path.mkdir(parents=True, exist_ok=True)
+
+            async with AsyncRestoreManager(
+                target_path=str(restore_path / "test_db.durus"),
+                backup_dir=str(self.backup_dir),
+            ) as restore_manager:
+                await restore_manager.restore_emergency_async(backup_metadata.backup_id)
+                verified = await restore_manager.verify_restore_async(backup_metadata)
+
+            if verified:
+                shutil.rmtree(restore_path)
+                duration = time.time() - start_time
+                return CheckResult(
+                    "test_restore",
+                    "passed",
+                    "Test restore completed successfully",
+                    {
+                        "duration_seconds": duration,
+                        "backup_size_mb": backup_path.stat().st_size / (1024 * 1024),
+                    },
+                )
+            else:
+                shutil.rmtree(restore_path)
+                duration = time.time() - start_time
+                return CheckResult(
+                    "test_restore",
+                    "failed",
+                    "Test restore verification failed",
+                    {"duration_seconds": duration},
+                )
+
+        except Exception as e:
+            restore_path = self.test_restore_dir / f"test_restore_{backup_metadata.backup_id}"
+            if restore_path.exists():
+                shutil.rmtree(restore_path)
+
+            duration = time.time() - start_time
+            return CheckResult(
+                "test_restore",
+                "failed",
+                f"Test restore failed: {e}",
+                {"error": str(e)},
+                duration_seconds=duration,
+            )
+
+    async def run_all_checks_async(
+        self, backup_metadata: BackupMetadata | None = None
+    ) -> dict[str, CheckResult]:
+        """Run all verification checks on a backup (async)."""
+        if backup_metadata is None:
+            catalog = await self._get_catalog()
+            all_backups = await catalog.get_all_backups_async()
+            all_results: dict[str, dict[str, CheckResult]] = {}
+
+            for backup in all_backups:
+                results = await self.run_all_checks_async(backup)
+                all_results[backup.backup_id] = results
+
+            return all_results  # type: ignore[return-value]
+
+        results: dict[str, CheckResult] = {}
+        results["integrity"] = await self.check_backup_integrity_async(backup_metadata)
+        results["test_restore"] = await self.perform_test_restore_async(backup_metadata)
+        results["retention"] = self.check_retention_policy(backup_metadata)
+
+        if backup_metadata.backup_type in (BackupType.INCREMENTAL, BackupType.DIFFERENTIAL):
+            results["chain"] = await self.check_backup_chain_async(backup_metadata)
+
+        return results
+
+    def check_retention_policy(self, backup_metadata: BackupMetadata) -> CheckResult:
+        """Check if backup complies with retention policy."""
+        start_time = time.time()
+        try:
+            current_time = datetime.now()
+            retention_date = backup_metadata.timestamp + timedelta(days=backup_metadata.retention_days)
+            if current_time > retention_date:
+                status = "warning"
+                days_overdue = (current_time - retention_date).days
+                message = f"Backup expired {days_overdue} days ago"
+            else:
+                days_remaining = (retention_date - current_time).days
+                status = "passed"
+                message = f"Backup has {days_remaining} days remaining"
+
+            duration = time.time() - start_time
+            return CheckResult(
+                "retention_check",
+                status,
+                message,
+                {"retention_date": retention_date.isoformat(), "days_remaining": days_remaining, "duration_seconds": duration},
+            )
+        except Exception as e:
+            duration = time.time() - start_time
+            return CheckResult(
+                "retention_check",
+                "failed",
+                f"Retention check failed: {e}",
+                {"error": str(e)},
+                duration_seconds=duration,
+            )
+
+    def close(self) -> None:
+        """Close the catalog connection."""
+        if self._catalog is not None:
+            self._catalog.close()
+            self._catalog = None
+
+    def __enter__(self) -> "AsyncBackupVerification":
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        self.close()
+
+    async def __aenter__(self) -> "AsyncBackupVerification":
+        return self
+
+    async def __aexit__(self, *args: Any) -> None:
+        self.close()
