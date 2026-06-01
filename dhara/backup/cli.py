@@ -11,16 +11,19 @@ This CLI provides easy-to-use commands for:
 """
 
 import argparse
+import asyncio
 import logging
 import os
 import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
-from dhara.backup.catalog import BackupCatalog
+from dhara.backup.catalog import AsyncBackupCatalog, BackupCatalog
 from dhara.backup.manager import BackupManager, BackupType
-from dhara.backup.restore import RestoreManager
-from dhara.backup.verification import BackupVerification
+from dhara.backup.restore import AsyncRestoreManager, RestoreManager
+from dhara.backup.scheduler import AsyncBackupScheduler
+from dhara.backup.verification import AsyncBackupVerification, BackupVerification
 from dhara.storage.file import FileStorage
 
 # Configure logging
@@ -602,6 +605,63 @@ def main():
     else:
         logger.error(f"Unknown command: {args.command}")
         return 1
+
+
+# -----------------------------------------------------------------------------
+# Async command handlers for use by MCP tools and async contexts.
+# These delegate to AsyncBackupCatalog, AsyncRestoreManager,
+# AsyncBackupScheduler, and AsyncBackupVerification.
+# -----------------------------------------------------------------------------
+
+
+async def async_cmd_list(backup_dir: str) -> list[dict[str, Any]]:
+    """List backups (async)."""
+    catalog = AsyncBackupCatalog(backup_dir)
+    backups = await catalog.get_all_backups_async()
+    return [b.to_dict() for b in backups]
+
+
+async def async_cmd_verify(
+    backup_dir: str, backup_id: str | None = None
+) -> dict[str, Any]:
+    """Verify a backup (async)."""
+    engine = AsyncBackupVerification(backup_dir, os.path.join(backup_dir, "test_restores"))
+    catalog = AsyncBackupCatalog(backup_dir)
+
+    if backup_id:
+        backup = await catalog.get_backup_async(backup_id)
+        if not backup:
+            return {"status": "error", "error": f"Backup not found: {backup_id}"}
+        backups = [backup]
+    else:
+        backups = await catalog.get_all_backups_async()
+        if not backups:
+            return {"status": "error", "error": "No backups found"}
+        backups = [backups[0]]
+
+    results = await engine.run_all_checks_async()
+    engine.close()
+    return {"backup_id": backups[0].backup_id, "checks": results}
+
+
+async def async_cmd_scheduler_stats(backup_dir: str) -> dict[str, Any]:
+    """Get scheduler statistics (async)."""
+    scheduler = AsyncBackupScheduler(backup_dir)
+    stats = await scheduler.get_scheduler_statistics_async()
+    scheduler.close()
+    return stats
+
+
+async def async_cmd_restore_point_in_time(
+    backup_dir: str,
+    target: str,
+    timestamp: datetime,
+    use_incremental: bool = False,
+) -> dict[str, Any]:
+    """Restore to a specific point in time (async)."""
+    async with AsyncRestoreManager(target, backup_dir) as restore_mgr:
+        result_path = await restore_mgr.restore_point_in_time_async(timestamp, use_incremental)
+        return {"status": "success", "restored_to": result_path}
 
 
 if __name__ == "__main__":
