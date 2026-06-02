@@ -38,13 +38,9 @@ from dhara.mcp.adapter_tools import (
     store_adapter_async_impl,
     validate_adapter_async_impl,
 )
-from dhara.mcp.ecosystem_state import (
-    AsyncEcosystemStateStore,
-    EcosystemStateStore,
-    EventRetention,
-)
+from dhara.mcp.ecosystem_state import AsyncEcosystemStateStore, EventRetention
 from dhara.mcp.fastmcp_auth import build_token_verifier
-from dhara.mcp.kv_timeseries import AsyncKVTimeSeriesStore, KVTimeSeriesStore, TimeSeriesRetention
+from dhara.mcp.kv_timeseries import AsyncKVTimeSeriesStore, TimeSeriesRetention
 from dhara.storage.file import FileStorage
 
 logger = get_logger(__name__)
@@ -221,20 +217,8 @@ class DharaMCPServer:
 
         # Initialize adapter registry
         self.adapter_registry = AdapterRegistry(self.connection)
-        self.kv_store = KVTimeSeriesStore(
-            self.connection,
-            retention=TimeSeriesRetention(
-                retention_days=config.time_series.retention_days
-            ),
-        )
-        self.ecosystem_state = EcosystemStateStore(
-            self.connection,
-            event_retention=EventRetention(
-                retention_days=config.ecosystem_state.event_retention_days
-            ),
-        )
 
-        # Async stores (created lazily on first async tool call)
+        # Async stores (initialized lazily on first async tool call)
         self._async_kv_store: AsyncKVTimeSeriesStore | None = None
         self._async_ecosystem_state: AsyncEcosystemStateStore | None = None
         self._async_adapter_registry: AsyncAdapterRegistry | None = None
@@ -838,7 +822,7 @@ class DharaMCPServer:
         try:
             root = self.connection.get_root()
             return {
-                "path": storage_path,
+                "path": str(storage_path),
                 "exists": storage_path.exists(),
                 "accessible": True,
                 "read_only": self.config.storage.read_only,
@@ -846,7 +830,7 @@ class DharaMCPServer:
             }
         except Exception as exc:
             return {
-                "path": storage_path,
+                "path": str(storage_path),
                 "exists": storage_path.exists(),
                 "accessible": False,
                 "read_only": self.config.storage.read_only,

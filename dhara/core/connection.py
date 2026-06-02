@@ -3,6 +3,7 @@ $URL$
 $Id$
 """
 
+import asyncio
 from collections import OrderedDict
 from collections.abc import AsyncIterator
 from os import getpid
@@ -35,6 +36,9 @@ except ImportError:
     _setattribute = object.__setattr__
 
 ROOT_OID = int8_to_str(0)
+
+# Module-level lock for AsyncConnection initialization on empty storage
+_async_init_lock = asyncio.Lock()
 
 
 class Connection(ConnectionBase):
@@ -402,24 +406,40 @@ class AsyncConnection(ConnectionBase):
         instance.cache = cache if cache is not None else Cache(cache_size)
         instance.transaction_serial = 0
 
-        # Load or create root
-        root = await instance.get(ROOT_OID)
-        if root is None:
-            # Import here to avoid circular reference
-            from dhara.collections.dict import PersistentDict
+        # Sync OID allocation: ObjectWriter calls new_oid() synchronously during serialization.
+        # We use a simple counter approach - no async needed for local OID generation.
+        instance._last_oid = 0
 
-            new_oid = await instance.storage.new_oid()
-            assert ROOT_OID == new_oid, f"Expected ROOT_OID {ROOT_OID!r}, got {new_oid!r}"
-            root = instance.cache.get_instance(
-                ROOT_OID, root_class or PersistentDict, instance
-            )
-            root._p_set_status_saved()
-            root.__class__.__init__(root)
-            root._p_note_change()
-            await instance.commit()
+        # Load or create root — use lock to prevent multiple simultaneous initializations
+        async with _async_init_lock:
+            root = await instance.get(ROOT_OID)
+            if root is None:
+                # Import here to avoid circular reference
+                from dhara.collections.dict import PersistentDict
 
-        instance.root = root
+                new_oid = await instance.storage.new_oid()
+                assert ROOT_OID == new_oid, f"Expected ROOT_OID {ROOT_OID!r}, got {new_oid!r}"
+                root = instance.cache.get_instance(
+                    ROOT_OID, root_class or PersistentDict, instance
+                )
+                root._p_set_status_saved()
+                root.__class__.__init__(root)
+                # Explicitly add to changed since _p_note_change won't work
+                # (root status transitions from UNSAVED to SAVED skip note_change)
+                instance.changed[root._p_oid] = root
+                await instance.commit()
+
+            instance.root = root
         return instance
+
+    def new_oid(self) -> str:
+        """Sync OID allocation for ObjectWriter.
+
+        ObjectWriter._persistent_id() calls this synchronously during serialization.
+        Returns a locally-generated OID string without any storage round-trip.
+        """
+        self._last_oid += 1
+        return int8_to_str(self._last_oid)
 
     async def get_storage(self):
         """() -> AsyncStorage"""

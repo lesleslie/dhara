@@ -9,8 +9,13 @@ from __future__ import annotations
 
 import pytest
 
+import asyncio
+
+import pytest
 from dhara.core.connection import AsyncConnection
 from dhara.storage.memory import AsyncMemoryStorage
+from dhara.storage.memory import AsyncMemoryStorage
+from dhara.storage.sqlite import AsyncSqliteStorage
 
 
 @pytest.fixture
@@ -330,3 +335,31 @@ async def test_async_connection_with_multiple_transactions():
         assert root_reloaded.get("txn2") == "value2"
     finally:
         await storage.close()
+
+
+@pytest.mark.asyncio
+async def test_async_connection_race_on_empty_storage(tmp_path):
+    """Concurrent AsyncConnection.new() on empty storage must not corrupt state."""
+    db_path = str(tmp_path / "test_init_race.db")
+    storage = AsyncSqliteStorage(url=f"sqlite+aiosqlite://{db_path}")
+    await storage.init()
+
+    async def create_connection() -> AsyncConnection:
+        return await AsyncConnection.new(storage)
+
+    # Spawn 10 connections concurrently on empty storage
+    results = await asyncio.gather(*[create_connection() for _ in range(10)])
+
+    # Verify all connections have valid root
+    roots = [conn.root for conn in results]
+    assert all(root is not None for root in roots)
+
+    # Verify root OID is consistent (ROOT_OID = "\x00\x00\x00\x00\x00\x00\x00\x00")
+    from dhara.core.connection import ROOT_OID
+    for conn in results:
+        assert conn.root._p_oid == ROOT_OID
+
+    # Cleanup
+    for conn in results:
+        await conn.abort()
+    await storage.close()

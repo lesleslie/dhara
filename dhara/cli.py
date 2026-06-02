@@ -628,6 +628,7 @@ def create_cli() -> typer.Typer:
         health_probe_handler=health_probe_handler,
         use_mcp_subcommand=True,  # Use `dhara mcp start` pattern
     )
+    app = factory.create_app()
 
     # Create Typer app with MCP lifecycle commands under 'mcp' subcommand
     # Add version option to the app callback
