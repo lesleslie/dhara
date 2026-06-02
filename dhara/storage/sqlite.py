@@ -9,6 +9,7 @@ provide point-in-timem recovery, easy backups and asynchronous replication.
 
 from __future__ import annotations
 
+import asyncio
 import collections
 import struct
 import sqlite3
@@ -333,6 +334,7 @@ class AsyncSqliteStorage:
 
         self._conn: aiosqlite.Connection | None = None
         self._last_oid: int = 0
+        self._oid_lock: asyncio.Lock = asyncio.Lock()
         self._pack_increment = pack_increment
         self._pending_records: list[tuple[str, bytes]] = []
         self._pack_extra: list[str] | None = None
@@ -444,10 +446,11 @@ class AsyncSqliteStorage:
         return result
 
     async def new_oid(self) -> str:
-        """Allocate and return a new OID."""
-        oid = int8_to_str(self._last_oid)
-        self._last_oid += 1
-        return oid
+        """Allocate and return a new OID (thread-safe)."""
+        async with self._oid_lock:
+            oid = int8_to_str(self._last_oid)
+            self._last_oid += 1
+            return oid
 
     async def gen_oid_record(
         self, start_oid: str | None = None, batch_size: int = 100

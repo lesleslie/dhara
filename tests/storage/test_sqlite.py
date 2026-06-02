@@ -1,5 +1,7 @@
 """Tests for AsyncSqliteStorage using aiosqlite."""
 
+import asyncio
+import os
 import pytest
 from dhara.storage.sqlite import AsyncSqliteStorage
 
@@ -103,3 +105,34 @@ async def test_async_sqlite_storage_multiple_transactions():
 
     assert await storage.load(oid1) == b"tx1"
     assert await storage.load(oid2) == b"tx2"
+
+
+@pytest.mark.asyncio
+async def test_new_oid_is_unique_under_concurrent_access(tmp_path):
+    """Multiple concurrent new_oid() calls must return unique OIDs."""
+    db_path = tmp_path / "test_atomic_oid.db"
+    # Use file-based database, not :memory:, to ensure real I/O
+    storage = AsyncSqliteStorage(url=f"sqlite+aiosqlite://{db_path}")
+    await storage.init()
+
+    async def generate_oids(count: int) -> set[str]:
+        oids = set()
+        for _ in range(count):
+            oid = await storage.new_oid()
+            oids.add(oid)
+            # Yield control to allow interleaving with other tasks
+            await asyncio.sleep(0)
+        return oids
+
+    # Generate 200 OIDs concurrently (100 each from two tasks)
+    # Higher count and explicit sleep to encourage race conditions
+    results = await asyncio.gather(
+        generate_oids(100),
+        generate_oids(100),
+    )
+    all_oids = results[0] | results[1]
+
+    # Must have 200 unique OIDs — no collisions
+    assert len(all_oids) == 200, f"OID collision detected: {200 - len(all_oids)} duplicates"
+
+    await storage.close()
