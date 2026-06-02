@@ -540,7 +540,7 @@ class AsyncConnection(ConnectionBase):
                 obj._p_set_status_saved()
                 yield obj
 
-    async def get_cache(self):
+    def get_cache(self):
         return self.cache
 
     async def load_state(self, obj):
