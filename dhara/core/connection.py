@@ -476,17 +476,13 @@ class AsyncConnection(ConnectionBase):
         return self.root
 
     async def get_stored_pickle(self, oid):
-        """(oid:str) -> str
-        Retrieve the pickle from storage.  Will raise ReadConflictError if
-        the oid is invalid.
-        """
+        """Retrieve pickle from storage. Raises KeyError if oid not found."""
         assert oid not in self.invalid_oids, "still conflicted: missing abort()"
         try:
             record = await self.storage.load(oid)
-        except ReadConflictError:
-            invalid_oids = await self.storage.sync()
-            await self._handle_invalidations(invalid_oids, read_oid=oid)
-            record = await self.storage.load(oid)
+        except KeyError:
+            # OID not found in storage — let caller handle it
+            raise
         oid2, data, refdata = unpack_record(record)
         assert as_bytes(oid) == oid2, (oid, oid2)
         return data

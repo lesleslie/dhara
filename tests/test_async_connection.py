@@ -363,3 +363,27 @@ async def test_async_connection_race_on_empty_storage(tmp_path):
     for conn in results:
         await conn.abort()
     await storage.close()
+
+
+@pytest.mark.asyncio
+async def test_get_stored_pickle_raises_keyerror_for_missing_oid(tmp_path):
+    """get_stored_pickle must raise KeyError (not ReadConflictError) for invalid OID."""
+    from dhara.utils import int8_to_str
+    db_path = tmp_path / "test_get_pickle.db"
+    storage = AsyncSqliteStorage(url=f"sqlite+aiosqlite://{db_path}")
+    await storage.init()
+    try:
+        conn = await AsyncConnection.new(storage)
+
+        # Use a valid 8-byte OID that won't exist in a fresh database
+        # int8_to_str(1) produces b'\x00\x00\x00\x00\x00\x00\x00\x01'
+        # which is not ROOT_OID (all zeros) and won't be in an empty db
+        invalid_oid = int8_to_str(1)
+
+        # Must raise KeyError, not ReadConflictError
+        with pytest.raises(KeyError):
+            await conn.get_stored_pickle(invalid_oid)
+
+        await conn.abort()
+    finally:
+        await storage.close()
