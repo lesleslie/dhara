@@ -14,7 +14,6 @@ import asyncio
 import pytest
 from dhara.core.connection import AsyncConnection
 from dhara.storage.memory import AsyncMemoryStorage
-from dhara.storage.memory import AsyncMemoryStorage
 from dhara.storage.sqlite import AsyncSqliteStorage
 
 
