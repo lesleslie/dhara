@@ -34,3 +34,4 @@ dhara.egg-info/
 .hypothesis/
 .coverage
 coverage.json
+build/
