@@ -40,8 +40,7 @@ def create_serializer(
         serializer_class = MsgspecSerializer
     else:
         raise ValueError(
-            f"Unknown serializer: {backend}. "
-            "Choose from: msgpack, msgspec"
+            f"Unknown serializer: {backend}. Choose from: msgpack, msgspec"
         )
 
     try:

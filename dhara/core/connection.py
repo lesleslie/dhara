@@ -97,6 +97,14 @@ class Connection(ConnectionBase):
             self.root = self.get_cache().get_instance(
                 ROOT_OID, root_class or PersistentDict, self
             )
+            # Belt-and-suspenders: explicitly attach the connection to the root
+            # BEFORE re-running __init__. PersistentDict.__init__ does
+            # `self.data = dict(...)`, which triggers PersistentBase.__setattr__
+            # → _p_note_change → self._p_connection access. If _p_connection
+            # isn't attached yet, the slot access raises AttributeError even
+            # though __new__ initializes it to None — the get_instance cache
+            # path apparently strips or bypasses the slot initialization.
+            self.root._p_connection = self
             self.root._p_set_status_saved()
             self.root.__class__.__init__(self.root)
             self.root._p_note_change()
@@ -383,7 +391,12 @@ class AsyncConnection(ConnectionBase):
 
     @classmethod
     async def new(
-        cls, storage, cache_size=100000, root_class=None, cache=None, allowed_modules=None
+        cls,
+        storage,
+        cache_size=100000,
+        root_class=None,
+        cache=None,
+        allowed_modules=None,
     ):
         """Async factory method to create an AsyncConnection.
 

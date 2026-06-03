@@ -6,7 +6,6 @@ dev = [
     "azure-storage-blob>=12.29.0",
     "boto3>=1.43.20",
     "crackerjack",
-    "dill>=0.4.1",
     "google-cloud-storage>=3.10.1",
     # onnxruntime removed — Dhara uses Ollama/OpenAI for embeddings via MCP.
     # No native ONNX inference needed; avoids conflicts with session-buddy.
@@ -58,7 +57,6 @@ dependencies = [
     "rich>=15.0.0",  # For pretty tables and console output
     "cryptography>=48.0.0",
     "msgspec>=0.21.1",
-    "dill>=0.4.1",
     "schedule>=1.2.2",
     "zstandard>=0.25.0",
     "aiosqlite>=0.22.1",
@@ -177,11 +175,11 @@ ignore-regex = '(b"help"|b"he")'
 [tool.creosote]
 paths = ["dhara"]
 deps-file = "pyproject.toml"
-# These are intentionally declared but not directly imported in dhara/ code:
-# - ipython: admin shell with IPython
-# - rich: pretty tables and console output
-# - uvicorn: ASGI server for FastMCP
-exclude-deps = ["ipython", "rich", "uvicorn"]
+# uvicorn is not directly imported — it is a transitive runtime for FastMCP.
+# (ipython and rich were previously excluded here too, but creosote
+# detects their imports in dhara/shell/__init__.py and dhara/__main__.py,
+# so the exclusions are redundant and have been removed.)
+exclude-deps = ["uvicorn"]
 
 [tool.refurb]
 enable_all = false

@@ -5,8 +5,10 @@ mode: standard
 server_name: "Dhara (Production)"
 
 # Storage configuration (configurable backend)
+# XDG Base Directory compliant: respects $XDG_DATA_HOME, defaults to ~/.local/share.
+# Resolves to /Users/les/.local/share/dhara/production.dhara on a stock macOS box.
 storage:
-  path: /data/dhara/production.dhara
+  path: ${XDG_DATA_HOME:-$HOME/.local/share}/dhara/production.dhara
   backend: file  # Options: file, sqlite, s3, gcs, azure
   read_only: false
 

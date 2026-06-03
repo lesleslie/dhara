@@ -84,9 +84,9 @@ class Storage:
 
     def gen_oid_record(
         self, start_oid: OID | None = None, batch_size: int = 100
-    ) -> Iterator[tuple[OID, bytes]]:
+    ) -> Iterator[tuple[bytes, bytes]]:
         """(start_oid:str = None, batch_size:int = 100) ->
-            sequence((oid:str, record:str))
+            sequence((oid:bytes, record:bytes))
         Returns a generator for the sequence of (oid, record) pairs.
 
         If a start_oid is given, the resulting sequence follows a
@@ -119,19 +119,25 @@ class Storage:
 
 def gen_referring_oid_record(
     storage: Storage, referred_oid: OID
-) -> Iterator[tuple[OID, bytes]]:
-    """(storage:Storage, referred_oid:str) -> sequence([oid:str, record:str])
+) -> Iterator[tuple[bytes, bytes]]:
+    """(storage:Storage, referred_oid:str) -> sequence([oid:bytes, record:bytes])
     Generate oid, record pairs for all objects that include a
     reference to the `referred_oid`.
+
+    Note: ``referred_oid`` is converted to bytes for the ``in`` check
+    against ``split_oids`` output (8-byte OIDs on the wire).
     """
+    referred_oid_bytes = (
+        referred_oid.encode("latin1") if isinstance(referred_oid, str) else referred_oid
+    )
     for oid, record in storage.gen_oid_record():
-        if referred_oid in split_oids(unpack_record(record)[2]):
+        if referred_oid_bytes in split_oids(unpack_record(record)[2]):
             yield oid, record
 
 
-def gen_oid_class(storage: Storage, *classes: str) -> Iterator[tuple[OID, str]]:
+def gen_oid_class(storage: Storage, *classes: str) -> Iterator[tuple[bytes, str]]:
     """(storage:Storage, classes:(str)) ->
-        sequence([(oid:str, class_name:str)])
+        sequence([(oid:bytes, class_name:str)])
     Generate a sequence of oid, class_name pairs.
     If classes are provided, only output pairs for which the
     class_name is in `classes`.
@@ -150,12 +156,12 @@ def get_census(storage: Storage) -> dict[str, int]:
     return result
 
 
-def get_reference_index(storage: Storage) -> dict[OID, list[OID]]:
-    """(storage:Storage) -> {oid:str : [referring_oid:str]}
+def get_reference_index(storage: Storage) -> dict[bytes, list[bytes]]:
+    """(storage:Storage) -> {oid:bytes : [referring_oid:bytes]}
     Return a full index giving the referring oids for each oid.
     This might be large.
     """
-    result: dict[OID, list[OID]] = {}
+    result: dict[bytes, list[bytes]] = {}
     for oid, record in storage.gen_oid_record():
         for ref in split_oids(unpack_record(record)[2]):
             result.setdefault(ref, []).append(oid)

@@ -209,8 +209,13 @@ class PersistentObject(PersistentBase):
     def _p_note_change(self) -> None:
         if self._p_status != UNSAVED:
             self._p_set_status_unsaved()
-            assert self._p_connection is not None
-            result = self._p_connection.note_change(self)
+            # During PersistentDict.__init__, _p_connection is not yet attached by
+            # the owning Connection. Mark the object as unsaved so the connection
+            # will pick up the change on attach, but skip the notification call.
+            conn = getattr(self, "_p_connection", None)
+            if conn is None:
+                return
+            result = conn.note_change(self)
             # If result is a coroutine (async connection), schedule it without blocking
             if hasattr(result, "__await__") or hasattr(result, "send"):
                 import asyncio

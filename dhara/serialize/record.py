@@ -21,11 +21,11 @@ changing the storage layout.
 from __future__ import annotations
 
 import importlib
+from contextlib import suppress
 from typing import Any, Final
 
 from dhara.serialize.msgspec import MsgspecSerializer
-from dhara.utils import as_bytes, int4_to_str, join_bytes, str_to_int4
-
+from dhara.utils import int4_to_str, join_bytes, str_to_int4
 
 NEWLINE: Final[bytes] = b"\n"
 _DEFAULT_MSGSPEC: Final[MsgspecSerializer] = MsgspecSerializer(
@@ -40,7 +40,9 @@ _DEFAULT_MSGSPEC: Final[MsgspecSerializer] = MsgspecSerializer(
 
 def pack_record(oid: bytes, data: bytes, refs: bytes) -> bytes:
     """Frame an OID + data + refs as a single record."""
-    return join_bytes([oid, int4_to_str(len(data)), data, refs])
+    # join_bytes is an untyped helper (b''.join bound method); the input
+    # list is bytes-typed so the result is always bytes at runtime.
+    return join_bytes([oid, int4_to_str(len(data)), data, refs])  # type: ignore[no-any-return]
 
 
 def unpack_record(record: bytes) -> tuple[bytes, bytes, bytes]:
@@ -56,9 +58,7 @@ def unpack_record(record: bytes) -> tuple[bytes, bytes, bytes]:
 def split_oids(refs: bytes) -> list[bytes]:
     """Split a refs blob into a list of 8-byte OIDs."""
     if len(refs) % 8 != 0:
-        raise ValueError(
-            f"refs blob length {len(refs)} is not a multiple of 8 bytes"
-        )
+        raise ValueError(f"refs blob length {len(refs)} is not a multiple of 8 bytes")
     return [refs[i : i + 8] for i in range(0, len(refs), 8)]
 
 
@@ -75,13 +75,11 @@ def extract_class_name(record: bytes) -> str:
     import the class. Use :func:`_resolve_class` if you intend to
     import the class for materialization.
     """
-    try:
+    with suppress(Exception):
         _, data, _ = unpack_record(record)
-        decoded = _DEFAULT_MSGSPEC.deserialize(data)
+        decoded = _DEFAULT_MSGSPEC.decode_raw(data)
         if isinstance(decoded, dict) and "__class__" in decoded:
             return str(decoded["__class__"])
-    except Exception:
-        pass
     return "?"
 
 
@@ -111,7 +109,7 @@ def deserialize_state(data: bytes) -> tuple[str, dict]:
     :func:`extract_class_name`) read the name without paying the
     import cost; production code paths must use :func:`_resolve_class`.
     """
-    decoded = _DEFAULT_MSGSPEC.deserialize(data)
+    decoded = _DEFAULT_MSGSPEC.decode_raw(data)
     if not isinstance(decoded, dict) or "__class__" not in decoded:
         raise ValueError("record is not a state payload (missing __class__)")
     class_name = str(decoded["__class__"])
@@ -126,9 +124,7 @@ def deserialize_state(data: bytes) -> tuple[str, dict]:
 # ---------------------------------------------------------------------------
 
 
-def _resolve_class(
-    class_name: str, allowed_modules: set[str] | None = None
-) -> type:
+def _resolve_class(class_name: str, allowed_modules: set[str] | None = None) -> type:
     """Import a class by ``module.qualname``, optionally validated against a whitelist.
 
     Args:
@@ -206,12 +202,15 @@ class ObjectWriter:
         via the cache and re-iterating as needed; this method exists
         only to preserve the legacy API shape.
 
-        For backward compat with the legacy self-mutating pattern,
-        repeated calls raise ``RuntimeError``.
+        Note: do NOT set ``self._closed`` here. The legacy self-mutating
+        pattern closed the writer as a side-effect of iteration, which
+        breaks the Connection.commit() flow because it then calls
+        ``get_state()`` *after* this method returns. Finalization is
+        the responsibility of :meth:`close`. The re-entry guard above
+        still catches any caller that invokes this method after close().
         """
         if self._closed:
             raise RuntimeError("ObjectWriter is closed")
-        self._closed = True  # self-mutate: a second call raises
         yield obj
 
     def close(self) -> None:
@@ -246,7 +245,9 @@ class ObjectReader:
         """
         class_name, _state = deserialize_state(data)
         klass = _resolve_class(class_name, self.allowed_modules)
-        instance = klass.__new__(klass)
+        # Use object.__new__ to bypass __init__ (avoids triggering change
+        # tracking). Mirrors the pattern in dhara/serialize/msgspec.py.
+        instance = object.__new__(klass)
         instance._p_set_status_ghost()
         return instance
 
@@ -293,20 +294,22 @@ def persistent_load(connection: Any, cache_objects: Any, oid_class: tuple) -> An
     if cache is not None:
         return cache
     try:
-        instance = object.__new__(klass)
+        # Use the class's own __new__ (not object.__new__) so that
+        # PersistentBase.__new__ runs and initializes all four slots:
+        # _p_status, _p_serial, _p_connection, _p_oid. Skipping __new__
+        # leaves _p_status/_p_serial/_p_connection unset, which causes
+        # AttributeError on the very first __getattribute__ access
+        # (e.g. inside PersistentDict.__init__ → __setattr__ → _p_note_change).
+        instance = klass.__new__(klass)  # type: ignore[call-arg]
     except TypeError:
         return None
-    try:
+    with suppress(Exception):
         if _setattribute is not None:
             _setattribute(instance, "_p_oid", oid)
         else:
             object.__setattr__(instance, "_p_oid", oid)
-    except Exception:
-        pass
-    try:
+    with suppress(Exception):
         cache_objects[oid] = instance
-    except Exception:
-        pass
     return instance
 
 

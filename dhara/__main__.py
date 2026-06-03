@@ -339,11 +339,11 @@ def get_storage_class(file):
     no in-place format migration; use ``FileStorage`` (SHELF-1) for new and
     migrated databases.
     """
-    if not os.path.exists(file):
+    if not Path(file).exists():
         from dhara.storage.file import FileStorage
 
         return FileStorage
-    with open(file, "rb") as fp:
+    with file.open("rb") as fp:
         d = fp.read(20)
     if d.startswith(b"DFS20"):
         logger.error("Refused DFS20/Durus 4.x file: %s", file)

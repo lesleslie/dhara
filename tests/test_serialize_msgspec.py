@@ -5,9 +5,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from dhara.core.persistent import Persistent, _setattribute
+from dhara.core.persistent import Persistent, PersistentObject, _setattribute
 from dhara.serialize.base import DEFAULT_MAX_SIZE, Serializer, SerializerProtocol
-from dhara.serialize.msgspec import DEFAULT_ALLOWED_MODULES, MsgspecSerializer
+from dhara.serialize.msgspec import DEFAULT_ALLOWED_MODULES, MsgspecSerializer, _persistent_enc_hook
 
 
 # Module-level Persistent subclass for use in tests.
@@ -781,3 +781,146 @@ class TestMsgspecEdgeCases:
         data = s.serialize(obj)
         result = s.deserialize(data)
         assert result == {"a": None, "b": None}
+
+
+# ============================================================================
+# Persistent enc_hook (bug #5 fix: nested Persistent serialization)
+# ============================================================================
+
+
+class _NestedTestPersistent(Persistent):
+    """Persistent subclass that holds a dict of attributes (mirrors PersistentDict).
+
+    Used in enc_hook tests because it has the same __getstate__/__setstate__
+    shape (returns a dict) and __slots__ pattern as the real PersistentDict
+    class, but doesn't require the full Connection/storage setup.
+    """
+
+    __slots__ = ["data"]
+
+    def __init__(self, data=None):
+        self.data = dict(data) if data else {}
+
+    def __getstate__(self):
+        return {"data": self.data}
+
+    def __setstate__(self, state):
+        self.data = dict(state.get("data", {}))
+
+
+class TestPersistentEncHook:
+    """Tests for the _persistent_enc_hook (fixes bug #5).
+
+    The enc_hook is invoked by msgspec's to_builtins() recursion whenever
+    a non-builtin type is encountered. The hook converts any Persistent
+    instance to the wire-format {"__class__", "__state__"} dict at any
+    nesting depth.
+    """
+
+    def test_enc_hook_unit_returns_wire_format(self):
+        """The enc_hook returns the standard wire-format dict for a Persistent."""
+        obj = _NestedTestPersistent({"a": 1})
+        result = _persistent_enc_hook(obj)
+        assert result == {
+            "__class__": "test_serialize_msgspec._NestedTestPersistent",
+            "__state__": {"data": {"a": 1}},
+        }
+
+    def test_enc_hook_raises_for_non_persistent(self):
+        """Non-Persistent types raise NotImplementedError so msgspec can wrap."""
+        with pytest.raises(NotImplementedError):
+            _persistent_enc_hook(object())
+
+    def test_enc_hook_handles_none_getstate(self):
+        """ComputedAttribute-style __getstate__ returning None normalizes to {}."""
+        class _NoneState(PersistentObject):
+            __slots__ = []
+
+            def __getstate__(self):
+                return None
+
+        instance = _NoneState.__new__(_NoneState)
+        result = _persistent_enc_hook(instance)
+        assert result == {
+            "__class__": f"{_NoneState.__module__}.{_NoneState.__name__}",
+            "__state__": {},
+        }
+
+    def test_serialize_non_persistent_unsupported_type_raises(self):
+        """Non-Persistent unsupported types raise NotImplementedError (plan test #7).
+
+        msgspec.to_builtins does not wrap the enc_hook's exception — the
+        hook's NotImplementedError propagates directly. This is the
+        desired behavior: callers see a clear "Cannot encode object of
+        type X" message rather than a generic EncodeError.
+        """
+        s = MsgspecSerializer()
+        with pytest.raises(NotImplementedError, match="Cannot encode object of type object"):
+            s.serialize(object())
+
+    def test_serialize_persistent_via_record_layer_nested(self):
+        """End-to-end via the record layer (the original bug #5 path)."""
+        from dhara.collections.dict import PersistentDict
+        from dhara.serialize.record import serialize_state, deserialize_state
+
+        outer = PersistentDict()
+        outer["inner"] = PersistentDict({"a": 1})
+        outer["list"] = [PersistentDict({"b": 2})]
+
+        # Pre-fix: this raised "TypeError: Encoding objects of type
+        # PersistentDict is unsupported" because the top-level isinstance
+        # guard at msgspec.py:103-109 only fired for the outermost object
+        # and missed nested Persistents in __getstate__() results.
+        # Post-fix: the enc_hook handles Persistent instances at any depth.
+        blob = serialize_state(outer)
+
+        # Verify the wire format via deserialize_state (raw dict, no
+        # reconstruction). Outer __class__/__state__ are present.
+        class_name, state = deserialize_state(blob)
+        assert class_name == "dhara.collections.dict.PersistentDict"
+        assert "data" in state  # PersistentDict's slot
+
+        # The inner PersistentDict is inlined as a wire-format dict.
+        assert state["data"]["inner"] == {
+            "__class__": "dhara.collections.dict.PersistentDict",
+            "__state__": {"data": {"a": 1}},
+        }
+
+        # The list element (a PersistentDict) is also inlined.
+        assert state["data"]["list"] == [{
+            "__class__": "dhara.collections.dict.PersistentDict",
+            "__state__": {"data": {"b": 2}},
+        }]
+
+    def test_serialize_persistent_via_msgspec_serializer_nested(self):
+        """The MsgspecSerializer.serialize() path (used by record.py) works."""
+        from dhara.collections.dict import PersistentDict
+
+        s = MsgspecSerializer()
+        outer = PersistentDict()
+        outer["inner"] = PersistentDict({"a": 1})
+        # Pre-fix: raises TypeError. Post-fix: succeeds.
+        data = s.serialize(outer)
+        # Verify it produced valid msgpack bytes.
+        assert isinstance(data, bytes)
+        assert len(data) > 0
+
+    def test_serialize_get_state_path_handles_nested(self):
+        """The get_state() path (msgspec.py:240) also uses the enc_hook.
+
+        This is the second to_builtins call site (line 156 pre-fix).
+        Pre-fix: same TypeError on nested Persistent. Post-fix: succeeds.
+        """
+        from dhara.collections.dict import PersistentDict
+
+        s = MsgspecSerializer()
+        outer = PersistentDict()
+        outer["inner"] = PersistentDict({"a": 1})
+        # get_state extracts the raw state dict (without the outer wrapper).
+        # Pre-fix: TypeError on the nested PersistentDict. Post-fix: works.
+        state = s.get_state(outer)
+        # The inner Persistent is inlined in the state dict.
+        assert state["data"]["inner"] == {
+            "__class__": "dhara.collections.dict.PersistentDict",
+            "__state__": {"data": {"a": 1}},
+        }

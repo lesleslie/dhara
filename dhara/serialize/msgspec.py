@@ -14,7 +14,7 @@ from msgspec import json as msgspec_json
 from msgspec import msgpack as msgspec_msgpack
 from msgspec import to_builtins
 
-from dhara.core.persistent import Persistent, _setattribute
+from dhara.core.persistent import Persistent, PersistentObject, _setattribute
 from dhara.serialize.base import DEFAULT_MAX_SIZE, Serializer
 
 logger = logging.getLogger(__name__)
@@ -39,6 +39,50 @@ DEFAULT_ALLOWED_MODULES: set[str] = {
     "__builtin__",
     "builtins",
 }
+
+
+def _persistent_enc_hook(obj: Any) -> Any:
+    """msgspec ``enc_hook``: convert any ``Persistent`` instance to its wire-format dict.
+
+    msgspec calls this whenever ``to_builtins`` recursion encounters a type
+    it does not natively support. Returning the standard
+    ``{"__class__", "__state__"}`` dict lets PersistentDict, PersistentList,
+    PersistentSet, and any future Persistent subclass be encoded
+    transparently at any depth in the object graph.
+
+    This is the single source of truth for the wire format on the encode
+    side; the inverse path lives in :meth:`MsgspecSerializer.deserialize`
+    and :func:`dhara.serialize.record.deserialize_state`.
+
+    Uses ``__name__`` (not ``__qualname__``) to match the existing wire
+    format produced at ``record.py:99`` and preserve backward compatibility
+    with previously written storage records.
+
+    Args:
+        obj: A non-builtin object encountered during ``to_builtins`` recursion.
+
+    Returns:
+        A dict ``{"__class__": "module.ClassName", "__state__": obj.__getstate__()}``
+        if ``obj`` is a :class:`Persistent` instance.
+
+    Raises:
+        NotImplementedError: If ``obj`` is not a Persistent instance. msgspec
+            re-raises this with the standard "Encoding objects of type X is
+            unsupported" message, which is the desired behavior for genuinely
+            unsupported types.
+    """
+    if isinstance(obj, PersistentObject):
+        klass = type(obj)
+        state = obj.__getstate__()
+        # The inverse path (``dhara.serialize.record.deserialize_state``)
+        # normalizes ``__state__`` to ``{}`` when missing or ``None``, so
+        # the encoder does not need to coerce here — keeping the raw
+        # value preserves the original object shape on the wire.
+        return {
+            "__class__": f"{klass.__module__}.{klass.__name__}",
+            "__state__": state,
+        }
+    raise NotImplementedError(f"Cannot encode object of type {type(obj).__name__}")
 
 
 class MsgspecSerializer(Serializer):
@@ -92,6 +136,11 @@ class MsgspecSerializer(Serializer):
     def serialize(self, obj: Any) -> bytes:
         """Serialize object to bytes.
 
+        Persistent subclasses (PersistentDict, PersistentList, PersistentSet,
+        user-defined subclasses) are encoded as
+        ``{"__class__": "module.ClassName", "__state__": obj.__getstate__()}``
+        at any depth in the object graph, via the msgspec ``enc_hook`` callback.
+
         Args:
             obj: Object to serialize
 
@@ -99,16 +148,11 @@ class MsgspecSerializer(Serializer):
             Serialized bytes
         """
         if self.use_builtins:
-            # Convert Persistent objects to dict for serialization
-            if isinstance(obj, Persistent):
-                obj = {
-                    "__class__": obj.__class__.__module__
-                    + "."
-                    + obj.__class__.__name__,
-                    "__state__": obj.__getstate__(),
-                }
-            # Convert to built-in types recursively
-            obj = to_builtins(obj, str_keys=True)
+            # _persistent_enc_hook handles Persistent instances at any
+            # nesting depth (replaces the previous top-level isinstance guard,
+            # which only fired for the outermost object and missed nested
+            # Persistents in __getstate__() results).
+            obj = to_builtins(obj, str_keys=True, enc_hook=_persistent_enc_hook)
 
         return self._encode(obj)
 
@@ -141,7 +185,10 @@ class MsgspecSerializer(Serializer):
                 # SECURITY: Validate module against whitelist before importing.
                 # ``self.allowed_modules is None`` means "no validation" (permissive
                 # mode used by the internal record layer).
-                if self.allowed_modules is not None and module not in self.allowed_modules:
+                if (
+                    self.allowed_modules is not None
+                    and module not in self.allowed_modules
+                ):
                     logger.error(
                         f"Blocked deserialization of disallowed module: {module}"
                     )
@@ -178,6 +225,20 @@ class MsgspecSerializer(Serializer):
 
         return obj
 
+    def decode_raw(self, data, max_size=DEFAULT_MAX_SIZE):
+        """Decode bytes to a Python object without class reconstruction.
+
+        Bypasses the Persistent-object reconstruction that ``deserialize``
+        does as a side effect. Used by the internal record layer
+        (``dhara.serialize.record``) to extract the
+        ``{"__class__", "__state__"}`` dict without instantiating the
+        class — class instantiation is the caller's responsibility
+        (gated by the connection-level ``allowed_modules`` whitelist).
+        """
+        if len(data) > max_size:
+            raise ValueError(f"Data too large: {len(data)} > {max_size}")
+        return self._decode(data)
+
     def get_state(self, obj: Persistent) -> dict:
         """Extract serializable state from object.
 
@@ -190,7 +251,10 @@ class MsgspecSerializer(Serializer):
         state = obj.__getstate__()
 
         if self.use_builtins:
-            # Convert to built-in types recursively
-            return cast(dict, to_builtins(state, str_keys=True))
+            # Convert to built-in types recursively; the enc_hook handles
+            # any nested Persistent instances in the state tree.
+            return cast(
+                dict, to_builtins(state, str_keys=True, enc_hook=_persistent_enc_hook)
+            )
 
         return state

@@ -160,8 +160,10 @@ class SqliteStorage(Storage):
         self.begin()
 
     def sync(self):
-        """() -> [str]"""
-        result = self.invalid.copy()
+        """() -> [str]
+        Return a list of oids that should be invalidated.
+        """
+        result = list(self.invalid)
         self.invalid.clear()
         return result
 

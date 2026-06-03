@@ -1,0 +1,11 @@
+# Local overrides for this macOS workstation.
+# Gitignored. Oneiric loads this after settings/standard.yaml and before env vars,
+# so any key set here wins over the upstream default.
+#
+# Keep this in sync with settings/standard.yaml:storage.path — the override is
+# belt-and-suspenders so a future PR that re-introduces a Linux-only path
+# (e.g. /data/dhara/...) does not break the local launchd service.
+
+storage:
+  # XDG-compliant: $XDG_DATA_HOME if set, else ~/.local/share.
+  path: ${XDG_DATA_HOME:-$HOME/.local/share}/dhara/production.dhara

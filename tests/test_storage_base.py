@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from typing import Any
 
 import pytest
 
 from dhara.core.connection import ROOT_OID
+from dhara.serialize.msgspec import MsgspecSerializer
 from dhara.serialize.record import pack_record
 from dhara.storage.base import (
     MemoryStorage,
@@ -23,7 +24,48 @@ def _oid(i: int) -> str:
     return int8_to_str(i)
 
 
+# Shared msgpack serializer for building wire-format payloads.
+# ``allowed_modules=None`` disables class reconstruction so we can encode
+# arbitrary class names (e.g. ``"ClassA"``) without needing real classes.
+_SER: MsgspecSerializer = MsgspecSerializer(
+    format="msgpack", use_builtins=True, allowed_modules=None
+)
+
+
+def _encode_state(class_name: str, state: dict[str, Any] | None = None) -> bytes:
+    """Encode a state payload in the current msgpack wire format.
+
+    Returns the ``data`` portion of a record — the bytes that go in the
+    middle of ``pack_record(oid, data, refs)`` after the 4-byte length
+    field. The encoded payload is ``{"__class__": class_name,
+    "__state__": state}``.
+    """
+    if state is None:
+        state = {}
+    return _SER.serialize({"__class__": class_name, "__state__": state})
+
+
 def _pack(oid: bytes, data: bytes, refs: bytes = b"") -> bytes:
+    """Pack a record with the current wire format.
+
+    The ``data`` argument may be either:
+      * Raw msgpack state bytes (as produced by ``_encode_state``).
+      * A legacy pickle-style ``b"\\nClassName\\n{json_state}"`` blob,
+        which is re-encoded transparently. This keeps older tests
+        readable when they construct records inline.
+    """
+    if data.startswith(b"\n"):
+        # Legacy pickle-style shape; re-encode to msgpack.
+        parts = data.split(b"\n")
+        if len(parts) >= 3:
+            class_name = parts[1].decode("latin1", errors="replace")
+            import json as _json
+
+            try:
+                state = _json.loads(parts[2]) if parts[2] else {}
+            except Exception:
+                state = {}
+            data = _encode_state(class_name, state)
     return pack_record(oid, data, refs)
 
 
@@ -289,64 +331,51 @@ class TestGenReferringOidRecord:
 
 
 class TestGenOidClass:
-    pytestmark = pytest.mark.xfail(
-        reason="test data uses old pickle format b'\\nClassA\\n{}'; needs msgpack-format update",
-        strict=False,
-    )
+    """gen_oid_class yields ``(oid, class_name)`` pairs for each record."""
 
     def test_all_classes(self):
         # Root references _oid(1), so both are reachable
-        record1 = _pack(ROOT_OID, b"\nClassA\n{}", _oid(1))
-        record2 = _pack(_oid(1), b"\nClassB\n{}", b"")
+        record1 = _pack(ROOT_OID, _encode_state("ClassA"), _oid(1))
+        record2 = _pack(_oid(1), _encode_state("ClassB"), b"")
         ms = MemoryStorage()
         ms.records.update({ROOT_OID: record1, _oid(1): record2})
 
         result = dict(gen_oid_class(ms))
         values = set(result.values())
-        assert b"ClassA" in values
-        assert b"ClassB" in values
+        assert "ClassA" in values
+        assert "ClassB" in values
 
     def test_filter_by_class(self):
-        record1 = _pack(ROOT_OID, b"\nClassA\n{}", _oid(1))
-        record2 = _pack(_oid(1), b"\nClassB\n{}", b"")
+        record1 = _pack(ROOT_OID, _encode_state("ClassA"), _oid(1))
+        record2 = _pack(_oid(1), _encode_state("ClassB"), b"")
         ms = MemoryStorage()
         ms.records.update({ROOT_OID: record1, _oid(1): record2})
 
-        result = dict(gen_oid_class(ms, b"ClassA"))
+        result = dict(gen_oid_class(ms, "ClassA"))
         values = set(result.values())
-        assert b"ClassA" in values
-        assert b"ClassB" not in values
+        assert "ClassA" in values
+        assert "ClassB" not in values
 
 
 class TestGetCensus:
-    pytestmark = pytest.mark.xfail(
-        reason="test data uses old pickle format; needs msgpack-format update",
-        strict=False,
-    )
+    """get_census returns ``{class_name: count}`` over the storage."""
 
-
-# ===========================================================================
-# get_census
-# ===========================================================================
-
-
-class TestGetCensus:
     def test_counts_classes(self):
         # Root -> _oid(1), Root -> _oid(2)
-        record1 = _pack(ROOT_OID, b"\nClassA\n{}", _oid(1) + _oid(2))
-        record2 = _pack(_oid(1), b"\nClassA\n{}", b"")
-        record3 = _pack(_oid(2), b"\nClassB\n{}", b"")
+        record1 = _pack(ROOT_OID, _encode_state("ClassA"), _oid(1) + _oid(2))
+        record2 = _pack(_oid(1), _encode_state("ClassA"), b"")
+        record3 = _pack(_oid(2), _encode_state("ClassB"), b"")
         ms = MemoryStorage()
         ms.records.update({ROOT_OID: record1, _oid(1): record2, _oid(2): record3})
 
         census = get_census(ms)
-        assert census == {b"ClassA": 2, b"ClassB": 1}
+        assert census == {"ClassA": 2, "ClassB": 1}
 
     def test_single_class(self):
         ms = MemoryStorage()
-        ms.records[ROOT_OID] = _pack(ROOT_OID, b"\nOnlyClass\n{}", b"")
+        ms.records[ROOT_OID] = _pack(ROOT_OID, _encode_state("OnlyClass"), b"")
         census = get_census(ms)
-        assert census == {b"OnlyClass": 1}
+        assert census == {"OnlyClass": 1}
 
 
 # ===========================================================================

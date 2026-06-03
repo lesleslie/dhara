@@ -79,9 +79,14 @@ class TestConfigureReadline:
         with patch.dict(sys.modules, {"readline": MagicMock(), "rlcompleter": MagicMock()}):
             configure_readline({}, "/tmp/nonexistent_history")
 
-    @patch("dhara.__main__.os.path.exists", return_value=True)
-    def test_existing_history_file_is_read(self, mock_exists):
+    def test_existing_history_file_is_read(self, tmp_path):
+        """When the history file exists, ``readline.read_history_file`` is called."""
         from dhara.__main__ import configure_readline
+
+        # Use a real file (not a mock of ``os.path.exists``) so the production
+        # code's ``Path(history_path).exists()`` check sees the file.
+        history_path = tmp_path / "existing_history"
+        history_path.write_text("")
 
         mock_readline = MagicMock()
         mock_rlcompleter = MagicMock()
@@ -92,9 +97,9 @@ class TestConfigureReadline:
             {"readline": mock_readline, "rlcompleter": mock_rlcompleter},
         ):
             with patch("atexit.register"):
-                configure_readline({}, "/tmp/existing_history")
+                configure_readline({}, str(history_path))
 
-        mock_readline.read_history_file.assert_called_once_with("/tmp/existing_history")
+        mock_readline.read_history_file.assert_called_once_with(str(history_path))
 
     @patch("dhara.__main__.os.path.exists", return_value=False)
     def test_history_is_written_on_exit(self, mock_exists):

@@ -240,7 +240,8 @@ class TestSqliteStorageSync:
         store.invalid.add(_oid(1))
         store.invalid.add(_oid(2))
         result = store.sync()
-        assert set(result) == {_oid(1), _oid(2)}
+        assert sorted(result) == sorted([_oid(1), _oid(2)])
+        # ``invalid`` is cleared on sync, so the second call returns ``[]``.
         assert store.sync() == []
 
 
