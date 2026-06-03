@@ -29,7 +29,7 @@ from dhara.backup.verification import BackupVerification, CheckResult
 def _make_metadata(
     backup_id: str = "backup-001",
     backup_type: BackupType = BackupType.FULL,
-    source_path: str = "/tmp/nonexistent_backup.durus",
+    source_path: str = "/tmp/nonexistent_backup.dhara",
     size_bytes: int = 1024,
     checksum: str = "abc123",
     compression_ratio: float = 0.5,
@@ -172,7 +172,7 @@ class TestCheckBackupIntegrity:
 
     def test_file_not_found(self, tmp_path):
         bv = BackupVerification(backup_dir=str(tmp_path))
-        meta = _make_metadata(source_path="/no/such/file.durus")
+        meta = _make_metadata(source_path="/no/such/file.dhara")
         result = bv.check_backup_integrity(meta)
         assert result.check_name == "integrity_check"
         assert result.status == "failed"
@@ -181,7 +181,7 @@ class TestCheckBackupIntegrity:
     def test_file_size_mismatch(self, tmp_path):
         bv = BackupVerification(backup_dir=str(tmp_path))
         content = b"small content"
-        path = tmp_path / "backup.durus"
+        path = tmp_path / "backup.dhara"
         path.write_bytes(content)
         meta = _make_metadata(
             source_path=str(path),
@@ -197,7 +197,7 @@ class TestCheckBackupIntegrity:
     def test_checksum_mismatch(self, tmp_path):
         bv = BackupVerification(backup_dir=str(tmp_path))
         content = b"hello world"
-        path = tmp_path / "backup.durus"
+        path = tmp_path / "backup.dhara"
         path.write_bytes(content)
         meta = _make_metadata(
             source_path=str(path),
@@ -213,7 +213,7 @@ class TestCheckBackupIntegrity:
     def test_valid_file(self, tmp_path):
         bv = BackupVerification(backup_dir=str(tmp_path))
         content = b"valid backup data here"
-        path = tmp_path / "backup.durus"
+        path = tmp_path / "backup.dhara"
         path.write_bytes(content)
         checksum = hashlib.sha256(content).hexdigest()
         meta = _make_metadata(
@@ -306,7 +306,7 @@ class TestPerformTestRestore:
             backup_dir=str(tmp_path),
             test_restore_dir=str(tmp_path / "test_restores"),
         )
-        meta = _make_metadata(source_path="/no/such/file.durus", backup_id="missing")
+        meta = _make_metadata(source_path="/no/such/file.dhara", backup_id="missing")
         result = bv.perform_test_restore(meta)
         assert result.check_name == "test_restore"
         assert result.status == "failed"
@@ -320,7 +320,7 @@ class TestPerformTestRestore:
         )
         # Create a file larger than 1 MB
         big_content = b"x" * (2 * 1024 * 1024)
-        path = tmp_path / "big_backup.durus"
+        path = tmp_path / "big_backup.dhara"
         path.write_bytes(big_content)
         meta = _make_metadata(source_path=str(path), backup_id="big", size_bytes=len(big_content))
         result = bv.perform_test_restore(meta)
@@ -333,7 +333,7 @@ class TestPerformTestRestore:
             test_restore_dir=str(tmp_path / "test_restores"),
         )
         content = b"valid backup"
-        path = tmp_path / "backup.durus"
+        path = tmp_path / "backup.dhara"
         path.write_bytes(content)
         meta = _make_metadata(source_path=str(path), backup_id="good")
 
@@ -342,7 +342,7 @@ class TestPerformTestRestore:
             MockRM.return_value = mock_instance
             mock_instance.verify_restore.return_value = True
             mock_instance._restore_from_backup.return_value = str(
-                tmp_path / "test_restores" / "test_restore_good" / "test_db.durus"
+                tmp_path / "test_restores" / "test_restore_good" / "test_db.dhara"
             )
 
             result = bv.perform_test_restore(meta)
@@ -360,7 +360,7 @@ class TestPerformTestRestore:
             test_restore_dir=str(tmp_path / "test_restores"),
         )
         content = b"bad backup"
-        path = tmp_path / "backup.durus"
+        path = tmp_path / "backup.dhara"
         path.write_bytes(content)
         meta = _make_metadata(source_path=str(path), backup_id="bad")
 
@@ -369,7 +369,7 @@ class TestPerformTestRestore:
             MockRM.return_value = mock_instance
             mock_instance.verify_restore.return_value = False
             mock_instance._restore_from_backup.return_value = str(
-                tmp_path / "test_restores" / "test_restore_bad" / "test_db.durus"
+                tmp_path / "test_restores" / "test_restore_bad" / "test_db.dhara"
             )
 
             result = bv.perform_test_restore(meta)
@@ -385,7 +385,7 @@ class TestPerformTestRestore:
             test_restore_dir=str(tmp_path / "test_restores"),
         )
         content = b"error backup"
-        path = tmp_path / "backup.durus"
+        path = tmp_path / "backup.dhara"
         path.write_bytes(content)
         meta = _make_metadata(source_path=str(path), backup_id="err")
 
@@ -406,7 +406,7 @@ class TestPerformTestRestore:
             test_restore_dir=str(tmp_path / "test_restores"),
         )
         content = b"error backup"
-        path = tmp_path / "backup.durus"
+        path = tmp_path / "backup.dhara"
         path.write_bytes(content)
         meta = _make_metadata(source_path=str(path), backup_id="missing-dir")
 
@@ -426,7 +426,7 @@ class TestPerformTestRestore:
             test_restore_dir=str(tmp_path / "test_restores"),
         )
         content = b"error backup"
-        path = tmp_path / "backup.durus"
+        path = tmp_path / "backup.dhara"
         path.write_bytes(content)
         meta = _make_metadata(source_path=str(path), backup_id="mkdir-fails")
 
@@ -658,7 +658,7 @@ class TestRunAllChecks:
     def test_specific_backup_runs_all_five_checks(self, tmp_path):
         bv = BackupVerification(backup_dir=str(tmp_path))
         content = b"backup data for full test"
-        path = tmp_path / "backup.durus"
+        path = tmp_path / "backup.dhara"
         path.write_bytes(content)
         checksum = hashlib.sha256(content).hexdigest()
         meta = _make_metadata(
@@ -674,7 +674,7 @@ class TestRunAllChecks:
             mock_rm = MagicMock()
             MockRM.return_value = mock_rm
             mock_rm.verify_restore.return_value = True
-            mock_rm._restore_from_backup.return_value = "test_db.durus"
+            mock_rm._restore_from_backup.return_value = "test_db.dhara"
 
             mock_cat = MagicMock()
             MockCatalog.return_value = mock_cat
@@ -698,7 +698,7 @@ class TestRunAllChecks:
     def test_non_incremental_runs_four_checks(self, tmp_path):
         bv = BackupVerification(backup_dir=str(tmp_path))
         content = b"full backup data"
-        path = tmp_path / "backup.durus"
+        path = tmp_path / "backup.dhara"
         path.write_bytes(content)
         checksum = hashlib.sha256(content).hexdigest()
         meta = _make_metadata(
@@ -712,7 +712,7 @@ class TestRunAllChecks:
             mock_rm = MagicMock()
             MockRM.return_value = mock_rm
             mock_rm.verify_restore.return_value = True
-            mock_rm._restore_from_backup.return_value = "test_db.durus"
+            mock_rm._restore_from_backup.return_value = "test_db.dhara"
 
             results = bv.run_all_checks(meta)
 
@@ -726,7 +726,7 @@ class TestRunAllChecks:
     def test_differential_runs_chain_check(self, tmp_path):
         bv = BackupVerification(backup_dir=str(tmp_path))
         content = b"differential backup data"
-        path = tmp_path / "backup.durus"
+        path = tmp_path / "backup.dhara"
         path.write_bytes(content)
         checksum = hashlib.sha256(content).hexdigest()
         meta = _make_metadata(
@@ -742,7 +742,7 @@ class TestRunAllChecks:
             mock_rm = MagicMock()
             MockRM.return_value = mock_rm
             mock_rm.verify_restore.return_value = True
-            mock_rm._restore_from_backup.return_value = "test_db.durus"
+            mock_rm._restore_from_backup.return_value = "test_db.dhara"
 
             mock_cat = MagicMock()
             MockCatalog.return_value = mock_cat

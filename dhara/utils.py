@@ -2,7 +2,7 @@
 $URL$
 $Id$
 
-In Durus names, 'int4' is an unsigned 32-bit whole number,
+In Dhara names, 'int4' is an unsigned 32-bit whole number,
 and 'int8' is an unsigned 64-bit whole number.
 """
 

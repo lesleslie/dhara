@@ -248,7 +248,7 @@ class BackupManager:
 
         # Create temporary directory for backup
         with tempfile.TemporaryDirectory() as temp_dir:
-            backup_path = os.path.join(temp_dir, "full_backup.durus")
+            backup_path = os.path.join(temp_dir, "full_backup.dhara")
 
             # Copy database files
             if isinstance(self.storage, FileStorage):
@@ -271,7 +271,7 @@ class BackupManager:
                 final_path = compressed_path
 
             # Store the backup
-            backup_filename = f"full_backup_{int(time.time())}.durus.zst"
+            backup_filename = f"full_backup_{int(time.time())}.dhara.zst"
             if self.encryption:
                 backup_filename += ".enc"
 
@@ -311,7 +311,7 @@ class BackupManager:
             raise ValueError("Incremental backup requires a full backup as parent")
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            backup_path = os.path.join(temp_dir, "incremental_backup.durus")
+            backup_path = os.path.join(temp_dir, "incremental_backup.dhara")
 
             # Copy changes since last backup
             # This is simplified - in practice, you'd track changes
@@ -331,7 +331,7 @@ class BackupManager:
                 final_path = compressed_path
 
             # Store the backup
-            backup_filename = f"incremental_backup_{int(time.time())}.durus.zst"
+            backup_filename = f"incremental_backup_{int(time.time())}.dhara.zst"
             if self.encryption:
                 backup_filename += ".enc"
 
@@ -368,7 +368,7 @@ class BackupManager:
             raise ValueError("No full backup found for differential backup")
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            backup_path = os.path.join(temp_dir, "differential_backup.durus")
+            backup_path = os.path.join(temp_dir, "differential_backup.dhara")
 
             # Copy changes since last full backup
             if isinstance(self.storage, FileStorage):
@@ -387,7 +387,7 @@ class BackupManager:
                 final_path = compressed_path
 
             # Store the backup
-            backup_filename = f"differential_backup_{int(time.time())}.durus.zst"
+            backup_filename = f"differential_backup_{int(time.time())}.dhara.zst"
             if self.encryption:
                 backup_filename += ".enc"
 
@@ -422,14 +422,14 @@ class BackupManager:
             # Upload file and metadata
             self.cloud_adapter.upload_file(
                 backup_path,
-                f"durus_backups/{backup_metadata.backup_id}/{backup_path.name}",
+                f"dhara_backups/{backup_metadata.backup_id}/{backup_path.name}",
             )
 
             # Upload metadata
             metadata_json = backup_metadata.to_dict()
             self.cloud_adapter.upload_json(
                 metadata_json,
-                f"durus_backups/{backup_metadata.backup_id}/metadata.json",
+                f"dhara_backups/{backup_metadata.backup_id}/metadata.json",
             )
 
             self.logger.info(

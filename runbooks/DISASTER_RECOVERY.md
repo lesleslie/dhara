@@ -215,7 +215,7 @@ This runbook covers:
 
    ```bash
    # Check database status
-   systemctl status durus-server
+   systemctl status dhara-server
 
    # Check disk usage
    du -sh /backup/*
@@ -244,28 +244,28 @@ This runbook covers:
 
 ```bash
 # Check backup catalog
-python -m durus.backup.catalog --list-backups --days 7
+python -m dhara.backup.catalog --list-backups --days 7
 
 # Verify backup integrity
-python -m durus.backup.verification --check-all --backup latest
+python -m dhara.backup.verification --check-all --backup latest
 
 # Test restore to staging
-python -m durus.backup.restore --test --backup latest
+python -m dhara.backup.restore --test --backup latest
 ```
 
 #### Recovery Procedures
 
 ```bash
 # Restore from backup
-python -m durus.backup.restore \
-  --target /data/recovered_db.durus \
+python -m dhara.backup.restore \
+  --target /data/recovered_db.dhara \
   --backup-id full_backup_20240101_020000
 
 # Start recovered database
-systemctl start durus-server --recovered
+systemctl start dhara-server --recovered
 
 # Verify recovery
-python -m durus.backup.verify --connection "localhost:2972" --health-check
+python -m dhara.backup.verify --connection "localhost:2972" --health-check
 ```
 
 #### Performance Tuning
@@ -325,19 +325,19 @@ load_test_recovery.sh
 
 ```bash
 # Isolate database
-pkill -f durus-server
-mv /data/corrupted_db.durus /data/corrupted_db.durus.bak
+pkill -f dhara-server
+mv /data/corrupted_db.dhara /data/corrupted_db.dhara.bak
 
 # Find backup
-python -m durus.backup.catalog --list-corrupted --since "1 hour ago"
+python -m dhara.backup.catalog --list-corrupted --since "1 hour ago"
 
 # Restore
-python -m durus.backup.restore \
-  --target /data/recovered_db.durus \
+python -m dhara.backup.restore \
+  --target /data/recovered_db.dhara \
   --time "2024-01-01 12:00:00"
 
 # Verify
-python -m durus.backup.verify --integrity --performance
+python -m dhara.backup.verify --integrity --performance
 ```
 
 ### Hardware Failure
@@ -362,8 +362,8 @@ hardware_health_check.sh
 activate_standby_server.sh
 
 # Restore to standby
-python -m durus.backup.restore \
-  --target /standby/data/db.durus \
+python -m dhara.backup.restore \
+  --target /standby/data/db.dhara \
   --backup latest
 
 # Test failover
@@ -389,8 +389,8 @@ test_failover.sh
 activate_dr_site.sh
 
 # Restore from cloud
-python -m durus.backup.restore \
-  --target /dr/data/db.durus \
+python -m dhara.backup.restore \
+  --target /dr/data/db.dhara \
   --cloud --backup latest
 
 # Replicate data
@@ -422,8 +422,8 @@ isolate_infected_systems.sh
 malware_scan.sh /all
 
 # Restore from clean backup
-python -m durus.backup.restore \
-  --target /clean_data/db.durus \
+python -m dhara.backup.restore \
+  --target /clean_data/db.dhara \
   --backup "clean_backup_20240101"
 
 # Change credentials

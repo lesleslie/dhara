@@ -6,7 +6,7 @@ Covers the helper functions used by CLI entry points:
 - import_class() - dynamically imports a class by dotted name
 - get_storage() - gets a storage instance
 - usage() - prints usage information
-- start_durus() / stop_durus() - server lifecycle helpers
+- start_dhara() / stop_dhara() - server lifecycle helpers
 - configure_readline() - readline setup helper
 - SecurityWarning - custom warning class
 """
@@ -137,7 +137,7 @@ class TestGetStorageClass:
         from dhara.__main__ import get_storage_class
 
         with patch("dhara.__main__.os.path.exists", return_value=False):
-            result = get_storage_class("/nonexistent/path.durus")
+            result = get_storage_class("/nonexistent/path.dhara")
 
         from dhara.storage.file import FileStorage
 
@@ -151,7 +151,7 @@ class TestGetStorageClass:
         with patch("dhara.__main__.os.path.exists", return_value=True):
             with patch("builtins.open", return_value=mock_file):
                 with pytest.raises(ValueError, match="DFS20"):
-                    get_storage_class("test.durus")
+                    get_storage_class("test.dhara")
 
     def test_sqlite_header_returns_sqlite_storage(self):
         """A file starting with b'SQLite format ' returns SqliteStorage.
@@ -205,7 +205,7 @@ class TestGetStorageClass:
         with patch("dhara.__main__.os.path.exists", return_value=True):
             with patch("builtins.open", return_value=mock_file):
                 with pytest.raises(ValueError, match="unknown storage type"):
-                    get_storage_class("empty.durus")
+                    get_storage_class("empty.dhara")
 
     def test_short_file_raises_value_error(self):
         """A file with fewer than 20 bytes but no valid header raises ValueError."""
@@ -215,7 +215,7 @@ class TestGetStorageClass:
         with patch("dhara.__main__.os.path.exists", return_value=True):
             with patch("builtins.open", return_value=mock_file):
                 with pytest.raises(ValueError, match="unknown storage type"):
-                    get_storage_class("short.durus")
+                    get_storage_class("short.dhara")
 
     def test_dfs20_header_raises_with_clear_message(self):
         """DFS20 refusal message clearly states the format is no longer supported."""
@@ -227,7 +227,7 @@ class TestGetStorageClass:
         with patch("dhara.__main__.os.path.exists", return_value=True):
             with patch("builtins.open", return_value=mock_file):
                 with pytest.raises(ValueError, match="DFS20") as excinfo:
-                    get_storage_class("exact.durus")
+                    get_storage_class("exact.dhara")
 
         assert "no longer supported" in str(excinfo.value)
 
@@ -303,9 +303,9 @@ class TestGetStorage:
 
         mock_storage_cls = MagicMock(return_value=MagicMock())
         with patch("dhara.__main__.import_class", return_value=mock_storage_cls):
-            result = get_storage("test.durus", storage_class="some.Module")
+            result = get_storage("test.dhara", storage_class="some.Module")
 
-        mock_storage_cls.assert_called_once_with("test.durus")
+        mock_storage_cls.assert_called_once_with("test.dhara")
         assert result == mock_storage_cls.return_value
 
     def test_with_none_file_and_no_storage_class(self):
@@ -325,9 +325,9 @@ class TestGetStorage:
 
         mock_storage_cls = MagicMock(return_value=MagicMock())
         with patch("dhara.__main__.get_storage_class", return_value=mock_storage_cls):
-            result = get_storage("existing.durus", storage_class=None)
+            result = get_storage("existing.dhara", storage_class=None)
 
-        mock_storage_cls.assert_called_once_with("existing.durus")
+        mock_storage_cls.assert_called_once_with("existing.dhara")
         assert result == mock_storage_cls.return_value
 
     def test_passes_kwargs_to_storage_class(self):
@@ -337,14 +337,14 @@ class TestGetStorage:
         mock_storage_cls = MagicMock(return_value=MagicMock())
         with patch("dhara.__main__.import_class", return_value=mock_storage_cls):
             _ = get_storage(
-                "test.durus",
+                "test.dhara",
                 storage_class="some.Module",
                 readonly=True,
                 repair=False,
             )
 
         mock_storage_cls.assert_called_once_with(
-            "test.durus", readonly=True, repair=False
+            "test.dhara", readonly=True, repair=False
         )
 
     def test_storage_class_none_with_file_delegates(self):
@@ -353,10 +353,10 @@ class TestGetStorage:
 
         mock_cls = MagicMock(return_value="storage_instance")
         with patch("dhara.__main__.get_storage_class", return_value=mock_cls):
-            result = get_storage("mydata.durus")
+            result = get_storage("mydata.dhara")
 
         assert result == "storage_instance"
-        mock_cls.assert_called_once_with("mydata.durus")
+        mock_cls.assert_called_once_with("mydata.dhara")
 
 
 # ---------------------------------------------------------------------------
@@ -376,7 +376,7 @@ class TestUsage:
 
         mock_stdout.write.assert_called_once()
         written = mock_stdout.write.call_args[0][0]
-        assert "durus" in written
+        assert "dhara" in written
         assert "-s" in written
         assert "-c" in written
         assert "-p" in written
@@ -396,12 +396,12 @@ class TestUsage:
 
 
 # ---------------------------------------------------------------------------
-# start_durus
+# start_dhara
 # ---------------------------------------------------------------------------
 
 
-class TestStartDurus:
-    """Tests for start_durus server lifecycle helper."""
+class TestStartDhara:
+    """Tests for start_dhara server lifecycle helper."""
 
     @patch("dhara.__main__.StorageServer")
     @patch("dhara.__main__.SocketAddress")
@@ -411,13 +411,13 @@ class TestStartDurus:
         self, mock_direct_output, mock_logger, mock_sa, mock_ss
     ):
         """When logfile is None, sys.stderr is used for log output."""
-        from dhara.__main__ import start_durus
+        from dhara.__main__ import start_dhara
 
         mock_storage = MagicMock()
         mock_address = MagicMock()
         mock_sa.new.return_value = mock_address
 
-        start_durus(None, 20, ("localhost", 2970), mock_storage, 100000000)
+        start_dhara(None, 20, ("localhost", 2970), mock_storage, 100000000)
 
         mock_direct_output.assert_called_once_with(sys.stderr)
         mock_logger.setLevel.assert_called_once_with(20)
@@ -431,14 +431,14 @@ class TestStartDurus:
         self, mock_open, mock_direct_output, mock_logger, mock_sa, mock_ss
     ):
         """When a logfile path is given, it is opened for appending."""
-        from dhara.__main__ import start_durus
+        from dhara.__main__ import start_dhara
 
         mock_storage = MagicMock()
         mock_address = MagicMock()
         mock_sa.new.return_value = mock_address
         mock_open.return_value = MagicMock()
 
-        start_durus("server.log", 30, ("localhost", 2970), mock_storage, 100000000)
+        start_dhara("server.log", 30, ("localhost", 2970), mock_storage, 100000000)
 
         mock_open.assert_called_once_with("server.log", "a+")
         mock_direct_output.assert_called_once_with(mock_open.return_value)
@@ -452,18 +452,18 @@ class TestStartDurus:
         self, mock_log, mock_direct_output, mock_logger, mock_sa, mock_ss
     ):
         """When storage has get_filename, it is included in the log message."""
-        from dhara.__main__ import start_durus
+        from dhara.__main__ import start_dhara
 
         mock_storage = MagicMock()
-        mock_storage.get_filename.return_value = "data.durus"
+        mock_storage.get_filename.return_value = "data.dhara"
         mock_address = MagicMock()
         mock_sa.new.return_value = mock_address
 
-        start_durus(None, 20, ("localhost", 2970), mock_storage, 100000000)
+        start_dhara(None, 20, ("localhost", 2970), mock_storage, 100000000)
 
         mock_log.assert_called_once()
         log_args = mock_log.call_args
-        assert "data.durus" in str(log_args)
+        assert "data.dhara" in str(log_args)
 
     @patch("dhara.__main__.StorageServer")
     @patch("dhara.__main__.SocketAddress")
@@ -474,13 +474,13 @@ class TestStartDurus:
         self, mock_log, mock_direct_output, mock_logger, mock_sa, mock_ss
     ):
         """When storage lacks get_filename, no filename log is emitted."""
-        from dhara.__main__ import start_durus
+        from dhara.__main__ import start_dhara
 
         mock_storage = MagicMock(spec=[])  # No get_filename attribute
         mock_address = MagicMock()
         mock_sa.new.return_value = mock_address
 
-        start_durus(None, 20, ("localhost", 2970), mock_storage, 100000000)
+        start_dhara(None, 20, ("localhost", 2970), mock_storage, 100000000)
 
         mock_log.assert_not_called()
 
@@ -491,8 +491,8 @@ class TestStartDurus:
     def test_creates_storage_server_and_serves(
         self, mock_direct_output, mock_logger, mock_sa, mock_ss
     ):
-        """start_durus creates a StorageServer and calls serve()."""
-        from dhara.__main__ import start_durus
+        """start_dhara creates a StorageServer and calls serve()."""
+        from dhara.__main__ import start_dhara
 
         mock_storage = MagicMock()
         mock_address = MagicMock()
@@ -500,7 +500,7 @@ class TestStartDurus:
         mock_server_instance = MagicMock()
         mock_ss.return_value = mock_server_instance
 
-        start_durus(None, 20, ("localhost", 2970), mock_storage, 500000000)
+        start_dhara(None, 20, ("localhost", 2970), mock_storage, 500000000)
 
         mock_ss.assert_called_once_with(
             mock_storage,
@@ -518,14 +518,14 @@ class TestStartDurus:
         self, mock_direct_output, mock_logger, mock_sa, mock_ss
     ):
         """TLS config is forwarded to StorageServer."""
-        from dhara.__main__ import start_durus
+        from dhara.__main__ import start_dhara
 
         mock_storage = MagicMock()
         mock_address = MagicMock()
         mock_sa.new.return_value = mock_address
         mock_tls = MagicMock()
 
-        start_durus(
+        start_dhara(
             None, 20, ("localhost", 2970), mock_storage, 100000000,
             tls_config=mock_tls,
         )
@@ -539,12 +539,12 @@ class TestStartDurus:
 
 
 # ---------------------------------------------------------------------------
-# stop_durus
+# stop_dhara
 # ---------------------------------------------------------------------------
 
 
-class TestStopDurus:
-    """Tests for stop_durus server shutdown helper."""
+class TestStopDhara:
+    """Tests for stop_dhara server shutdown helper."""
 
     @patch("dhara.__main__.SocketAddress")
     @patch("dhara.__main__.write")
@@ -554,13 +554,13 @@ class TestStopDurus:
         self, mock_log, mock_sleep, mock_write, mock_sa
     ):
         """When the server socket cannot be connected, returns False."""
-        from dhara.__main__ import stop_durus
+        from dhara.__main__ import stop_dhara
 
         mock_address = MagicMock()
         mock_address.get_connected_socket.return_value = None
         mock_sa.new.return_value = mock_address
 
-        result = stop_durus(("localhost", 2970))
+        result = stop_dhara(("localhost", 2970))
 
         assert result is False
         mock_log.assert_called_once()
@@ -574,7 +574,7 @@ class TestStopDurus:
         self, mock_log, mock_sleep, mock_write, mock_sa
     ):
         """When server is reachable, sends 'Q' and returns True."""
-        from dhara.__main__ import stop_durus
+        from dhara.__main__ import stop_dhara
 
         mock_sock = MagicMock()
         mock_address = MagicMock()
@@ -585,7 +585,7 @@ class TestStopDurus:
         ]
         mock_sa.new.return_value = mock_address
 
-        result = stop_durus(("localhost", 2970))
+        result = stop_dhara(("localhost", 2970))
 
         assert result is True
         mock_write.assert_called_once_with(mock_sock, "Q")
@@ -596,8 +596,8 @@ class TestStopDurus:
     @patch("dhara.__main__.sleep")
     @patch("dhara.__main__.log")
     def test_retries_until_server_gone(self, mock_log, mock_sleep, mock_write, mock_sa):
-        """stop_durus polls up to 20 times waiting for the server to stop."""
-        from dhara.__main__ import stop_durus
+        """stop_dhara polls up to 20 times waiting for the server to stop."""
+        from dhara.__main__ import stop_dhara
 
         mock_sock = MagicMock()
         mock_address = MagicMock()
@@ -612,7 +612,7 @@ class TestStopDurus:
         ]
         mock_sa.new.return_value = mock_address
 
-        result = stop_durus(("localhost", 2970))
+        result = stop_dhara(("localhost", 2970))
 
         assert result is True
         # sleep is called between retries
@@ -624,7 +624,7 @@ class TestStopDurus:
     @patch("dhara.__main__.log")
     def test_closes_retry_sockets(self, mock_log, mock_sleep, mock_write, mock_sa):
         """Sockets opened during retry polling are closed."""
-        from dhara.__main__ import stop_durus
+        from dhara.__main__ import stop_dhara
 
         mock_sock = MagicMock()
         retry_sock = MagicMock()
@@ -636,7 +636,7 @@ class TestStopDurus:
         ]
         mock_sa.new.return_value = mock_address
 
-        result = stop_durus(("localhost", 2970))
+        result = stop_dhara(("localhost", 2970))
 
         assert result is True
         # The retry socket should be closed
@@ -648,7 +648,7 @@ class TestStopDurus:
     @patch("dhara.__main__.log")
     def test_max_retries_exhausted(self, mock_log, mock_sleep, mock_write, mock_sa):
         """After 20 retries with server still running, returns True anyway."""
-        from dhara.__main__ import stop_durus
+        from dhara.__main__ import stop_dhara
 
         mock_sock = MagicMock()
         mock_address = MagicMock()
@@ -658,7 +658,7 @@ class TestStopDurus:
         ] + [MagicMock()] * 20
         mock_sa.new.return_value = mock_address
 
-        result = stop_durus(("localhost", 2970))
+        result = stop_dhara(("localhost", 2970))
 
         assert result is True
         assert mock_sleep.call_count == 20
@@ -668,16 +668,16 @@ class TestStopDurus:
     @patch("dhara.__main__.sleep")
     @patch("dhara.__main__.log")
     def test_unix_socket_address(self, mock_log, mock_sleep, mock_write, mock_sa):
-        """stop_durus works with unix socket address strings."""
-        from dhara.__main__ import stop_durus
+        """stop_dhara works with unix socket address strings."""
+        from dhara.__main__ import stop_dhara
 
         mock_address = MagicMock()
         mock_address.get_connected_socket.return_value = None
         mock_sa.new.return_value = mock_address
 
-        result = stop_durus("/tmp/durus.sock")
+        result = stop_dhara("/tmp/dhara.sock")
 
-        mock_sa.new.assert_called_once_with("/tmp/durus.sock")
+        mock_sa.new.assert_called_once_with("/tmp/dhara.sock")
         assert result is False
 
 
@@ -693,7 +693,7 @@ class TestMain:
         """When no arguments are provided, usage() is called."""
         from dhara.__main__ import main
 
-        with patch("sys.argv", ["durus"]):
+        with patch("sys.argv", ["dhara"]):
             with patch("dhara.__main__.usage") as mock_usage:
                 main()
 
@@ -703,18 +703,18 @@ class TestMain:
         """The -c flag dispatches to client_main."""
         from dhara.__main__ import main
 
-        with patch("sys.argv", ["durus", "-c"]):
+        with patch("sys.argv", ["dhara", "-c"]):
             with patch("dhara.__main__.client_main") as mock_client:
                 main()
 
         mock_client.assert_called_once()
 
-    def test_server_flag_calls_run_durus_main(self):
-        """The -s flag dispatches to run_durus_main."""
+    def test_server_flag_calls_run_dhara_main(self):
+        """The -s flag dispatches to run_dhara_main."""
         from dhara.__main__ import main
 
-        with patch("sys.argv", ["durus", "-s"]):
-            with patch("dhara.__main__.run_durus_main") as mock_server:
+        with patch("sys.argv", ["dhara", "-s"]):
+            with patch("dhara.__main__.run_dhara_main") as mock_server:
                 main()
 
         mock_server.assert_called_once()
@@ -723,7 +723,7 @@ class TestMain:
         """The -p flag dispatches to pack_storage_main."""
         from dhara.__main__ import main
 
-        with patch("sys.argv", ["durus", "-p"]):
+        with patch("sys.argv", ["dhara", "-p"]):
             with patch("dhara.__main__.pack_storage_main") as mock_pack:
                 main()
 
@@ -733,7 +733,7 @@ class TestMain:
         """An unrecognized flag calls usage instead of crashing."""
         from dhara.__main__ import main
 
-        with patch("sys.argv", ["durus", "--bogus"]):
+        with patch("sys.argv", ["dhara", "--bogus"]):
             with patch("dhara.__main__.usage") as mock_usage:
                 main()
 
@@ -743,13 +743,13 @@ class TestMain:
         """main() removes the mode flag from sys.argv before calling subcommand."""
         from dhara.__main__ import main
 
-        original_argv = ["durus", "-s", "--port", "9999"]
+        original_argv = ["dhara", "-s", "--port", "9999"]
 
         with patch("sys.argv", original_argv):
-            with patch("dhara.__main__.run_durus_main") as mock_server:
+            with patch("dhara.__main__.run_dhara_main") as mock_server:
                 # Verify sys.argv was modified before the subcommand runs
                 def check_argv():
-                    assert sys.argv == ["durus", "--port", "9999"]
+                    assert sys.argv == ["dhara", "--port", "9999"]
 
                 mock_server.side_effect = check_argv
                 main()
@@ -758,7 +758,7 @@ class TestMain:
         """The -h flag calls usage (it is not a recognized mode)."""
         from dhara.__main__ import main
 
-        with patch("sys.argv", ["durus", "-h"]):
+        with patch("sys.argv", ["dhara", "-h"]):
             with patch("dhara.__main__.usage") as mock_usage:
                 main()
 
@@ -766,7 +766,7 @@ class TestMain:
 
 
 # ---------------------------------------------------------------------------
-# client_main / run_durus_main / pack_storage_main / interactive_client
+# client_main / run_dhara_main / pack_storage_main / interactive_client
 # ---------------------------------------------------------------------------
 
 
@@ -814,7 +814,7 @@ class TestCliEntryPoints:
             file=None,
             host="localhost",
             port=2970,
-            address="/tmp/durus.sock",
+            address="/tmp/dhara.sock",
             storage=None,
             cache_size=10000,
             readonly=False,
@@ -831,7 +831,7 @@ class TestCliEntryPoints:
 
         mock_client.assert_called_once_with(
             None,
-            "/tmp/durus.sock",
+            "/tmp/dhara.sock",
             10000,
             False,
             False,
@@ -870,8 +870,8 @@ class TestCliEntryPoints:
         mock_log.assert_called_once()
         mock_client.assert_not_called()
 
-    def test_run_durus_main_start_and_stop_paths(self):
-        from dhara.__main__ import run_durus_main
+    def test_run_dhara_main_start_and_stop_paths(self):
+        from dhara.__main__ import run_dhara_main
 
         start_options = SimpleNamespace(
             port=2970,
@@ -899,22 +899,22 @@ class TestCliEntryPoints:
         with (
             self._parse_args(start_options),
             patch("dhara.__main__.get_storage", return_value=MagicMock()),
-            patch("dhara.__main__.start_durus") as mock_start,
+            patch("dhara.__main__.start_dhara") as mock_start,
             patch("dhara.__main__.SocketAddress.new", return_value="addr"),
         ):
-            run_durus_main()
+            run_dhara_main()
         mock_start.assert_called_once()
 
         with (
             self._parse_args(stop_options),
-            patch("dhara.__main__.stop_durus") as mock_stop,
+            patch("dhara.__main__.stop_dhara") as mock_stop,
             patch("dhara.__main__.SocketAddress.new", return_value="addr"),
         ):
-            run_durus_main()
+            run_dhara_main()
         mock_stop.assert_called_once_with("addr")
 
-    def test_run_durus_main_tls_generation_and_error(self):
-        from dhara.__main__ import run_durus_main
+    def test_run_dhara_main_tls_generation_and_error(self):
+        from dhara.__main__ import run_dhara_main
 
         generate_options = SimpleNamespace(
             port=2970,
@@ -944,7 +944,7 @@ class TestCliEntryPoints:
             patch("dhara.__main__.generate_self_signed_cert") as mock_gen,
             patch("dhara.__main__.log"),
         ):
-            run_durus_main()
+            run_dhara_main()
         mock_gen.assert_called_once_with("server.crt", "server.key", hostname="example.com")
 
         with (
@@ -952,7 +952,7 @@ class TestCliEntryPoints:
             patch("dhara.__main__.generate_self_signed_cert", side_effect=RuntimeError("boom")),
             patch("dhara.__main__.log") as mock_log,
         ):
-            run_durus_main()
+            run_dhara_main()
         assert mock_log.called
 
         with (
@@ -960,11 +960,11 @@ class TestCliEntryPoints:
             patch("dhara.__main__.TLSConfig", side_effect=ValueError("bad tls")),
             patch("dhara.__main__.log") as mock_log,
         ):
-            run_durus_main()
+            run_dhara_main()
         assert mock_log.called
 
-    def test_run_durus_main_tls_config_and_unix_address(self):
-        from dhara.__main__ import run_durus_main
+    def test_run_dhara_main_tls_config_and_unix_address(self):
+        from dhara.__main__ import run_dhara_main
 
         options = SimpleNamespace(
             port=2970,
@@ -972,7 +972,7 @@ class TestCliEntryPoints:
             host="localhost",
             storage=None,
             gcbytes=1000,
-            address="/tmp/durus.sock",
+            address="/tmp/dhara.sock",
             owner="owner",
             group="group",
             umask=0o077,
@@ -991,19 +991,19 @@ class TestCliEntryPoints:
             self._parse_args(options),
             patch("dhara.__main__.TLSConfig", return_value=MagicMock()) as mock_tls,
             patch("dhara.__main__.get_storage", return_value=MagicMock()),
-            patch("dhara.__main__.start_durus") as mock_start,
+            patch("dhara.__main__.start_dhara") as mock_start,
             patch("dhara.__main__.SocketAddress.new", return_value="addr") as mock_sa,
         ):
-            run_durus_main()
+            run_dhara_main()
 
         mock_tls.assert_called_once()
         mock_sa.assert_called_once_with(
-            address="/tmp/durus.sock", owner="owner", group="group", umask=0o077
+            address="/tmp/dhara.sock", owner="owner", group="group", umask=0o077
         )
         mock_start.assert_called_once()
 
-    def test_run_durus_main_without_af_unix_uses_tcp_address(self):
-        from dhara.__main__ import run_durus_main
+    def test_run_dhara_main_without_af_unix_uses_tcp_address(self):
+        from dhara.__main__ import run_dhara_main
 
         options = SimpleNamespace(
             port=2970,
@@ -1030,11 +1030,11 @@ class TestCliEntryPoints:
         with (
             self._parse_args(options),
             patch("dhara.__main__.get_storage", return_value=MagicMock()),
-            patch("dhara.__main__.start_durus") as mock_start,
+            patch("dhara.__main__.start_dhara") as mock_start,
             patch("dhara.__main__.socket") as mock_socket,
         ):
             del mock_socket.AF_UNIX
-            run_durus_main()
+            run_dhara_main()
 
         mock_start.assert_called_once()
 

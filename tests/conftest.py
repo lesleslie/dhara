@@ -24,7 +24,7 @@ def memory_storage():
 def temp_file_storage():
     from tempfile import mktemp
 
-    filename = mktemp(suffix=".durus")
+    filename = mktemp(suffix=".dhara")
     storage = FileStorage(filename)
     yield storage
     if exists(filename):

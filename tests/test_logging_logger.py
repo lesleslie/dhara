@@ -69,11 +69,11 @@ def test_get_logger_and_storage_logger(logger_mod, monkeypatch):
     storage_logger = logger_mod.get_storage_logger("file", "/data/my.db")
     bare_storage_logger = logger_mod.get_storage_logger("sqlite")
 
-    assert root_logger.logger_name == "durus"
-    assert child_logger.logger_name == "durus.storage"
-    assert conn_logger.logger_name == "durus.connection.conn-001"
-    assert storage_logger.logger_name == "durus.storage.file._data_my_db"
-    assert bare_storage_logger.logger_name == "durus.storage.sqlite"
+    assert root_logger.logger_name == "dhara"
+    assert child_logger.logger_name == "dhara.storage"
+    assert conn_logger.logger_name == "dhara.connection.conn-001"
+    assert storage_logger.logger_name == "dhara.storage.file._data_my_db"
+    assert bare_storage_logger.logger_name == "dhara.storage.sqlite"
 
 
 def test_log_operation_logs_success_and_failure(logger_mod, monkeypatch):

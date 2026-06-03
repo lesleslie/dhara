@@ -1123,10 +1123,10 @@ class TestFileWrapper:
 
     def test_open_missing_readonly_raises(self):
         with pytest.raises(OSError, match='No ".*" found'):
-            File("/no/such/file.durus", readonly=True)
+            File("/no/such/file.dhara", readonly=True)
 
     def test_open_new_file_and_accessors(self, tmp_path):
-        path = tmp_path / "file.durus"
+        path = tmp_path / "file.dhara"
         f = File(str(path))
         assert f.get_name() == str(path)
         assert f.is_temporary() is False
@@ -1146,7 +1146,7 @@ class TestFileWrapper:
         f.close()
 
     def test_seek_and_read_all(self, tmp_path):
-        path = tmp_path / "seek.durus"
+        path = tmp_path / "seek.dhara"
         f = File(str(path))
         f.write(b"hello world")
         f.seek(0)
@@ -1156,8 +1156,8 @@ class TestFileWrapper:
         f.close()
 
     def test_rename_and_length(self, tmp_path):
-        path = tmp_path / "source.durus"
-        renamed = tmp_path / "dest.durus"
+        path = tmp_path / "source.dhara"
+        renamed = tmp_path / "dest.dhara"
         f = File(str(path))
         f.write(b"payload")
         assert len(f) == 7
@@ -1169,8 +1169,8 @@ class TestFileWrapper:
         assert renamed.exists()
 
     def test_rename_over_existing_file_unlinks_target(self, tmp_path):
-        source = tmp_path / "source.durus"
-        target = tmp_path / "target.durus"
+        source = tmp_path / "source.dhara"
+        target = tmp_path / "target.dhara"
         target.write_bytes(b"old")
         f = File(str(source))
         f.write(b"payload")
@@ -1181,7 +1181,7 @@ class TestFileWrapper:
         assert target.read_bytes() == b"payload"
 
     def test_rename_same_name_is_noop(self, tmp_path):
-        path = tmp_path / "same.durus"
+        path = tmp_path / "same.dhara"
         f = File(str(path))
         f.write(b"payload")
         f.rename(str(path))
@@ -1189,7 +1189,7 @@ class TestFileWrapper:
         f.close()
 
     def test_flush_and_fsync_without_os_fsync(self, tmp_path, monkeypatch):
-        path = tmp_path / "nofsync.durus"
+        path = tmp_path / "nofsync.dhara"
         f = File(str(path))
         monkeypatch.delattr(os, "fsync", raising=False)
         f.write(b"payload")
@@ -1198,7 +1198,7 @@ class TestFileWrapper:
         f.close()
 
     def test_fsync_calls_os_fsync_when_available(self, tmp_path, monkeypatch):
-        path = tmp_path / "fsync.durus"
+        path = tmp_path / "fsync.dhara"
         f = File(str(path))
         f.write(b"payload")
         fsync_calls = []
@@ -1212,7 +1212,7 @@ class TestFileWrapper:
         assert len(fsync_calls) >= 1
 
     def test_lock_and_truncate(self, tmp_path):
-        path = tmp_path / "lock.durus"
+        path = tmp_path / "lock.dhara"
         f = File(str(path))
         f.obtain_lock()
         assert f.has_lock is True

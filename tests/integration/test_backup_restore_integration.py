@@ -71,7 +71,7 @@ class TestBackupManager:
     def setup_method(self):
         """Set up test fixtures."""
         self.temp_dir = tempfile.mkdtemp()
-        self.test_db = os.path.join(self.temp_dir, "test_db.durus")
+        self.test_db = os.path.join(self.temp_dir, "test_db.dhara")
         self.backup_dir = os.path.join(self.temp_dir, "backups")
         os.makedirs(self.backup_dir, exist_ok=True)
 
@@ -187,7 +187,7 @@ class TestRestoreManager:
     def setup_method(self):
         """Set up test fixtures."""
         self.temp_dir = tempfile.mkdtemp()
-        self.test_db = os.path.join(self.temp_dir, "test_db.durus")
+        self.test_db = os.path.join(self.temp_dir, "test_db.dhara")
         self.backup_dir = os.path.join(self.temp_dir, "backups")
         self.restore_dir = os.path.join(self.temp_dir, "restores")
         os.makedirs(self.backup_dir, exist_ok=True)
@@ -217,7 +217,7 @@ class TestRestoreManager:
         """Test basic restore functionality."""
         # Create restore manager
         restore_manager = RestoreManager(
-            target_path=os.path.join(self.restore_dir, "restored_db.durus"),
+            target_path=os.path.join(self.restore_dir, "restored_db.dhara"),
             backup_dir=self.backup_dir
         )
 
@@ -237,7 +237,7 @@ class TestRestoreManager:
     def test_find_restore_points(self):
         """Test finding restore points."""
         restore_manager = RestoreManager(
-            target_path=os.path.join(self.restore_dir, "test.durus"),
+            target_path=os.path.join(self.restore_dir, "test.dhara"),
             backup_dir=self.backup_dir
         )
 
@@ -250,7 +250,7 @@ class TestRestoreManager:
     def test_point_in_time_restore(self):
         """Test point-in-time restore."""
         restore_manager = RestoreManager(
-            target_path=os.path.join(self.restore_dir, "restored_db.durus"),
+            target_path=os.path.join(self.restore_dir, "restored_db.dhara"),
             backup_dir=self.backup_dir
         )
 
@@ -262,7 +262,7 @@ class TestRestoreManager:
     def test_verify_restore(self):
         """Test restore verification."""
         restore_manager = RestoreManager(
-            target_path=os.path.join(self.restore_dir, "restored_db.durus"),
+            target_path=os.path.join(self.restore_dir, "restored_db.dhara"),
             backup_dir=self.backup_dir
         )
 
@@ -275,7 +275,7 @@ class TestRestoreManager:
     def test_get_restore_summary(self):
         """Test getting restore summary."""
         restore_manager = RestoreManager(
-            target_path=os.path.join(self.restore_dir, "test.durus"),
+            target_path=os.path.join(self.restore_dir, "test.dhara"),
             backup_dir=self.backup_dir
         )
 
@@ -311,7 +311,7 @@ class TestBackupCatalog:
             backup_id="test_backup",
             backup_type=BackupType.FULL,
             timestamp=datetime.now(),
-            source_path="/path/to/backup.durus",
+            source_path="/path/to/backup.dhara",
             size_bytes=1024,
             checksum="abc123"
         )
@@ -452,7 +452,7 @@ class TestBackupScheduler:
         os.makedirs(self.restore_dir, exist_ok=True)
 
         # Create test database
-        self.test_db = os.path.join(self.temp_dir, "test_db.durus")
+        self.test_db = os.path.join(self.temp_dir, "test_db.dhara")
         _create_test_database(self.test_db, {"test_key": "test_value"})
 
         # Create backup manager
@@ -557,7 +557,7 @@ class TestBackupVerification:
         os.makedirs(self.test_restore_dir, exist_ok=True)
 
         # Create test database
-        self.test_db = os.path.join(self.temp_dir, "test_db.durus")
+        self.test_db = os.path.join(self.temp_dir, "test_db.dhara")
         _create_test_database(self.test_db, {"test_key": "test_value"})
 
         # Create backup
@@ -759,7 +759,7 @@ class TestIntegrationScenarios:
     def setup_method(self):
         """Set up test fixtures."""
         self.temp_dir = tempfile.mkdtemp()
-        self.test_db = os.path.join(self.temp_dir, "test_db.durus")
+        self.test_db = os.path.join(self.temp_dir, "test_db.dhara")
         self.backup_dir = os.path.join(self.temp_dir, "backups")
         self.restore_dir = os.path.join(self.temp_dir, "restores")
         self.test_restore_dir = os.path.join(self.temp_dir, "test_restores")
@@ -808,7 +808,7 @@ class TestIntegrationScenarios:
 
         # Restore to point in time
         restore_manager = RestoreManager(
-            target_path=os.path.join(self.restore_dir, "restored_db.durus"),
+            target_path=os.path.join(self.restore_dir, "restored_db.dhara"),
             backup_dir=self.backup_dir
         )
 
@@ -858,7 +858,7 @@ class TestIntegrationScenarios:
 
         # Create restore manager with same key
         restore_manager = RestoreManager(
-            target_path=os.path.join(self.restore_dir, "restored_db.durus"),
+            target_path=os.path.join(self.restore_dir, "restored_db.dhara"),
             backup_dir=self.backup_dir,
             encryption_key=encryption_key
         )
@@ -908,7 +908,7 @@ class TestIntegrationScenarios:
 
         # Restore from latest backup
         restore_manager = RestoreManager(
-            target_path=os.path.join(self.restore_dir, "recovered_db.durus"),
+            target_path=os.path.join(self.restore_dir, "recovered_db.dhara"),
             backup_dir=self.backup_dir
         )
 

@@ -1,8 +1,7 @@
 # Serializer Quick Reference Guide
 
-These serializers are exposed through `dhara.serialize`. Historical `durus.*`
-imports may still appear in migration examples, but `dhara` is the canonical
-package name.
+These serializers are exposed through `dhara.serialize`. `dhara` is the
+canonical package name; the legacy `durus.*` import shim has been removed.
 
 ## Available Serializers
 
@@ -98,8 +97,8 @@ For a typical dictionary with 100 key-value pairs:
 
 ```python
 # Old Durus 4.x code
-from durus import Connection
-connection = Connection("mydb.durus")  # Uses pickle — no longer supported
+from dhara import Connection
+connection = Connection("mydb.dhara")  # Uses pickle — no longer supported
 
 # New Dhara code
 from dhara import Connection

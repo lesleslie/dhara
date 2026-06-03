@@ -74,7 +74,7 @@ def test_init_backup_directory_creates_structure(tmp_path):
 def test_cmd_backup_missing_source_returns_error(tmp_path):
     from dhara.backup.cli import cmd_backup
 
-    args = _args(source=str(tmp_path / "missing.durus"), backup_dir=str(tmp_path / "backups"))
+    args = _args(source=str(tmp_path / "missing.dhara"), backup_dir=str(tmp_path / "backups"))
     with patch("dhara.backup.cli.Path.exists", return_value=False):
         assert cmd_backup(args) == 1
 
@@ -82,7 +82,7 @@ def test_cmd_backup_missing_source_returns_error(tmp_path):
 def test_cmd_backup_full_backup_happy_path(tmp_path):
     from dhara.backup.cli import cmd_backup
 
-    source = tmp_path / "source.durus"
+    source = tmp_path / "source.dhara"
     source.write_text("data")
     metadata = SimpleNamespace(backup_id="full_1", size_bytes=123, source_path=str(source))
     backup_manager = MagicMock()
@@ -104,7 +104,7 @@ def test_cmd_backup_full_backup_happy_path(tmp_path):
 def test_cmd_backup_incremental_uses_latest_backup(tmp_path):
     from dhara.backup.cli import cmd_backup
 
-    source = tmp_path / "source.durus"
+    source = tmp_path / "source.dhara"
     source.write_text("data")
     metadata = SimpleNamespace(backup_id="inc_1", size_bytes=456, source_path=str(source))
     last_backup = SimpleNamespace(backup_id="full_prev")
@@ -131,7 +131,7 @@ def test_cmd_backup_incremental_uses_latest_backup(tmp_path):
 def test_cmd_backup_differential_without_prior_full_backup(tmp_path):
     from dhara.backup.cli import cmd_backup
 
-    source = tmp_path / "source.durus"
+    source = tmp_path / "source.dhara"
     source.write_text("data")
     metadata = SimpleNamespace(backup_id="diff_1", size_bytes=789, source_path=str(source))
     backup_manager = MagicMock()
@@ -156,7 +156,7 @@ def test_cmd_backup_differential_without_prior_full_backup(tmp_path):
 def test_cmd_backup_differential_with_prior_full_backup(tmp_path):
     from dhara.backup.cli import cmd_backup
 
-    source = tmp_path / "source.durus"
+    source = tmp_path / "source.dhara"
     source.write_text("data")
     metadata = SimpleNamespace(backup_id="diff_2", size_bytes=321, source_path=str(source))
     backup_manager = MagicMock()
@@ -180,7 +180,7 @@ def test_cmd_backup_differential_with_prior_full_backup(tmp_path):
 def test_cmd_backup_unknown_type_returns_error(tmp_path):
     from dhara.backup.cli import cmd_backup
 
-    source = tmp_path / "source.durus"
+    source = tmp_path / "source.dhara"
     source.write_text("data")
 
     with patch("dhara.backup.cli.init_backup_directory"):
@@ -195,7 +195,7 @@ def test_cmd_backup_unknown_type_returns_error(tmp_path):
 def test_cmd_backup_key_file_path(tmp_path):
     from dhara.backup.cli import cmd_backup
 
-    source = tmp_path / "source.durus"
+    source = tmp_path / "source.dhara"
     source.write_text("data")
     key_file = tmp_path / "backup.key"
     key_file.write_bytes(b"manual-key")
@@ -219,7 +219,7 @@ def test_cmd_backup_key_file_path(tmp_path):
 def test_cmd_backup_key_file_path(tmp_path):
     from dhara.backup.cli import cmd_backup
 
-    source = tmp_path / "source.durus"
+    source = tmp_path / "source.dhara"
     source.write_text("data")
     key_file = tmp_path / "backup.key"
     key_file.write_bytes(b"manual-key")
@@ -243,7 +243,7 @@ def test_cmd_backup_key_file_path(tmp_path):
 def test_cmd_backup_encrypts_with_generated_key(tmp_path):
     from dhara.backup.cli import cmd_backup
 
-    source = tmp_path / "source.durus"
+    source = tmp_path / "source.dhara"
     source.write_text("data")
     metadata = SimpleNamespace(backup_id="full_2", size_bytes=123, source_path=str(source))
     backup_manager = MagicMock()
@@ -266,7 +266,7 @@ def test_cmd_backup_encrypts_with_generated_key(tmp_path):
 def test_cmd_backup_verbose_and_key_file_failure(tmp_path):
     from dhara.backup.cli import cmd_backup
 
-    source = tmp_path / "source.durus"
+    source = tmp_path / "source.dhara"
     source.write_text("data")
     key_file = tmp_path / "key.bin"
 
@@ -294,7 +294,7 @@ def test_cmd_backup_verbose_and_key_file_failure(tmp_path):
 def test_cmd_restore_missing_backup_returns_error(tmp_path):
     from dhara.backup.cli import cmd_restore
 
-    args = _args(target=str(tmp_path / "restored.durus"), backup_dir=str(tmp_path / "backups"), backup_id="nope")
+    args = _args(target=str(tmp_path / "restored.dhara"), backup_dir=str(tmp_path / "backups"), backup_id="nope")
     catalog = MagicMock()
     catalog.get_backup.return_value = None
     with patch("dhara.backup.cli.init_backup_directory"):
@@ -311,7 +311,7 @@ def test_cmd_restore_latest_backup_with_verify(tmp_path):
     restore_manager = MagicMock()
     restore_manager.verify_restore.return_value = True
 
-    args = _args(target=str(tmp_path / "restored.durus"), backup_dir=str(tmp_path / "backups"), verify=True)
+    args = _args(target=str(tmp_path / "restored.dhara"), backup_dir=str(tmp_path / "backups"), verify=True)
     with patch("dhara.backup.cli.init_backup_directory"):
         with patch("dhara.backup.cli.BackupCatalog", return_value=catalog):
             with patch("dhara.backup.cli.RestoreManager", return_value=restore_manager):
@@ -327,7 +327,7 @@ def test_cmd_restore_timestamp_branch(tmp_path):
     restore_manager = MagicMock()
 
     args = _args(
-        target=str(tmp_path / "restored.durus"),
+        target=str(tmp_path / "restored.dhara"),
         backup_dir=str(tmp_path / "backups"),
         timestamp="2024-01-01 12:30:00",
     )
@@ -349,7 +349,7 @@ def test_cmd_restore_backup_id_and_key_file(tmp_path):
     key_file = tmp_path / "restore.key"
     key_file.write_bytes(b"restore-key")
     args = _args(
-        target=str(tmp_path / "restored.durus"),
+        target=str(tmp_path / "restored.dhara"),
         backup_dir=str(tmp_path / "backups"),
         backup_id="b42",
         key_file=str(key_file),
@@ -372,7 +372,7 @@ def test_cmd_restore_verbose_latest_and_verify_failure(tmp_path):
     restore_manager.verify_restore.return_value = False
 
     args = _args(
-        target=str(tmp_path / "restored.durus"),
+        target=str(tmp_path / "restored.dhara"),
         backup_dir=str(tmp_path / "backups"),
         verbose=True,
         verify=True,
@@ -394,16 +394,16 @@ def test_cmd_restore_backup_missing_and_failure(tmp_path):
     failing_restore = MagicMock()
     failing_restore._restore_from_backup.side_effect = RuntimeError("boom")
 
-    args = _args(target=str(tmp_path / "restored.durus"), backup_dir=str(tmp_path / "backups"), backup_id="missing")
+    args = _args(target=str(tmp_path / "restored.dhara"), backup_dir=str(tmp_path / "backups"), backup_id="missing")
     with patch("dhara.backup.cli.init_backup_directory"):
         with patch("dhara.backup.cli.BackupCatalog", return_value=catalog):
             assert cmd_restore(args) == 1
 
     with patch("dhara.backup.cli.init_backup_directory"):
         with patch("dhara.backup.cli.BackupCatalog", return_value=MagicMock(get_last_backup=MagicMock(return_value=None))):
-            assert cmd_restore(_args(target=str(tmp_path / "restored3.durus"), backup_dir=str(tmp_path / "backups"))) == 1
+            assert cmd_restore(_args(target=str(tmp_path / "restored3.dhara"), backup_dir=str(tmp_path / "backups"))) == 1
 
-    args2 = _args(target=str(tmp_path / "restored2.durus"), backup_dir=str(tmp_path / "backups"))
+    args2 = _args(target=str(tmp_path / "restored2.dhara"), backup_dir=str(tmp_path / "backups"))
     with patch("dhara.backup.cli.init_backup_directory"):
         with patch("dhara.backup.cli.BackupCatalog", return_value=MagicMock(get_last_backup=MagicMock(return_value=SimpleNamespace(backup_id="b1")))):
             with patch("dhara.backup.cli.RestoreManager", return_value=failing_restore):

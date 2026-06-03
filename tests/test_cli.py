@@ -283,7 +283,7 @@ class TestProbeBackupRuntime:
         """When the catalog exists, read the backup payloads and latest entry."""
         catalog_dir = tmp_path / "backups"
         catalog_dir.mkdir()
-        (catalog_dir / "backup_catalog.durus").write_text("catalog")
+        (catalog_dir / "backup_catalog.dhara").write_text("catalog")
         settings = _make_mock_settings(
             **{"backups.enabled": True, "backups.directory": catalog_dir}
         )
@@ -839,7 +839,7 @@ class TestCreateCliRuntime:
 
         mock_interactive_client = MagicMock()
         mock_get_storage = MagicMock(return_value=MagicMock())
-        mock_start_durus = MagicMock()
+        mock_start_dhara = MagicMock()
         mock_connection = MagicMock()
         mock_connection.pack = MagicMock()
         mock_client_storage = MagicMock(return_value=MagicMock())
@@ -847,7 +847,7 @@ class TestCreateCliRuntime:
         with (
             patch("dhara.__main__.interactive_client", mock_interactive_client),
             patch("dhara.__main__.get_storage", mock_get_storage),
-            patch("dhara.__main__.start_durus", mock_start_durus),
+            patch("dhara.__main__.start_dhara", mock_start_dhara),
             patch("dhara.__main__.Connection", return_value=mock_connection),
             patch("dhara.storage.client.ClientStorage", mock_client_storage),
         ):
@@ -891,7 +891,7 @@ class TestCreateCliRuntime:
             tls_config=None,
         )
         mock_get_storage.assert_any_call(str(db_file), readonly=False)
-        mock_start_durus.assert_called()
+        mock_start_dhara.assert_called()
         mock_connection.pack.assert_called()
 
     def test_db_pack_connection_error_returns_exit(self, tmp_path):

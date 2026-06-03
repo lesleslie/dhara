@@ -23,7 +23,7 @@ def _pack(oid: bytes, data: bytes, refs: bytes = b"") -> bytes:
 
 @pytest.fixture
 def db_path(tmp_path):
-    return str(tmp_path / "test.durus")
+    return str(tmp_path / "test.dhara")
 
 
 @pytest.fixture
@@ -40,7 +40,7 @@ def store(db_path):
 
 class TestSqliteStorageInit:
     def test_creates_new_database(self, tmp_path):
-        path = str(tmp_path / "new.durus")
+        path = str(tmp_path / "new.dhara")
         s = SqliteStorage(path)
         assert os.path.exists(path)
         assert s.filename == path
@@ -72,7 +72,7 @@ class TestSqliteStorageInit:
         assert c.fetchone()[0] == 1
 
     def test_get_last_oid_with_empty_result(self, tmp_path, monkeypatch):
-        path = str(tmp_path / "empty.durus")
+        path = str(tmp_path / "empty.dhara")
         s = SqliteStorage(path)
 
         class FakeCursor:
@@ -365,7 +365,7 @@ class TestSqliteStorageInternalHelpers:
         assert store.pack_extra == [_oid(3)]
 
     def test_gen_records_internal_with_fake_cursor(self, tmp_path):
-        path = str(tmp_path / "fake.durus")
+        path = str(tmp_path / "fake.dhara")
         s = SqliteStorage(path)
 
         class FakeCursor:
@@ -431,7 +431,7 @@ class TestSqliteStorageClose:
 
 class TestSqliteStorageCreateFromRecords:
     def test_create_from_records(self, tmp_path):
-        path = str(tmp_path / "import.durus")
+        path = str(tmp_path / "import.dhara")
         s = SqliteStorage(path)
 
         records = [
@@ -445,7 +445,7 @@ class TestSqliteStorageCreateFromRecords:
         s.close()
 
     def test_create_from_records_non_empty_raises(self, tmp_path):
-        path = str(tmp_path / "import.durus")
+        path = str(tmp_path / "import.dhara")
         s = SqliteStorage(path)
         # Store a record with oid > 0 so max(id) > 0 after reopen
         s.begin()

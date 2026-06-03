@@ -1453,7 +1453,7 @@ class TestAzureBlobStorageInit:
         ):
             storage = AzureBlobStorage(connection_string="cs")
 
-        assert storage.container_name == "durus-backups"
+        assert storage.container_name == "dhara-backups"
 
 
 class TestAzureUploadFile:

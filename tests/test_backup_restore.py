@@ -26,7 +26,7 @@ def _make_backup_metadata(
     backup_id="backup-001",
     backup_type=BackupType.FULL,
     timestamp=None,
-    source_path="/tmp/backup-001.durus",
+    source_path="/tmp/backup-001.dhara",
     size_bytes=1024,
     checksum="abc123",
     encryption_enabled=False,
@@ -61,13 +61,13 @@ class TestRestorePoint:
             backup_id="bp-001",
             timestamp=ts,
             restore_type="full",
-            backup_path="/tmp/bp-001.durus",
+            backup_path="/tmp/bp-001.dhara",
             metadata=meta,
         )
         assert rp.backup_id == "bp-001"
         assert rp.timestamp == ts
         assert rp.restore_type == "full"
-        assert rp.backup_path == "/tmp/bp-001.durus"
+        assert rp.backup_path == "/tmp/bp-001.dhara"
         assert rp.metadata == meta
 
     def test_str_representation(self):
@@ -76,7 +76,7 @@ class TestRestorePoint:
             backup_id="bp-001",
             timestamp=ts,
             restore_type="full",
-            backup_path="/tmp/bp-001.durus",
+            backup_path="/tmp/bp-001.dhara",
             metadata={},
         )
         expected = f"RestorePoint(id=bp-001, type=full, time={ts})"
@@ -88,7 +88,7 @@ class TestRestorePoint:
             backup_id="inc-042",
             timestamp=ts,
             restore_type="incremental",
-            backup_path="/tmp/inc-042.durus",
+            backup_path="/tmp/inc-042.dhara",
             metadata={"parent": "base-001"},
         )
         assert "type=incremental" in str(rp)
@@ -103,7 +103,7 @@ class TestRestoreManagerInit:
     """Tests for RestoreManager constructor."""
 
     def test_init_with_defaults(self, tmp_path):
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
         rm = RestoreManager(target_path=str(target))
         assert rm.target_path == target
         assert rm.backup_dir == Path("./backups")
@@ -112,18 +112,18 @@ class TestRestoreManagerInit:
         assert rm.cloud_adapter is None
 
     def test_init_with_custom_backup_dir(self, tmp_path):
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
         backup_dir = tmp_path / "my_backups"
         rm = RestoreManager(target_path=str(target), backup_dir=str(backup_dir))
         assert rm.backup_dir == backup_dir
 
     def test_init_with_storage_type(self, tmp_path):
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
         rm = RestoreManager(target_path=str(target), storage_type="s3")
         assert rm.storage_type == "s3"
 
     def test_init_with_encryption_key(self, tmp_path):
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
         key = b"x" * 32
         with patch("dhara.backup.restore.EncryptionEngine") as mock_enc_cls:
             rm = RestoreManager(target_path=str(target), encryption_key=key)
@@ -131,12 +131,12 @@ class TestRestoreManagerInit:
             assert rm.encryption is not None
 
     def test_init_without_encryption_key_no_engine(self, tmp_path):
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
         rm = RestoreManager(target_path=str(target), encryption_key=None)
         assert rm.encryption is None
 
     def test_init_with_cloud_adapter(self, tmp_path):
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
         adapter = MagicMock()
         rm = RestoreManager(target_path=str(target), cloud_adapter=adapter)
         assert rm.cloud_adapter is adapter
@@ -150,13 +150,13 @@ class TestEnsureTargetDirectory:
     """Tests for the _ensure_target_directory helper."""
 
     def test_creates_parent_directory(self, tmp_path):
-        target = tmp_path / "deeply" / "nested" / "restore.durus"
+        target = tmp_path / "deeply" / "nested" / "restore.dhara"
         rm = RestoreManager(target_path=str(target))
         rm._ensure_target_directory()
         assert target.parent.exists()
 
     def test_removes_existing_directory(self, tmp_path):
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
         target.mkdir()
         (target / "old_file.txt").write_text("data")
         rm = RestoreManager(target_path=str(target))
@@ -164,14 +164,14 @@ class TestEnsureTargetDirectory:
         assert not target.exists()
 
     def test_removes_existing_file(self, tmp_path):
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
         target.write_text("old data")
         rm = RestoreManager(target_path=str(target))
         rm._ensure_target_directory()
         assert not target.exists()
 
     def test_no_op_when_path_does_not_exist(self, tmp_path):
-        target = tmp_path / "nonexistent" / "restore.durus"
+        target = tmp_path / "nonexistent" / "restore.dhara"
         rm = RestoreManager(target_path=str(target))
         rm._ensure_target_directory()
         assert target.parent.exists()
@@ -188,9 +188,9 @@ class TestRestoreFromBackup:
     def test_file_exists_restores_successfully(self, tmp_path):
         """When the backup file exists on disk, restore from it."""
         backup_dir = tmp_path / "backups"
-        backup_file = tmp_path / "backup-001.durus"
+        backup_file = tmp_path / "backup-001.dhara"
         backup_file.write_text("backup-data-here")
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
 
         rm = RestoreManager(
             target_path=str(target),
@@ -207,21 +207,21 @@ class TestRestoreFromBackup:
     def test_file_not_found_no_cloud_raises(self, tmp_path):
         """Without a cloud adapter, a missing file raises FileNotFoundError."""
         backup_dir = tmp_path / "backups"
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
 
         rm = RestoreManager(
             target_path=str(target),
             backup_dir=str(backup_dir),
         )
 
-        metadata = _make_backup_metadata(source_path="/nonexistent/backup.durus")
+        metadata = _make_backup_metadata(source_path="/nonexistent/backup.dhara")
         with pytest.raises(FileNotFoundError, match="Backup file not found"):
             rm._restore_from_backup(metadata)
 
     def test_file_not_found_with_cloud_downloads(self, tmp_path):
         """With a cloud adapter, a missing file triggers a cloud download."""
         backup_dir = tmp_path / "backups"
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
 
         cloud_adapter = MagicMock()
         rm = RestoreManager(
@@ -230,10 +230,10 @@ class TestRestoreFromBackup:
             cloud_adapter=cloud_adapter,
         )
 
-        metadata = _make_backup_metadata(source_path="/nonexistent/backup.durus")
+        metadata = _make_backup_metadata(source_path="/nonexistent/backup.dhara")
 
         # Create the file that the cloud download will "produce"
-        downloaded_file = tmp_path / "downloaded.durus"
+        downloaded_file = tmp_path / "downloaded.dhara"
         downloaded_file.write_text("cloud-data")
 
         with patch.object(
@@ -250,11 +250,11 @@ class TestRestoreFromBackup:
     def test_compressed_zst_file(self, tmp_path):
         """A .zst backup is decompressed before restoring."""
         backup_dir = tmp_path / "backups"
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
 
         # Create a compressed backup file using real zstd
         import zstandard as zstd
-        compressed_file = tmp_path / "backup-001.durus.zst"
+        compressed_file = tmp_path / "backup-001.dhara.zst"
         original_data = b"decompressed-database-content"
         compressor = zstd.ZstdCompressor()
         compressed_data = compressor.compress(original_data)
@@ -278,7 +278,7 @@ class TestRestoreFromBackup:
     def test_encrypted_file(self, tmp_path):
         """An encrypted backup is decrypted before restoring."""
         backup_dir = tmp_path / "backups"
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
 
         # Create an encrypted backup
         from cryptography.fernet import Fernet
@@ -286,7 +286,7 @@ class TestRestoreFromBackup:
         cipher = Fernet(key)
         plaintext = b"secret-database-content"
         encrypted_data = cipher.encrypt(plaintext)
-        encrypted_file = tmp_path / "backup-001.durus.zst"
+        encrypted_file = tmp_path / "backup-001.dhara.zst"
         encrypted_file.write_bytes(encrypted_data)
 
         # Create a RestoreManager with encryption key
@@ -337,23 +337,23 @@ class TestDownloadBackupFromCloud:
     def test_normal_download(self, tmp_path):
         cloud_adapter = MagicMock()
         rm = RestoreManager(
-            target_path=str(tmp_path / "restore.durus"),
+            target_path=str(tmp_path / "restore.dhara"),
             cloud_adapter=cloud_adapter,
         )
 
-        metadata = _make_backup_metadata(source_path="/remote/backups/backup-001.durus")
+        metadata = _make_backup_metadata(source_path="/remote/backups/backup-001.dhara")
 
         with patch("dhara.backup.restore.tempfile.mkdtemp", return_value=str(tmp_path / "cloud_tmp")):
             result = rm._download_backup_from_cloud(metadata)
 
         cloud_adapter.download_file.assert_called_once()
         call_args = cloud_adapter.download_file.call_args[0]
-        assert call_args[0] == "durus_backups/backup-001/backup-001.durus"
-        assert call_args[1].endswith("backup-001.durus")
+        assert call_args[0] == "dhara_backups/backup-001/backup-001.dhara"
+        assert call_args[1].endswith("backup-001.dhara")
         assert isinstance(result, Path)
 
     def test_no_cloud_adapter_raises_value_error(self, tmp_path):
-        rm = RestoreManager(target_path=str(tmp_path / "restore.durus"))
+        rm = RestoreManager(target_path=str(tmp_path / "restore.dhara"))
         metadata = _make_backup_metadata()
 
         with pytest.raises(ValueError, match="No cloud adapter configured"):
@@ -363,11 +363,11 @@ class TestDownloadBackupFromCloud:
         cloud_adapter = MagicMock()
         cloud_adapter.download_file.side_effect = RuntimeError("Connection refused")
         rm = RestoreManager(
-            target_path=str(tmp_path / "restore.durus"),
+            target_path=str(tmp_path / "restore.dhara"),
             cloud_adapter=cloud_adapter,
         )
 
-        metadata = _make_backup_metadata(source_path="/remote/backup-001.durus")
+        metadata = _make_backup_metadata(source_path="/remote/backup-001.dhara")
 
         with patch("dhara.backup.restore.tempfile.mkdtemp", return_value=str(tmp_path / "cloud_tmp")):
             with pytest.raises(RuntimeError, match="Connection refused"):
@@ -393,7 +393,7 @@ class TestFindRestorePoints:
         b1 = _make_backup_metadata(backup_id="b1", timestamp=ts1)
         b2 = _make_backup_metadata(backup_id="b2", timestamp=ts2)
 
-        rm = RestoreManager(target_path=str(tmp_path / "restore.durus"))
+        rm = RestoreManager(target_path=str(tmp_path / "restore.dhara"))
         with patch("dhara.backup.restore.BackupCatalog", return_value=self._make_mock_catalog([b1, b2])):
             points = rm.find_restore_points()
 
@@ -407,7 +407,7 @@ class TestFindRestorePoints:
         b1 = _make_backup_metadata(backup_id="early", timestamp=ts_early)
         b2 = _make_backup_metadata(backup_id="late", timestamp=ts_late)
 
-        rm = RestoreManager(target_path=str(tmp_path / "restore.durus"))
+        rm = RestoreManager(target_path=str(tmp_path / "restore.dhara"))
         cutoff = datetime(2026, 4, 22, 0, 0, 0)
         with patch("dhara.backup.restore.BackupCatalog", return_value=self._make_mock_catalog([b1, b2])):
             points = rm.find_restore_points(start_time=cutoff)
@@ -421,7 +421,7 @@ class TestFindRestorePoints:
         b1 = _make_backup_metadata(backup_id="early", timestamp=ts_early)
         b2 = _make_backup_metadata(backup_id="late", timestamp=ts_late)
 
-        rm = RestoreManager(target_path=str(tmp_path / "restore.durus"))
+        rm = RestoreManager(target_path=str(tmp_path / "restore.dhara"))
         cutoff = datetime(2026, 4, 22, 0, 0, 0)
         with patch("dhara.backup.restore.BackupCatalog", return_value=self._make_mock_catalog([b1, b2])):
             points = rm.find_restore_points(end_time=cutoff)
@@ -435,7 +435,7 @@ class TestFindRestorePoints:
         b_full = _make_backup_metadata(backup_id="full-1", backup_type=BackupType.FULL, timestamp=ts1)
         b_inc = _make_backup_metadata(backup_id="inc-1", backup_type=BackupType.INCREMENTAL, timestamp=ts2)
 
-        rm = RestoreManager(target_path=str(tmp_path / "restore.durus"))
+        rm = RestoreManager(target_path=str(tmp_path / "restore.dhara"))
         with patch("dhara.backup.restore.BackupCatalog", return_value=self._make_mock_catalog([b_full, b_inc])):
             points = rm.find_restore_points(backup_type=BackupType.INCREMENTAL)
 
@@ -450,7 +450,7 @@ class TestFindRestorePoints:
         b2 = _make_backup_metadata(backup_id="new-inc", backup_type=BackupType.INCREMENTAL, timestamp=ts2)
         b3 = _make_backup_metadata(backup_id="new-full", backup_type=BackupType.FULL, timestamp=ts3)
 
-        rm = RestoreManager(target_path=str(tmp_path / "restore.durus"))
+        rm = RestoreManager(target_path=str(tmp_path / "restore.dhara"))
         start = datetime(2026, 4, 21, 0, 0, 0)
         end = datetime(2026, 4, 23, 0, 0, 0)
         with patch("dhara.backup.restore.BackupCatalog", return_value=self._make_mock_catalog([b1, b2, b3])):
@@ -460,7 +460,7 @@ class TestFindRestorePoints:
         assert points[0].backup_id == "new-inc"
 
     def test_empty_catalog_returns_empty_list(self, tmp_path):
-        rm = RestoreManager(target_path=str(tmp_path / "restore.durus"))
+        rm = RestoreManager(target_path=str(tmp_path / "restore.dhara"))
         with patch("dhara.backup.restore.BackupCatalog", return_value=self._make_mock_catalog([])):
             points = rm.find_restore_points()
 
@@ -474,7 +474,7 @@ class TestFindRestorePoints:
         b2 = _make_backup_metadata(backup_id="newest", timestamp=ts2)
         b3 = _make_backup_metadata(backup_id="middle", timestamp=ts3)
 
-        rm = RestoreManager(target_path=str(tmp_path / "restore.durus"))
+        rm = RestoreManager(target_path=str(tmp_path / "restore.dhara"))
         with patch("dhara.backup.restore.BackupCatalog", return_value=self._make_mock_catalog([b1, b2, b3])):
             points = rm.find_restore_points()
 
@@ -490,9 +490,9 @@ class TestRestorePointInTime:
 
     def test_normal_restore(self, tmp_path):
         ts = datetime(2026, 4, 25, 12, 0, 0)
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
         backup_dir = tmp_path / "backups"
-        backup_file = tmp_path / "backup-001.durus"
+        backup_file = tmp_path / "backup-001.dhara"
         backup_file.write_text("data")
 
         rm = RestoreManager(target_path=str(target), backup_dir=str(backup_dir))
@@ -527,10 +527,10 @@ class TestRestorePointInTime:
         """When use_incremental=True and an incremental backup is available, it is preferred."""
         ts_inc = datetime(2026, 4, 24, 12, 0, 0)
         target_time = datetime(2026, 4, 25, 0, 0, 0)
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
         backup_dir = tmp_path / "backups"
 
-        backup_file = tmp_path / "inc-001.durus"
+        backup_file = tmp_path / "inc-001.dhara"
         backup_file.write_text("inc-data")
 
         inc_metadata = _make_backup_metadata(
@@ -550,7 +550,7 @@ class TestRestorePointInTime:
             backup_id="full-001",
             timestamp=datetime(2026, 4, 20, 12, 0, 0),
             restore_type="full",
-            backup_path=str(tmp_path / "full-001.durus"),
+            backup_path=str(tmp_path / "full-001.dhara"),
             metadata={},
         )
         rp_inc = RestorePoint(
@@ -573,10 +573,10 @@ class TestRestorePointInTime:
         """When use_incremental=True but no incremental backup exists, falls back to latest."""
         ts_full = datetime(2026, 4, 24, 12, 0, 0)
         target_time = datetime(2026, 4, 25, 0, 0, 0)
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
         backup_dir = tmp_path / "backups"
 
-        backup_file = tmp_path / "full-001.durus"
+        backup_file = tmp_path / "full-001.dhara"
         backup_file.write_text("full-data")
 
         full_metadata = _make_backup_metadata(
@@ -610,7 +610,7 @@ class TestRestorePointInTime:
 
     def test_no_backup_raises_value_error(self, tmp_path):
         """When no backup is available for the given time, raises ValueError."""
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
         rm = RestoreManager(target_path=str(target))
 
         target_time = datetime(2026, 4, 25, 12, 0, 0)
@@ -628,7 +628,7 @@ class TestRestoreIncrementalChain:
     """Tests for the restore_incremental_chain method."""
 
     def test_base_backup_not_found_raises(self, tmp_path):
-        rm = RestoreManager(target_path=str(tmp_path / "restore.durus"))
+        rm = RestoreManager(target_path=str(tmp_path / "restore.dhara"))
         mock_catalog = MagicMock()
         mock_catalog.get_backup.return_value = None
 
@@ -639,12 +639,12 @@ class TestRestoreIncrementalChain:
     def test_normal_chain_restore(self, tmp_path):
         """Restore a base backup and apply incremental chain."""
         backup_dir = tmp_path / "backups"
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
 
         # Create actual backup files
-        base_file = tmp_path / "base-001.durus"
+        base_file = tmp_path / "base-001.dhara"
         base_file.write_text("base-data")
-        inc_file = tmp_path / "inc-001.durus"
+        inc_file = tmp_path / "inc-001.dhara"
         inc_file.write_text("inc-data")
 
         base_metadata = _make_backup_metadata(
@@ -678,13 +678,13 @@ class TestRestoreIncrementalChain:
     def test_chain_restore_multiple_incrementals(self, tmp_path):
         """Restore base + two incremental backups."""
         backup_dir = tmp_path / "backups"
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
 
-        base_file = tmp_path / "base-001.durus"
+        base_file = tmp_path / "base-001.dhara"
         base_file.write_text("base-data")
-        inc1_file = tmp_path / "inc-001.durus"
+        inc1_file = tmp_path / "inc-001.dhara"
         inc1_file.write_text("inc1-data")
-        inc2_file = tmp_path / "inc-002.durus"
+        inc2_file = tmp_path / "inc-002.dhara"
         inc2_file.write_text("inc2-data")
 
         base_metadata = _make_backup_metadata(
@@ -729,10 +729,10 @@ class TestMergeIncrementalRestore:
     """Tests for the _merge_incremental_restore method."""
 
     def test_copies_incremental_to_final_path(self, tmp_path):
-        rm = RestoreManager(target_path=str(tmp_path / "restore.durus"))
+        rm = RestoreManager(target_path=str(tmp_path / "restore.dhara"))
         incremental_path = tmp_path / "incremental_data"
         incremental_path.write_text("merged-content")
-        final_path = tmp_path / "final.durus"
+        final_path = tmp_path / "final.dhara"
 
         rm._merge_incremental_restore(
             base_path=tmp_path / "base",
@@ -753,8 +753,8 @@ class TestRestoreEmergency:
 
     def test_normal_emergency_restore(self, tmp_path):
         backup_dir = tmp_path / "backups"
-        target = tmp_path / "restore.durus"
-        backup_file = tmp_path / "backup-001.durus"
+        target = tmp_path / "restore.dhara"
+        backup_file = tmp_path / "backup-001.dhara"
         backup_file.write_text("emergency-data")
 
         metadata = _make_backup_metadata(
@@ -778,7 +778,7 @@ class TestRestoreEmergency:
         mock_catalog = MagicMock()
         mock_catalog.get_backup.return_value = None
 
-        rm = RestoreManager(target_path=str(tmp_path / "restore.durus"), backup_dir=str(backup_dir))
+        rm = RestoreManager(target_path=str(tmp_path / "restore.dhara"), backup_dir=str(backup_dir))
 
         with patch("dhara.backup.restore.BackupCatalog", return_value=mock_catalog):
             with pytest.raises(ValueError, match="Backup not found"):
@@ -786,11 +786,11 @@ class TestRestoreEmergency:
 
     def test_restore_failure_raises(self, tmp_path):
         backup_dir = tmp_path / "backups"
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
 
         metadata = _make_backup_metadata(
             backup_id="backup-001",
-            source_path="/nonexistent/backup.durus",
+            source_path="/nonexistent/backup.dhara",
         )
 
         mock_catalog = MagicMock()
@@ -811,7 +811,7 @@ class TestVerifyRestore:
     """Tests for the verify_restore method."""
 
     def test_file_does_not_exist_returns_false(self, tmp_path):
-        rm = RestoreManager(target_path=str(tmp_path / "nonexistent.durus"))
+        rm = RestoreManager(target_path=str(tmp_path / "nonexistent.dhara"))
         metadata = _make_backup_metadata()
 
         result = rm.verify_restore(metadata)
@@ -819,7 +819,7 @@ class TestVerifyRestore:
 
     def test_storage_type_not_file_returns_true(self, tmp_path):
         """When storage_type is not 'file', verify returns True if file exists."""
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
         target.write_text("data")
         rm = RestoreManager(target_path=str(target), storage_type="s3")
         metadata = _make_backup_metadata()
@@ -829,7 +829,7 @@ class TestVerifyRestore:
 
     def test_file_storage_type_opens_successfully(self, tmp_path):
         """When storage_type is 'file', FileStorage and Connection are used."""
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
         target.write_text("data")
         rm = RestoreManager(target_path=str(target), storage_type="file")
         metadata = _make_backup_metadata()
@@ -849,7 +849,7 @@ class TestVerifyRestore:
 
     def test_file_storage_type_open_fails_returns_false(self, tmp_path):
         """When FileStorage or Connection raises, verify returns False."""
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
         target.write_text("data")
         rm = RestoreManager(target_path=str(target), storage_type="file")
         metadata = _make_backup_metadata()
@@ -861,7 +861,7 @@ class TestVerifyRestore:
 
     def test_outer_exception_returns_false(self, tmp_path):
         """Unexpected target path failures should hit the outer exception handler."""
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
         target.write_text("data")
         rm = RestoreManager(target_path=str(target), storage_type="file")
         metadata = _make_backup_metadata()
@@ -877,7 +877,7 @@ class TestVerifyRestore:
 
     def test_file_storage_get_root_fails_returns_false(self, tmp_path):
         """When Connection.get_root raises, verify returns False."""
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
         target.write_text("data")
         rm = RestoreManager(target_path=str(target), storage_type="file")
         metadata = _make_backup_metadata()
@@ -904,7 +904,7 @@ class TestCalculateChecksum:
         test_file = tmp_path / "test.dat"
         test_file.write_bytes(b"hello world")
 
-        rm = RestoreManager(target_path=str(tmp_path / "restore.durus"))
+        rm = RestoreManager(target_path=str(tmp_path / "restore.dhara"))
         checksum = rm._calculate_checksum(str(test_file))
 
         import hashlib
@@ -918,7 +918,7 @@ class TestCalculateChecksum:
         file2 = tmp_path / "b.dat"
         file2.write_bytes(b"content-b")
 
-        rm = RestoreManager(target_path=str(tmp_path / "restore.durus"))
+        rm = RestoreManager(target_path=str(tmp_path / "restore.dhara"))
         cs1 = rm._calculate_checksum(str(file1))
         cs2 = rm._calculate_checksum(str(file2))
 
@@ -928,7 +928,7 @@ class TestCalculateChecksum:
         empty_file = tmp_path / "empty.dat"
         empty_file.write_bytes(b"")
 
-        rm = RestoreManager(target_path=str(tmp_path / "restore.durus"))
+        rm = RestoreManager(target_path=str(tmp_path / "restore.dhara"))
         checksum = rm._calculate_checksum(str(empty_file))
 
         import hashlib
@@ -945,7 +945,7 @@ class TestGetRestoreSummary:
 
     def test_empty_catalog(self, tmp_path):
         backup_dir = tmp_path / "backups"
-        rm = RestoreManager(target_path=str(tmp_path / "restore.durus"), backup_dir=str(backup_dir))
+        rm = RestoreManager(target_path=str(tmp_path / "restore.dhara"), backup_dir=str(backup_dir))
 
         mock_catalog = MagicMock()
         mock_catalog.get_all_backups.return_value = []
@@ -971,7 +971,7 @@ class TestGetRestoreSummary:
         b_diff = _make_backup_metadata(backup_id="d1", backup_type=BackupType.DIFFERENTIAL, timestamp=ts3)
 
         backup_dir = tmp_path / "backups"
-        rm = RestoreManager(target_path=str(tmp_path / "restore.durus"), backup_dir=str(backup_dir))
+        rm = RestoreManager(target_path=str(tmp_path / "restore.dhara"), backup_dir=str(backup_dir))
 
         mock_catalog = MagicMock()
         mock_catalog.get_all_backups.return_value = [b_full, b_inc, b_diff]
@@ -986,7 +986,7 @@ class TestGetRestoreSummary:
 
     def test_cloud_enabled_and_encryption_enabled_flags(self, tmp_path):
         backup_dir = tmp_path / "backups"
-        target = tmp_path / "restore.durus"
+        target = tmp_path / "restore.dhara"
 
         cloud_adapter = MagicMock()
         key = b"x" * 32
@@ -1018,7 +1018,7 @@ class TestGetRestoreSummary:
         b3 = _make_backup_metadata(backup_id="f3", backup_type=BackupType.FULL, timestamp=ts3)
 
         backup_dir = tmp_path / "backups"
-        rm = RestoreManager(target_path=str(tmp_path / "restore.durus"), backup_dir=str(backup_dir))
+        rm = RestoreManager(target_path=str(tmp_path / "restore.dhara"), backup_dir=str(backup_dir))
 
         mock_catalog = MagicMock()
         mock_catalog.get_all_backups.return_value = [b1, b2, b3]

@@ -451,7 +451,7 @@ def get_security_config() -> SecurityConfig:
 
 
 def initialize_security(
-    secret_prefix: str = "durus/hmac",
+    secret_prefix: str = "dhara/hmac",
     rotation_interval_days: int = 90,
     fallback_enabled: bool = False,
     **kwargs,

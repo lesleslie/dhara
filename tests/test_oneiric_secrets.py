@@ -322,7 +322,7 @@ class TestOneiricSecretsAdapterInit:
 
     def test_init_creates_adapter_successfully(self):
         adapter, _ = self._build()
-        assert adapter.secret_prefix == "durus/hmac"
+        assert adapter.secret_prefix == "dhara/hmac"
         assert adapter.rotation_interval == timedelta(days=90)
         assert adapter._initialized is True
 
@@ -877,7 +877,7 @@ class TestGetSecretsAdapter:
     def test_get_secrets_adapter_default_params(self):
         self.mod._adapter = None
         adapter = self.mod.get_secrets_adapter()
-        assert adapter.secret_prefix == "durus/hmac"
+        assert adapter.secret_prefix == "dhara/hmac"
         assert adapter.rotation_interval == timedelta(days=90)
 
 

@@ -106,8 +106,8 @@ class TestMCPMiddleware:
 
     def test_get_tool_permission(self):
         mw = MCPMiddleware(enable_logging=False)
-        assert mw.get_required_permission("durus_get") == Permission.READ
-        assert mw.get_required_permission("durus_set") == Permission.WRITE
+        assert mw.get_required_permission("dhara_get") == Permission.READ
+        assert mw.get_required_permission("dhara_set") == Permission.WRITE
         assert mw.get_required_permission("unknown_tool") is None
 
     def test_set_tool_permission(self):
@@ -115,27 +115,27 @@ class TestMCPMiddleware:
         mw.set_tool_permission("custom", Permission.ADMIN)
         assert mw.get_required_permission("custom") == Permission.ADMIN
 
-    def test_check_tool_permission_no_auth_required(self):
+    def test_check_tool_permission_unknown_tool_denied(self):
         mw = MCPMiddleware(enable_logging=False)
         auth = AuthResult(success=True, permissions={Permission.READ})
-        assert mw.check_tool_permission("unknown_tool", auth) is True
+        assert mw.check_tool_permission("unknown_tool", auth) is False  # unknown tools are denied by default (was silently allowed pre-rename)
 
     def test_check_tool_permission_has_permission(self):
         mw = MCPMiddleware(enable_logging=False)
         auth = AuthResult(success=True, permissions={Permission.READ})
-        assert mw.check_tool_permission("durus_get", auth) is True
+        assert mw.check_tool_permission("dhara_get", auth) is True
 
     def test_check_tool_permission_denied(self):
         # Need auth_middleware set so check_permission delegates to it
         ta = TokenAuth(require_auth=True)
         mw = MCPMiddleware(auth_middleware=AuthMiddleware(token_auth=ta), enable_logging=False)
         auth = AuthResult(success=True, permissions=set())
-        assert mw.check_tool_permission("durus_get", auth) is False
+        assert mw.check_tool_permission("dhara_get", auth) is False
 
     def test_check_tool_permission_auth_failed(self):
         mw = MCPMiddleware(enable_logging=False)
         auth = AuthResult(success=False)
-        assert mw.check_tool_permission("durus_get", auth) is False
+        assert mw.check_tool_permission("dhara_get", auth) is False
 
     def test_process_request_with_auth_failure(self):
         auth_mw = AuthMiddleware(require_auth=True)

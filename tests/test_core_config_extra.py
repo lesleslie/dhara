@@ -100,11 +100,11 @@ class TestDharaSettingsLoad:
 
     def test_load_applies_legacy_aliases(self):
         os.environ.pop("DHARA_MODE", None)
-        os.environ["DURUS_SERVER_NAME"] = "from-durus"
+        os.environ["DHARA_SERVER_NAME"] = "from-dhara"
         try:
             settings = DharaSettings.load("dhara")
             # Legacy alias should have been applied
-            assert "from-durus" in os.environ.get("DHARA_SERVER_NAME", "")
+            assert "from-dhara" in os.environ.get("DHARA_SERVER_NAME", "")
         finally:
             os.environ.pop("DHARA_SERVER_NAME", None)
-            os.environ.pop("DURUS_SERVER_NAME", None)
+            os.environ.pop("DHARA_SERVER_NAME", None)

@@ -7,7 +7,7 @@ from dhara.utils import str_to_int8
 
 
 class DruvaError(Exception):
-    """Durus error."""
+    """Dhara persistent storage error."""
 
 
 class DruvaKeyError(KeyError, DruvaError):
@@ -59,5 +59,7 @@ class ProtocolError(DruvaError):
     """
 
 
-# Backward compatibility alias for Durus 4.x
-DurusKeyError = DruvaKeyError
+# Backward compatibility alias for the historical Durus 4.x naming.
+# Removed: callers that still reference the legacy name should update to
+# ``DruvaKeyError`` (or ``ConflictError`` for storage-state conflicts).
+# DurusKeyError = DruvaKeyError

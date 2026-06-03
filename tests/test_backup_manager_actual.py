@@ -164,7 +164,7 @@ class TestBackupManagerBackups:
         metadata = manager.perform_full_backup()
 
         assert metadata.backup_type == BackupType.FULL
-        assert metadata.source_path.endswith(".durus.zst")
+        assert metadata.source_path.endswith(".dhara.zst")
         assert metadata.encryption_enabled is False
         assert Path(metadata.source_path).exists()
 
@@ -330,7 +330,7 @@ class TestBackupManagerCloudAndCleanup:
             backup_id="missing",
             backup_type=BackupType.FULL,
             timestamp=datetime.now(),
-            source_path=str(tmp_path / "missing.durus"),
+            source_path=str(tmp_path / "missing.dhara"),
             size_bytes=1,
             checksum="deadbeef",
         )
@@ -371,9 +371,9 @@ class TestBackupManagerCloudAndCleanup:
         source = _make_source_file(tmp_path)
         manager = _make_manager(tmp_path, source)
 
-        expired_file = tmp_path / "expired.durus"
+        expired_file = tmp_path / "expired.dhara"
         expired_file.write_bytes(b"x")
-        current_file = tmp_path / "current.durus"
+        current_file = tmp_path / "current.dhara"
         current_file.write_bytes(b"y")
 
         expired = BackupMetadata(
@@ -410,7 +410,7 @@ class TestBackupManagerCloudAndCleanup:
         source = _make_source_file(tmp_path)
         manager = _make_manager(tmp_path, source)
 
-        missing_file = tmp_path / "missing-expired.durus"
+        missing_file = tmp_path / "missing-expired.dhara"
         expired = BackupMetadata(
             backup_id="missing-expired",
             backup_type=BackupType.FULL,

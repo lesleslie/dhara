@@ -89,7 +89,7 @@ def _probe_backup_runtime(settings: DharaSettings) -> dict[str, object]:
         return {"backup_configured": False}
 
     backup_dir = settings.backups.directory.expanduser()
-    catalog_path = backup_dir / "backup_catalog.durus"
+    catalog_path = backup_dir / "backup_catalog.dhara"
     try:
         backup_dir.mkdir(parents=True, exist_ok=True)
         latest_backup_id = None
@@ -548,14 +548,14 @@ def _create_db_commands(app: typer.Typer) -> None:
         Starts a standalone Dhara storage server that clients can connect to.
         Use for shared database access across multiple processes.
         """
-        from dhara.__main__ import get_storage, start_durus
+        from dhara.__main__ import get_storage, start_dhara
 
         # Validate file path if provided
         validated_file = _validate_path(file)
         file_str = str(validated_file) if validated_file else None
 
         storage = get_storage(file_str, readonly=readonly)
-        start_durus(
+        start_dhara(
             logfile=None,
             logginglevel=20,
             address=(host, port),

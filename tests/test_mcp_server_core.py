@@ -615,7 +615,7 @@ class TestProbeBackups:
 
             backup_dir = tmp_path / "backups"
             backup_dir.mkdir(parents=True, exist_ok=True)
-            catalog_path = backup_dir / "backup_catalog.durus"
+            catalog_path = backup_dir / "backup_catalog.dhara"
 
             real_storage = RealFileStorage(str(catalog_path))
             real_conn = RealConnection(real_storage)
@@ -683,7 +683,7 @@ class TestProbeBackups:
             # Create a backup catalog with real storage before server init
             backup_dir = tmp_path / "backups"
             backup_dir.mkdir(parents=True, exist_ok=True)
-            catalog_path = backup_dir / "backup_catalog.durus"
+            catalog_path = backup_dir / "backup_catalog.dhara"
 
             real_storage = RealFileStorage(str(catalog_path))
             real_conn = RealConnection(real_storage)

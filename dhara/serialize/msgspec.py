@@ -1,4 +1,4 @@
-"""msgspec-based serializer for Durus.
+"""msgspec-based serializer for Dhara.
 
 msgspec is a fast and safe serialization library that supports:
 - MessagePack format (binary, compact)
@@ -74,10 +74,12 @@ def _persistent_enc_hook(obj: Any) -> Any:
     if isinstance(obj, PersistentObject):
         klass = type(obj)
         state = obj.__getstate__()
-        # The inverse path (``dhara.serialize.record.deserialize_state``)
-        # normalizes ``__state__`` to ``{}`` when missing or ``None``, so
-        # the encoder does not need to coerce here — keeping the raw
-        # value preserves the original object shape on the wire.
+        # Normalize ``__state__`` from ``None`` to ``{}`` so the wire
+        # format is uniform regardless of the source's ``__getstate__``
+        # return value. Mirrors :func:`dhara.serialize.record.deserialize_state`
+        # which performs the same coercion on the inverse path.
+        if state is None:
+            state = {}
         return {
             "__class__": f"{klass.__module__}.{klass.__name__}",
             "__state__": state,
@@ -116,13 +118,16 @@ class MsgspecSerializer(Serializer):
         """
         self.format = format
         self.use_builtins = use_builtins
-        # None means "no whitelist check" (permissive). This is used by
-        # the internal record layer (dhara.serialize.record) which has its
-        # own connection-level whitelist via _resolve_class. The
-        # user-facing default (None) keeps the legacy restrictive behavior
-        # via DEFAULT_ALLOWED_MODULES.
+        # Default: a copy of the safe whitelist. Per-instance copies
+        # prevent one serializer's mutation from leaking to siblings
+        # (the "is_copy_not_reference" test enforces this). The
+        # internal record layer (dhara.serialize.record) does not need
+        # a permissive mode because it only calls ``decode_raw`` and
+        # ``serialize`` on its private ``_DEFAULT_MSGSPEC`` — both of
+        # which bypass the whitelist (decode_raw does no class
+        # reconstruction; serialize only outputs bytes).
         if allowed_modules is None:
-            self.allowed_modules = None
+            self.allowed_modules = set(DEFAULT_ALLOWED_MODULES)
         else:
             self.allowed_modules = set(allowed_modules)
 
@@ -182,13 +187,12 @@ class MsgspecSerializer(Serializer):
             if len(parts) == 2:
                 module, classname = parts
 
-                # SECURITY: Validate module against whitelist before importing.
-                # ``self.allowed_modules is None`` means "no validation" (permissive
-                # mode used by the internal record layer).
-                if (
-                    self.allowed_modules is not None
-                    and module not in self.allowed_modules
-                ):
+                # SECURITY: Validate module against the instance whitelist
+                # before importing. ``self.allowed_modules`` is always a
+                # set (never ``None``) — the constructor default is
+                # ``set(DEFAULT_ALLOWED_MODULES)`` — so every module is
+                # checked against the safe whitelist.
+                if module not in self.allowed_modules:
                     logger.error(
                         f"Blocked deserialization of disallowed module: {module}"
                     )
@@ -216,11 +220,21 @@ class MsgspecSerializer(Serializer):
                         f"Class '{module}.{classname}' is not a Persistent subclass"
                     )
 
-                # Create instance using object.__new__ which properly initializes
-                # without calling __init__ (bypasses change tracking)
-                instance = object.__new__(klass)
-                # Directly set __dict__ without triggering change tracking
-                _setattribute(instance, "__dict__", obj["__state__"])
+                # Use ``klass.__new__`` (not ``object.__new__``) so that
+                # ``PersistentBase.__new__`` runs and initializes the four
+                # required slots (``_p_status``, ``_p_serial``,
+                # ``_p_connection``, ``_p_oid``). Skipping ``__new__``
+                # leaves those slots unset, which causes ``AttributeError``
+                # on the first ``__getattribute__`` access (e.g. inside
+                # the test's ``result.value`` lookup).
+                instance = klass.__new__(klass)  # type: ignore[call-arg]
+                # Directly set __dict__ without triggering change tracking.
+                # The state is normalized to ``{}`` to match the enc_hook
+                # and ``deserialize_state`` conventions.
+                state = obj["__state__"]
+                if state is None:
+                    state = {}
+                _setattribute(instance, "__dict__", state)
                 return instance
 
         return obj

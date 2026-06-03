@@ -433,7 +433,7 @@ class AzureBlobStorageAdapter(_DelegatingStorageAdapter):
         )
 
         if not container_name:
-            container_name = "durus-backups"
+            container_name = "dhara-backups"
 
         if not account_url and account_name:
             account_url = f"https://{account_name}.blob.core.windows.net"

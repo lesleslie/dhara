@@ -29,7 +29,7 @@ from dhara.utils import int8_to_str
 
 @pytest.fixture
 def db_path(tmp_path):
-    return str(tmp_path / "test_conn.durus")
+    return str(tmp_path / "test_conn.dhara")
 
 
 @pytest.fixture
@@ -60,7 +60,7 @@ class TestConnectionInit:
     def test_storage_from_string(self, tmp_path):
         from dhara.storage.file import FileStorage
 
-        path = str(tmp_path / "from_str.durus")
+        path = str(tmp_path / "from_str.dhara")
         c = Connection(path, cache_size=50)
         assert c.get_root() is not None
         assert isinstance(c.get_storage(), FileStorage)

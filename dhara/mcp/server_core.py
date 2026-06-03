@@ -894,7 +894,7 @@ class DharaMCPServer:
         if not self.config.backups.enabled:
             return {"configured": False}
 
-        catalog_path = backup_dir / "backup_catalog.durus"
+        catalog_path = backup_dir / "backup_catalog.dhara"
         try:
             backup_dir.mkdir(parents=True, exist_ok=True)
             latest_backup_id = None

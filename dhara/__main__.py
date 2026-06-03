@@ -156,7 +156,7 @@ def interactive_client(
         console_module = ModuleType("__console__")
         sys.modules["__console__"] = console_module
         vars(console_module).update(namespace)
-        configure_readline(vars(console_module), os.path.expanduser("~/.durushistory"))
+        configure_readline(vars(console_module), os.path.expanduser("~/.dharahistory"))
         console = InteractiveConsole(vars(console_module))
         if startup:
             warn(
@@ -174,12 +174,12 @@ def client_main():
     from optparse import OptionParser
 
     parser = OptionParser()
-    parser.set_description("Opens a client connection to a Durus server.")
+    parser.set_description("Opens a client connection to a Dhara server.")
     parser.add_option(
         "--file",
         dest="file",
         default=None,
-        help="If this is not given, the storage is through a Durus server.",
+        help="If this is not given, the storage is through a Dhara server.",
     )
     parser.add_option(
         "--port",
@@ -208,7 +208,7 @@ def client_main():
         "--storage-class",
         dest="storage",
         default=None,
-        help="Storage class (e.g. durus.file_storage.FileStorage).",
+        help="Storage class (e.g. dhara.file_storage.FileStorage).",
     )
     parser.add_option(
         "--cache_size",
@@ -237,12 +237,12 @@ def client_main():
     parser.add_option(
         "--startup",
         dest="startup",
-        default=os.environ.get("DURUSSTARTUP", ""),
+        default=os.environ.get("DHARASTARTUP", ""),
         help=(
             "⚠️ SECURITY WARNING: Full path to a python startup file to execute on startup.\n"
             "This executes arbitrary Python code which is a security risk.\n"
             "Only use with trusted files from secure locations.\n"
-            "(default=DURUSSTARTUP from environment, if set)"
+            "(default=DHARASTARTUP from environment, if set)"
         ),
     )
 
@@ -335,7 +335,7 @@ def client_main():
 def get_storage_class(file):
     """Return the storage class for an existing file.
 
-    Raises ``ValueError`` if the file is a DFS20/Durus 4.x format. There is
+    Raises ``ValueError`` if the file is a DFS20/legacy 4.x format. There is
     no in-place format migration; use ``FileStorage`` (SHELF-1) for new and
     migrated databases.
     """
@@ -346,9 +346,9 @@ def get_storage_class(file):
     with file.open("rb") as fp:
         d = fp.read(20)
     if d.startswith(b"DFS20"):
-        logger.error("Refused DFS20/Durus 4.x file: %s", file)
+        logger.error("Refused DFS20/legacy 4.x file: %s", file)
         raise ValueError(
-            "DFS20/Durus 4.x format no longer supported. There is no automatic "
+            "DFS20/legacy 4.x format no longer supported. There is no automatic "
             "migration path. Use FileStorage (SHELF-1) for new and migrated "
             "databases."
         )
@@ -384,7 +384,7 @@ def get_storage(file, storage_class=None, **kwargs):
     return storage_class(file, **kwargs)
 
 
-def start_durus(logfile, logginglevel, address, storage, gcbytes, tls_config=None):
+def start_dhara(logfile, logginglevel, address, storage, gcbytes, tls_config=None):
     if logfile is None:
         logfile = sys.stderr
     else:
@@ -399,11 +399,11 @@ def start_durus(logfile, logginglevel, address, storage, gcbytes, tls_config=Non
     ).serve()
 
 
-def stop_durus(address):
+def stop_dhara(address):
     socket_address = SocketAddress.new(address)
     sock = socket_address.get_connected_socket()
     if sock is None:
-        log(20, f"Durus server {address} doesn't seem to be running")
+        log(20, f"Dhara server {address} doesn't seem to be running")
         return False
     write(sock, "Q")  # graceful exit message
     sock.close()
@@ -417,9 +417,9 @@ def stop_durus(address):
     return True
 
 
-def run_durus_main():
+def run_dhara_main():
     parser = OptionParser()
-    parser.set_description("Run a Durus Server")
+    parser.set_description("Run a Dhara Server")
     parser.add_option(
         "--port",
         dest="port",
@@ -443,7 +443,7 @@ def run_durus_main():
         "--storage-class",
         dest="storage",
         default=None,
-        help="Storage class (e.g. durus.file_storage.FileStorage).",
+        help="Storage class (e.g. dhara.file_storage.FileStorage).",
     )
     parser.add_option(
         "--gcbytes",
@@ -633,7 +633,7 @@ def run_durus_main():
             repair=options.repair,
             readonly=options.readonly,
         )
-        start_durus(
+        start_dhara(
             options.logfile,
             options.logginglevel,
             address,
@@ -642,17 +642,17 @@ def run_durus_main():
             tls_config,
         )
     else:
-        stop_durus(address)
+        stop_dhara(address)
 
 
 def pack_storage_main():
     parser = OptionParser()
-    parser.set_description("Packs a Durus storage.")
+    parser.set_description("Packs a Dhara storage.")
     parser.add_option(
         "--file",
         dest="file",
         default=None,
-        help="If this is not given, the storage is through a Durus server.",
+        help="If this is not given, the storage is through a Dhara server.",
     )
     parser.add_option(
         "--port",
@@ -714,8 +714,8 @@ def pack_storage_main():
 
 def usage():
     sys.stdout.write(
-        "durus [ -c | -s | -p ] [ -h ] [<specific options>]\n"
-        "    -s   Start or stop a Durus storage server.\n"
+        "dhara [ -c | -s | -p ] [ -h ] [<specific options>]\n"
+        "    -s   Start or stop a Dhara storage server.\n"
         "    -c   Start a low-level interactive client.\n"
         "    -p   Pack a storage file.\n"
         "    -h   Get help on specific options.\n"
@@ -731,7 +731,7 @@ def main():
         if arg == "-c":
             client_main()
         elif arg == "-s":
-            run_durus_main()
+            run_dhara_main()
         elif arg == "-p":
             pack_storage_main()
         else:

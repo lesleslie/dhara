@@ -39,8 +39,9 @@ The FastMCP server currently exposes these supported tool groups:
 - Contract introspection: `get_contract_info`
 - Standardized health tools from `mcp-common`
 
-Legacy `durus_*` MCP tool names are part of a deprecated compatibility surface,
-not the canonical contract.
+MCP tool names use the canonical `dhara_*` prefix (e.g., `dhara_get`,
+`dhara_set`, `dhara_list`, `dhara_checkpoint`). No legacy aliases are
+supported.
 
 ## 3a. Authentication Status
 

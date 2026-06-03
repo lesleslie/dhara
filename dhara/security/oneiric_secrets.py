@@ -76,7 +76,7 @@ class OneiricSecretsAdapter:
     """Oneiric oneiric_secrets adapter with automatic key rotation and validation."""
 
     def __init__(
-        self, secret_prefix: str = "durus/hmac", rotation_interval: int = 90
+        self, secret_prefix: str = "dhara/hmac", rotation_interval: int = 90
     ) -> None:
         """
         Initialize the Oneiric oneiric_secrets adapter.
@@ -385,7 +385,7 @@ _adapter_lock = threading.Lock()
 
 
 def get_oneiric_secrets_adapter(
-    secret_prefix: str = "durus/hmac", rotation_interval: int = 90
+    secret_prefix: str = "dhara/hmac", rotation_interval: int = 90
 ) -> OneiricSecretsAdapter:
     """
     Get the global oneiric_secrets adapter instance.
@@ -460,7 +460,7 @@ def verify_hmac_signature(
 
 
 def initialize_oneiric_secrets(
-    secret_prefix: str = "durus/hmac", rotation_interval: int = 90
+    secret_prefix: str = "dhara/hmac", rotation_interval: int = 90
 ) -> None:
     """
     Initialize the global oneiric_secrets adapter.

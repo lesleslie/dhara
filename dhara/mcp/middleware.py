@@ -91,8 +91,7 @@ class MCPMiddleware:
         self._request_durations: list[float] = []
 
         # Permission mapping for MCP tools.
-        # Canonical adapter registry names are preferred; legacy Durus names
-        # remain supported for backward compatibility.
+        # Canonical Dhara adapter registry and Dhara MCP tool names.
         self._tool_permissions: dict[str, Permission] = {
             # Canonical Dhara adapter registry tools
             "store_adapter": Permission.WRITE,
@@ -101,14 +100,14 @@ class MCPMiddleware:
             "list_adapter_versions": Permission.READ,
             "validate_adapter": Permission.READ,
             "get_adapter_health": Permission.READ,
-            # Legacy compatibility aliases
-            "durus_get": Permission.READ,
-            "durus_set": Permission.WRITE,
-            "durus_list": Permission.READ,
-            "durus_delete": Permission.DELETE,
-            "durus_checkpoint": Permission.ADMIN,
-            "durus_restore_checkpoint": Permission.ADMIN,
-            "durus_connect": Permission.READ,
+            # Canonical Dhara MCP tool names
+            "dhara_get": Permission.READ,
+            "dhara_set": Permission.WRITE,
+            "dhara_list": Permission.READ,
+            "dhara_delete": Permission.DELETE,
+            "dhara_checkpoint": Permission.ADMIN,
+            "dhara_restore_checkpoint": Permission.ADMIN,
+            "dhara_connect": Permission.READ,
         }
 
     def get_required_permission(self, tool_name: str) -> Permission | None:
@@ -271,9 +270,17 @@ class MCPMiddleware:
         """
         required_permission = self.get_required_permission(tool_name)
 
-        if not required_permission:
-            # No permission required
-            return True
+        if required_permission is None:
+            # Unknown tool name — deny by default. The previous
+            # "silently allow" behavior was a permissive default that
+            # became a security exposure after the legacy durus_*
+            # permission aliases were removed: any client could send
+            # an unregistered tool name and bypass all permission
+            # checks. Tools that legitimately need "no permission
+            # required" must be registered explicitly via
+            # ``set_tool_permission`` with a sentinel (e.g.,
+            # ``Permission.READ`` for a public tool).
+            return False
 
         if not auth_result.success:
             return False

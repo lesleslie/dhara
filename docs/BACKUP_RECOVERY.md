@@ -475,7 +475,7 @@ azure = AzureBlobStorage(
 1. **Restrict file permissions**:
 
    ```bash
-   chmod 600 backups/*.durus
+   chmod 600 backups/*.dhara
    chmod 700 backups/
    ```
 

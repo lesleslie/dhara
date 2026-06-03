@@ -1,7 +1,0 @@
-#!/usr/bin/env python
-"""
-$URL$
-$Id$
-"""
-import durus.__main__
-durus.__main__.main()

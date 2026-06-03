@@ -17,7 +17,7 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
-# Add durus to path
+# Add dhara to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from cryptography.fernet import Fernet
@@ -72,8 +72,8 @@ def demonstrate_backup_manager():
     logger.info("=== Demonstrating Backup Manager ===")
 
     # Setup directories
-    temp_dir = tempfile.mkdtemp(prefix="durus_backup_demo_")
-    db_path = os.path.join(temp_dir, "sample_db.durus")
+    temp_dir = tempfile.mkdtemp(prefix="dhara_backup_demo_")
+    db_path = os.path.join(temp_dir, "sample_db.dhara")
     backup_dir = os.path.join(temp_dir, "backups")
 
     # Create sample database
@@ -139,7 +139,7 @@ def demonstrate_restore_manager(temp_dir, backups):
 
     # Create restore manager
     restore_manager = RestoreManager(
-        target_path=os.path.join(restore_dir, "restored_db.durus"),
+        target_path=os.path.join(restore_dir, "restored_db.dhara"),
         backup_dir=os.path.join(temp_dir, "backups"),
     )
 
@@ -181,7 +181,7 @@ def demonstrate_scheduling(temp_dir):
     logger.info("=== Demonstrating Backup Scheduler ===")
 
     backup_dir = os.path.join(temp_dir, "backups")
-    db_path = os.path.join(temp_dir, "sample_db.durus")
+    db_path = os.path.join(temp_dir, "sample_db.dhara")
 
     # Create backup manager
     storage = FileStorage(db_path)
@@ -301,7 +301,7 @@ def demonstrate_encryption(temp_dir):
     logger.info(f"Generated encryption key: {encryption_key.decode()}")
 
     # Create backup manager with encryption
-    db_path = os.path.join(temp_dir, "sample_db.durus")
+    db_path = os.path.join(temp_dir, "sample_db.dhara")
     storage = FileStorage(db_path)
     backup_manager = BackupManager(
         storage=storage,
@@ -321,7 +321,7 @@ def demonstrate_encryption(temp_dir):
 
     # Create restore manager with same key
     restore_manager = RestoreManager(
-        target_path=os.path.join(temp_dir, "restored_encrypted.durus"),
+        target_path=os.path.join(temp_dir, "restored_encrypted.dhara"),
         backup_dir=os.path.join(temp_dir, "encrypted_backups"),
         encryption_key=encryption_key,
     )
@@ -354,7 +354,7 @@ def demonstrate_cloud_storage():
         mock_adapter.upload_json.return_value = True
         mock_adapter.list_files.return_value = [
             {
-                "name": "backup1.durus.zst.enc",
+                "name": "backup1.dhara.zst.enc",
                 "size": 1024000,
                 "last_modified": "2024-01-01T00:00:00Z",
             }
@@ -375,7 +375,7 @@ def demonstrate_cloud_storage():
             backup_id="demo_cloud_backup",
             backup_type=BackupType.FULL,
             timestamp=datetime.now(),
-            source_path=os.path.join(temp_dir, "demo_backup.durus"),
+            source_path=os.path.join(temp_dir, "demo_backup.dhara"),
             size_bytes=1024000,
             checksum="abc123",
         )

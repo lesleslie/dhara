@@ -31,7 +31,7 @@ from dhara.utils import int8_to_str, str_to_int8
 @pytest.fixture
 def temp_storage_path():
     """Provide a unique temporary file path, cleaned up after test."""
-    path = mktemp(suffix=".durus")
+    path = mktemp(suffix=".dhara")
     yield path
     if os.path.exists(path):
         os.unlink(path)
@@ -78,7 +78,7 @@ class TestFileStorageInit:
     def test_init_readonly_raises_for_missing_file(self):
         """Opening a nonexistent file in readonly mode raises OSError."""
         with pytest.raises(OSError, match="No .* found"):
-            FileStorage("/nonexistent/path.durus", readonly=True)
+            FileStorage("/nonexistent/path.dhara", readonly=True)
 
 
 # ── 2. has_format classmethod ──

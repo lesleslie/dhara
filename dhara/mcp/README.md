@@ -119,7 +119,8 @@ server = DharaMCPServer(settings)
 ## Migration Notes
 
 - Prefer `dhara.mcp` or `dhara.mcp.server_core` in active code.
-- Treat legacy `durus_*` tool names as deprecated compatibility-only behavior.
+- Use canonical `dhara_*` MCP tool names (e.g., `dhara_get`, `dhara_set`).
+  No legacy `durus_*` aliases are supported.
 - Treat `dhara.mcp.server` as deprecated.
 
 ## Related Docs

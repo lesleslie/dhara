@@ -1,6 +1,6 @@
 *.so
 *.pyc
-*.durus
+*.dhara
 dist
 
 # Oneiric runtime cache (should not be tracked)

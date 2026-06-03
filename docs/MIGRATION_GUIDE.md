@@ -107,7 +107,7 @@ Use:
 ### Historical MCP Surface
 
 - `dhara.mcp.server` is removed from the live package.
-- legacy `durus_*` tool names are historical only
+- legacy `dhara_*` tool names are historical only
 
 ### Current Supported Tool Groups
 

@@ -222,7 +222,7 @@ static PyTypeObject PersistentBase_Type = {
 #else
     PyVarObject_HEAD_INIT(0, 0)
 #endif
-	"durus.persistent.PersistentBase",	/* tp_name */
+	"dhara.persistent.PersistentBase",	/* tp_name */
 	sizeof(PersistentBaseObject), /* tp_basicsize */
 	0,					/* tp_itemsize */
 	(destructor)pb_dealloc, /* tp_dealloc */
@@ -324,7 +324,7 @@ static PyTypeObject ConnectionBase_Type = {
 #else
     PyVarObject_HEAD_INIT(0, 0)
 #endif
-	"durus.persistent.ConnectionBase",	/* tp_name */
+	"dhara.persistent.ConnectionBase",	/* tp_name */
 	sizeof(ConnectionBaseObject), /* tp_basicsize */
 	0,					/* tp_itemsize */
 	(destructor)cb_dealloc, /* tp_dealloc */

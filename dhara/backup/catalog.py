@@ -32,7 +32,7 @@ class BackupCatalog:
     def __init__(self, backup_dir: str | Path):
         self.backup_dir = Path(backup_dir)
         self.backup_dir.mkdir(parents=True, exist_ok=True)
-        self.catalog_path = self.backup_dir / "backup_catalog.durus"
+        self.catalog_path = self.backup_dir / "backup_catalog.dhara"
         self.catalog = self._load_catalog()
 
     def _load_catalog(self) -> dict[str, dict[str, Any]]:
@@ -318,7 +318,7 @@ class AsyncBackupCatalog:
     ) -> None:
         self.backup_dir = Path(backup_dir)
         self.backup_dir.mkdir(parents=True, exist_ok=True)
-        self.catalog_path = self.backup_dir / "backup_catalog.durus"
+        self.catalog_path = self.backup_dir / "backup_catalog.dhara"
         self._provided_connection = connection
         self._connection: AsyncConnection | None = connection
 

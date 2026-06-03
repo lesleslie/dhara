@@ -39,8 +39,8 @@ def setup_parser():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s backup --source my_db.durus --type full --backup-dir ./backups
-  %(prog)s restore --source my_db.durus --target restored_db.durus
+  %(prog)s backup --source my_db.dhara --type full --backup-dir ./backups
+  %(prog)s restore --source my_db.dhara --target restored_db.dhara
   %(prog)s list --backup-dir ./backups
   %(prog)s verify --backup-id full_backup_20240101
         """,

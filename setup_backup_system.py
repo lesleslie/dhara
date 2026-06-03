@@ -169,8 +169,8 @@ def create_cli_test():
     print("\nTesting CLI functionality...")
 
     # Create test database
-    test_dir = tempfile.mkdtemp(prefix="durus_cli_test_")
-    db_path = os.path.join(test_dir, "test_db.durus")
+    test_dir = tempfile.mkdtemp(prefix="dhara_cli_test_")
+    db_path = os.path.join(test_dir, "test_db.dhara")
     backup_dir = os.path.join(test_dir, "backups")
 
     try:
@@ -182,7 +182,7 @@ def create_cli_test():
             [
                 sys.executable,
                 "-m",
-                "durus.backup.cli",
+                "dhara.backup.cli",
                 "backup",
                 "--source",
                 db_path,
@@ -207,7 +207,7 @@ def create_cli_test():
             [
                 sys.executable,
                 "-m",
-                "durus.backup.cli",
+                "dhara.backup.cli",
                 "list",
                 "--backup-dir",
                 backup_dir,
@@ -228,7 +228,7 @@ def create_cli_test():
             [
                 sys.executable,
                 "-m",
-                "durus.backup.cli",
+                "dhara.backup.cli",
                 "restore",
                 "--target",
                 restore_dir,
@@ -262,7 +262,7 @@ def create_sample_configuration():
 
     # Sample backup configuration
     backup_config = """
-# Durus Backup Configuration
+# Dhara Backup Configuration
 [general]
 backup_dir = ./backups
 compression_level = 3
@@ -283,7 +283,7 @@ verification_interval = 3600
 
 [cloud]
 provider = s3
-bucket = durus-backups
+bucket = "dhara-backups"
 enabled = false
 """
 
@@ -313,7 +313,7 @@ def create_documentation():
 
     # API documentation
     api_doc = """
-# Durus Backup System API Documentation
+# Dhara Backup System API Documentation
 
 ## BackupManager
 
@@ -322,7 +322,7 @@ The `BackupManager` class is the main interface for creating backups.
 ### Constructor
 ```python
 BackupManager(
-    storage,                    # Durus storage instance
+    storage,                    # Dhara storage instance
     backup_dir="./backups",     # Backup directory
     compression_level=3,        # ZSTD compression level
     encryption_key=None,        # Optional encryption key
@@ -409,7 +409,7 @@ BackupVerification(
 
 def main():
     """Main setup function."""
-    print("Durus Backup and Restore System Setup")
+    print("Dhara Backup and Restore System Setup")
     print("=" * 50)
 
     # Change to script directory
@@ -448,7 +448,7 @@ def main():
             print("1. Review the documentation in docs/ directory")
             print("2. Check the example in examples/backup_example.py")
             print("3. Try running the CLI commands:")
-            print("   python -m durus.backup.cli --help")
+            print("   python -m dhara.backup.cli --help")
             print("4. Set up your own backup schedules")
             return 0
         else:

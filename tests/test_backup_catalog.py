@@ -74,7 +74,7 @@ class TestBackupCatalogInit:
 
     def test_init_catalog_path(self, tmp_path):
         catalog = BackupCatalog(str(tmp_path))
-        assert catalog.catalog_path == tmp_path / "backup_catalog.durus"
+        assert catalog.catalog_path == tmp_path / "backup_catalog.dhara"
 
     @patch.object(BackupCatalog, "_load_catalog", return_value={"existing": "data"})
     def test_init_loads_existing_catalog(self, mock_load, tmp_path):

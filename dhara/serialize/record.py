@@ -28,8 +28,14 @@ from dhara.serialize.msgspec import MsgspecSerializer
 from dhara.utils import int4_to_str, join_bytes, str_to_int4
 
 NEWLINE: Final[bytes] = b"\n"
+# Internal record-layer serializer. Uses the default whitelist
+# (``DEFAULT_ALLOWED_MODULES``); we never call ``deserialize`` on
+# this instance — only ``decode_raw`` and ``serialize`` — so the
+# whitelist field is dormant. Class reconstruction (which would
+# trigger the whitelist check) is gated by :func:`_resolve_class`
+# with a connection-level whitelist instead.
 _DEFAULT_MSGSPEC: Final[MsgspecSerializer] = MsgspecSerializer(
-    format="msgpack", use_builtins=True, allowed_modules=None
+    format="msgpack", use_builtins=True
 )
 
 

@@ -14,7 +14,7 @@ from dhara.storage.base import MemoryStorage
 @pytest.fixture
 def temp_file():
     """Create a temporary file path."""
-    fd, path = tempfile.mkstemp(suffix=".durus")
+    fd, path = tempfile.mkstemp(suffix=".dhara")
     os.close(fd)
     yield path
     if os.path.exists(path):

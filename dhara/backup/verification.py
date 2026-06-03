@@ -201,7 +201,7 @@ class BackupVerification:
 
             # Create restore manager
             restore_manager = RestoreManager(
-                target_path=str(restore_path / "test_db.durus"),
+                target_path=str(restore_path / "test_db.dhara"),
                 backup_dir=str(self.backup_dir),
             )
 
@@ -628,7 +628,7 @@ class AsyncBackupVerification:
             restore_path.mkdir(parents=True, exist_ok=True)
 
             async with AsyncRestoreManager(
-                target_path=str(restore_path / "test_db.durus"),
+                target_path=str(restore_path / "test_db.dhara"),
                 backup_dir=str(self.backup_dir),
             ) as restore_manager:
                 await restore_manager.restore_emergency_async(backup_metadata.backup_id)

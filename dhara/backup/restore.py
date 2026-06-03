@@ -101,13 +101,13 @@ class RestoreManager:
         with tempfile.TemporaryDirectory() as temp_dir:
             # Step 1: Decrypt if encrypted
             if backup_metadata.encryption_enabled and self.encryption:
-                decrypted_path = os.path.join(temp_dir, "decrypted_backup.durus.zst")
+                decrypted_path = os.path.join(temp_dir, "decrypted_backup.dhara.zst")
                 self.encryption.decrypt_file(str(backup_path), decrypted_path)
                 backup_path = Path(decrypted_path)
 
             # Step 2: Decompress if compressed
             if backup_path.suffix == ".zst":
-                decompressed_path = os.path.join(temp_dir, "decompressed_backup.durus")
+                decompressed_path = os.path.join(temp_dir, "decompressed_backup.dhara")
                 compression_engine = CompressionEngine()
                 compression_engine.decompress_file(str(backup_path), decompressed_path)
                 backup_path = Path(decompressed_path)
@@ -132,7 +132,7 @@ class RestoreManager:
 
         try:
             self.cloud_adapter.download_file(
-                f"durus_backups/{backup_metadata.backup_id}/{backup_filename}",
+                f"dhara_backups/{backup_metadata.backup_id}/{backup_filename}",
                 local_path,
             )
             return Path(local_path)
@@ -399,12 +399,12 @@ class AsyncRestoreManager:
 
         with tempfile.TemporaryDirectory() as temp_dir:
             if backup_metadata.encryption_enabled and self.encryption:
-                decrypted_path = os.path.join(temp_dir, "decrypted_backup.durus.zst")
+                decrypted_path = os.path.join(temp_dir, "decrypted_backup.dhara.zst")
                 self.encryption.decrypt_file(str(backup_path), decrypted_path)
                 backup_path = Path(decrypted_path)
 
             if backup_path.suffix == ".zst":
-                decompressed_path = os.path.join(temp_dir, "decompressed_backup.durus")
+                decompressed_path = os.path.join(temp_dir, "decompressed_backup.dhara")
                 compression_engine = CompressionEngine()
                 compression_engine.decompress_file(str(backup_path), decompressed_path)
                 backup_path = Path(decompressed_path)
@@ -426,7 +426,7 @@ class AsyncRestoreManager:
         local_path = os.path.join(temp_dir, backup_filename)
         try:
             self.cloud_adapter.download_file(
-                f"durus_backups/{backup_metadata.backup_id}/{backup_filename}",
+                f"dhara_backups/{backup_metadata.backup_id}/{backup_filename}",
                 local_path,
             )
             return Path(local_path)

@@ -100,7 +100,7 @@ except ImportError:
           _p_serial: int
             On every access, this attribute is set to self._p_connection.serial
             (if _p_connection is not None).
-          _p_connection: durus.connection.Connection | None
+          _p_connection: dhara.core.connection.Connection | None
             The Connection to the Storage that stores this instance.
             The _p_connection is None when this instance has never been stored.
           _p_oid: str | None
@@ -151,7 +151,7 @@ except ImportError:
 
 class PersistentObject(PersistentBase):
     """
-    All Durus persistent objects should inherit from this class.
+    All Dhara persistent objects should inherit from this class.
     """
 
     if hasattr(PersistentBase, "__weakref__"):
@@ -316,7 +316,7 @@ class PersistentObject(PersistentBase):
 
 class Persistent(PersistentObject):
     """
-    This is the traditional persistent class of Durus.  The state is stored
+    This is the traditional persistent class of Dhara.  The state is stored
     in the __dict__.
     """
 

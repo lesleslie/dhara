@@ -100,8 +100,8 @@ class TestMCPMiddlewareInit:
         mw = MCPMiddleware()
         assert mw.get_required_permission("store_adapter") == Permission.WRITE
         assert mw.get_required_permission("get_adapter") == Permission.READ
-        assert mw.get_required_permission("durus_get") == Permission.READ
-        assert mw.get_required_permission("durus_set") == Permission.WRITE
+        assert mw.get_required_permission("dhara_get") == Permission.READ
+        assert mw.get_required_permission("dhara_set") == Permission.WRITE
         assert mw.get_required_permission("unknown_tool") is None
 
 
@@ -273,10 +273,14 @@ class TestProcessResponse:
 
 
 class TestCheckToolPermission:
-    def test_no_permission_required(self):
+    def test_unknown_tool_denied_by_default(self):
+        # Unknown tool names are denied by default (secure default).
+        # Previously this test asserted silent-allow; that behavior
+        # became a security exposure after legacy permission aliases
+        # were removed.
         mw = MCPMiddleware()
         auth = AuthResult(success=True, permissions={Permission.ADMIN})
-        assert mw.check_tool_permission("unknown", auth) is True
+        assert mw.check_tool_permission("unknown", auth) is False
 
     def test_failed_auth_denied(self):
         mw = MCPMiddleware()
