@@ -29,14 +29,14 @@ class FileStorage(Storage):
       shelf : Shelf
         Contains the stored records.  This wraps a file.
         See Shelf docs for details of the file format.
-      allocated_unused_oids : set([string])
+      allocated_unused_oids : set[str]
         Contains the oids that have been allocated but not yet used.
       pending_records : { oid:str : record:str }
         Object records are accumulated here during a commit.
       pack_extra : [oid:str] | None
         oids of objects that have been committed after the pack began.  It is
         None if a pack is not in progress.
-      invalid : set([oid:str])
+      invalid : set[str]
         set of oids removed by packs since the last call to sync().
     """
 

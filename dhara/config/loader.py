@@ -8,7 +8,7 @@ various sources (files, dictionaries, environment variables).
 import os
 from copy import deepcopy
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal, cast
 
 import yaml
 
@@ -68,14 +68,16 @@ def _parse_config_content(content: str, fmt: Literal["yaml", "json"]) -> dict:
     """Parse config content based on format."""
     if fmt == "yaml":
         import yaml
+
         try:
-            return yaml.safe_load(content)
+            return cast(dict[Any, Any], yaml.safe_load(content))
         except yaml.YAMLError as e:
             raise yaml.YAMLError(f"Failed to parse YAML file: {e}")
     else:
         import json
+
         try:
-            return json.loads(content)
+            return cast(dict[Any, Any], json.loads(content))
         except json.JSONDecodeError as e:
             raise ValueError(f"Failed to parse JSON file: {e}")
 
@@ -122,7 +124,9 @@ def load_config(
 
     # Read and parse file
     content = path.read_text()
-    data = _parse_config_content(content, format)
+    # Narrow format from "yaml"|"json"|"dict"|"auto" to "yaml"|"json" for parser
+    parse_format = cast(Literal["yaml", "json"], format)
+    data = _parse_config_content(content, parse_format)
 
     # Ensure we got a dictionary
     if not isinstance(data, dict):
@@ -142,7 +146,9 @@ def _validate_storage_backend(prefixes: tuple[str, ...], config: DharaConfig) ->
                 f"Invalid DHARA_STORAGE_BACKEND: {backend}. "
                 f"Must be one of: {', '.join(sorted(VALID_STORAGE_BACKENDS))}"
             )
-        config.storage.backend = backend
+        config.storage.backend = cast(
+            Literal["file", "sqlite", "client", "memory"], backend
+        )
 
 
 def _validate_storage_path(prefixes: tuple[str, ...], config: DharaConfig) -> None:
@@ -210,9 +216,7 @@ def _validate_cache_size(prefixes: tuple[str, ...], config: DharaConfig) -> None
         try:
             size = int(size_str)
         except ValueError as e:
-            raise TypeError(
-                f"DHARA_CACHE_SIZE must be an integer: {size_str!r}"
-            ) from e
+            raise TypeError(f"DHARA_CACHE_SIZE must be an integer: {size_str!r}") from e
 
         if size < 0:
             raise ValueError(f"DHARA_CACHE_SIZE must be non-negative: {size}")

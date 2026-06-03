@@ -11,11 +11,12 @@ from __future__ import annotations
 
 import asyncio
 import collections
-import struct
 import sqlite3
+import struct
+from collections.abc import AsyncIterator
 from datetime import datetime
 from pathlib import Path
-from typing import Any, AsyncIterator
+from typing import Any
 
 import aiosqlite
 
@@ -68,7 +69,7 @@ class SqliteStorage(Storage):
       pack_extra : [oid:str] | None
         oids of objects that have been committed after the pack began.  It is
         None if a pack is not in progress.
-      invalid : set([oid:str])
+      invalid : set[str]
         set of oids removed by packs since the last call to sync().
     """
 
@@ -361,7 +362,7 @@ class AsyncSqliteStorage:
             row = await cursor.fetchone()
             if row is None or row[0] is None:
                 return 0
-            return row[0]
+            return row[0]  # type: ignore[no-any-return]
 
     async def load(self, oid: str) -> bytes:
         """Load record for oid. Raises KeyError if not found."""
@@ -374,13 +375,15 @@ class AsyncSqliteStorage:
             if row is None:
                 raise KeyError(oid)
             # Return raw data bytes - the stored record is the data itself
-            return row[1] if row[1] else b""
+            return row[1] or b""
 
     def _pack_record(self, oid: str, data: bytes, refs: bytes) -> bytes:
         """Pack oid, data, refs into a record bytes."""
-        oid_bytes = oid.encode() if isinstance(oid, str) else oid
-        data_bytes = data if isinstance(data, bytes) else data.encode()
-        refs_bytes = refs if isinstance(refs, bytes) else refs.encode()
+        # All inputs are typed as bytes; encode oid to bytes for length-prefix framing
+        oid_bytes = oid.encode("utf-8")
+        # data and refs are already bytes (per type annotation); copy defensively
+        data_bytes = bytes(data)
+        refs_bytes = bytes(refs)
         # Pack as: oid_len(4) | oid | data_len(4) | data | refs_len(4) | refs
         result = (
             struct.pack("<I", len(oid_bytes))
@@ -441,16 +444,16 @@ class AsyncSqliteStorage:
 
     async def sync(self) -> list[str]:
         """Sync and return list of invalidated OIDs."""
-        result = list(self._invalid)
+        result = self._invalid.copy()
         self._invalid.clear()
-        return result
+        return list(result)  # type: ignore[return-value]
 
     async def new_oid(self) -> str:
         """Allocate and return a new OID (thread-safe)."""
         async with self._oid_lock:
             oid = int8_to_str(self._last_oid)
             self._last_oid += 1
-            return oid
+            return oid  # type: ignore[no-any-return]
 
     async def gen_oid_record(
         self, start_oid: str | None = None, batch_size: int = 100
@@ -466,7 +469,7 @@ class AsyncSqliteStorage:
                 async for row in cursor:
                     oid_str = int8_to_str(row[0])
                     # Return raw data bytes as the record
-                    yield oid_str, row[1] if row[1] else b""
+                    yield oid_str, row[1] or b""
         else:
             # BFS traversal from start_oid
             todo = [start_oid]
@@ -540,7 +543,7 @@ class AsyncSqliteStorage:
         """Return incremental packer generator, or None."""
         return None  # Placeholder for incremental packer
 
-    async def __aenter__(self) -> "AsyncSqliteStorage":
+    async def __aenter__(self) -> AsyncSqliteStorage:
         """Async context manager entry."""
         await self.init()
         return self

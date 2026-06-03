@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 import sys
+from collections.abc import Iterator
 from contextlib import contextmanager
 from functools import wraps
 from typing import Any
@@ -45,7 +46,7 @@ def get_logger(name: str | None = None) -> Any:
 
 
 @contextmanager
-def log_operation(operation: str, **context: Any) -> contextmanager:
+def log_operation(operation: str, **context: Any) -> Iterator[None]:
     """Context manager for logging operations.
 
     This context manager logs the start and completion (or failure)

@@ -9,6 +9,7 @@ This module contains the fundamental persistence abstractions:
 
 from dhara.core.connection import (
     ROOT_OID,
+    AsyncConnection,
     Connection,
     ObjectDictionary,
     touch_every_reference,
@@ -16,6 +17,7 @@ from dhara.core.connection import (
 from dhara.core.persistent import Persistent, PersistentBase
 
 __all__ = [
+    "AsyncConnection",
     "Connection",
     "Persistent",
     "PersistentBase",

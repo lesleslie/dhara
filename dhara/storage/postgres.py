@@ -12,7 +12,8 @@ Supported config keys:
 
 from __future__ import annotations
 
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 import asyncpg
 
@@ -108,9 +109,9 @@ class AsyncPostgresStorage:
         # Return packed record format: oid|data_len|data|refs_len|refs
         # Uses pack_record from serialize_legacy for compatibility with sync storage
         stored_oid = int8_to_str(row["oid"])
-        data = row["data"] if row["data"] else b""
-        refs = row["refs"] if row["refs"] else b""
-        return pack_record(stored_oid, data, refs)
+        data = row["data"] or b""
+        refs = row["refs"] or b""
+        return pack_record(stored_oid, data, refs)  # type: ignore[no-any-return]
 
     async def begin(self) -> None:
         """Begin a commit transaction."""
@@ -153,9 +154,9 @@ class AsyncPostgresStorage:
         if not self._in_transaction:
             raise RuntimeError("end() called without begin()")
         try:
-            await self._tx.commit()
+            await self._tx.commit()  # type: ignore[union-attr]
         except Exception:
-            await self._tx.rollback()
+            await self._tx.rollback()  # type: ignore[union-attr]
             raise
         finally:
             if self._conn and self._pool:
@@ -185,7 +186,7 @@ class AsyncPostgresStorage:
             raise RuntimeError("Storage not initialized")
         async with self._pool.acquire() as conn:
             oid_int: int = await conn.fetchval("SELECT nextval('dhara_oid_seq')")
-        return int8_to_str(oid_int)
+        return int8_to_str(oid_int)  # type: ignore[no-any-return]
 
     async def gen_oid_record(
         self, start_oid: OID | None = None, batch_size: int = 100
@@ -201,8 +202,8 @@ class AsyncPostgresStorage:
                         "SELECT oid, data, refs FROM dhara_objects ORDER BY oid"
                     ):
                         oid_str = int8_to_str(row["oid"])
-                        data = row["data"] if row["data"] else b""
-                        refs = row["refs"] if row["refs"] else b""
+                        data = row["data"] or b""
+                        refs = row["refs"] or b""
                         yield oid_str, pack_record(oid_str, data, refs)
         else:
             # BFS traversal from start_oid
@@ -258,7 +259,7 @@ class AsyncPostgresStorage:
         """Return incremental packer generator, or None."""
         return None  # Placeholder for incremental packer
 
-    async def __aenter__(self) -> "AsyncPostgresStorage":
+    async def __aenter__(self) -> AsyncPostgresStorage:
         """Async context manager entry."""
         await self.init()
         return self

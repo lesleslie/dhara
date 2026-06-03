@@ -8,6 +8,7 @@ Uses cryptography.hazmat for HMAC-SHA256 signing.
 """
 
 import os
+from pathlib import Path
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.backends import default_backend
@@ -83,7 +84,7 @@ class ObjectSigner:
         return cls(kdf.derive(password))
 
     @classmethod
-    def from_file(cls, path: str) -> "ObjectSigner":
+    def from_file(cls, path: str | Path) -> "ObjectSigner":
         """Load signer key from file.
 
         Args:
@@ -96,7 +97,7 @@ class ObjectSigner:
             FileNotFoundError: If key file doesn't exist
             ValueError: If key file is invalid
         """
-        with path.open("rb") as f:
+        with Path(path).open("rb") as f:
             key = f.read()
 
         if len(key) != 32:
@@ -114,7 +115,7 @@ class ObjectSigner:
         return os.urandom(32)
 
     @classmethod
-    def generate_key_file(cls, path: str) -> None:
+    def generate_key_file(cls, path: str | Path) -> None:
         """Generate and save a new random key to file.
 
         Args:
@@ -127,7 +128,7 @@ class ObjectSigner:
         if parent != Path("."):
             parent.mkdir(parents=True, exist_ok=True)
 
-        with path.open("wb") as f:
+        with Path(path).open("wb") as f:
             f.write(key)
 
         # Restrict file permissions to owner-only

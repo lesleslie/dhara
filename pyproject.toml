@@ -3,18 +3,18 @@ requires = ["setuptools", "wheel"]
 
 [dependency-groups]
 dev = [
-    "azure-storage-blob>=12.23.0",
-    "boto3>=1.35.0",
+    "azure-storage-blob>=12.29.0",
+    "boto3>=1.43.20",
     "crackerjack",
-    "dill>=0.3.9",
-    "google-cloud-storage>=2.18.0",
+    "dill>=0.4.1",
+    "google-cloud-storage>=3.10.1",
     # onnxruntime removed — Dhara uses Ollama/OpenAI for embeddings via MCP.
     # No native ONNX inference needed; avoids conflicts with session-buddy.
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
-    "pytest-cov>=5.0.0",
-    "pytest-timeout>=2.3.0",
-    "session-buddy>=0.17.0",
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
+    "pytest-timeout>=2.4.0",
+    "session-buddy>=0.19.9",
 ]
 
 # Full-Featured Library Template
@@ -47,29 +47,29 @@ classifiers = [
 
 dependencies = [
     # MCP server framework (ecosystem standard)
-    "fastmcp>=2.14.0",
-    "mcp-common>=0.7.0",
+    "fastmcp>=3.3.1",
+    "mcp-common>=0.16.1",
     # Configuration and logging (ecosystem standard)
-    "oneiric>=0.5.0",
+    "oneiric>=0.13.0",
     # ASGI server for FastMCP
-    "uvicorn>=0.30.0",
+    "uvicorn>=0.48.0",
     # Admin shell with IPython (ecosystem standard)
-    "ipython>=8.0.0",
-    "rich>=13.0.0",  # For pretty tables and console output
-    "cryptography>=43.0.0",
-    "msgspec>=0.20.0",
-    "dill>=0.3.9",
-    "schedule>=1.2.0",
-    "zstandard>=0.23.0",
+    "ipython>=9.14.0",
+    "rich>=15.0.0",  # For pretty tables and console output
+    "cryptography>=48.0.0",
+    "msgspec>=0.21.1",
+    "dill>=0.4.1",
+    "schedule>=1.2.2",
+    "zstandard>=0.25.0",
 ]
 
 [project.optional-dependencies]
 cloud = [
     "aiosqlite>=0.22.1",
-    "asyncpg>=0.30.0",
-    "azure-storage-blob>=12.23.0",
-    "boto3>=1.35.0",
-    "google-cloud-storage>=2.18.0",
+    "asyncpg>=0.31.0",
+    "azure-storage-blob>=12.29.0",
+    "boto3>=1.43.20",
+    "google-cloud-storage>=3.10.1",
 ]
 
 [project.urls]

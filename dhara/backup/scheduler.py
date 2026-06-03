@@ -19,6 +19,7 @@ from typing import Any
 import schedule
 
 from dhara.core.connection import AsyncConnection
+
 from .catalog import AsyncBackupCatalog, BackupCatalog
 from .manager import BackupManager, BackupType
 from .verification import AsyncBackupVerification, BackupVerification
@@ -292,7 +293,7 @@ class BackupScheduler:
                     logger.info("Starting automated backup verification")
 
                     # Run verification
-                    results = self.verification_engine.run_all_checks() # type: ignore
+                    results = self.verification_engine.run_all_checks()  # type: ignore
 
                     # Log results
                     for check_name, result in results.items():

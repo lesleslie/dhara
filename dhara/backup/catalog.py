@@ -13,7 +13,7 @@ This module provides:
 
 import json
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -188,7 +188,7 @@ class BackupCatalog:
 
         # Calculate statistics
         total_size = sum(b.size_bytes for b in backups)
-        by_type = {}
+        by_type: dict[str, int] = {}
         for b in backups:
             btype = b.backup_type.value
             by_type[btype] = by_type.get(btype, 0) + 1
@@ -247,7 +247,9 @@ class BackupCatalog:
             "statistics": self.get_backup_statistics(),
         }
 
-        with export_path.open("w") as f:
+        # Use Path for file operations (robust against str subclasses)
+        export_path_obj = Path(export_path)
+        with export_path_obj.open("w") as f:
             json.dump(export_data, f, indent=2)
 
     def import_catalog(self, import_path: str) -> int:
@@ -323,6 +325,7 @@ class AsyncBackupCatalog:
     async def _get_connection(self) -> AsyncConnection:
         if self._connection is None:
             from dhara.storage.file import FileStorage
+
             storage = FileStorage(str(self.catalog_path))
             self._connection = await AsyncConnection.new(storage)
         return self._connection
@@ -415,13 +418,13 @@ class AsyncBackupCatalog:
             self._connection = None
         # If _provided_connection was set, caller owns it
 
-    def __enter__(self) -> "AsyncBackupCatalog":
+    def __enter__(self) -> AsyncBackupCatalog:
         return self
 
     def __exit__(self, *args: Any) -> None:
         self.close()
 
-    async def __aenter__(self) -> "AsyncBackupCatalog":
+    async def __aenter__(self) -> AsyncBackupCatalog:
         return self
 
     async def __aexit__(self, *args: Any) -> None:

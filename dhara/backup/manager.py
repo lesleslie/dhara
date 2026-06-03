@@ -108,16 +108,16 @@ class CompressionEngine:
         """Decompress data using zstd."""
         return self.decompressor.decompress(data)
 
-    def compress_file(self, input_path: str, output_path: str) -> None:
+    def compress_file(self, input_path: str | Path, output_path: str | Path) -> None:
         """Compress a file."""
-        with input_path.open("rb") as f_in, output_path.open("wb") as f_out:
+        with Path(input_path).open("rb") as f_in, Path(output_path).open("wb") as f_out:
             data = f_in.read()
             compressed = self.compress(data)
             f_out.write(compressed)
 
-    def decompress_file(self, input_path: str, output_path: str) -> None:
+    def decompress_file(self, input_path: str | Path, output_path: str | Path) -> None:
         """Decompress a file."""
-        with input_path.open("rb") as f_in, output_path.open("wb") as f_out:
+        with Path(input_path).open("rb") as f_in, Path(output_path).open("wb") as f_out:
             data = f_in.read()
             decompressed = self.decompress(data)
             f_out.write(decompressed)
@@ -141,16 +141,16 @@ class EncryptionEngine:
         """Decrypt data using Fernet."""
         return self.cipher.decrypt(data)
 
-    def encrypt_file(self, input_path: str, output_path: str) -> None:
+    def encrypt_file(self, input_path: str | Path, output_path: str | Path) -> None:
         """Encrypt a file."""
-        with input_path.open("rb") as f_in, output_path.open("wb") as f_out:
+        with Path(input_path).open("rb") as f_in, Path(output_path).open("wb") as f_out:
             data = f_in.read()
             encrypted = self.encrypt(data)
             f_out.write(encrypted)
 
-    def decrypt_file(self, input_path: str, output_path: str) -> None:
+    def decrypt_file(self, input_path: str | Path, output_path: str | Path) -> None:
         """Decrypt a file."""
-        with input_path.open("rb") as f_in, output_path.open("wb") as f_out:
+        with Path(input_path).open("rb") as f_in, Path(output_path).open("wb") as f_out:
             data = f_in.read()
             decrypted = self.decrypt(data)
             f_out.write(decrypted)
@@ -191,11 +191,11 @@ class BackupManager:
 
         self.logger = logging.getLogger(__name__)
 
-    def _calculate_checksum(self, file_path: str) -> str:
+    def _calculate_checksum(self, file_path: str | Path) -> str:
         """Calculate SHA256 checksum of a file."""
         sha256_hash = hashlib.sha256()
-        with file_path.open("rb") as f:
-            for byte_block in iter(f.read(4096), b""):
+        with Path(file_path).open("rb") as f:
+            for byte_block in iter(lambda: f.read(4096), b""):
                 sha256_hash.update(byte_block)
         return sha256_hash.hexdigest()
 
@@ -235,10 +235,11 @@ class BackupManager:
 
         return compressed_path
 
-    def _encrypt_backup(self, backup_path: str) -> str:
+    def _encrypt_backup(self, backup_path: str | Path) -> str:
         """Encrypt a backup file."""
         encrypted_path = f"{backup_path}.enc"
-        self.encryption.encrypt_file(backup_path, encrypted_path)
+        if self.encryption:
+            self.encryption.encrypt_file(backup_path, encrypted_path)
         return encrypted_path
 
     def perform_full_backup(self) -> BackupMetadata:
@@ -280,7 +281,7 @@ class BackupManager:
             # Create metadata
             metadata = self._create_backup_metadata(
                 BackupType.FULL,
-                final_backup_path,
+                str(final_backup_path),
                 Path(final_backup_path).stat().st_size,
             )
 

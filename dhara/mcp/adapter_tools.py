@@ -102,7 +102,7 @@ class Adapter(Persistent):
                 "changelog": changelog,
                 "state": {
                     "factory_path": self.factory_path,
-                    "config": self.config.copy(),
+                    "config": (self.config or {}).copy(),
                     "capabilities": self.capabilities.copy(),
                     "dependencies": self.dependencies.copy(),
                 },
@@ -299,7 +299,7 @@ class AdapterRegistry:
             # Direct lookup
             adapter_id = f"{domain}:{key}:{provider}"
             if adapter_id in adapters:
-                return adapters[adapter_id].to_dict()
+                return adapters[adapter_id].to_dict()  # type: ignore[no-any-return]
             return None
 
         # Find all providers for this key
@@ -320,7 +320,7 @@ class AdapterRegistry:
             return None
 
         # Return first match (default provider)
-        return matches[0]
+        return matches[0]  # type: ignore[no-any-return]
 
     def list_adapters(
         self,
@@ -773,8 +773,7 @@ class AsyncAdapterRegistry:
         try:
             storage = self.connection.storage
             is_readonly = (
-                hasattr(storage, "shelf")
-                and storage.shelf.file.is_readonly()  # type: ignore[union-attr]
+                hasattr(storage, "shelf") and storage.shelf.file.is_readonly()  # type: ignore[union-attr]
             )
         except Exception:
             is_readonly = False
@@ -793,11 +792,11 @@ class AsyncAdapterRegistry:
 
     async def _adapters(self) -> PersistentDict:
         root = await self.connection.get_root()
-        return root["adapters"]  # type: ignore[return-value]
+        return root["adapters"]  # type: ignore[no-any-return,return-value]
 
     async def _health_checks(self) -> PersistentDict:
         root = await self.connection.get_root()
-        return root["health_checks"]  # type: ignore[return-value]
+        return root["health_checks"]  # type: ignore[no-any-return,return-value]
 
     async def store_adapter_async(
         self,
@@ -859,7 +858,7 @@ class AsyncAdapterRegistry:
         if provider:
             adapter_id = f"{domain}:{key}:{provider}"
             if adapter_id in adapters:
-                return adapters[adapter_id].to_dict()
+                return adapters[adapter_id].to_dict()  # type: ignore[no-any-return]
             return None
 
         matches = [
@@ -874,10 +873,10 @@ class AsyncAdapterRegistry:
         if version:
             for match in matches:
                 if match["version"] == version:
-                    return match
+                    return match  # type: ignore[no-any-return]
             return None
 
-        return matches[0]
+        return matches[0]  # type: ignore[no-any-return]
 
     async def list_adapters_async(
         self,

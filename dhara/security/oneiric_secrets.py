@@ -1,15 +1,13 @@
-"""
-from __future__ import annotations
-from typing import Dict
-Oneiric Secrets Adapter for HMAC Signing Keys
+"""Oneiric Secrets Adapter for HMAC Signing Keys.
 
 This module provides a secure secrets management interface using Oneiric secrets adapters.
 It handles automatic key rotation, validation, and thread-safe access for HMAC signing operations.
 """
 
+from __future__ import annotations
+
 import hashlib
 import hmac
-import secrets
 import threading
 import time
 from contextlib import suppress
@@ -17,12 +15,13 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 try:
-    from oneiric import secrets
+    from oneiric import secrets as oneiric_secrets
 
     ONEIRIC_AVAILABLE = True
+    # Use oneiric_secrets module for secrets operations
 except ImportError:
     ONEIRIC_AVAILABLE = False
-    secrets = None
+    oneiric_secrets = None  # type: ignore[assignment]
 
 
 def _utcnow() -> datetime:
@@ -47,7 +46,7 @@ class SecretKey:
     expires_at: datetime | None = None
     is_active: bool = True
     rotation_interval: timedelta = timedelta(days=90)
-    fallback_key: "SecretKey | None" = None
+    fallback_key: SecretKey | None = None
 
     @property
     def is_expired(self) -> bool:
@@ -61,11 +60,11 @@ class SecretKey:
         """Get the age of the key."""
         return _utcnow() - _as_utc(self.created_at)
 
-    def rotate(self) -> "SecretKey":
+    def rotate(self) -> SecretKey:
         """Create a new rotated version of this key."""
         new_key = SecretKey(
             key_id=f"{self.key_id}_rotated_{int(time.time())}",
-            key_material=secrets.token_bytes(32),  # 256-bit key
+            key_material=oneiric_secrets.token_bytes(32),  # 256-bit key
             created_at=_utcnow(),
             expires_at=_utcnow() + self.rotation_interval,
             rotation_interval=self.rotation_interval,
@@ -74,13 +73,13 @@ class SecretKey:
 
 
 class OneiricSecretsAdapter:
-    """Oneiric secrets adapter with automatic key rotation and validation."""
+    """Oneiric oneiric_secrets adapter with automatic key rotation and validation."""
 
     def __init__(
         self, secret_prefix: str = "durus/hmac", rotation_interval: int = 90
     ) -> None:
         """
-        Initialize the Oneiric secrets adapter.
+        Initialize the Oneiric oneiric_secrets adapter.
 
         Args:
             secret_prefix: Prefix for secret names in Oneiric
@@ -88,7 +87,7 @@ class OneiricSecretsAdapter:
         """
         if not ONEIRIC_AVAILABLE:
             raise RuntimeError(
-                "Oneiric secrets library is not available. "
+                "Oneiric oneiric_secrets library is not available. "
                 "Please install the Oneiric SDK or check your environment."
             )
 
@@ -100,11 +99,11 @@ class OneiricSecretsAdapter:
         self._initialized = False
 
         # Thread-safe key loading and rotation
-        self._load_secrets()
+        self._load_oneiric_secrets()
         self._start_rotation_timer()
 
-    def _load_secrets(self) -> None:
-        """Load secrets from Oneiric storage."""
+    def _load_oneiric_secrets(self) -> None:
+        """Load oneiric_secrets from Oneiric storage."""
         if not self._initialized:
             with self._lock:
                 if self._initialized:
@@ -124,7 +123,9 @@ class OneiricSecretsAdapter:
                     self._validate_keys()
 
                 except Exception as e:
-                    raise RuntimeError(f"Failed to load secrets from Oneiric: {e}")
+                    raise RuntimeError(
+                        f"Failed to load oneiric_secrets from Oneiric: {e}"
+                    )
 
     def _get_or_create_key(self, key_name: str) -> SecretKey:
         """Get an existing key or create a new one."""
@@ -133,9 +134,9 @@ class OneiricSecretsAdapter:
 
         try:
             # Try to load existing key
-            key_material = secrets.get(full_secret_name)
-            created_at_str = secrets.get(f"{full_secret_name}_created", "")
-            expires_at_str = secrets.get(f"{full_secret_name}_expires", "")
+            key_material = oneiric_secrets.get(full_secret_name)
+            created_at_str = oneiric_secrets.get(f"{full_secret_name}_created", "")
+            expires_at_str = oneiric_secrets.get(f"{full_secret_name}_expires", "")
 
             key = SecretKey(
                 key_id=key_id,
@@ -153,20 +154,25 @@ class OneiricSecretsAdapter:
             if key.is_expired or key.age > key.rotation_interval:
                 key = self._rotate_key(key, full_secret_name)
 
-        except secrets.SecretNotFoundError:
+        except oneiric_secrets.SecretNotFoundError:
             # Create new key
             key = SecretKey(
                 key_id=key_id,
-                key_material=secrets.token_bytes(32),  # 256-bit minimum
+                key_material=oneiric_secrets.token_bytes(32),  # 256-bit minimum
                 created_at=_utcnow(),
                 expires_at=_utcnow() + self.rotation_interval,
                 rotation_interval=self.rotation_interval,
             )
 
             # Store in Oneiric
-            secrets.set(full_secret_name, key.key_material)
-            secrets.set(f"{full_secret_name}_created", key.created_at.isoformat())
-            secrets.set(f"{full_secret_name}_expires", key.expires_at.isoformat())
+            oneiric_secrets.set(full_secret_name, key.key_material)
+            oneiric_secrets.set(
+                f"{full_secret_name}_created", key.created_at.isoformat()
+            )
+            oneiric_secrets.set(
+                f"{full_secret_name}_expires",
+                key.expires_at.isoformat() if key.expires_at else "",
+            )
 
         except Exception as e:
             raise RuntimeError(f"Failed to handle key {key_name}: {e}")
@@ -178,9 +184,12 @@ class OneiricSecretsAdapter:
         new_key = key.rotate()
 
         # Store new key
-        secrets.set(secret_name, new_key.key_material)
-        secrets.set(f"{secret_name}_created", new_key.created_at.isoformat())
-        secrets.set(f"{secret_name}_expires", new_key.expires_at.isoformat())
+        oneiric_secrets.set(secret_name, new_key.key_material)
+        oneiric_secrets.set(f"{secret_name}_created", new_key.created_at.isoformat())
+        oneiric_secrets.set(
+            f"{secret_name}_expires",
+            new_key.expires_at.isoformat() if new_key.expires_at else "",
+        )
 
         # Mark old key as inactive
         key.is_active = False
@@ -193,7 +202,7 @@ class OneiricSecretsAdapter:
 
         # Look for rotated keys
         with suppress(Exception):
-            secret_names = secrets.list(prefix=f"{self.secret_prefix}/")
+            secret_names = oneiric_secrets.list(prefix=f"{self.secret_prefix}/")
 
             for secret_name in secret_names:
                 if "signing_key_rotated" in secret_name:
@@ -335,7 +344,7 @@ class OneiricSecretsAdapter:
 
             return cleaned_count
 
-    def get_key_status(self) -> dict[str, str | int | bool]:
+    def get_key_status(self) -> dict[str, str | int | bool | dict]:
         """
         Get status information about all keys.
 
@@ -343,7 +352,7 @@ class OneiricSecretsAdapter:
             Dict with key status information
         """
         with self._lock:
-            status = {
+            status: dict[str, str | int | bool | dict] = {
                 "total_keys": len(self._keys) + len(self._active_keys),
                 "active_keys": len(self._active_keys),
                 "backup_keys": len(self._keys),
@@ -375,11 +384,11 @@ _adapter: OneiricSecretsAdapter | None = None
 _adapter_lock = threading.Lock()
 
 
-def get_secrets_adapter(
+def get_oneiric_secrets_adapter(
     secret_prefix: str = "durus/hmac", rotation_interval: int = 90
 ) -> OneiricSecretsAdapter:
     """
-    Get the global secrets adapter instance.
+    Get the global oneiric_secrets adapter instance.
 
     Args:
         secret_prefix: Prefix for secret names in Oneiric
@@ -396,6 +405,10 @@ def get_secrets_adapter(
                 _adapter = OneiricSecretsAdapter(secret_prefix, rotation_interval)
 
     return _adapter
+
+
+# Backwards-compatible alias
+get_secrets_adapter = get_oneiric_secrets_adapter
 
 
 def create_hmac_signature(message: bytes, algorithm: str = "sha256") -> bytes:
@@ -415,7 +428,7 @@ def create_hmac_signature(message: bytes, algorithm: str = "sha256") -> bytes:
     if not isinstance(message, bytes):
         raise ValueError("Message must be bytes")
 
-    adapter = get_secrets_adapter()
+    adapter = get_oneiric_secrets_adapter()
     key_material, key_id = adapter.get_signing_key(algorithm)
 
     try:
@@ -441,16 +454,16 @@ def verify_hmac_signature(
     """
     try:
         expected_signature = create_hmac_signature(message, algorithm)
-        return secrets.compare_digest(expected_signature, signature)
+        return bool(oneiric_secrets.compare_digest(expected_signature, signature))
     except Exception:
         return False
 
 
-def initialize_secrets(
+def initialize_oneiric_secrets(
     secret_prefix: str = "durus/hmac", rotation_interval: int = 90
 ) -> None:
     """
-    Initialize the global secrets adapter.
+    Initialize the global oneiric_secrets adapter.
 
     Args:
         secret_prefix: Prefix for secret names in Oneiric
@@ -458,3 +471,7 @@ def initialize_secrets(
     """
     global _adapter
     _adapter = OneiricSecretsAdapter(secret_prefix, rotation_interval)
+
+
+# Backwards-compatible alias
+initialize_secrets = initialize_oneiric_secrets

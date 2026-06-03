@@ -103,7 +103,7 @@ class Storage:
         todo = [start_oid]
         seen = set[OID]()
         while todo:
-            batch = []
+            batch: list[OID] = []
             while todo and len(batch) < batch_size:
                 oid = heapq.heappop(todo)
                 if oid not in seen:
@@ -175,7 +175,7 @@ class MemoryStorage(Storage):
 
     def new_oid(self) -> OID:
         self.oid += 1
-        return int8_to_str(self.oid)
+        return int8_to_str(self.oid)  # type: ignore[no-any-return]
 
     def load(self, oid: OID) -> bytes:
         return self.records[oid]

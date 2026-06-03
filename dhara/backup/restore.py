@@ -211,7 +211,7 @@ class RestoreManager:
             )
 
         if not backup:
-            raise ValueError(f"Backup not found for id")
+            raise ValueError("Backup not found for id")
         self.logger.info(f"Restoring from backup: {backup.backup_id}")
         return self._restore_from_backup(backup)
 
@@ -452,13 +452,15 @@ class AsyncRestoreManager:
                 continue
             if backup_type and backup.backup_type != backup_type:
                 continue
-            restore_points.append(RestorePoint(
-                backup_id=backup.backup_id,
-                timestamp=backup.timestamp,
-                restore_type=backup.backup_type.value,
-                backup_path=backup.source_path,
-                metadata=backup.to_dict(),
-            ))
+            restore_points.append(
+                RestorePoint(
+                    backup_id=backup.backup_id,
+                    timestamp=backup.timestamp,
+                    restore_type=backup.backup_type.value,
+                    backup_path=backup.source_path,
+                    metadata=backup.to_dict(),
+                )
+            )
 
         restore_points.sort(key=lambda x: x.timestamp, reverse=True)
         return restore_points
@@ -498,7 +500,9 @@ class AsyncRestoreManager:
 
     async def restore_emergency_async(self, backup_id: str) -> str:
         """Perform emergency restore from backup (async)."""
-        self.logger.warning(f"Starting async emergency restore from backup: {backup_id}")
+        self.logger.warning(
+            f"Starting async emergency restore from backup: {backup_id}"
+        )
         catalog = await self._get_catalog()
         backup = await catalog.get_backup_async(backup_id)
 
@@ -563,13 +567,13 @@ class AsyncRestoreManager:
             self._catalog.close()
             self._catalog = None
 
-    def __enter__(self) -> "AsyncRestoreManager":
+    def __enter__(self) -> AsyncRestoreManager:
         return self
 
     def __exit__(self, *args: Any) -> None:
         self.close()
 
-    async def __aenter__(self) -> "AsyncRestoreManager":
+    async def __aenter__(self) -> AsyncRestoreManager:
         return self
 
     async def __aexit__(self, *args: Any) -> None:

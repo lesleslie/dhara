@@ -19,10 +19,10 @@ try:
     PROMETHEUS_AVAILABLE = True
 except ImportError:
     PROMETHEUS_AVAILABLE = False
-    CollectorRegistry = None
-    Counter = None
-    Gauge = None
-    Histogram = None
+    CollectorRegistry = None  # type: ignore[assignment]
+    Counter = None  # type: ignore[assignment]
+    Gauge = None  # type: ignore[assignment]
+    Histogram = None  # type: ignore[assignment]
 
 
 class MetricsCollector:
@@ -214,7 +214,7 @@ class MetricsCollector:
 
     def _read_gauge(self, gauge) -> float:
         """Read the current value of a Gauge."""
-        return gauge.collect()[0].samples[0].value
+        return float(gauge.collect()[0].samples[0].value)
 
     def get_cache_hit_rate(self) -> float | None:
         """Calculate cache hit rate.
@@ -314,12 +314,13 @@ class OperationTimer:
         """
         self.operation = operation
         self.collector = collector or get_metrics_collector()
-        self.start_time = None
+        # Explicit type so static checkers see float | None, not just None
+        self.start_time: float | None = None
         self.success = False
 
-    def __enter__(self) -> None:
+    def __enter__(self) -> OperationTimer:
         self.start_time = time.time()
-        return self  # type: ignore
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         if self.start_time is not None:

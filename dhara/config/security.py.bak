@@ -1,16 +1,14 @@
-"""Security configuration for Dhara applications."""
-
+"""
 from __future__ import annotations
-
+import operator
 import hashlib
 import hmac
 import logging
 import secrets
 import threading
-from collections.abc import Callable
 from contextlib import suppress
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Callable
 
 # Import Oneiric secrets module with error handling
 ONEIRIC_AVAILABLE = False
@@ -22,11 +20,7 @@ initialize_secrets: Callable[[str, int], Any] | None = None
 with suppress(ImportError):
     from dhara.security.oneiric_secrets import (
         create_hmac_signature as _create_hmac_signature,
-    )
-    from dhara.security.oneiric_secrets import (
         initialize_secrets as _initialize_secrets,
-    )
-    from dhara.security.oneiric_secrets import (
         verify_hmac_signature as _verify_hmac_signature,
     )
 
@@ -118,7 +112,7 @@ class SecurityConfig:
             # Initialize Oneiric secrets
             if initialize_secrets is None:
                 raise RuntimeError("Oneiric secrets library unavailable")
-            self._adapter = initialize_secrets(  # type: ignore[return-value]
+            self._adapter = initialize_secrets(
                 self.secret_prefix, self.rotation_interval_days
             )
 
@@ -132,7 +126,7 @@ class SecurityConfig:
         except Exception as e:
             error_msg = f"Failed to initialize security configuration: {e}"
             if self._logger:
-                self._logger.error(error_msg)  # type: ignore[union-attr]
+                self._logger.error(error_msg)
             raise RuntimeError(error_msg)
 
     def _initialize_fallback(self) -> None:
@@ -183,14 +177,14 @@ class SecurityConfig:
             # Check rotation interval
             if status["rotation_interval_days"] != self.rotation_interval_days:
                 if self._logger:
-                    self._logger.warning(  # type: ignore[union-attr]
+                    self._logger.warning(
                         f"Rotation interval mismatch: configured={self.rotation_interval_days}, "
                         f"actual={status['rotation_interval_days']}"
                     )
 
         except Exception as e:
             if self._logger:
-                self._logger.error(f"Security validation failed: {e}")  # type: ignore[union-attr]
+                self._logger.error(f"Security validation failed: {e}")
             raise
 
     def create_signature(self, message: bytes, algorithm: str = "sha256") -> bytes:
@@ -227,14 +221,12 @@ class SecurityConfig:
                     raise RuntimeError("Oneiric not available and fallback disabled")
                 return self._create_fallback_signature(message, algorithm)
 
-            if create_hmac_signature is None:
-                raise RuntimeError("Oneiric create_hmac_signature not available")
-            return create_hmac_signature(message, algorithm)  # type: ignore[return-value]
+            return create_hmac_signature(message, algorithm)
 
         except Exception as e:
             error_msg = f"Failed to create signature: {e}"
             if self.log_security_events:
-                self._logger.error(error_msg)  # type: ignore[union-attr]
+                self._logger.error(error_msg)
             raise ValueError(error_msg)
 
     def verify_signature(
@@ -268,13 +260,11 @@ class SecurityConfig:
                     return False
                 return self._verify_fallback_signature(message, signature, algorithm)
 
-            if verify_hmac_signature is None:
-                return False
-            return verify_hmac_signature(message, signature, algorithm)  # type: ignore[return-value]
+            return verify_hmac_signature(message, signature, algorithm)
 
         except Exception as e:
             if self.log_security_events:
-                self._logger.warning(f"Signature verification failed: {e}")  # type: ignore[union-attr]
+                self._logger.warning(f"Signature verification failed: {e}")
             return False
 
     def _create_fallback_signature(self, message: bytes, algorithm: str) -> bytes:
@@ -313,12 +303,12 @@ class SecurityConfig:
             raise RuntimeError("Cannot rotate keys without Oneiric")
 
         try:
-            result = self._adapter.rotate_all_keys()  # type: ignore[union-attr]
+            result = self._adapter.rotate_all_keys()  # type: ignore
             self._log_security_event("Manual key rotation completed")
-            return result  # type: ignore[no-any-return]
+            return result
         except Exception as e:
             error_msg = f"Failed to rotate keys: {e}"
-            self._logger.error(error_msg)  # type: ignore[union-attr]
+            self._logger.error(error_msg)
             raise RuntimeError(error_msg)
 
     def get_security_status(self) -> dict[str, Any]:
@@ -377,13 +367,12 @@ class SecurityConfig:
             return 0
 
         try:
-            cleaned_count = self._adapter.cleanup_expired_keys()  # type: ignore[union-attr]
+            cleaned_count = self._adapter.cleanup_expired_keys()
             self._log_security_event(f"Cleaned up {cleaned_count} expired keys")
-            return cleaned_count  # type: ignore[no-any-return]
+            return cleaned_count
         except Exception as e:
             error_msg = f"Failed to cleanup expired keys: {e}"
-            if self._logger:
-                self._logger.error(error_msg)  # type: ignore[union-attr]
+            self._logger.error(error_msg)  # type: ignore
             return 0
 
     def create_backup_key(self) -> str:
@@ -403,13 +392,12 @@ class SecurityConfig:
             raise RuntimeError("Cannot create backup keys without Oneiric")
 
         try:
-            key_id = self._adapter.create_backup_key()  # type: ignore[union-attr]
+            key_id = self._adapter.create_backup_key()  # type: ignore
             self._log_security_event(f"Created backup key: {key_id}")
-            return key_id  # type: ignore[no-any-return]
+            return key_id
         except Exception as e:
             error_msg = f"Failed to create backup key: {e}"
-            if self._logger:
-                self._logger.error(error_msg)  # type: ignore[union-attr]
+            self._logger.error(error_msg)  # type: ignore
             raise RuntimeError(error_msg)
 
     def _log_security_event(self, message: str) -> None:

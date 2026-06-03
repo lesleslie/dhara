@@ -11,7 +11,6 @@ This CLI provides easy-to-use commands for:
 """
 
 import argparse
-import asyncio
 import logging
 import os
 import sys
@@ -625,7 +624,9 @@ async def async_cmd_verify(
     backup_dir: str, backup_id: str | None = None
 ) -> dict[str, Any]:
     """Verify a backup (async)."""
-    engine = AsyncBackupVerification(backup_dir, os.path.join(backup_dir, "test_restores"))
+    engine = AsyncBackupVerification(
+        backup_dir, os.path.join(backup_dir, "test_restores")
+    )
     catalog = AsyncBackupCatalog(backup_dir)
 
     if backup_id:
@@ -660,7 +661,9 @@ async def async_cmd_restore_point_in_time(
 ) -> dict[str, Any]:
     """Restore to a specific point in time (async)."""
     async with AsyncRestoreManager(target, backup_dir) as restore_mgr:
-        result_path = await restore_mgr.restore_point_in_time_async(timestamp, use_incremental)
+        result_path = await restore_mgr.restore_point_in_time_async(
+            timestamp, use_incremental
+        )
         return {"status": "success", "restored_to": result_path}
 
 

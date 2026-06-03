@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import AsyncIterator, Iterator
 from dataclasses import dataclass, field
-from typing import TypeVar, Iterator, Generic, AsyncIterator
+from typing import TypeVar
 
 K = TypeVar("K")
 V = TypeVar("V")
@@ -9,27 +10,32 @@ V = TypeVar("V")
 
 class BTreeError(Exception):
     """Base exception for BTree operations."""
+
     pass
 
 
 class KeyNotFoundError(BTreeError):
     """Raised when delete/update targets a non-existent key."""
+
     pass
 
 
 class DuplicateKeyError(BTreeError):
     """Raised when insert finds existing key (if strict mode)."""
+
     pass
 
 
 class TreeCorruptedError(BTreeError):
     """Raised when B-Tree invariant is violated."""
+
     pass
 
 
 @dataclass
-class BNode(Generic[K, V]):
+class BNode[K, V]:
     """A B-Tree node with items and optional children."""
+
     items: list[tuple[K, V]] = field(default_factory=list)
     nodes: list[BNode[K, V]] | None = None  # None = leaf, list = internal
     minimum_degree: int = 3  # t (controls node capacity)
@@ -65,7 +71,7 @@ class BNode(Generic[K, V]):
         return (lo, False)
 
 
-class BTree(Generic[K, V]):
+class BTree[K, V]:
     """B-Tree with borrow-first deletion (Cormen case 3)."""
 
     def __init__(self, minimum_degree: int = 3) -> None:
@@ -128,14 +134,16 @@ class BTree(Generic[K, V]):
         middle_key, middle_val = full_child.items[middle_key_idx]
 
         # Create new right node with second half of items
-        right_node = BNode[K, V](
+        right_node = BNode[
+            K, V
+        ](
             items=full_child.items[t:],  # t items (indices t to 2t-1)
             nodes=full_child.nodes[t:] if full_child.nodes else None,
             minimum_degree=t,
         )
 
         # Trim left node to t-1 items
-        full_child.items = full_child.items[:t - 1]
+        full_child.items = full_child.items[: t - 1]
         if full_child.nodes is not None:
             full_child.nodes = full_child.nodes[:t]
 
@@ -258,8 +266,12 @@ class BTree(Generic[K, V]):
                 # Case 2: key in internal node
                 t = node.minimum_degree
                 assert node.nodes is not None  # type narrowing
-                left: BNode[K, V] | None = node.nodes[pos] if pos < len(node.nodes) else None
-                right: BNode[K, V] | None = node.nodes[pos + 1] if pos + 1 < len(node.nodes) else None
+                left: BNode[K, V] | None = (
+                    node.nodes[pos] if pos < len(node.nodes) else None
+                )
+                right: BNode[K, V] | None = (
+                    node.nodes[pos + 1] if pos + 1 < len(node.nodes) else None
+                )
                 if left is not None and len(left.items) >= t:
                     pred_key: K
                     pred_val: V
@@ -309,11 +321,13 @@ class BTree(Generic[K, V]):
         """
         t = node.minimum_degree
         assert node.nodes is not None  # type narrowing
-        child: BNode[K, V] = node.nodes[idx]
+        node.nodes[idx]
 
         # Get siblings
         left_sibling: BNode[K, V] | None = node.nodes[idx - 1] if idx > 0 else None
-        right_sibling: BNode[K, V] | None = node.nodes[idx + 1] if idx < len(node.nodes) - 1 else None
+        right_sibling: BNode[K, V] | None = (
+            node.nodes[idx + 1] if idx < len(node.nodes) - 1 else None
+        )
 
         # Try borrowing from left sibling
         if left_sibling is not None and len(left_sibling.items) > t - 1:

@@ -5,6 +5,7 @@ $Id$
 """
 
 from collections.abc import Iterator
+from contextlib import suppress
 from sys import stderr
 from typing import TYPE_CHECKING, Any
 
@@ -49,7 +50,7 @@ except ImportError:
 
         return True
 
-    class ConnectionBase:  # type: ignore[name-defined]
+    class ConnectionBase:  # type: ignore[name-defined,misc,no-redef]
         """
         The faster implementation of this class is in _persistent.c.
         """
@@ -57,7 +58,7 @@ except ImportError:
         __slots__ = ["transaction_serial"]
 
         def __new__(klass: type, *args: Any, **kwargs: Any) -> "ConnectionBase":
-            instance = object.__new__(klass)
+            instance: ConnectionBase = object.__new__(klass)
             instance.transaction_serial = 1
             return instance
 
@@ -67,7 +68,7 @@ except ImportError:
         "__setstate__": 1,
     }
 
-    class PersistentBase:  # type: ignore[name-defined]
+    class PersistentBase:  # type: ignore[name-defined,misc,no-redef]
         """
         The faster implementation of this class is in _persistent.c.
         The __slots__ and methods of this class are the ones that typical
@@ -110,7 +111,7 @@ except ImportError:
         __slots__ = ["_p_status", "_p_serial", "_p_connection", "_p_oid"]
 
         def __new__(klass: type, *args: Any, **kwargs: Any) -> "PersistentBase":
-            instance = object.__new__(klass)
+            instance: PersistentBase = object.__new__(klass)
             _setattribute(instance, "_p_status", UNSAVED)
             _setattribute(instance, "_p_serial", 0)
             _setattribute(instance, "_p_connection", None)
@@ -128,13 +129,12 @@ except ImportError:
                 ):
                     result = connection.note_access(self)
                     # If result is a coroutine (async connection), schedule it
-                    if hasattr(result, '__await__') or hasattr(result, 'send'):
+                    if hasattr(result, "__await__") or hasattr(result, "send"):
                         import asyncio
-                        try:
+
+                        with suppress(RuntimeError):
                             asyncio.get_running_loop()
                             asyncio.create_task(result)
-                        except RuntimeError:
-                            pass
             return _getattribute(self, name)
 
         def __setattr__(self, name: str, value: Any) -> None:
@@ -212,16 +212,14 @@ class PersistentObject(PersistentBase):
             assert self._p_connection is not None
             result = self._p_connection.note_change(self)
             # If result is a coroutine (async connection), schedule it without blocking
-            if hasattr(result, '__await__') or hasattr(result, 'send'):
+            if hasattr(result, "__await__") or hasattr(result, "send"):
                 import asyncio
-                try:
-                    loop = asyncio.get_running_loop()
-                    # We're in an async context but can't await here
-                    # Create a task to run the coroutine
+
+                # We're in an async context but can't await here
+                # Create a task to run the coroutine
+                with suppress(RuntimeError):
+                    asyncio.get_running_loop()
                     asyncio.create_task(result)
-                except RuntimeError:
-                    # No running loop, just ignore (sync connection)
-                    pass
 
     def _p_format_oid(self) -> str:
         oid = self._p_oid
@@ -240,27 +238,26 @@ class PersistentObject(PersistentBase):
         _setattribute(self, "_p_status", UNSAVED)
 
     def _p_is_ghost(self) -> bool:
-        return self._p_status == GHOST
+        return self._p_status == GHOST  # type: ignore[no-any-return]
 
     def _p_is_unsaved(self) -> bool:
-        return self._p_status == UNSAVED
+        return self._p_status == UNSAVED  # type: ignore[no-any-return]
 
     def _p_is_saved(self) -> bool:
-        return self._p_status == SAVED
+        return self._p_status == SAVED  # type: ignore[no-any-return]
 
     async def _p_get_async(self, key: str, default: Any = None) -> Any:
         """Async version of getting a key from this persistent object.
 
         Works with both sync Connection and AsyncConnection.
         """
-        obj = self
         if self._p_connection is not None:
             conn = self._p_connection
             # Get the object from connection (may be async or sync)
             result = conn.get(self._p_oid)
-            if hasattr(result, '__await__'):
+            if hasattr(result, "__await__"):
                 result = await result
-            if hasattr(result, 'get'):
+            if hasattr(result, "get"):
                 return result.get(key, default)
         # Fallback to self for unsaved objects
         return self.get(key, default)
@@ -276,15 +273,15 @@ class PersistentObject(PersistentBase):
             conn = self._p_connection
             # Get the object from connection (may be async or sync)
             obj = conn.get(self._p_oid)
-            if hasattr(obj, '__await__'):
+            if hasattr(obj, "__await__"):
                 obj = await obj
             # Use __setitem__ (bracket notation) which works for PersistentDict
-            if hasattr(obj, '__setitem__'):
+            if hasattr(obj, "__setitem__"):
                 obj[key] = value
                 # Commit if the connection supports async commit
-                if hasattr(conn, 'commit'):
+                if hasattr(conn, "commit"):
                     commit = conn.commit()
-                    if hasattr(commit, '__await__'):
+                    if hasattr(commit, "__await__"):
                         await commit
 
     async def _p_commit_async(self) -> None:
@@ -294,9 +291,9 @@ class PersistentObject(PersistentBase):
         """
         if self._p_connection is not None:
             conn = self._p_connection
-            if hasattr(conn, 'commit'):
+            if hasattr(conn, "commit"):
                 commit = conn.commit()
-                if hasattr(commit, '__await__'):
+                if hasattr(commit, "__await__"):
                     await commit
 
     async def _p_abort_async(self) -> None:
@@ -306,9 +303,9 @@ class PersistentObject(PersistentBase):
         """
         if self._p_connection is not None:
             conn = self._p_connection
-            if hasattr(conn, 'abort'):
+            if hasattr(conn, "abort"):
                 abort = conn.abort()
-                if hasattr(abort, '__await__'):
+                if hasattr(abort, "__await__"):
                     await abort
 
 

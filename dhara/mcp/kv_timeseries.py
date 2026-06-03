@@ -91,11 +91,11 @@ class AsyncKVTimeSeriesStore:
 
     async def _kv(self) -> PersistentDict:
         root = await self.connection.get_root()
-        return root["kv"]  # type: ignore[return-value]
+        return root["kv"]  # type: ignore[no-any-return]
 
     async def _kv_ttl(self) -> PersistentDict:
         root = await self.connection.get_root()
-        return root["kv_ttl"]  # type: ignore[return-value]
+        return root["kv_ttl"]  # type: ignore[no-any-return]
 
     async def put_async(
         self, key: str, value: Any, ttl: int | None = None
@@ -145,9 +145,7 @@ class AsyncKVTimeSeriesStore:
                 results.append({"key": key, "value": value})
         return results
 
-    async def _get_ts_list(
-        self, metric_type: str, entity_id: str
-    ) -> PersistentList:
+    async def _get_ts_list(self, metric_type: str, entity_id: str) -> PersistentList:
         await self._ensure_root_async()
         root = await self.connection.get_root()
         ts_map: PersistentDict = root["time_series"]  # type: ignore[assignment]
@@ -157,7 +155,7 @@ class AsyncKVTimeSeriesStore:
             ts_map[key] = PersistentList()  # type: ignore[assignment]
             await self.connection.commit()
 
-        return ts_map[key]
+        return ts_map[key]  # type: ignore[no-any-return]
 
     async def record_time_series_async(
         self,
@@ -201,7 +199,7 @@ class AsyncKVTimeSeriesStore:
             results.append(item)
 
         if limit is not None:
-            results = results[-int(limit):]
+            results = results[-int(limit) :]
         return results
 
     async def aggregate_patterns_async(

@@ -352,7 +352,7 @@ def get_env_tls_config() -> TLSConfig | None:
         return None
 
     # Parse verify mode
-    verify_mode_str = _get_tls_env("VERIFY_MODE", "required").lower()
+    verify_mode_str = (_get_tls_env("VERIFY_MODE", "required") or "required").lower()
     verify_mode_map = {
         "none": ssl.CERT_NONE,
         "optional": ssl.CERT_OPTIONAL,
@@ -366,10 +366,11 @@ def get_env_tls_config() -> TLSConfig | None:
         "1.2": ssl.TLSVersion.TLSv1_2,
         "1.3": ssl.TLSVersion.TLSv1_3,
     }
-    tls_version = tls_version_map.get(tls_version_str, ssl.TLSVersion.TLSv1_3)
+    tls_version = tls_version_map.get(tls_version_str or "1.3", ssl.TLSVersion.TLSv1_3)
 
     # Parse hostname check
-    check_hostname = _get_tls_env("CHECK_HOSTNAME", "true").lower() == "true"
+    check_hostname_str = _get_tls_env("CHECK_HOSTNAME", "true")
+    check_hostname = (check_hostname_str or "true").lower() == "true"
 
     return TLSConfig(
         certfile=certfile,

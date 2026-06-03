@@ -5,7 +5,7 @@
 **Author:** Claude (Mahavishnu Orchestrator)
 **Purpose:** Redesign `btree.py` for pyright/zuban type safety, modern Python, and crackerjack compliance
 
----
+______________________________________________________________________
 
 ## Reviewer Feedback Summary
 
@@ -22,7 +22,7 @@ Three independent reviewers evaluated the design (Python correctness, algorithm,
 | `is_big` unused in deletion pseudocode | Python-pro | LOW | Kept for clarity; used as deletion precondition check |
 | `update` return value untested | Testing | LOW | Added `test_update_returns_true_for_existing` |
 
----
+______________________________________________________________________
 
 ## 1. Context and Motivation
 
@@ -39,7 +39,7 @@ The user has approved a breaking change: "we want a modern type-friendly codebas
 | `nodes: list[BNode] \| None` pattern | Optional wrapper adds complexity | Confuses type checker |
 | `_NullCount` identity arithmetic | Clever trick backfires | Breaks static analysis |
 
----
+______________________________________________________________________
 
 ## 2. Goals and Non-Goals
 
@@ -58,7 +58,7 @@ The user has approved a breaking change: "we want a modern type-friendly codebas
 - **`__len__`** — would require walking entire tree; honest O(n) cost
 - **`__contains__`** — use `get()` returning `None` idiomatically
 
----
+______________________________________________________________________
 
 ## 3. Data Structure
 
@@ -73,43 +73,44 @@ from typing import TypeVar
 K = TypeVar("K")
 V = TypeVar("V")
 
-
 @dataclass
 class BNode:
-    """A B-Tree node with items and optional children."""
-    items: list[tuple[K, V]] = field(default_factory=list)
-    nodes: list[BNode] | None = None  # None = leaf, list = internal
-    minimum_degree: int = 3  # t (controls node capacity)
+"""A B-Tree node with items and optional children."""
+items: list\[tuple[K, V]\] = field(default_factory=list)
+nodes: list[BNode] | None = None # None = leaf, list = internal
+minimum_degree: int = 3 # t (controls node capacity)
 
-    def is_leaf(self) -> bool:
-        """Returns True if this is a leaf node."""
-        return self.nodes is None
+```
+def is_leaf(self) -> bool:
+    """Returns True if this is a leaf node."""
+    return self.nodes is None
 
-    def is_full(self) -> bool:
-        """Returns True if node has maximum items (needs splitting)."""
-        return len(self.items) == 2 * self.minimum_degree - 1
+def is_full(self) -> bool:
+    """Returns True if node has maximum items (needs splitting)."""
+    return len(self.items) == 2 * self.minimum_degree - 1
 
-    def is_big(self) -> bool:
-        """Returns True if node has >= t keys (safe for deletion without underflow)."""
-        return len(self.items) >= self.minimum_degree
+def is_big(self) -> bool:
+    """Returns True if node has >= t keys (safe for deletion without underflow)."""
+    return len(self.items) >= self.minimum_degree
 
-    def _find_position(self, key: K) -> tuple[int, bool]:
-        """Binary search for key position. Returns (index, found).
+def _find_position(self, key: K) -> tuple[int, bool]:
+    """Binary search for key position. Returns (index, found).
 
-        If found=True, index points to the matching item.
-        If found=False, index points to where the key should be inserted.
-        """
-        lo, hi = 0, len(self.items) - 1
-        while lo <= hi:
-            mid = (lo + hi) // 2
-            mid_key = self.items[mid][0]
-            if mid_key == key:
-                return (mid, True)
-            elif mid_key < key:
-                lo = mid + 1
-            else:
-                hi = mid - 1
-        return (lo, False)
+    If found=True, index points to the matching item.
+    If found=False, index points to where the key should be inserted.
+    """
+    lo, hi = 0, len(self.items) - 1
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        mid_key = self.items[mid][0]
+        if mid_key == key:
+            return (mid, True)
+        elif mid_key < key:
+            lo = mid + 1
+        else:
+            hi = mid - 1
+    return (lo, False)
+```
 
 ### Design Decisions
 
@@ -127,49 +128,49 @@ class BNode:
 - Minimum children (internal nodes): `t`
 - Maximum children: `2*t`
 
----
+______________________________________________________________________
 
 ## 4. Public API
 
 ```python
 class BTree:
     """B-Tree with borrow-first deletion (Cormen case 3).
-    
+
     Does NOT implement MutableMapping — uses custom iterator protocol
     for cleaner B-Tree semantics.
     """
-    
+
     def __init__(self, minimum_degree: int = 3) -> None:
         self._root = BNode(minimum_degree=minimum_degree)
         self._minimum_degree = minimum_degree
-    
+
     # Core operations
     def get(self, key: K) -> V | None:
         """Get value by key. Returns None if not found."""
-    
+
     def set(self, key: K, value: V) -> None:
         """Insert or update key-value pair."""
-    
+
     def delete(self, key: K) -> bool:
         """Delete key. Returns True if found and deleted, False if not found."""
-    
+
     def update(self, key: K, value: V) -> bool:
         """Update existing key's value. Returns True if found, False if not."""
-    
+
     # Iteration (generator-based, NOT __iter__)
     def items(self) -> Iterator[tuple[K, V]]:
         """Yield all (key, value) pairs in sorted key order."""
-    
+
     def keys(self) -> Iterator[K]:
         """Yield all keys in sorted order."""
-    
+
     def values(self) -> Iterator[V]:
         """Yield all values in key-sorted order."""
-    
+
     # Helpers
     def is_full(self) -> bool:
         """Check if root needs splitting."""
-    
+
     def height(self) -> int:
         """Return tree height (number of levels)."""
 ```
@@ -185,7 +186,7 @@ class BTree:
 | `_count` field | `len(self.items)` is already O(1) |
 | `_NullCount` | Incompatible with pyright; no benefit over honest `int` |
 
----
+______________________________________________________________________
 
 ## 5. Private Implementation Methods
 
@@ -262,7 +263,7 @@ class BTree:
                 if key > node.items[i][0]:
                     i += 1
             self._insert_nonfull(node.nodes[i], key, value)
-    
+
     # Deletion (case 3: borrow-first)
     def _delete_from_node(self, node: BNode, key: K) -> bool:
         """Delete key from node (and children if internal). Returns True if deleted."""
@@ -452,7 +453,8 @@ class BTree:
             self._root = parent.nodes[0]
             parent.nodes[0] = None  # type: ignore[assignment] — help GC
 ```
-```
+
+````
 
 ---
 
@@ -477,15 +479,16 @@ class DuplicateKeyError(BTreeError):
 class TreeCorruptedError(BTreeError):
     """Raised when B-Tree invariant is violated (internal check)."""
     pass
-```
+````
 
----
+______________________________________________________________________
 
 ## 7. Algorithm: Borrow-First Deletion (Cormen Case 3)
 
 ### The Problem
 
 When deleting from a node with only `t-1` keys (underflow), Cormen's case 3 requires either:
+
 - **Transfer** (borrow from sibling): move a key from sibling through parent
 - **Merge** (absorb sibling): merge two nodes into one, pull separator from parent
 
@@ -494,20 +497,20 @@ When deleting from a node with only `t-1` keys (underflow), Cormen's case 3 requ
 ```
 _handle_case3(node, idx):
     # idx = index of child underflowing in node.nodes
-    
+
     left_sibling = node.nodes[idx - 1] if idx > 0 else None
     right_sibling = node.nodes[idx + 1] if idx < len(node.nodes) - 1 else None
-    
+
     # Try left sibling first
     if left_sibling and len(left_sibling.items) > node.minimum_degree - 1:
         _borrow_from_left(node, idx)
         return
-    
+
     # Try right sibling
     if right_sibling and len(right_sibling.items) > node.minimum_degree - 1:
         _borrow_from_right(node, idx)
         return
-    
+
     # No sibling has extra — merge with left (or right if no left)
     if left_sibling:
         _merge(node, idx - 1)  # merge idx-1 and idx, separator at idx-1
@@ -518,13 +521,14 @@ _handle_case3(node, idx):
 ### Merge Details
 
 When merging `child[idx]` and `child[idx + 1]`:
-1. Take separator key from `parent.items[idx]` and place it at end of left child's items
-2. Move all items from right child to left child
-3. If right child has children (internal node), move them too
-4. Delete separator from parent (items shift left)
-5. Delete right child from parent's nodes list
 
----
+1. Take separator key from `parent.items[idx]` and place it at end of left child's items
+1. Move all items from right child to left child
+1. If right child has children (internal node), move them too
+1. Delete separator from parent (items shift left)
+1. Delete right child from parent's nodes list
+
+______________________________________________________________________
 
 ## 8. Testing Strategy
 
@@ -692,7 +696,7 @@ def test_borrow_from_left_and_right():
 def test_btree_invariants():
     """Test that B-Tree invariants are maintained."""
     tree = BTree(minimum_degree=3)
-    
+
     # After any operation, these should hold:
     # 1. All items in each node are sorted
     # 2. Non-root nodes have at least t-1 items
@@ -701,7 +705,7 @@ def test_btree_invariants():
     # 5. All leaves are at same depth
 ```
 
----
+______________________________________________________________________
 
 ## 9. File Structure
 
@@ -709,7 +713,7 @@ def test_btree_invariants():
 dhara/
 └── collections/
     └── btree.py    # New implementation (replaces old)
-    
+
 tests/
 └── unit/
     └── test_btree.py  # Property-based tests
@@ -717,22 +721,22 @@ tests/
 
 Old `btree.py` will be replaced entirely. No backward compatibility layer.
 
----
+______________________________________________________________________
 
 ## 10. Implementation Order
 
 1. **Core data structures** — `BNode` dataclass, `BTree` class skeleton
-2. **Helper methods** — `is_leaf`, `is_full`, `_find_position`
-3. **Insertion** — `set()`, `_split_child()`, `_insert_nonfull()`
-4. **Lookup** — `get()`
-5. **Iteration** — `items()`, `keys()`, `values()`
-6. **Deletion (simple cases)** — case 1 and 2
-7. **Deletion (case 3)** — `_handle_case3`, `_borrow_from_left`, `_borrow_from_right`, `_merge`
-8. **Error classes** — `BTreeError`, `KeyNotFoundError`, etc.
-9. **Tests** — Hypothesis property-based tests
-10. **Crackerjack validation** — run all 9 hooks
+1. **Helper methods** — `is_leaf`, `is_full`, `_find_position`
+1. **Insertion** — `set()`, `_split_child()`, `_insert_nonfull()`
+1. **Lookup** — `get()`
+1. **Iteration** — `items()`, `keys()`, `values()`
+1. **Deletion (simple cases)** — case 1 and 2
+1. **Deletion (case 3)** — `_handle_case3`, `_borrow_from_left`, `_borrow_from_right`, `_merge`
+1. **Error classes** — `BTreeError`, `KeyNotFoundError`, etc.
+1. **Tests** — Hypothesis property-based tests
+1. **Crackerjack validation** — run all 9 hooks
 
----
+______________________________________________________________________
 
 ## 11. Quality Gates
 
@@ -750,13 +754,13 @@ The implementation must pass all crackerjack hooks:
 | creosote | No deprecated imports |
 | refurb | Code modernization suggestions |
 
----
+______________________________________________________________________
 
 ## 12. Open Questions
 
 None — all decisions have been made and approved by the user.
 
----
+______________________________________________________________________
 
 ## 13. Summary of Decisions
 

@@ -6,7 +6,7 @@ import json
 import random
 from contextlib import suppress
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, cast
 
 try:
     import coredis
@@ -39,7 +39,8 @@ class RedisCacheAdapter:
 
     def __init__(self, settings: RedisCacheSettings) -> None:
         self._settings = settings
-        self._client = None
+        # Typed as Any so static checkers don't narrow it to None after first assignment
+        self._client: Any = None
 
     async def init(self) -> None:
         if coredis is None:
@@ -49,7 +50,9 @@ class RedisCacheAdapter:
         if self._settings.redis_token:
             kwargs["username"] = "default"
             kwargs["password"] = self._settings.redis_token
-        self._client = coredis.Redis.from_url(url, **kwargs)
+        self._client = coredis.Redis.from_url(url, **kwargs)  # type: ignore[union-attr]
+        if self._client is None:
+            raise CacheError("Failed to create Redis client")
         await self._client.ping()
 
     async def health(self) -> bool:
@@ -82,7 +85,7 @@ class RedisCacheAdapter:
                         random.uniform(0, self._settings.stampede_jitter_ms) / 1000.0
                     )
                 return None
-            return json.loads(data)
+            return cast(object | None, json.loads(data))
         except Exception:
             return None
 

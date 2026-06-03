@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.13+, `dataclasses`, `collections.abc.Iterator`, `hypothesis` (property-based testing)
 
----
+______________________________________________________________________
 
 ## Reviewer Feedback Summary
 
@@ -24,7 +24,7 @@ Three independent reviewers (TDD, Python-pro, algorithm) identified issues that 
 | `TreeCorruptedError` missing from Phase 7 | Python-pro | **MEDIUM** | Added to error class tests |
 | `type: ignore[assignment]` and GC myth | Python-pro | **HIGH** | Removed from plan — `_merge` does not set `parent.nodes[0] = None` |
 
----
+______________________________________________________________________
 
 ## File Structure
 
@@ -37,12 +37,13 @@ tests/unit/
 ```
 
 **Backup:** Before replacing, copy old files:
+
 ```bash
 cp dhara/collections/btree.py dhara/collections/btree.py.old_drus
 cp tests/test_btree.py tests/test_btree.py.old_durus
 ```
 
----
+______________________________________________________________________
 
 ## Implementation Order
 
@@ -58,14 +59,16 @@ cp tests/test_btree.py tests/test_btree.py.old_durus
 | 8 | Property tests | Hypothesis tests |
 | 9 | Crackerjack | Run all 9 hooks, fix issues |
 
----
+______________________________________________________________________
 
 ## Phase 1: BNode Dataclass + Helpers
 
 ### Task 1: BNode Dataclass
 
 **Files:**
+
 - Create: `dhara/collections/btree.py`
+
 - Test: `tests/unit/test_btree.py`
 
 - [ ] **Step 1: Write failing test for BNode creation**
@@ -103,6 +106,7 @@ def test_bnode_is_leaf():
 ```bash
 cd /Users/les/Projects/dhara && uv run pytest tests/unit/test_btree.py::test_bnode_default_creation tests/unit/test_btree.py::test_bnode_with_items tests/unit/test_btree.py::test_bnode_is_leaf -v
 ```
+
 Expected: FAIL — `BNode` not defined
 
 - [ ] **Step 3: Write minimal BNode implementation**
@@ -135,6 +139,7 @@ class BNode:
 ```bash
 cd /Users/les/Projects/dhara && uv run pytest tests/unit/test_btree.py::test_bnode_default_creation tests/unit/test_btree.py::test_bnode_with_items tests/unit/test_btree.py::test_bnode_is_leaf -v
 ```
+
 Expected: PASS
 
 - [ ] **Step 5: Commit**
@@ -144,14 +149,15 @@ git add dhara/collections/btree.py tests/unit/test_btree.py
 git commit -m "feat(btree): add BNode dataclass with is_leaf helper"
 ```
 
----
+______________________________________________________________________
 
-### Task 2: BNode Helpers (is_full, is_big, _find_position)
+### Task 2: BNode Helpers (is_full, is_big, \_find_position)
 
 **Files:**
+
 - Modify: `dhara/collections/btree.py` (add methods to BNode class)
 
-- [ ] **Step 1: Write failing test for is_full, is_big, _find_position**
+- [ ] **Step 1: Write failing test for is_full, is_big, \_find_position**
 
 ```python
 # tests/unit/test_btree.py (add these tests)
@@ -208,6 +214,7 @@ def test_bnode_find_position_after_last():
 ```bash
 cd /Users/les/Projects/dhara && uv run pytest tests/unit/test_btree.py::test_bnode_is_full tests/unit/test_btree.py::test_bnode_is_big tests/unit/test_btree.py::test_bnode_find_position_not_found tests/unit/test_btree.py::test_bnode_find_position_found tests/unit/test_btree.py::test_bnode_find_position_before_first tests/unit/test_btree.py::test_bnode_find_position_after_last -v
 ```
+
 Expected: FAIL — `is_full`, `is_big`, `_find_position` not defined
 
 - [ ] **Step 3: Write minimal implementations**
@@ -247,6 +254,7 @@ Add to BNode class in `btree.py`:
 ```bash
 cd /Users/les/Projects/dhara && uv run pytest tests/unit/test_btree.py::test_bnode_is_full tests/unit/test_btree.py::test_bnode_is_big tests/unit/test_btree.py::test_bnode_find_position_not_found tests/unit/test_btree.py::test_bnode_find_position_found tests/unit/test_btree.py::test_bnode_find_position_before_first tests/unit/test_btree.py::test_bnode_find_position_after_last -v
 ```
+
 Expected: PASS
 
 - [ ] **Step 5: Commit**
@@ -256,13 +264,14 @@ git add dhara/collections/btree.py tests/unit/test_btree.py
 git commit -m "feat(btree): add BNode is_full, is_big, _find_position helpers"
 ```
 
----
+______________________________________________________________________
 
 ## Phase 2: BTree Skeleton + Get
 
 ### Task 3: BTree Class Skeleton
 
 **Files:**
+
 - Modify: `dhara/collections/btree.py` (add BTree class at bottom)
 
 - [ ] **Step 1: Write failing test for BTree creation and get**
@@ -301,6 +310,7 @@ def test_btree_get_after_direct_insert():
 ```bash
 cd /Users/les/Projects/dhara && uv run pytest tests/unit/test_btree.py::test_btree_default_creation tests/unit/test_btree.py::test_btree_get_nonexistent tests/unit/test_btree.py::test_btree_get_after_direct_insert -v
 ```
+
 Expected: FAIL — `BTree` not defined
 
 - [ ] **Step 3: Write minimal BTree class**
@@ -343,6 +353,7 @@ class BTree:
 ```bash
 cd /Users/les/Projects/dhara && uv run pytest tests/unit/test_btree.py::test_btree_default_creation tests/unit/test_btree.py::test_btree_get_nonexistent tests/unit/test_btree.py::test_btree_get_after_direct_insert -v
 ```
+
 Expected: PASS
 
 - [ ] **Step 5: Commit**
@@ -352,16 +363,17 @@ git add dhara/collections/btree.py tests/unit/test_btree.py
 git commit -m "feat(btree): add BTree skeleton with get"
 ```
 
----
+______________________________________________________________________
 
 ## Phase 3: Insertion (Split Child)
 
-### Task 4: _split_child
+### Task 4: \_split_child
 
 **Files:**
+
 - Modify: `dhara/collections/btree.py` (add `_split_child` and `_insert_nonfull`)
 
-- [ ] **Step 1: Write failing test for root split (triggers _split_child)**
+- [ ] **Step 1: Write failing test for root split (triggers \_split_child)**
 
 ```python
 # tests/unit/test_btree.py (add)
@@ -393,9 +405,10 @@ def test_btree_set_overwrites_existing():
 ```bash
 cd /Users/les/Projects/dhara && uv run pytest tests/unit/test_btree.py::test_btree_root_split tests/unit/test_btree.py::test_btree_set_overwrites_existing -v
 ```
+
 Expected: FAIL — `_split_child`, `_insert_nonfull` not defined
 
-- [ ] **Step 3: Write _split_child and _insert_nonfull**
+- [ ] **Step 3: Write \_split_child and \_insert_nonfull**
 
 Add to `BTree` class in `btree.py`:
 
@@ -461,6 +474,7 @@ Add to `BTree` class in `btree.py`:
 ```bash
 cd /Users/les/Projects/dhara && uv run pytest tests/unit/test_btree.py::test_btree_root_split tests/unit/test_btree.py::test_btree_set_overwrites_existing -v
 ```
+
 Expected: PASS
 
 - [ ] **Step 5: Commit**
@@ -470,14 +484,16 @@ git add dhara/collections/btree.py tests/unit/test_btree.py
 git commit -m "feat(btree): add _split_child and _insert_nonfull for insertion"
 ```
 
----
+______________________________________________________________________
 
 ## Phase 4: Iteration
 
 ### Task 5: items(), keys(), values()
 
 **Files:**
+
 - Modify: `dhara/collections/btree.py` (add iteration methods to BTree)
+
 - Modify: `tests/unit/test_btree.py` (add iteration tests)
 
 - [ ] **Step 1: Write failing test for iteration**
@@ -530,6 +546,7 @@ def test_btree_empty_iteration():
 ```bash
 cd /Users/les/Projects/dhara && uv run pytest tests/unit/test_btree.py::test_btree_items_sorted_order tests/unit/test_btree.py::test_btree_keys_sorted tests/unit/test_btree.py::test_btree_values_sorted tests/unit/test_btree.py::test_btree_empty_iteration -v
 ```
+
 Expected: FAIL — `items()`, `keys()`, `values()` not defined
 
 - [ ] **Step 3: Write iteration methods**
@@ -566,6 +583,7 @@ Add to `BTree` class:
 ```bash
 cd /Users/les/Projects/dhara && uv run pytest tests/unit/test_btree.py::test_btree_items_sorted_order tests/unit/test_btree.py::test_btree_keys_sorted tests/unit/test_btree.py::test_btree_values_sorted tests/unit/test_btree.py::test_btree_empty_iteration -v
 ```
+
 Expected: PASS
 
 - [ ] **Step 5: Commit**
@@ -575,13 +593,14 @@ git add dhara/collections/btree.py tests/unit/test_btree.py
 git commit -m "feat(btree): add items, keys, values iteration"
 ```
 
----
+______________________________________________________________________
 
 ## Phase 5: Deletion (Leaf-Only)
 
 ### Task 6: delete() and update() — leaf nodes only
 
 **Files:**
+
 - Modify: `dhara/collections/btree.py` (add deletion methods)
 
 - [ ] **Step 1: Write failing test for delete and update**
@@ -633,6 +652,7 @@ def test_btree_delete_empty_tree():
 ```bash
 cd /Users/les/Projects/dhara && uv run pytest tests/unit/test_btree.py::test_btree_delete_existing tests/unit/test_btree.py::test_btree_delete_nonexistent tests/unit/test_btree.py::test_btree_update_existing tests/unit/test_btree.py::test_btree_update_nonexistent tests/unit/test_btree.py::test_btree_delete_empty_tree -v
 ```
+
 Expected: FAIL — `delete`, `update` not defined
 
 - [ ] **Step 3: Write delete and update (leaf-only initially)**
@@ -709,6 +729,7 @@ Add to `BTree` class:
 ```bash
 cd /Users/les/Projects/dhara && uv run pytest tests/unit/test_btree.py::test_btree_delete_existing tests/unit/test_btree.py::test_btree_delete_nonexistent tests/unit/test_btree.py::test_btree_update_existing tests/unit/test_btree.py::test_btree_update_nonexistent tests/unit/test_btree.py::test_btree_delete_empty_tree -v
 ```
+
 Expected: PASS
 
 - [ ] **Step 5: Commit**
@@ -718,13 +739,14 @@ git add dhara/collections/btree.py tests/unit/test_btree.py
 git commit -m "feat(btree): add delete, update and leaf-only _delete_from_node"
 ```
 
----
+______________________________________________________________________
 
 ## Phase 6: Deletion (Internal + Case 3 — Borrow + Merge)
 
-### Task 7: _handle_case3, _borrow_from_left, _borrow_from_right, _merge, _reduce_height
+### Task 7: \_handle_case3, \_borrow_from_left, \_borrow_from_right, \_merge, \_reduce_height
 
 **Files:**
+
 - Modify: `dhara/collections/btree.py`
 
 - [ ] **Step 1: Write failing test for case 3 (borrow/merge scenarios)**
@@ -808,9 +830,10 @@ def test_btree_height_reduction_on_root():
 ```bash
 cd /Users/les/Projects/dhara && uv run pytest tests/unit/test_btree.py::test_btree_delete_internal_node tests/unit/test_btree.py::test_btree_delete_triggers_case3 tests/unit/test_btree.py::test_btree_delete_last_key tests/unit/test_btree.py::test_btree_none_value_vs_missing tests/unit/test_btree.py::test_btree_duplicate_key_overwrites tests/unit/test_btree.py::test_btree_height_reduction_on_root -v
 ```
+
 Expected: FAIL — `_handle_case3`, borrow, merge not defined
 
-- [ ] **Step 3: Write case 3 methods (Phase 6 adds to _delete_from_node)**
+- [ ] **Step 3: Write case 3 methods (Phase 6 adds to \_delete_from_node)**
 
 Add to `BTree` class. First, replace the Phase 5 stub `_delete_from_node` with the full version:
 
@@ -1000,6 +1023,7 @@ Then add the case 3 helper methods:
 ```bash
 cd /Users/les/Projects/dhara && uv run pytest tests/unit/test_btree.py::test_btree_delete_internal_node tests/unit/test_btree.py::test_btree_delete_triggers_case3 tests/unit/test_btree.py::test_btree_delete_last_key tests/unit/test_btree.py::test_btree_none_value_vs_missing tests/unit/test_btree.py::test_btree_duplicate_key_overwrites tests/unit/test_btree.py::test_btree_height_reduction_on_root -v
 ```
+
 Expected: PASS
 
 - [ ] **Step 5: Commit**
@@ -1009,13 +1033,14 @@ git add dhara/collections/btree.py tests/unit/test_btree.py
 git commit -m "feat(btree): add borrow-first case 3 deletion (borrow, merge, reduce height)"
 ```
 
----
+______________________________________________________________________
 
 ## Phase 7: Error Classes + Helper Methods
 
 ### Task 8: Error classes, is_full, height helpers
 
 **Files:**
+
 - Modify: `dhara/collections/btree.py` (add error classes, is_full, height)
 
 - [ ] **Step 1: Write failing test for error classes and helpers**
@@ -1056,6 +1081,7 @@ def test_btree_height_after_root_split():
 ```bash
 cd /Users/les/Projects/dhara && uv run pytest tests/unit/test_btree.py::test_btree_error_classes_exist tests/unit/test_btree.py::test_btree_is_full tests/unit/test_btree.py::test_btree_height_single_node tests/unit/test_btree.py::test_btree_height_after_root_split -v
 ```
+
 Expected: FAIL — `BTreeError`, `KeyNotFoundError`, `is_full`, `height` not defined
 
 - [ ] **Step 3: Write error classes and helpers**
@@ -1108,6 +1134,7 @@ Add to `BTree` class:
 ```bash
 cd /Users/les/Projects/dhara && uv run pytest tests/unit/test_btree.py::test_btree_error_classes_exist tests/unit/test_btree.py::test_btree_is_full tests/unit/test_btree.py::test_btree_height_single_node tests/unit/test_btree.py::test_btree_height_after_root_split -v
 ```
+
 Expected: PASS
 
 - [ ] **Step 5: Commit**
@@ -1117,13 +1144,14 @@ git add dhara/collections/btree.py tests/unit/test_btree.py
 git commit -m "feat(btree): add error classes, is_full and height helpers"
 ```
 
----
+______________________________________________________________________
 
 ## Phase 8: Property-Based Tests (Hypothesis)
 
 ### Task 9: Hypothesis property-based tests
 
 **Files:**
+
 - Modify: `tests/unit/test_btree.py` (add comprehensive property tests)
 
 - [ ] **Step 1: Write failing property tests**
@@ -1233,6 +1261,7 @@ class TestBTreeProperties:
 ```bash
 cd /Users/les/Projects/dhara && uv run pytest tests/unit/test_btree.py::TestBTreeProperties -v --hypothesis-show-statistics 2>&1 | head -50
 ```
+
 Expected: FAIL — test class not yet added
 
 - [ ] **Step 3: Add hypothesis property tests to test file (they are already written above)**
@@ -1244,6 +1273,7 @@ Add the tests to `tests/unit/test_btree.py`.
 ```bash
 cd /Users/les/Projects/dhara && uv run pytest tests/unit/test_btree.py::TestBTreeProperties -v --hypothesis-show-statistics 2>&1 | tail -30
 ```
+
 Expected: PASS (with hypothesis statistics showing tests ran)
 
 - [ ] **Step 5: Commit**
@@ -1253,13 +1283,14 @@ git add dhara/collections/btree.py tests/unit/test_btree.py
 git commit -m "test(btree): add hypothesis property-based tests"
 ```
 
----
+______________________________________________________________________
 
 ## Phase 9: Crackerjack Validation
 
 ### Task 10: Run all 9 crackerjack hooks
 
 **Files:**
+
 - Run: All modified files
 
 - [ ] **Step 1: Run crackerjack full check**
@@ -1267,6 +1298,7 @@ git commit -m "test(btree): add hypothesis property-based tests"
 ```bash
 cd /Users/les/Projects/dhara && uv run python -m crackerjack run -v 2>&1
 ```
+
 Expected: All 9 hooks pass
 
 - [ ] **Step 2: Fix any failures**
@@ -1278,6 +1310,7 @@ If any hook fails, fix inline and re-run until all pass.
 ```bash
 cd /Users/les/Projects/dhara && uv run pyright dhara/collections/btree.py 2>&1
 ```
+
 Expected: 0 errors
 
 - [ ] **Step 4: Run full test suite**
@@ -1285,6 +1318,7 @@ Expected: 0 errors
 ```bash
 cd /Users/les/Projects/dhara && uv run pytest tests/unit/test_btree.py -v 2>&1
 ```
+
 Expected: All tests pass
 
 - [ ] **Step 5: Final commit**
@@ -1293,7 +1327,7 @@ Expected: All tests pass
 git add -A && git commit -m "feat(btree): complete BTree redesign - passes all quality gates"
 ```
 
----
+______________________________________________________________________
 
 ## Self-Review Checklist
 
@@ -1303,7 +1337,7 @@ git add -A && git commit -m "feat(btree): complete BTree redesign - passes all q
 - [ ] TDD: Each task follows red-green-refactor cycle
 - [ ] Complete code: Every step shows actual code to write
 
----
+______________________________________________________________________
 
 ## Execution Options
 

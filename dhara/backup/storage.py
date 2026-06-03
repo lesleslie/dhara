@@ -80,22 +80,22 @@ class _DelegatingStorageAdapter(StorageAdapter):
         self._adapter = adapter
 
     def upload_file(self, local_path: str, remote_path: str) -> bool:
-        return self._adapter.upload_file(local_path, remote_path)
+        return self._adapter.upload_file(local_path, remote_path)  # type: ignore[no-any-return]
 
     def download_file(self, remote_path: str, local_path: str) -> bool:
-        return self._adapter.download_file(remote_path, local_path)
+        return self._adapter.download_file(remote_path, local_path)  # type: ignore[no-any-return]
 
     def upload_json(self, data: Any, remote_path: str) -> bool:
-        return self._adapter.upload_json(data, remote_path)  # type: ignore
+        return self._adapter.upload_json(data, remote_path)  # type: ignore[no-any-return]
 
     def download_json(self, remote_path: str) -> Any:
         return self._adapter.download_json(remote_path)
 
     def list_files(self, prefix: str = "") -> list[dict[str, Any]]:
-        return self._adapter.list_files(prefix=prefix)
+        return self._adapter.list_files(prefix=prefix)  # type: ignore[no-any-return]
 
     def delete_file(self, remote_path: str) -> bool:
-        return self._adapter.delete_file(remote_path)
+        return self._adapter.delete_file(remote_path)  # type: ignore[no-any-return]
 
     def __getattr__(self, name: str) -> Any:
         adapter = self.__dict__.get("_adapter")
@@ -198,7 +198,7 @@ class S3StorageAdapter(_DelegatingStorageAdapter):
             data = await data
         if isinstance(data, str):
             data = data.encode("utf-8")
-        return data
+        return data  # type: ignore[no-any-return]
 
     def upload_file(self, local_path: str, remote_path: str) -> bool:
         try:
@@ -305,7 +305,7 @@ class GCSStorageAdapter(_DelegatingStorageAdapter):
                 default_content_type=default_content_type,
             )
         )
-        from google.cloud import storage as gcs_storage
+        from google.cloud import storage as gcs_storage  # type: ignore[attr-defined]
 
         credentials = None
         if credentials_file:
@@ -343,7 +343,7 @@ class GCSStorageAdapter(_DelegatingStorageAdapter):
         result = blob.download_as_text()
         if hasattr(result, "__await__"):
             result = await result
-        return result.encode("utf-8")
+        return result.encode("utf-8")  # type: ignore[no-any-return]
 
     def upload_file(self, local_path: str, remote_path: str) -> bool:
         try:
@@ -535,7 +535,7 @@ class AzureBlobStorageAdapter(_DelegatingStorageAdapter):
         except self._resource_exists_error:
             try:
                 blob_client = self.container_client.get_blob_client(remote_path)
-                with local_path.open("rb") as f:
+                with Path(local_path).open("rb") as f:
                     blob_client.upload_blob(f.read(), overwrite=True)
                 return True
             except Exception:
@@ -547,7 +547,7 @@ class AzureBlobStorageAdapter(_DelegatingStorageAdapter):
         try:
             blob_client = self.container_client.get_blob_client(remote_path)
             data = blob_client.download_blob().readall()
-            with local_path.open("wb") as f: # type: ignore[attr-defined]
+            with local_path.open("wb") as f:  # type: ignore[attr-defined]
                 f.write(data)
             return True
         except Exception:
@@ -650,9 +650,9 @@ def _settings_to_kwargs(settings: Any) -> dict[str, Any]:
         }
         return kwargs
     if isinstance(settings, LocalStorageSettings):
-        return settings.model_dump()
+        return settings.model_dump()  # type: ignore[no-any-return]
     if hasattr(settings, "model_dump"):
-        return settings.model_dump()
+        return settings.model_dump()  # type: ignore[no-any-return]
     if isinstance(settings, dict):
         return dict(settings)
     raise TypeError(f"Unsupported settings object: {type(settings)!r}")

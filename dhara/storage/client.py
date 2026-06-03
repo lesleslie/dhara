@@ -78,7 +78,7 @@ class ClientStorage(Storage):
         self.tls_enabled = tls_enabled and tls_config is not None
 
         # Connect to server
-        self.s = self.address.get_connected_socket()
+        self.s = self.address.get_connected_socket()  # type: ignore[attr-defined]
         if not self.s:
             raise ConnectionError(f"Could not connect to {self.address}")
 
@@ -97,7 +97,7 @@ class ClientStorage(Storage):
                 self.s.close()
                 raise ConnectionError(f"TLS handshake failed: {e}") from e
 
-        self.oid_pool = []
+        self.oid_pool: list = []
         self.oid_pool_size = 32
         self.begin()
         protocol = StorageServer.protocol

@@ -48,9 +48,7 @@ def _normalize_event_record(event: dict[str, Any]) -> dict[str, Any]:
     return payload
 
 
-def _prune_events(
-    events: PersistentList, retention: EventRetention
-) -> None:
+def _prune_events(events: PersistentList, retention: EventRetention) -> None:
     """Standalone event pruning — stateless; used by async class."""
     cutoff = retention.cutoff()
     kept = []
@@ -107,11 +105,11 @@ class AsyncEcosystemStateStore:
 
     async def _services(self) -> PersistentDict:
         root = await self.connection.get_root()
-        return root["ecosystem_services"]  # type: ignore[return-value]
+        return root["ecosystem_services"]  # type: ignore[no-any-return]
 
     async def _events(self) -> PersistentList:
         root = await self.connection.get_root()
-        return root["ecosystem_events"]  # type: ignore[return-value]
+        return root["ecosystem_events"]  # type: ignore[no-any-return]
 
     async def upsert_service_async(
         self,
@@ -150,7 +148,7 @@ class AsyncEcosystemStateStore:
         services = await self._services()
         if service_id not in services:
             return None
-        return _normalize_service(dict(services[service_id]))
+        return _normalize_service_record(dict(services[service_id]))
 
     async def list_services_async(
         self,
@@ -163,7 +161,7 @@ class AsyncEcosystemStateStore:
         results: list[dict[str, Any]] = []
 
         for service in services.values():
-            payload = _normalize_service(dict(service))
+            payload = _normalize_service_record(dict(service))
             if service_type and payload.get("service_type") != service_type:
                 continue
             if status and payload.get("status") != status:
@@ -211,7 +209,7 @@ class AsyncEcosystemStateStore:
         results: list[dict[str, Any]] = []
 
         for item in events:
-            event = _normalize_event(dict(item))
+            event = _normalize_event_record(dict(item))
             ts = event.get("timestamp")
             try:
                 event_dt = (
@@ -234,5 +232,5 @@ class AsyncEcosystemStateStore:
             results.append(event)
 
         if limit is not None:
-            results = results[-int(limit):]
+            results = results[-int(limit) :]
         return results

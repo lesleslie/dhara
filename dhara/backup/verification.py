@@ -12,10 +12,8 @@ This module provides:
 - AsyncBackupVerification for async tool dispatch
 """
 
-import asyncio
 import hashlib
 import logging
-import os
 import shutil
 import time
 from datetime import datetime, timedelta
@@ -104,7 +102,7 @@ class BackupVerification:
             # Calculate checksum
             sha256_hash = hashlib.sha256()
             with backup_path.open("rb") as f:
-                for byte_block in iter(f.read(4096), b""):
+                for byte_block in iter(lambda: f.read(4096), b""):
                     sha256_hash.update(byte_block)
 
             actual_checksum = sha256_hash.hexdigest()
@@ -208,7 +206,7 @@ class BackupVerification:
             )
 
             # Perform restore
-            restore_manager._restore_from_backup(backup_metadata)
+            restore_manager._restore_from_backup(backup_metadata)  # type: ignore[reportPrivateUsage]
 
             # Verify restore
             if restore_manager.verify_restore(backup_metadata):
@@ -353,42 +351,42 @@ class BackupVerification:
 
     def run_all_checks(
         self, backup_metadata: BackupMetadata | None = None
-    ) -> dict[str, CheckResult]:
+    ) -> dict[str, CheckResult] | dict[str, dict[str, CheckResult]]:
         """Run all verification checks on a backup."""
         if backup_metadata is None:
             # Run checks on all backups
             catalog = BackupCatalog(str(self.backup_dir))
-            all_results = {}
+            all_results: dict[str, dict[str, CheckResult]] = {}
 
             for backup in catalog.get_all_backups():
-                results = self.run_all_checks(backup)
-                all_results[backup.backup_id] = results
+                backup_results_single = self.run_all_checks(backup)
+                all_results[backup.backup_id] = backup_results_single  # type: ignore[assignment]
 
             return all_results
 
         # Run checks on specific backup
-        results = {}
+        backup_results: dict[str, CheckResult] = {}
 
         # 1. Integrity check
-        results["integrity"] = self.check_backup_integrity(backup_metadata)
+        backup_results["integrity"] = self.check_backup_integrity(backup_metadata)
 
         # 2. Compression check
-        results["compression"] = self.check_compression_ratio(backup_metadata)
+        backup_results["compression"] = self.check_compression_ratio(backup_metadata)
 
         # 3. Test restore
-        results["test_restore"] = self.perform_test_restore(backup_metadata)
+        backup_results["test_restore"] = self.perform_test_restore(backup_metadata)
 
         # 4. Retention policy
-        results["retention"] = self.check_retention_policy(backup_metadata)
+        backup_results["retention"] = self.check_retention_policy(backup_metadata)
 
         # 5. Chain check (for incremental backups)
         if backup_metadata.backup_type in (
             BackupType.INCREMENTAL,
             BackupType.DIFFERENTIAL,
         ):
-            results["chain"] = self.check_backup_chain(backup_metadata)
+            backup_results["chain"] = self.check_backup_chain(backup_metadata)
 
-        return results
+        return backup_results
 
     def generate_verification_report(
         self, backup_metadata: BackupMetadata | None = None
@@ -399,7 +397,8 @@ class BackupVerification:
         if backup_metadata is not None:
             # Single backup report
             overall_status = "passed"
-            for result in results.values():
+            results_dict: dict[str, CheckResult] = results  # type: ignore[assignment]
+            for result in results_dict.values():
                 if result.status == "failed":
                     overall_status = "failed"
                     break
@@ -418,8 +417,9 @@ class BackupVerification:
             backup_reports = {}
 
             for backup_id, backup_results in results.items():
-                status = "passed"
-                for result in backup_results.values():
+                status: str = "passed"
+                backup_results_dict: dict[str, CheckResult] = backup_results  # type: ignore[assignment]
+                for result in backup_results_dict.values():
                     if result.status == "failed":
                         status = "failed"
                         break
@@ -499,12 +499,15 @@ class AsyncBackupVerification:
                     "integrity_check",
                     "failed",
                     f"File size mismatch: expected {backup_metadata.size_bytes}, got {actual_size}",
-                    {"expected_size": backup_metadata.size_bytes, "actual_size": actual_size},
+                    {
+                        "expected_size": backup_metadata.size_bytes,
+                        "actual_size": actual_size,
+                    },
                 )
 
             sha256_hash = hashlib.sha256()
             with backup_path.open("rb") as f:
-                for byte_block in iter(f.read(4096), b""):
+                for byte_block in iter(lambda: f.read(4096), b""):
                     sha256_hash.update(byte_block)
 
             actual_checksum = sha256_hash.hexdigest()
@@ -513,7 +516,10 @@ class AsyncBackupVerification:
                     "integrity_check",
                     "failed",
                     f"Checksum mismatch: expected {backup_metadata.checksum}, got {actual_checksum}",
-                    {"expected_checksum": backup_metadata.checksum, "actual_checksum": actual_checksum},
+                    {
+                        "expected_checksum": backup_metadata.checksum,
+                        "actual_checksum": actual_checksum,
+                    },
                 )
 
             duration = time.time() - start_time
@@ -521,7 +527,10 @@ class AsyncBackupVerification:
                 "integrity_check",
                 "passed",
                 "Backup integrity verified successfully",
-                {"duration_seconds": duration, "file_size_mb": actual_size / (1024 * 1024)},
+                {
+                    "duration_seconds": duration,
+                    "file_size_mb": actual_size / (1024 * 1024),
+                },
             )
 
         except Exception as e:
@@ -546,10 +555,14 @@ class AsyncBackupVerification:
 
                 if not backup_metadata.parent_backup_id:
                     return CheckResult(
-                        "chain_check", "failed", "Incremental backup missing parent backup ID",
+                        "chain_check",
+                        "failed",
+                        "Incremental backup missing parent backup ID",
                     )
 
-                parent_backup = await catalog.get_backup_async(backup_metadata.parent_backup_id)
+                parent_backup = await catalog.get_backup_async(
+                    backup_metadata.parent_backup_id
+                )
                 if not parent_backup:
                     return CheckResult(
                         "chain_check",
@@ -609,7 +622,9 @@ class AsyncBackupVerification:
                     f"Backup file too large for testing ({backup_path.stat().st_size / (1024 * 1024):.1f}MB > {self.max_test_size_mb}MB)",
                 )
 
-            restore_path = self.test_restore_dir / f"test_restore_{backup_metadata.backup_id}"
+            restore_path = (
+                self.test_restore_dir / f"test_restore_{backup_metadata.backup_id}"
+            )
             restore_path.mkdir(parents=True, exist_ok=True)
 
             async with AsyncRestoreManager(
@@ -642,7 +657,9 @@ class AsyncBackupVerification:
                 )
 
         except Exception as e:
-            restore_path = self.test_restore_dir / f"test_restore_{backup_metadata.backup_id}"
+            restore_path = (
+                self.test_restore_dir / f"test_restore_{backup_metadata.backup_id}"
+            )
             if restore_path.exists():
                 shutil.rmtree(restore_path)
 
@@ -657,7 +674,7 @@ class AsyncBackupVerification:
 
     async def run_all_checks_async(
         self, backup_metadata: BackupMetadata | None = None
-    ) -> dict[str, CheckResult]:
+    ) -> dict[str, CheckResult] | dict[str, dict[str, CheckResult]]:
         """Run all verification checks on a backup (async)."""
         if backup_metadata is None:
             catalog = await self._get_catalog()
@@ -665,31 +682,45 @@ class AsyncBackupVerification:
             all_results: dict[str, dict[str, CheckResult]] = {}
 
             for backup in all_backups:
-                results = await self.run_all_checks_async(backup)
-                all_results[backup.backup_id] = results
+                r = await self.run_all_checks_async(backup)
+                all_results[backup.backup_id] = r  # type: ignore[assignment]
 
-            return all_results  # type: ignore[return-value]
+            return all_results
 
-        results: dict[str, CheckResult] = {}
-        results["integrity"] = await self.check_backup_integrity_async(backup_metadata)
-        results["test_restore"] = await self.perform_test_restore_async(backup_metadata)
-        results["retention"] = self.check_retention_policy(backup_metadata)
+        single_backup_results: dict[str, CheckResult] = {}
+        single_backup_results["integrity"] = await self.check_backup_integrity_async(
+            backup_metadata
+        )
+        single_backup_results["test_restore"] = await self.perform_test_restore_async(
+            backup_metadata
+        )
+        single_backup_results["retention"] = self.check_retention_policy(
+            backup_metadata
+        )
 
-        if backup_metadata.backup_type in (BackupType.INCREMENTAL, BackupType.DIFFERENTIAL):
-            results["chain"] = await self.check_backup_chain_async(backup_metadata)
+        if backup_metadata.backup_type in (
+            BackupType.INCREMENTAL,
+            BackupType.DIFFERENTIAL,
+        ):
+            single_backup_results["chain"] = await self.check_backup_chain_async(
+                backup_metadata
+            )
 
-        return results
+        return single_backup_results
 
     def check_retention_policy(self, backup_metadata: BackupMetadata) -> CheckResult:
         """Check if backup complies with retention policy."""
         start_time = time.time()
         try:
             current_time = datetime.now()
-            retention_date = backup_metadata.timestamp + timedelta(days=backup_metadata.retention_days)
+            retention_date = backup_metadata.timestamp + timedelta(
+                days=backup_metadata.retention_days
+            )
             if current_time > retention_date:
                 status = "warning"
                 days_overdue = (current_time - retention_date).days
                 message = f"Backup expired {days_overdue} days ago"
+                days_remaining = 0
             else:
                 days_remaining = (retention_date - current_time).days
                 status = "passed"
@@ -700,7 +731,11 @@ class AsyncBackupVerification:
                 "retention_check",
                 status,
                 message,
-                {"retention_date": retention_date.isoformat(), "days_remaining": days_remaining, "duration_seconds": duration},
+                {
+                    "retention_date": retention_date.isoformat(),
+                    "days_remaining": days_remaining,
+                    "duration_seconds": duration,
+                },
             )
         except Exception as e:
             duration = time.time() - start_time
@@ -718,13 +753,13 @@ class AsyncBackupVerification:
             self._catalog.close()
             self._catalog = None
 
-    def __enter__(self) -> "AsyncBackupVerification":
+    def __enter__(self) -> AsyncBackupVerification:
         return self
 
     def __exit__(self, *args: Any) -> None:
         self.close()
 
-    async def __aenter__(self) -> "AsyncBackupVerification":
+    async def __aenter__(self) -> AsyncBackupVerification:
         return self
 
     async def __aexit__(self, *args: Any) -> None:

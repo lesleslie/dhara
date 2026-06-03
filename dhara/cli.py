@@ -195,7 +195,9 @@ def start_handler() -> None:
             watchers_running=False,
             remote_enabled=False,
             lifecycle_state={
-                "started_at": health_snapshot.lifecycle_state["started_at"],
+                "started_at": health_snapshot.lifecycle_state.get("started_at")
+                if health_snapshot.lifecycle_state is not None
+                else time.time(),
                 "stopped_at": time.time(),
                 "storage_path": str(settings.storage.path),
                 "read_only": settings.storage.read_only,
@@ -278,7 +280,12 @@ def health_probe_handler() -> RuntimeHealthSnapshot:
     # Try to load existing health snapshot
     try:
         existing_snapshot = load_runtime_health(settings.health_snapshot_path())
-        started_at = existing_snapshot.lifecycle_state.get("started_at", time.time())
+        snap_state = existing_snapshot.lifecycle_state
+        started_at = (
+            snap_state.get("started_at", time.time())
+            if snap_state is not None
+            else time.time()
+        )
     except (FileNotFoundError, KeyError, AttributeError, ValueError):
         # No existing snapshot or malformed - use current time
         started_at = time.time()
@@ -620,15 +627,14 @@ def create_cli() -> typer.Typer:
     settings = DharaSettings.load("dhara")
 
     # Create CLI factory with custom handlers and MCP subcommand mode
-    factory = MCPServerCLIFactory(
+    app = MCPServerCLIFactory(
         server_name="dhara",
         settings=settings,
         start_handler=start_handler,
         stop_handler=stop_handler,
         health_probe_handler=health_probe_handler,
         use_mcp_subcommand=True,  # Use `dhara mcp start` pattern
-    )
-    app = factory.create_app()
+    ).create_app()
 
     # Create Typer app with MCP lifecycle commands under 'mcp' subcommand
     # Add version option to the app callback

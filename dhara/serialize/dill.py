@@ -121,7 +121,7 @@ class DillSerializer(Serializer):
 
         # Fall back to __dict__ if available
         if hasattr(obj, "__dict__"):
-            return obj.__dict__
+            return dict(obj.__dict__)
 
         # Last resort: return empty dict
         return {}

@@ -97,17 +97,17 @@ class MCPMiddleware:
             # Canonical Dhara adapter registry tools
             "store_adapter": Permission.WRITE,
             "get_adapter": Permission.READ,
-            "list_adapters": Permission.LIST,
-            "list_adapter_versions": Permission.LIST,
+            "list_adapters": Permission.READ,
+            "list_adapter_versions": Permission.READ,
             "validate_adapter": Permission.READ,
             "get_adapter_health": Permission.READ,
             # Legacy compatibility aliases
             "durus_get": Permission.READ,
             "durus_set": Permission.WRITE,
-            "durus_list": Permission.LIST,
+            "durus_list": Permission.READ,
             "durus_delete": Permission.DELETE,
-            "durus_checkpoint": Permission.CHECKPOINT,
-            "durus_restore_checkpoint": Permission.RESTORE,
+            "durus_checkpoint": Permission.ADMIN,
+            "durus_restore_checkpoint": Permission.ADMIN,
             "durus_connect": Permission.READ,
         }
 
@@ -156,7 +156,7 @@ class MCPMiddleware:
                 return request, auth_result
 
             # Check rate limiting
-            if auth_result.token_id:
+            if auth_result.token_id and self.auth_middleware.token_auth:
                 can_proceed = await self.auth_middleware.token_auth.check_rate_limit(
                     auth_result.token_id
                 )

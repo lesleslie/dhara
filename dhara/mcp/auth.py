@@ -316,7 +316,7 @@ class TokenAuth:
                 }
             }
 
-            with filepath.open("w") as f:
+            with Path(filepath).open("w") as f:
                 json.dump(data, f, indent=2)
 
             logger.info(f"Saved {len(self.tokens)} tokens to {filepath}")
@@ -346,7 +346,7 @@ class TokenAuth:
             created_at=datetime.now(UTC),
             expires_at=expires_at,
             rate_limit=rate_limit,
-            metadata=metadata,
+            metadata=metadata or {},
         )
 
         self.tokens[token_id] = token_info
@@ -627,10 +627,10 @@ class AuthMiddleware:
         """Check if auth result has required permission."""
         return auth_result.success and auth_result.has_permission(required_permission)
 
-    def require_permission(self, permission: Permission) -> None:
+    def require_permission(self, permission: Permission) -> Callable:
         """Decorator to require permission for a function."""
 
-        def decorator(func: Callable) -> None:
+        def decorator(func: Callable) -> Callable:
             @wraps(func)
             async def async_wrapper(*args: Any, **kwargs: Any):
                 auth_context = kwargs.pop("auth_context", None)
@@ -661,7 +661,7 @@ class AuthMiddleware:
                     raise PermissionError(f"Permission '{permission.value}' required")
 
                 kwargs["auth_result"] = auth_result
-                return func(*args, **kwargs)
+                return func(*args, **kwargs)  # type: ignore[no-any-return]
 
             if asyncio.iscoroutinefunction(func):
                 return async_wrapper

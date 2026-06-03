@@ -5,10 +5,8 @@ $Id$
 
 import asyncio
 from collections import OrderedDict
-from collections.abc import AsyncIterator
 from os import getpid
 from time import time
-from typing import Any
 from weakref import KeyedRef, ref
 
 import dhara.storage.base as dhara_storage
@@ -27,7 +25,6 @@ from dhara.serialize import (
     persistent_load,
     unpack_record,
 )
-from dhara.storage.base import AsyncStorage, OID
 from dhara.utils import as_bytes, byte_string, int8_to_str, iteritems, loads
 
 try:
@@ -50,7 +47,7 @@ class Connection(ConnectionBase):
       cache: Cache
       reader: ObjectReader
       changed: {oid:str : PersistentObject}
-      invalid_oids: set([str])
+      invalid_oids: set[str]
          Set of oids of objects known to have obsolete state.
       transaction_serial: int
         Number of calls to commit() or abort() since this instance was created.
@@ -365,7 +362,7 @@ class AsyncConnection(ConnectionBase):
       cache: Cache
       reader: ObjectReader
       changed: {oid:str : PersistentObject}
-      invalid_oids: set([str])
+      invalid_oids: set[str]
         Set of oids of objects known to have obsolete state.
       transaction_serial: int
         Number of calls to commit() or abort() since this instance was created.
@@ -390,12 +387,25 @@ class AsyncConnection(ConnectionBase):
         Note: Python __init__ cannot be async, so use AsyncConnection.new() instead.
         """
         # Check for required async storage methods
-        required_methods = ['init', 'load', 'begin', 'store', 'end', 'sync', 'new_oid', 'gen_oid_record']
+        required_methods = [
+            "init",
+            "load",
+            "begin",
+            "store",
+            "end",
+            "sync",
+            "new_oid",
+            "gen_oid_record",
+        ]
         for method in required_methods:
             if not hasattr(storage, method):
-                raise TypeError(f"Expected AsyncStorage, got {type(storage)} - missing {method}")
-        if not callable(getattr(storage, 'new_oid', None)):
-            raise TypeError(f"Expected AsyncStorage, got {type(storage)} - new_oid not callable")
+                raise TypeError(
+                    f"Expected AsyncStorage, got {type(storage)} - missing {method}"
+                )
+        if not callable(getattr(storage, "new_oid", None)):
+            raise TypeError(
+                f"Expected AsyncStorage, got {type(storage)} - new_oid not callable"
+            )
 
         # Create instance via __new__ (bypass __init__)
         instance = object.__new__(cls)
@@ -418,7 +428,9 @@ class AsyncConnection(ConnectionBase):
                 from dhara.collections.dict import PersistentDict
 
                 new_oid = await instance.storage.new_oid()
-                assert ROOT_OID == new_oid, f"Expected ROOT_OID {ROOT_OID!r}, got {new_oid!r}"
+                assert ROOT_OID == new_oid, (
+                    f"Expected ROOT_OID {ROOT_OID!r}, got {new_oid!r}"
+                )
                 root = instance.cache.get_instance(
                     ROOT_OID, root_class or PersistentDict, instance
                 )
@@ -439,7 +451,7 @@ class AsyncConnection(ConnectionBase):
         Returns a locally-generated OID string without any storage round-trip.
         """
         self._last_oid += 1
-        return int8_to_str(self._last_oid)
+        return int8_to_str(self._last_oid)  # type: ignore[no-any-return]
 
     async def get_storage(self):
         """() -> AsyncStorage"""

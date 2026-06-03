@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from typing import Any
 
-from dhara.storage.base import AsyncStorage, OID
+from dhara.storage.base import OID
 from dhara.utils import int8_to_str
 
 
@@ -62,7 +62,7 @@ class AsyncMemoryStorage:
     async def new_oid(self) -> OID:
         """Allocate and return a new OID."""
         self.oid += 1
-        return int8_to_str(self.oid)
+        return int8_to_str(self.oid)  # type: ignore[no-any-return]
 
     async def gen_oid_record(
         self, start_oid: OID | None = None, batch_size: int = 100
@@ -99,7 +99,7 @@ class AsyncMemoryStorage:
         """Return None (memory storage does not support incremental packing)."""
         return None
 
-    async def __aenter__(self) -> "AsyncMemoryStorage":
+    async def __aenter__(self) -> AsyncMemoryStorage:
         """Async context manager entry."""
         await self.init()
         return self

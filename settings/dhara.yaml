@@ -3,7 +3,7 @@
 server_name: "dhara"
 
 storage:
-  path: ~/.local/share/dhara/dhara.dhara
+  path: /tmp/dhara_new.dhara
   read_only: false
   backend: file
 

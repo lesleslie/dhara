@@ -16,7 +16,10 @@ Migration Notes:
 from __future__ import annotations
 
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    pass
 
 from fastmcp import FastMCP
 from fastmcp.server.auth.authorization import require_scopes
@@ -31,8 +34,8 @@ from dhara.core.connection import Connection
 from dhara.mcp.adapter_tools import (
     AdapterRegistry,
     AsyncAdapterRegistry,
-    get_adapter_health_async_impl,
     get_adapter_async_impl,
+    get_adapter_health_async_impl,
     list_adapter_versions_async_impl,
     list_adapters_async_impl,
     store_adapter_async_impl,
@@ -176,24 +179,16 @@ class DharaMCPServer:
         storage_backend = getattr(config, "storage_backend", "file")
 
         if storage_backend == "postgres":
-            from dhara.storage.postgres import (
-                PostgresStorageAdapter,
-                PostgresStorageSettings,
+            raise NotImplementedError(
+                "PostgreSQL storage backend is not yet implemented. "
+                "Only 'file' (default) and 'redis' cache are supported."
             )
 
-            if not config.storage_pg_url:
-                raise ValueError(
-                    "DHARA__STORAGE__PG_URL is required when storage_backend=postgres"
-                )
-
-            pg_settings = PostgresStorageSettings(pg_url=config.storage_pg_url)
-            self.storage = PostgresStorageAdapter(pg_settings)
-        else:
-            # Default: FileStorage (existing behavior)
-            self.storage = FileStorage(  # type: ignore
-                storage_path,
-                readonly=config.storage.read_only,
-            )
+        # Default: FileStorage (existing behavior)
+        self.storage = FileStorage(  # type: ignore
+            storage_path,
+            readonly=config.storage.read_only,
+        )
 
         # ── Cache backend selection ─────────────────────────────────────────
         cache_backend = getattr(config, "cache_backend", "memory")
@@ -247,9 +242,10 @@ class DharaMCPServer:
             FULL:     All tools (same as STANDARD for Dhara)
         """
 
-        def auth(*scopes: str) -> None:
+        def auth(*scopes: str) -> Any:
+            """Return a FastMCP authorization callable."""
             if not self.config.authentication.enabled:
-                return None
+                return require_scopes()  # Empty scope check when disabled
             return require_scopes(*scopes)
 
         from dhara.mcp.profiles import (
@@ -269,7 +265,7 @@ class DharaMCPServer:
             "Dhara tool profile=%s groups=%s", profile.value, sorted(active_groups)
         )
 
-        def _tool(group: str, **kwargs) -> None:
+        def _tool(group: str, **kwargs: Any) -> Any:
             """Conditional registration — only registers if group is in active profile."""
             if group not in active_groups:
                 return lambda fn: fn  # No-op: function defined but not registered
@@ -304,17 +300,20 @@ class DharaMCPServer:
             Returns:
                 Result dict with adapter_id and version
             """
-            return await store_adapter_async_impl(
+            assert self._async_adapter_registry is not None, (
+                "Async store not initialized"
+            )
+            return await store_adapter_async_impl(  # type: ignore[no-any-return]
                 registry=self._async_adapter_registry,
                 domain=domain,
                 key=key,
                 provider=provider,
                 version=version,
                 factory_path=factory_path,
-                config=config,
+                config=config or {},
                 dependencies=dependencies or [],
                 capabilities=capabilities or [],
-                metadata=metadata,  # type: ignore
+                metadata=metadata or {},
             )
 
         @_tool(TOOL_GROUP_ADAPTER_REGISTRY, auth=auth("read"))
@@ -403,7 +402,10 @@ class DharaMCPServer:
             heartbeat_at: str | None = None,
         ) -> dict[str, Any]:
             """Create or update a durable ecosystem service record."""
-            return await self._async_ecosystem_state.upsert_service_async(
+            assert self._async_ecosystem_state is not None, (
+                "Async store not initialized"
+            )
+            return await self._async_ecosystem_state.upsert_service_async(  # type: ignore[no-any-return]
                 service_id=service_id,
                 service_type=service_type,
                 capabilities=capabilities,
@@ -414,8 +416,11 @@ class DharaMCPServer:
             )
 
         @_tool(TOOL_GROUP_ECOSYSTEM_STATE, auth=auth("read"))
-        async def get_service(service_id: str) -> dict[str, Any]:  # type: ignore
+        async def get_service(service_id: str) -> dict[str, Any]:
             """Fetch a durable ecosystem service record."""
+            assert self._async_ecosystem_state is not None, (
+                "Async store not initialized"
+            )
             service = await self._async_ecosystem_state.get_service_async(service_id)
             return {"ok": True, "service": service}
 
@@ -426,6 +431,9 @@ class DharaMCPServer:
             status: str | None = None,
         ) -> dict[str, Any]:
             """List durable ecosystem service records."""
+            assert self._async_ecosystem_state is not None, (
+                "Async store not initialized"
+            )
             services = await self._async_ecosystem_state.list_services_async(
                 service_type=service_type,
                 capability=capability,
@@ -433,7 +441,7 @@ class DharaMCPServer:
             )
             return {"ok": True, "count": len(services), "services": services}
 
-        @_tool(TOOL_GROUP_ECOSYSTEM_STATE, auth=auth("write")) # type: ignore
+        @_tool(TOOL_GROUP_ECOSYSTEM_STATE, auth=auth("write"))
         async def record_event(
             event_type: str,
             source_service: str,
@@ -442,7 +450,10 @@ class DharaMCPServer:
             timestamp: str | None = None,
         ) -> dict[str, Any]:
             """Append a durable ecosystem event."""
-            return await self._async_ecosystem_state.record_event_async(
+            assert self._async_ecosystem_state is not None, (
+                "Async store not initialized"
+            )
+            return await self._async_ecosystem_state.record_event_async(  # type: ignore[no-any-return]
                 event_type=event_type,
                 source_service=source_service,
                 payload=payload,
@@ -458,6 +469,9 @@ class DharaMCPServer:
             limit: int | None = 100,
         ) -> dict[str, Any]:
             """List durable ecosystem events."""
+            assert self._async_ecosystem_state is not None, (
+                "Async store not initialized"
+            )
             events = await self._async_ecosystem_state.list_events_async(
                 event_type=event_type,
                 source_service=source_service,
@@ -467,21 +481,23 @@ class DharaMCPServer:
             return {"ok": True, "count": len(events), "events": events}
 
         # --- KV/Time Series tools (MINIMAL) ---
-        @_tool(TOOL_GROUP_KV_TIME_SERIES, auth=auth("write"))  # type: ignore
+        @_tool(TOOL_GROUP_KV_TIME_SERIES, auth=auth("write"))
         async def put(
             key: str,
             value: dict[str, Any] | str | int | float | bool | list[Any] | None,
             ttl: int | None = None,
         ) -> dict[str, Any]:
             """Store a key/value record with optional TTL (seconds)."""
-            return await self._async_kv_store.put_async(key=key, value=value, ttl=ttl)
+            assert self._async_kv_store is not None, "Async store not initialized"
+            return await self._async_kv_store.put_async(key=key, value=value, ttl=ttl)  # type: ignore[no-any-return]
 
         @_tool(TOOL_GROUP_KV_TIME_SERIES, auth=auth("read"))
         async def get(
             key: str,
         ) -> dict[str, Any]:
             """Get a key/value record."""
-            return await self._async_kv_store.get_async(key=key)
+            assert self._async_kv_store is not None, "Async store not initialized"
+            return await self._async_kv_store.get_async(key=key)  # type: ignore[no-any-return]
 
         @_tool(TOOL_GROUP_KV_TIME_SERIES, auth=auth("read"))
         async def list_prefix(
@@ -492,6 +508,7 @@ class DharaMCPServer:
             Used by Akosha FitnessAnalyzer to discover component endpoints
             registered under 'component_endpoint/' prefix.
             """
+            assert self._async_kv_store is not None, "Async store not initialized"
             results = await self._async_kv_store.list_prefix_async(prefix)
             return {"ok": True, "count": len(results), "items": results}
 
@@ -503,7 +520,8 @@ class DharaMCPServer:
             timestamp: str | None = None,
         ) -> dict[str, Any]:
             """Append a time-series record."""
-            return await self._async_kv_store.record_time_series_async(
+            assert self._async_kv_store is not None, "Async store not initialized"
+            return await self._async_kv_store.record_time_series_async(  # type: ignore[no-any-return]
                 metric_type=metric_type,
                 entity_id=entity_id,
                 record=record,
@@ -518,7 +536,8 @@ class DharaMCPServer:
             limit: int | None = None,
         ) -> list[dict[str, Any]]:
             """Query time-series records."""
-            return await self._async_kv_store.query_time_series_async(
+            assert self._async_kv_store is not None, "Async store not initialized"
+            return await self._async_kv_store.query_time_series_async(  # type: ignore[no-any-return]
                 metric_type=metric_type,
                 entity_id=entity_id,
                 start_date=start_date,
@@ -531,7 +550,8 @@ class DharaMCPServer:
             min_occurrences: int = 2,
         ) -> list[dict[str, Any]]:
             """Aggregate patterns across time-series records."""
-            return await self._async_kv_store.aggregate_patterns_async(
+            assert self._async_kv_store is not None, "Async store not initialized"
+            return await self._async_kv_store.aggregate_patterns_async(  # type: ignore[no-any-return]
                 start_date=start_date,
                 min_occurrences=min_occurrences,
             )
@@ -555,7 +575,10 @@ class DharaMCPServer:
             Returns:
                 Adapter dict with full configuration
             """
-            return await get_adapter_async_impl(
+            assert self._async_adapter_registry is not None, (
+                "Async store not initialized"
+            )
+            return await get_adapter_async_impl(  # type: ignore[no-any-return]
                 registry=self._async_adapter_registry,
                 domain=domain,
                 key=key,
@@ -577,7 +600,10 @@ class DharaMCPServer:
             Returns:
                 Dict with count, filters, and adapters list
             """
-            return await list_adapters_async_impl(
+            assert self._async_adapter_registry is not None, (
+                "Async store not initialized"
+            )
+            return await list_adapters_async_impl(  # type: ignore[no-any-return]
                 registry=self._async_adapter_registry,
                 domain=domain,
                 category=category,
@@ -602,7 +628,10 @@ class DharaMCPServer:
             Returns:
                 Dict with version history (timestamp, version, changelog)
             """
-            return await list_adapter_versions_async_impl(
+            assert self._async_adapter_registry is not None, (
+                "Async store not initialized"
+            )
+            return await list_adapter_versions_async_impl(  # type: ignore[no-any-return]
                 registry=self._async_adapter_registry,
                 domain=domain,
                 key=key,
@@ -633,7 +662,10 @@ class DharaMCPServer:
             Returns:
                 Validation result with errors/warnings
             """
-            return await validate_adapter_async_impl(
+            assert self._async_adapter_registry is not None, (
+                "Async store not initialized"
+            )
+            return await validate_adapter_async_impl(  # type: ignore[no-any-return]
                 registry=self._async_adapter_registry,
                 domain=domain,
                 key=key,
@@ -660,7 +692,10 @@ class DharaMCPServer:
             Returns:
                 Health check result with status and last check timestamp
             """
-            return await get_adapter_health_async_impl(
+            assert self._async_adapter_registry is not None, (
+                "Async store not initialized"
+            )
+            return await get_adapter_health_async_impl(  # type: ignore[no-any-return]
                 registry=self._async_adapter_registry,
                 domain=domain,
                 key=key,
@@ -738,16 +773,32 @@ class DharaMCPServer:
             if not tool_name:
                 return JSONResponse({"error": "Missing tool name"}, status_code=400)
 
-            # Map tool names to store methods (sync, must run in thread pool)
+            # Map tool names to async store methods
+            # These are bound at request time when stores are initialized
             sync_tool_map: dict[str, Any] = {
-                "get": self.kv_store.get,
-                "put": self.kv_store.put,
-                "list_prefix": self.kv_store.list_prefix,
-                "list_services": self.ecosystem_state.list_services,
-                "get_service": self.ecosystem_state.get_service,
-                "record_event": self.ecosystem_state.record_event,
-                "list_events": self.ecosystem_state.list_events,
+                "get": self._async_kv_store.get_async if self._async_kv_store else None,
+                "put": self._async_kv_store.put_async if self._async_kv_store else None,
+                "list_prefix": self._async_kv_store.list_prefix_async
+                if self._async_kv_store
+                else None,
+                "list_services": self._async_ecosystem_state.list_services_async
+                if self._async_ecosystem_state
+                else None,
+                "get_service": self._async_ecosystem_state.get_service_async
+                if self._async_ecosystem_state
+                else None,
+                "record_event": self._async_ecosystem_state.record_event_async
+                if self._async_ecosystem_state
+                else None,
+                "list_events": self._async_ecosystem_state.list_events_async
+                if self._async_ecosystem_state
+                else None,
             }
+
+            if tool_name in sync_tool_map and sync_tool_map[tool_name] is None:
+                return JSONResponse(
+                    {"error": f"Store not initialized: {tool_name}"}, status_code=500
+                )
 
             if tool_name not in sync_tool_map:
                 return JSONResponse(
@@ -925,10 +976,16 @@ class DharaMCPServer:
         asyncio.run(self.server.run_http_async(host=host, port=port))
 
     async def _init_async_stores(self) -> None:
-        """Initialize async stores from the sync connection for async tool dispatch."""
+        """Initialize async stores from AsyncSqliteStorage for async tool dispatch."""
         from dhara.core.connection import AsyncConnection
+        from dhara.storage.sqlite import AsyncSqliteStorage
 
-        async_conn = await AsyncConnection.new(self.storage)
+        # Create and initialize AsyncSqliteStorage (async I/O, WAL mode)
+        async_storage = AsyncSqliteStorage()
+        await async_storage.init()
+
+        # Create async connection with the initialized AsyncStorage
+        async_conn = await AsyncConnection.new(async_storage)
         self._async_kv_store = AsyncKVTimeSeriesStore(
             async_conn,
             retention=TimeSeriesRetention(

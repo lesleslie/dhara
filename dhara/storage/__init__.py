@@ -19,10 +19,11 @@ from dhara.storage.base import (
 from dhara.storage.client import ClientStorage
 from dhara.storage.file import FileStorage
 from dhara.storage.memory import AsyncMemoryStorage
+
 try:
     from dhara.storage.sqlite import AsyncSqliteStorage, SqliteStorage
 except ImportError:
-    AsyncSqliteStorage = SqliteStorage = None  # type: ignore[assignment]
+    AsyncSqliteStorage = SqliteStorage = None  # type: ignore[misc,assignment]
 
 __all__ = [
     "Storage",

@@ -18,10 +18,10 @@ import select
 import socket
 import sys
 import threading
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
 from datetime import datetime
-from os.path import exists
 from pathlib import Path
 from time import sleep
 
@@ -50,7 +50,7 @@ from dhara.utils import (
 
 if os.name != "nt":
     from grp import getgrgid, getgrnam
-    from os import chown, getegid, geteuid, getpid, stat, umask, unlink
+    from os import chown, getegid, geteuid, getpid, umask
     from pwd import getpwnam, getpwuid
 
 
@@ -74,11 +74,11 @@ def _get_cpu_count() -> int:
 
 
 class _Client:
-    def __init__(self, s, addr) -> None:
+    def __init__(self, s: socket.socket, addr: tuple[str, int] | str) -> None:
         self.s = s
         self.addr = addr
-        self.invalid = set()
-        self.unused_oids = set()
+        self.invalid: set[bytes] = set()
+        self.unused_oids: set[bytes] = set()
 
 
 class ClientError(Exception):
@@ -86,7 +86,9 @@ class ClientError(Exception):
 
 
 class SocketAddress:
-    def new(address, **kwargs) -> None:
+    def new(
+        address: str | SocketAddress | tuple[str, int], **kwargs: object
+    ) -> SocketAddress:
         if isinstance(address, SocketAddress):
             return address
         elif isinstance(address, tuple):
@@ -95,9 +97,21 @@ class SocketAddress:
         elif address.startswith("@"):
             return UnixAbstractAddress(address, **kwargs)
 
-        return UnixDomainSocketAddress(address, **kwargs)
+        return UnixDomainSocketAddress(address, **kwargs)  # type: ignore[arg-type]
 
     new = staticmethod(new)
+
+    def get_address_family(self) -> int:
+        raise NotImplementedError
+
+    def bind_socket(self, s: socket.socket) -> None:
+        raise NotImplementedError
+
+    def set_connection_options(self, s: socket.socket) -> None:
+        raise NotImplementedError
+
+    def close(self, s: socket.socket) -> None:
+        raise NotImplementedError
 
     def get_listening_socket(self) -> socket.socket:
         sock = socket.socket(self.get_address_family(), socket.SOCK_STREAM)
@@ -108,7 +122,7 @@ class SocketAddress:
 
 
 class HostPortAddress(SocketAddress):
-    def __init__(self, host=DEFAULT_HOST, port=DEFAULT_PORT) -> None:
+    def __init__(self, host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> None:
         self.host = host
         self.port = port
 
@@ -132,25 +146,24 @@ class HostPortAddress(SocketAddress):
         sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         try:
             sock.connect((self.host, self.port))
-        except OSError:
-            exc = sys.exc_info()[1]
-            error = exc.args[0]
+        except OSError as exc:
+            error = exc.errno
             if error == errno.ECONNREFUSED:
                 return None
             else:
                 raise
         return sock
 
-    def set_connection_options(self, s) -> None:
+    def set_connection_options(self, s: socket.socket) -> None:
         s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         s.settimeout(TIMEOUT)
 
-    def close(self, s) -> None:
+    def close(self, s: socket.socket) -> None:
         s.close()
 
 
 class UnixAbstractAddress(SocketAddress):
-    def __init__(self, filename) -> None:
+    def __init__(self, filename: str) -> None:
         self.filename = filename.replace("@", "\0")
 
     def __str__(self) -> str:
@@ -166,24 +179,29 @@ class UnixAbstractAddress(SocketAddress):
         sock = socket.socket(self.get_address_family(), socket.SOCK_STREAM)
         try:
             sock.connect(self.filename)
-        except OSError:
-            exc = sys.exc_info()[1]
-            error = exc.args[0]
+        except OSError as exc:
+            error = exc.errno
             if error in (errno.ENOENT, errno.ENOTSOCK, errno.ECONNREFUSED):
                 return None
             else:
                 raise
         return sock
 
-    def set_connection_options(self, s) -> None:
+    def set_connection_options(self, s: socket.socket) -> None:
         s.settimeout(TIMEOUT)
 
-    def close(self, s) -> None:
+    def close(self, s: socket.socket) -> None:
         s.close()
 
 
 class UnixDomainSocketAddress(UnixAbstractAddress):
-    def __init__(self, filename, owner=None, group=None, umask=None) -> None:
+    def __init__(
+        self,
+        filename: str,
+        owner: str | int | None = None,
+        group: str | int | None = None,
+        umask: int | None = None,
+    ) -> None:
         self.filename = filename
         self.owner = owner
         self.group = group
@@ -192,7 +210,7 @@ class UnixDomainSocketAddress(UnixAbstractAddress):
     def __str__(self) -> str:
         result = self.filename
         if Path(self.filename).exists():
-            filestat = stat(self.filename)
+            filestat = Path(self.filename).stat()
             uid = filestat.st_uid
             gid = filestat.st_gid
             rwx = ["---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"]
@@ -210,7 +228,9 @@ class UnixDomainSocketAddress(UnixAbstractAddress):
         Path(filename).unlink()
         s.bind(self.filename)
 
-    def _apply_socket_ownership(self, filename: str, owner: str | int | None, group: str | int | None) -> None:
+    def _apply_socket_ownership(
+        self, filename: str, owner: str | int | None, group: str | int | None
+    ) -> None:
         """Apply chown ownership to socket file."""
         uid = geteuid()
         if owner is not None:
@@ -232,12 +252,11 @@ class UnixDomainSocketAddress(UnixAbstractAddress):
             old_umask = umask(self.umask)
         try:
             s.bind(self.filename)
-        except OSError:
-            exc = sys.exc_info()[1]
-            error = exc.args[0]
+        except OSError as exc:
+            error = exc.errno
             if not Path(self.filename).exists():
                 raise
-            if stat(self.filename).st_size > 0:
+            if Path(self.filename).stat().st_size > 0:
                 raise
             if error == errno.EADDRINUSE:
                 self._cleanup_existing_socket(s, self.filename)
@@ -254,16 +273,18 @@ class UnixDomainSocketAddress(UnixAbstractAddress):
 
 
 class InheritedSocket(SocketAddress):
-    def __init__(self, sock) -> None:
+    def __init__(self, sock: socket.socket) -> None:
         self.name = sock.getsockname()
 
     def __str__(self) -> str:
         name = self.name
         if isinstance(name, bytes) and b"\0" in name:
             # Linux extension, abstract namespace
-            path = name.replace(b"\0", b"@")
-            with suppress(Exception):
-                path = path.decode(sys.getfilesystemencoding())
+            path_bytes = name.replace(b"\0", b"@")
+            try:
+                path = path_bytes.decode(sys.getfilesystemencoding())
+            except Exception:
+                path = path_bytes.decode("utf-8", errors="replace")
             return path
         elif isinstance(name, str):
             return name
@@ -275,12 +296,12 @@ class InheritedSocket(SocketAddress):
 
             return f"{addr}:{port}"
 
-    def set_connection_options(self, s) -> None:
+    def set_connection_options(self, s: socket.socket) -> None:
         if s.family in (socket.AF_INET, socket.AF_INET6):
             s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         s.settimeout(TIMEOUT)
 
-    def close(self, s) -> None:
+    def close(self, s: socket.socket) -> None:
         s.close()
 
 
@@ -312,14 +333,14 @@ class StorageServer:
             threads: Number of worker threads (0=single-threaded, -1=auto)
         """
         self.storage = storage
-        self.clients = []
+        self.clients: list[_Client] = []
         self.clients_lock = threading.RLock()  # Thread-safe client tracking
-        self.sockets = []
+        self.sockets: list[socket.socket] = []
         self.sockets_lock = threading.RLock()  # Thread-safe socket tracking
-        self.packer = None
+        self.packer: Iterator[str] | None = None
         self.packer_lock = threading.Lock()  # Serialize pack operations
-        self.address = SocketAddress.new(address or (host, port))  # type: ignore
-        self.load_record = {}
+        self.address: SocketAddress = SocketAddress.new(address or (host, port))  # type: ignore
+        self.load_record: dict[str, int] = {}
         self.load_record_lock = threading.Lock()  # Thread-safe load record
         self.bytes_since_pack = 0
         self.bytes_since_pack_lock = threading.Lock()  # Thread-safe byte tracking
@@ -401,8 +422,7 @@ class StorageServer:
                         # command from client
                         try:
                             self.handle(s)
-                        except (TimeoutError, OSError, ClientError):
-                            exc = sys.exc_info()[1]
+                        except (TimeoutError, OSError, ClientError) as exc:
                             log(10, "%s", "".join(map(str, exc.args)))
                             self.sockets.remove(s)
                             self.clients.remove(self._find_client(s))
@@ -556,7 +576,7 @@ class StorageServer:
         """Gracefully shutdown the server."""
         self._running = False
 
-    def handle(self, s) -> None:
+    def handle(self, s: socket.socket) -> None:
         command_byte = read(s, 1)[0]
         if type(command_byte) is int:
             command_code = chr(command_byte)
@@ -567,14 +587,14 @@ class StorageServer:
             raise ClientError(f"No such command code: {command_code!r}")
         handler(s)
 
-    def _find_client(self, s) -> None:
+    def _find_client(self, s: socket.socket) -> _Client:
         for client in self.clients:
             if client.s is s:
                 return client
         assert 0
 
-    def _new_oids(self, s, count) -> None:
-        oids = []
+    def _new_oids(self, s: socket.socket, count: int) -> list[bytes]:
+        oids: list[bytes] = []
         while len(oids) < count:
             oid = self.storage.new_oid()
             for client in self.clients:
@@ -586,22 +606,22 @@ class StorageServer:
         self._find_client(s).unused_oids.update(oids)
         return oids
 
-    def handle_N(self, s) -> None:
+    def handle_N(self, s: socket.socket) -> None:
         # new OID
         write(s, self._new_oids(s, 1)[0])
 
-    def handle_M(self, s) -> None:
+    def handle_M(self, s: socket.socket) -> None:
         # new OIDs
         count = ord(read(s, 1))
         log(10, "oids: %s", count)
-        write(s, join_bytes(self._new_oids(s, count)))  # type: ignore
+        write(s, join_bytes(self._new_oids(s, count)))
 
-    def handle_L(self, s) -> None:
+    def handle_L(self, s: socket.socket) -> None:
         # load
         oid = read(s, 8)
         self._send_load_response(s, oid)
 
-    def _send_load_response(self, s, oid) -> None:
+    def _send_load_response(self, s: socket.socket, oid: bytes) -> None:
         if oid in self._find_client(s).invalid:
             write(s, STATUS_INVALID)
         else:
@@ -624,20 +644,21 @@ class StorageServer:
                 write(s, STATUS_OKAY)
                 write_int4_str(s, record)
 
-    def handle_C(self, s) -> None:
+    def handle_C(self, s: socket.socket) -> None:
         # commit
         self._sync_storage()
-        client = self._find_client(s) # type: ignore
-        write_all(s, int4_to_str(len(client.invalid)), join_bytes(client.invalid))  # type: ignore[attr-defined]
+        client = self._find_client(s)
+        write_all(s, int4_to_str(len(client.invalid)), join_bytes(client.invalid))
         client.invalid.clear()
         tdata = read_int4_str(s)
         if not tdata:
             return  # client decided not to commit (e.g. conflict)
         logging_debug = is_logging(10)
-        logging_debug and log(10, "Committing %s bytes", len(tdata))
+        if logging_debug:
+            log(10, "Committing %s bytes", len(tdata))
         self.storage.begin()
         i = 0
-        oids = []
+        oids: list[bytes] = []
         while i < len(tdata):
             rlen = str_to_int4(tdata[i : i + 4])
             i += 4
@@ -688,14 +709,14 @@ class StorageServer:
             )
             self.load_record.clear()
 
-    def _handle_invalidations(self, oids) -> None:
+    def _handle_invalidations(self, oids: list[bytes]) -> None:
         for c in self.clients:
             c.invalid.update(oids)
 
     def _sync_storage(self) -> None:
         self._handle_invalidations(self.storage.sync())
 
-    def handle_S(self, s) -> None:
+    def handle_S(self, s: socket.socket) -> None:
         # sync
         client = self._find_client(s)
         self._report_load_record()
@@ -704,7 +725,7 @@ class StorageServer:
         write_all(s, int4_to_str(len(client.invalid)), join_bytes(client.invalid))
         client.invalid.clear()
 
-    def handle_P(self, s) -> None:
+    def handle_P(self, s: socket.socket) -> None:
         # pack
         if self.packer is None:
             log(20, f"Pack started at {datetime.now()}")
@@ -716,7 +737,7 @@ class StorageServer:
             log(20, f"Pack already in progress at {datetime.now()}")
         write(s, STATUS_OKAY)
 
-    def handle_B(self, s) -> None:
+    def handle_B(self, s: socket.socket) -> None:
         # bulk read of objects
         number_of_oids = read_int4(s)
         oid_str = read(s, 8 * number_of_oids)
@@ -724,13 +745,13 @@ class StorageServer:
         for oid in oids:
             self._send_load_response(s, oid)
 
-    def handle_Q(self, s) -> None:
+    def handle_Q(self, s: socket.socket) -> None:
         # graceful quit
         log(20, "Quit")
         self.storage.close()
         raise SystemExit
 
-    def handle_V(self, s) -> None:
+    def handle_V(self, s: socket.socket) -> None:
         # Verify protocol version match.
         client_protocol = read(s, 4)
         log(10, "Client Protocol: %s", str_to_int4(client_protocol))
@@ -741,13 +762,17 @@ class StorageServer:
 
 
 def wait_for_server(
-    host=DEFAULT_HOST, port=DEFAULT_PORT, maxtries=300, sleeptime=2, address=None
-):
+    host: str = DEFAULT_HOST,
+    port: int = DEFAULT_PORT,
+    maxtries: int = 300,
+    sleeptime: int = 2,
+    address: SocketAddress | None = None,
+) -> None:
     # Wait for the server to bind to the port.
     server_address = SocketAddress.new(address or (host, port))
     attempt = 0
     while attempt < maxtries:
-        connected = server_address.get_connected_socket()
+        connected = server_address.get_connected_socket()  # type: ignore[attr-defined]
         if connected:
             connected.close()
             return

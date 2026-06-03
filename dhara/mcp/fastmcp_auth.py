@@ -55,7 +55,7 @@ class DharaTokenVerifier(TokenVerifier):
             if not set(self.required_scopes).issubset(token_scopes):
                 return None
 
-        expires_at = result.expires_at.timestamp() if result.expires_at else None
+        expires_at = int(result.expires_at.timestamp()) if result.expires_at else None
 
         return AccessToken(
             token=token,

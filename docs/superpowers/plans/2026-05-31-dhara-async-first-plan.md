@@ -8,7 +8,7 @@
 
 **Tech Stack:** Python 3.13+, aiosqlite, asyncpg, asyncio, pytest-asyncio
 
----
+______________________________________________________________________
 
 ## Scope: Files to Modify or Create
 
@@ -55,32 +55,32 @@
 
 **No changes needed** — they communicate with Dhara via HTTP/MCP. Dhara's MCP server (Tasks 12-14) becomes async internally, which is transparent to HTTP clients.
 
----
+______________________________________________________________________
 
 ## Critical Review Findings Applied
 
 The plan was reviewed by three agents (architecture, API design, Python quality). Key fixes applied:
 
 1. **AsyncStorage protocol is complete** — includes `close()`, `init()`, `bulk_load()`, `get_packer()` (previously missing)
-2. **Task ordering fixed** — Task 15 (catalog.py update) runs BEFORE Task 5 (FileStorage deletion)
-3. **AsyncMemoryStorage uses native coroutines** — not `run_in_executor()` wrappers
-4. **AsyncConnection lists all methods explicitly** — no `...` hand-wave
-5. **BTree clarification** — BTree is pure in-memory; async wrapper for async storage compatibility only
-6. **Task25 uses Option B (MCP client)** — `DharaAdapterLearner` becomes an MCP client like Akosha/Mahavishnu
-7. **pytest-asyncio dependency added** — all async tests use `pytest.mark.asyncio`
-8. **conftest.py fixture conflict resolved** — remove deprecated `event_loop` fixture
-9. **Missing AsyncConnection methods added** — `get_crawler`, `load_state`, `get_storage`, `get_load_count`, `note_access`, `note_change`, `pack`, `touch_every_reference`, `gen_every_instance`
-10. **gen_oid_record async generator** — non-trivial; gets its own implementation detail
-11. **AsyncConnection factory pattern** — `__init__` cannot be async; use `async def new()` classmethod instead
-12. **shrink_cache() awaits fixed** — `abort()` and `commit()` now properly `await self.shrink_cache()`
-13. **cache.clear() fix** — Cache has no `clear()` method; uses `clear_dead()` from ObjectDictionary instead
-14. **new_oid shadowing fixed** — AsyncConnection no longer sets `self.new_oid` instance attribute
-15. **Protocol test uses inspect.iscoroutinefunction** — verifies methods are truly async, not just named
-16. **Task 15 test redesigned** — `BackupCatalog` takes `backup_dir: str | Path`, not a storage object
-17. **Dependency edges added** — Task 7 depends on Task 1; Tasks 9-11 depend on Task 7
-18. **BTree test coverage expanded** — now tests `delete`, `items`, `keys`, `values`, `update`
+1. **Task ordering fixed** — Task 15 (catalog.py update) runs BEFORE Task 5 (FileStorage deletion)
+1. **AsyncMemoryStorage uses native coroutines** — not `run_in_executor()` wrappers
+1. **AsyncConnection lists all methods explicitly** — no `...` hand-wave
+1. **BTree clarification** — BTree is pure in-memory; async wrapper for async storage compatibility only
+1. **Task25 uses Option B (MCP client)** — `DharaAdapterLearner` becomes an MCP client like Akosha/Mahavishnu
+1. **pytest-asyncio dependency added** — all async tests use `pytest.mark.asyncio`
+1. **conftest.py fixture conflict resolved** — remove deprecated `event_loop` fixture
+1. **Missing AsyncConnection methods added** — `get_crawler`, `load_state`, `get_storage`, `get_load_count`, `note_access`, `note_change`, `pack`, `touch_every_reference`, `gen_every_instance`
+1. **gen_oid_record async generator** — non-trivial; gets its own implementation detail
+1. **AsyncConnection factory pattern** — `__init__` cannot be async; use `async def new()` classmethod instead
+1. **shrink_cache() awaits fixed** — `abort()` and `commit()` now properly `await self.shrink_cache()`
+1. **cache.clear() fix** — Cache has no `clear()` method; uses `clear_dead()` from ObjectDictionary instead
+1. **new_oid shadowing fixed** — AsyncConnection no longer sets `self.new_oid` instance attribute
+1. **Protocol test uses inspect.iscoroutinefunction** — verifies methods are truly async, not just named
+1. **Task 15 test redesigned** — `BackupCatalog` takes `backup_dir: str | Path`, not a storage object
+1. **Dependency edges added** — Task 7 depends on Task 1; Tasks 9-11 depend on Task 7
+1. **BTree test coverage expanded** — now tests `delete`, `items`, `keys`, `values`, `update`
 
----
+______________________________________________________________________
 
 ## Task Map
 
@@ -128,13 +128,14 @@ The plan was reviewed by three agents (architecture, API design, Python quality)
 - [ ] **Task 25:** Update `crackerjack/integration/dhara_integration.py` — `DharaAdapterLearner` uses HTTP/MCP client
 - [ ] **Task 26:** Update test files in `crackerjack/tests/unit/agents/`
 
----
+______________________________________________________________________
 
 ## Detailed Tasks
 
 ### Task 1: Add Complete AsyncStorage Protocol
 
 **Files:**
+
 - Modify: `dhara/storage/base.py`
 
 - [ ] **Step 1: Write failing test for protocol**
@@ -275,13 +276,16 @@ git add dhara/storage/base.py
 git commit -m "feat: add complete AsyncStorage protocol with all methods"
 ```
 
----
+______________________________________________________________________
 
 ### Task 2: Create AsyncSqliteStorage
 
 **Files:**
+
 - Create: `dhara/storage/sqlite.py`
+
 - Create: `tests/storage/` directory
+
 - Modify: `dhara/__init__.py`
 
 - [ ] **Step 1: Write failing test**
@@ -339,11 +343,17 @@ Expected: FAIL — module not found
 - [ ] **Step 3: Write minimal AsyncSqliteStorage**
 
 Implement all methods in the AsyncStorage protocol. Key implementation notes:
+
 - Use `aiosqlite.connect()` for async SQLite
+
 - WAL mode pragmas must be set per-connection (re-applied on reconnect)
+
 - `gen_oid_record` uses `async for` over `async with self._conn.execute()` cursor
+
 - `bulk_load` uses async cursor iteration
+
 - `__aenter__` / `__aexit__` for async context manager protocol
+
 - `close()` calls `await self._conn.close()`
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -358,11 +368,12 @@ git add dhara/storage/sqlite.py dhara/__init__.py tests/storage/
 git commit -m "feat: add AsyncSqliteStorage using aiosqlite"
 ```
 
----
+______________________________________________________________________
 
 ### Task 3: Create AsyncPostgresStorage
 
 **Files:**
+
 - Create: `dhara/storage/postgres.py`
 
 - [ ] **Step 1: Write failing test**
@@ -412,12 +423,19 @@ Expected: FAIL — module not found
 - [ ] **Step 3: Write AsyncPostgresStorage**
 
 Implement all AsyncStorage protocol methods using asyncpg:
+
 - `init()`: create connection pool with `asyncpg.create_pool()`
+
 - `load()`: acquire connection from pool, `fetchrow`
+
 - `gen_oid_record`: async generator over `pool.acquire()` cursor
+
 - `bulk_load`: async iteration over multiple `fetchrow` calls
+
 - `close()`: close pool with `pool.close()`
+
 - `health()`: try `pool.acquire()` — if succeeds, healthy
+
 - `__aenter__` / `__aexit__` for async context manager
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -432,11 +450,12 @@ git add dhara/storage/postgres.py
 git commit -m "feat: add AsyncPostgresStorage using asyncpg"
 ```
 
----
+______________________________________________________________________
 
 ### Task 4: Add AsyncMemoryStorage (Native Async)
 
 **Files:**
+
 - Modify: `dhara/storage/memory.py`
 
 - [ ] **Step 1: Write failing test**
@@ -520,11 +539,12 @@ git add dhara/storage/memory.py
 git commit -m "feat: add native async methods to MemoryStorage"
 ```
 
----
+______________________________________________________________________
 
 ### Task 6: Update Dhara Exports
 
 **Files:**
+
 - Modify: `dhara/__init__.py`
 
 - [ ] **Step 1: Update exports**
@@ -545,11 +565,12 @@ git add dhara/__init__.py
 git commit -m "feat: update exports — async storage only, no FileStorage"
 ```
 
----
+______________________________________________________________________
 
 ### Task 5: Delete FileStorage
 
 **Files:**
+
 - Delete: `dhara/storage/file.py`
 - Remove from exports in `dhara/__init__.py`
 
@@ -560,6 +581,7 @@ git commit -m "feat: update exports — async storage only, no FileStorage"
 ```bash
 grep -r "FileStorage" dhara/ --include="*.py" | grep -v "__pycache__"
 ```
+
 Expected: nothing (Task 15 updated catalog.py first)
 
 - [ ] **Step 2: Delete file**
@@ -575,12 +597,14 @@ git rm dhara/storage/file.py
 git commit -m "feat: remove FileStorage — async storage only"
 ```
 
----
+______________________________________________________________________
 
 ### Task 7: Add AsyncConnection Class (All Methods Explicit)
 
 **Files:**
+
 - Modify: `dhara/core/connection.py`
+
 - Create: `tests/test_async_connection.py`
 
 - [ ] **Step 1: Write failing test**
@@ -890,6 +914,7 @@ class AsyncConnection:
 ```
 
 **Usage:**
+
 ```python
 conn = await AsyncConnection.new(storage)
 root = await conn.get_root()
@@ -907,11 +932,12 @@ git add dhara/core/connection.py tests/test_async_connection.py
 git commit -m "feat: add AsyncConnection — fully async OID persistence"
 ```
 
----
+______________________________________________________________________
 
 ### Task 8: Add Async PersistentObject Methods
 
 **Files:**
+
 - Modify: `dhara/core/persistent.py`
 
 - [ ] **Step 1: Write failing test**
@@ -964,11 +990,12 @@ git add dhara/core/persistent.py
 git commit -m "feat: add async methods to PersistentObject"
 ```
 
----
+______________________________________________________________________
 
 ### Task 9: Add AsyncPersistentDict
 
 **Files:**
+
 - Modify: `dhara/collections/dict.py`
 
 - [ ] **Step 1: Write failing test**
@@ -1022,11 +1049,12 @@ git add dhara/collections/dict.py
 git commit -m "feat: add AsyncPersistentDict with async methods"
 ```
 
----
+______________________________________________________________________
 
 ### Task 10: Add AsyncPersistentList
 
 **Files:**
+
 - Modify: `dhara/collections/list.py`
 
 - [ ] **Step 1: Write failing test**
@@ -1076,11 +1104,12 @@ git add dhara/collections/list.py
 git commit -m "feat: add AsyncPersistentList with async methods"
 ```
 
----
+______________________________________________________________________
 
 ### Task 11: BTree Async Wrapper
 
 **Files:**
+
 - Modify: `dhara/collections/btree.py`
 
 **NOTE: BTree is a pure in-memory data structure with no I/O. Its `get()`, `set()`, `delete()`, `items()`, etc. are all sync and stay sync. This task adds an async wrapper only for compatibility with async storage backends — the underlying tree operations are unchanged.**
@@ -1183,11 +1212,12 @@ git add dhara/collections/btree.py
 git commit -m "feat: add async wrapper methods to BTree for storage compat"
 ```
 
----
+______________________________________________________________________
 
 ### Task 12: Update KVTimeSeriesStore to AsyncConnection
 
 **Files:**
+
 - Modify: `dhara/mcp/kv_timeseries.py`
 
 - [ ] **Step 1: Write failing test**
@@ -1229,11 +1259,12 @@ git add dhara/mcp/kv_timeseries.py
 git commit -m "feat: update KVTimeSeriesStore to use AsyncConnection"
 ```
 
----
+______________________________________________________________________
 
 ### Task 13: Update MCP Server Core to AsyncConnection
 
 **Files:**
+
 - Modify: `dhara/mcp/server_core.py`
 
 - [ ] **Step 1: Write failing test**
@@ -1274,11 +1305,12 @@ git add dhara/mcp/server_core.py
 git commit -m "feat: update MCP server core to use AsyncConnection"
 ```
 
----
+______________________________________________________________________
 
 ### Task 14: Update MCP Adapter Tools to AsyncConnection
 
 **Files:**
+
 - Modify: `dhara/mcp/adapter_tools.py`
 
 - [ ] **Step 1: Write failing test**
@@ -1315,11 +1347,12 @@ git add dhara/mcp/adapter_tools.py
 git commit -m "feat: update MCP adapter tools to use AsyncConnection"
 ```
 
----
+______________________________________________________________________
 
 ### Task 15: Update Backup Catalog to AsyncConnection
 
 **Files:**
+
 - Modify: `dhara/backup/catalog.py`
 
 **NOTE: This task must run BEFORE Task 5 (FileStorage deletion). It removes the `from dhara.storage.file import FileStorage` import.**
@@ -1366,11 +1399,12 @@ git add dhara/backup/catalog.py
 git commit -m "feat: update backup catalog to use AsyncConnection"
 ```
 
----
+______________________________________________________________________
 
 ### Task 16: Update Backup Restore to AsyncConnection
 
 **Files:**
+
 - Modify: `dhara/backup/restore.py`
 
 - [ ] **Step 1: Write failing test**
@@ -1407,11 +1441,12 @@ git add dhara/backup/restore.py
 git commit -m "feat: update backup restore to use AsyncConnection"
 ```
 
----
+______________________________________________________________________
 
 ### Task 17: Update CLI to Async Entry Point
 
 **Files:**
+
 - Modify: `dhara/cli.py`
 
 - [ ] **Step 1: Write failing test**
@@ -1447,11 +1482,12 @@ git add dhara/cli.py
 git commit -m "feat: update CLI to async entry point"
 ```
 
----
+______________________________________________________________________
 
 ### Task 18: Update __main__.py for Async
 
 **Files:**
+
 - Modify: `dhara/__main__.py`
 
 - [ ] **Step 1: Update __main__.py**
@@ -1473,11 +1509,12 @@ git add dhara/__main__.py
 git commit -m "feat: update __main__ to async entry point"
 ```
 
----
+______________________________________________________________________
 
 ### Task 19: Update bin/db_renumber.py
 
 **Files:**
+
 - Modify: `bin/db_renumber.py`
 
 - [ ] **Step 1: Update to use AsyncConnection**
@@ -1491,11 +1528,12 @@ git add bin/db_renumber.py
 git commit -m "feat: update db_renumber to use AsyncConnection"
 ```
 
----
+______________________________________________________________________
 
 ### Task 20: Update bin/db_to_py3k.py
 
 **Files:**
+
 - Modify: `bin/db_to_py3k.py`
 
 - [ ] **Step 1: Update to use AsyncConnection**
@@ -1507,11 +1545,12 @@ git add bin/db_to_py3k.py
 git commit -m "feat: update db_to_py3k to use AsyncConnection"
 ```
 
----
+______________________________________________________________________
 
 ### Task 21: Update Tests Conftest
 
 **Files:**
+
 - Modify: `tests/conftest.py`
 
 **CRITICAL FIX: Remove the deprecated `event_loop` fixture (lines 98-107). This fixture conflicts with `pytest.mark.asyncio` marker style. Replace with modern pytest-asyncio configuration.**
@@ -1545,9 +1584,9 @@ Expected: FAIL
 - [ ] **Step 3: Fix conftest.py**
 
 1. Remove the `event_loop` fixture function
-2. Add `pytest_plugins = ['pytest_asyncio']` if not present
-3. Replace `FileStorage` in fixtures with `AsyncSqliteStorage`
-4. Add `pytest.ini` or `pyproject.toml` config for pytest-asyncio:
+1. Add `pytest_plugins = ['pytest_asyncio']` if not present
+1. Replace `FileStorage` in fixtures with `AsyncSqliteStorage`
+1. Add `pytest.ini` or `pyproject.toml` config for pytest-asyncio:
    ```toml
    [tool.pytest.ini_options]
    asyncio_mode = "auto"
@@ -1565,11 +1604,12 @@ git add tests/conftest.py pyproject.toml  # if updating config
 git commit -m "test: remove deprecated event_loop fixture, use AsyncSqliteStorage"
 ```
 
----
+______________________________________________________________________
 
 ### Task 22: Update test_core_connection_methods.py
 
 **Files:**
+
 - Modify: `tests/test_core_connection_methods.py`
 
 - [ ] **Step 1: Write failing test**
@@ -1595,11 +1635,12 @@ git add tests/test_core_connection_methods.py
 git commit -m "test: convert test_core_connection_methods to async"
 ```
 
----
+______________________________________________________________________
 
 ### Task 23: Update test_mcp_kv_timeseries.py
 
 **Files:**
+
 - Modify: `tests/test_mcp_kv_timeseries.py`
 
 - [ ] **Step 1: Convert all tests to async**
@@ -1616,11 +1657,12 @@ git add tests/test_mcp_kv_timeseries.py
 git commit -m "test: convert test_mcp_kv_timeseries to async"
 ```
 
----
+______________________________________________________________________
 
 ### Task 24: Update test_mcp_server_core.py
 
 **Files:**
+
 - Modify: `tests/test_mcp_server_core.py`
 
 - [ ] **Step 1: Convert all tests to async**
@@ -1637,16 +1679,18 @@ git add tests/test_mcp_server_core.py
 git commit -m "test: convert test_mcp_server_core to async"
 ```
 
----
+______________________________________________________________________
 
 ### Task 25: Crackerjack Integration — Option B (MCP Client)
 
 **Files:**
+
 - Modify: `crackerjack/integration/dhara_integration.py`
 
 **DESIGN DECISION: Option B (MCP client) is used, not direct AsyncConnection.**
 
 `DharaAdapterLearner` uses Dhara's existing high-level MCP tools (`put`, `get`, `record_time_series`, `query_time_series`) over HTTP, just like Akosha and Mahavishnu. This means:
+
 - No direct `Connection` or `AsyncConnection` import in crackerjack
 - `DharaAdapterLearner` becomes an HTTP/MCP client
 - Uses existing MCP tools, no new MCP server endpoints needed
@@ -1682,9 +1726,13 @@ Expected: FAIL
 Replace direct `Connection(FileStorage(...))` with HTTP calls to Dhara MCP server using `httpx` or similar async HTTP client. All existing `record_adapter_attempt` logic stays the same — just the storage layer changes from local file to HTTP/MCP.
 
 Key changes:
+
 - Remove `from dhara.core.connection import Connection`
+
 - Remove `from dhara.storage.file import FileStorage`
+
 - Add HTTP client for Dhara MCP server
+
 - All `put`/`get`/`record_time_series` calls go over HTTP instead of direct storage
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -1699,12 +1747,14 @@ git add crackerjack/integration/dhara_integration.py
 git commit -m "feat: DharaAdapterLearner uses MCP client pattern (Option B)"
 ```
 
----
+______________________________________________________________________
 
 ### Task 26: Update Crackerjack Test Files
 
 **Files:**
+
 - Modify: `crackerjack/tests/unit/agents/test_import_optimization_agent.py`
+
 - Modify: `crackerjack/tests/unit/agents/test_planning_agent_fixes.py`
 
 - [ ] **Step 1: Update dhara imports in test files**
@@ -1718,7 +1768,7 @@ git add crackerjack/tests/unit/agents/test_import_optimization_agent.py crackerj
 git commit -m "test: update crackerjack test files for MCP client pattern"
 ```
 
----
+______________________________________________________________________
 
 ## Dependency Order
 
@@ -1743,7 +1793,7 @@ Task 1 (AsyncStorage protocol — complete)
 
 **Note:** Task 7 (AsyncConnection) imports from `dhara/storage/base.py` for the `AsyncStorage` type annotation, so it must run after Task 1 completes. Tasks 9, 10, 11 use `AsyncConnection` in their tests, so they must run after Task 7.
 
----
+______________________________________________________________________
 
 ## No Migration Path
 

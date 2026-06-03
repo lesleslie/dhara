@@ -1,39 +1,34 @@
-"""Security configuration for Dhara applications."""
-
+"""
 from __future__ import annotations
+import operator
+Security configuration module.
+
+This module provides centralized security configuration for Dhara applications,
+integrating with Oneiric secrets management for HMAC signing keys.
+"""
 
 import hashlib
 import hmac
 import logging
 import secrets
 import threading
-from collections.abc import Callable
 from contextlib import suppress
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 
 # Import Oneiric secrets module with error handling
 ONEIRIC_AVAILABLE = False
-OneiricSecretsAdapter: Any = None
-create_hmac_signature: Callable[[bytes, str], bytes] | None = None
-verify_hmac_signature: Callable[[bytes, bytes, str], bool] | None = None
-initialize_secrets: Callable[[str, int], Any] | None = None
+OneiricSecretsAdapter = None
+create_hmac_signature = None
+verify_hmac_signature = None
+initialize_secrets = None
 
 with suppress(ImportError):
     from dhara.security.oneiric_secrets import (
-        create_hmac_signature as _create_hmac_signature,
+        create_hmac_signature,
+        initialize_secrets,
+        verify_hmac_signature,
     )
-    from dhara.security.oneiric_secrets import (
-        initialize_secrets as _initialize_secrets,
-    )
-    from dhara.security.oneiric_secrets import (
-        verify_hmac_signature as _verify_hmac_signature,
-    )
-
-    # Cast to proper types after import
-    create_hmac_signature = _create_hmac_signature
-    initialize_secrets = _initialize_secrets
-    verify_hmac_signature = _verify_hmac_signature
     ONEIRIC_AVAILABLE = True
 
 
@@ -108,19 +103,22 @@ class SecurityConfig:
                         "Please install the Oneiric SDK or enable fallback mode."
                     )
                 else:
-                    self._logger.warning(  # type: ignore[union-attr]
-                        "Oneiric not available, using fallback mode. "
-                        "This is less secure than production setup."
-                    )
+                    if self._logger is not None:
+                        self._logger.warning(
+                            "Oneiric not available, using fallback mode. "
+                            "This is less secure than production setup."
+                        )
                     self._initialize_fallback()
                     return
 
             # Initialize Oneiric secrets
             if initialize_secrets is None:
-                raise RuntimeError("Oneiric secrets library unavailable")
-            self._adapter = initialize_secrets(  # type: ignore[return-value]
+                raise RuntimeError("Oneiric secrets not available")
+            # cast: zuban infers initialize_secrets as None from initial module-level
+            # assignment; the import block rebinds it but the type checker can't see that
+            self._adapter = cast(Any, initialize_secrets(
                 self.secret_prefix, self.rotation_interval_days
-            )
+            ))
 
             # Perform validation only for Oneiric mode
             if self.require_key_validation:
@@ -131,8 +129,8 @@ class SecurityConfig:
 
         except Exception as e:
             error_msg = f"Failed to initialize security configuration: {e}"
-            if self._logger:
-                self._logger.error(error_msg)  # type: ignore[union-attr]
+            if self._logger is not None:
+                self._logger.error(error_msg)
             raise RuntimeError(error_msg)
 
     def _initialize_fallback(self) -> None:
@@ -144,7 +142,7 @@ class SecurityConfig:
             if self.fallback_signing_key is None:
                 # Generate a random fallback key
                 self.fallback_signing_key = secrets.token_bytes(32)
-                if self._logger:
+                if self._logger is not None:
                     self._logger.warning("Generated temporary fallback signing key")
 
             self._initialized = True
@@ -160,8 +158,7 @@ class SecurityConfig:
 
         try:
             # Get key status
-            if self._adapter is None:
-                raise RuntimeError("Oneiric adapter not initialized")
+            assert self._adapter is not None
             status = self._adapter.get_key_status()
 
             # Validate key requirements
@@ -182,15 +179,15 @@ class SecurityConfig:
 
             # Check rotation interval
             if status["rotation_interval_days"] != self.rotation_interval_days:
-                if self._logger:
-                    self._logger.warning(  # type: ignore[union-attr]
+                if self._logger is not None:
+                    self._logger.warning(
                         f"Rotation interval mismatch: configured={self.rotation_interval_days}, "
                         f"actual={status['rotation_interval_days']}"
                     )
 
         except Exception as e:
-            if self._logger:
-                self._logger.error(f"Security validation failed: {e}")  # type: ignore[union-attr]
+            if self._logger is not None:
+                self._logger.error(f"Security validation failed: {e}")
             raise
 
     def create_signature(self, message: bytes, algorithm: str = "sha256") -> bytes:
@@ -228,13 +225,13 @@ class SecurityConfig:
                 return self._create_fallback_signature(message, algorithm)
 
             if create_hmac_signature is None:
-                raise RuntimeError("Oneiric create_hmac_signature not available")
-            return create_hmac_signature(message, algorithm)  # type: ignore[return-value]
+                raise RuntimeError("Oneiric HMAC signature unavailable")
+            return create_hmac_signature(message, algorithm)
 
         except Exception as e:
             error_msg = f"Failed to create signature: {e}"
-            if self.log_security_events:
-                self._logger.error(error_msg)  # type: ignore[union-attr]
+            if self.log_security_events and self._logger is not None:
+                self._logger.error(error_msg)
             raise ValueError(error_msg)
 
     def verify_signature(
@@ -270,11 +267,11 @@ class SecurityConfig:
 
             if verify_hmac_signature is None:
                 return False
-            return verify_hmac_signature(message, signature, algorithm)  # type: ignore[return-value]
+            return verify_hmac_signature(message, signature, algorithm)
 
         except Exception as e:
-            if self.log_security_events:
-                self._logger.warning(f"Signature verification failed: {e}")  # type: ignore[union-attr]
+            if self.log_security_events and self._logger is not None:
+                self._logger.warning(f"Signature verification failed: {e}")
             return False
 
     def _create_fallback_signature(self, message: bytes, algorithm: str) -> bytes:
@@ -282,9 +279,7 @@ class SecurityConfig:
         if self.fallback_signing_key is None:
             raise RuntimeError("No fallback signing key available")
 
-        return hmac.new(
-            self.fallback_signing_key, message, getattr(hashlib, algorithm)
-        ).digest()
+        return hmac.new(self.fallback_signing_key, message, getattr(hashlib, algorithm)).digest()
 
     def _verify_fallback_signature(
         self, message: bytes, signature: bytes, algorithm: str
@@ -313,12 +308,14 @@ class SecurityConfig:
             raise RuntimeError("Cannot rotate keys without Oneiric")
 
         try:
-            result = self._adapter.rotate_all_keys()  # type: ignore[union-attr]
+            assert self._adapter is not None
+            result = cast(dict[str, str], self._adapter.rotate_all_keys())
             self._log_security_event("Manual key rotation completed")
-            return result  # type: ignore[no-any-return]
+            return result
         except Exception as e:
             error_msg = f"Failed to rotate keys: {e}"
-            self._logger.error(error_msg)  # type: ignore[union-attr]
+            if self._logger is not None:
+                self._logger.error(error_msg)
             raise RuntimeError(error_msg)
 
     def get_security_status(self) -> dict[str, Any]:
@@ -346,6 +343,7 @@ class SecurityConfig:
 
         if ONEIRIC_AVAILABLE and self._adapter:
             try:
+                assert self._adapter is not None
                 key_status = self._adapter.get_key_status()
                 status["key_status"] = key_status
 
@@ -377,13 +375,14 @@ class SecurityConfig:
             return 0
 
         try:
-            cleaned_count = self._adapter.cleanup_expired_keys()  # type: ignore[union-attr]
+            assert self._adapter is not None
+            cleaned_count = self._adapter.cleanup_expired_keys()
             self._log_security_event(f"Cleaned up {cleaned_count} expired keys")
-            return cleaned_count  # type: ignore[no-any-return]
+            return int(cleaned_count)  # type: ignore[no-any-return]
         except Exception as e:
             error_msg = f"Failed to cleanup expired keys: {e}"
-            if self._logger:
-                self._logger.error(error_msg)  # type: ignore[union-attr]
+            if self._logger is not None:
+                self._logger.error(error_msg)
             return 0
 
     def create_backup_key(self) -> str:
@@ -403,13 +402,14 @@ class SecurityConfig:
             raise RuntimeError("Cannot create backup keys without Oneiric")
 
         try:
-            key_id = self._adapter.create_backup_key()  # type: ignore[union-attr]
+            assert self._adapter is not None
+            key_id = cast(str, self._adapter.create_backup_key())
             self._log_security_event(f"Created backup key: {key_id}")
-            return key_id  # type: ignore[no-any-return]
+            return key_id
         except Exception as e:
             error_msg = f"Failed to create backup key: {e}"
-            if self._logger:
-                self._logger.error(error_msg)  # type: ignore[union-attr]
+            if self._logger is not None:
+                self._logger.error(error_msg)
             raise RuntimeError(error_msg)
 
     def _log_security_event(self, message: str) -> None:

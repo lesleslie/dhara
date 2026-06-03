@@ -8,9 +8,11 @@ msgspec is a fast and safe serialization library that supports:
 """
 
 import logging
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
-from msgspec import json, msgpack, to_builtins
+from msgspec import json as msgspec_json
+from msgspec import msgpack as msgspec_msgpack
+from msgspec import to_builtins
 
 from dhara.core.persistent import Persistent, _setattribute
 from dhara.serialize.base import DEFAULT_MAX_SIZE, Serializer
@@ -73,11 +75,11 @@ class MsgspecSerializer(Serializer):
         self.allowed_modules = allowed_modules or DEFAULT_ALLOWED_MODULES.copy()
 
         if format == "msgpack":
-            self._encode = msgpack.encode
-            self._decode = msgpack.decode
+            self._encode = msgspec_msgpack.encode  # type: ignore[assignment]
+            self._decode = msgspec_msgpack.decode  # type: ignore[assignment]
         else:
-            self._encode = json.encode
-            self._decode = json.decode
+            self._encode = msgspec_json.encode  # type: ignore[assignment]
+            self._decode = msgspec_json.decode  # type: ignore[assignment]
 
     def serialize(self, obj: Any) -> bytes:
         """Serialize object to bytes.
@@ -157,8 +159,9 @@ class MsgspecSerializer(Serializer):
                         f"Class '{module}.{classname}' is not a Persistent subclass"
                     )
 
-                # Create instance using PersistentBase.__new__ which properly initializes
-                instance = klass.__new__(klass)
+                # Create instance using object.__new__ which properly initializes
+                # without calling __init__ (bypasses change tracking)
+                instance = object.__new__(klass)
                 # Directly set __dict__ without triggering change tracking
                 _setattribute(instance, "__dict__", obj["__state__"])
                 return instance
@@ -178,6 +181,6 @@ class MsgspecSerializer(Serializer):
 
         if self.use_builtins:
             # Convert to built-in types recursively
-            return to_builtins(state, str_keys=True)
+            return cast(dict, to_builtins(state, str_keys=True))
 
         return state
