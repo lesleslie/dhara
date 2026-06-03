@@ -12,12 +12,6 @@ from typing import Any
 
 __version__ = "0.11.0"
 
-# Import-alias shim: re-routes old `durus.*` module paths to `dhara.*`
-# equivalents. This is a Python `import` resolution layer only — it does
-# not provide on-disk format compatibility with Durus 4.x pickle-format
-# databases (those are no longer supported as of 0.11.0).
-from dhara import _compat  # noqa: F401  # side-effect import for compat
-
 # Core persistence framework
 from dhara.collections import (
     BNode,

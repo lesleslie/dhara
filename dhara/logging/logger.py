@@ -25,23 +25,23 @@ from oneiric.core.logging import get_logger as _oneiric_get_logger
 
 
 def get_logger(name: str | None = None) -> Any:
-    """Get a Durus logger with optional name.
+    """Get a Dhara logger with optional name.
 
     Args:
-        name: Optional logger name (auto-prefixed with 'durus.')
+        name: Optional logger name (auto-prefixed with 'dhara.')
 
     Returns:
         structlog BoundLogger
 
     Examples:
-        Get root Durus logger:
+        Get root Dhara logger:
         >>> log = get_logger()
 
         Get named logger:
         >>> log = get_logger('storage')
-        >>> # Returns 'durus.storage' logger
+        >>> # Returns 'dhara.storage' logger
     """
-    prefixed = f"durus.{name}" if name else "durus"
+    prefixed = f"dhara.{name}" if name else "dhara"
     return _oneiric_get_logger(prefixed)
 
 
@@ -221,7 +221,7 @@ def setup_logging(
 # Internal code should use get_logger() / log_operation() etc.
 import logging as _stdlib_logging
 
-logger: _stdlib_logging.Logger = _stdlib_logging.getLogger("durus")
+logger: _stdlib_logging.Logger = _stdlib_logging.getLogger("dhara")
 
 
 # Ensure logging is initialized on module import

@@ -29,6 +29,9 @@ dist
 .archives/
 .backup/
 .backups/
+# Editor / pre-edit backups (e.g. ``foo.py.backup``, ``foo.py.backup.json``)
+*.backup
+*.backup.*
 dhara.egg-info/
 
 .hypothesis/

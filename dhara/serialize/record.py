@@ -245,9 +245,13 @@ class ObjectReader:
         """
         class_name, _state = deserialize_state(data)
         klass = _resolve_class(class_name, self.allowed_modules)
-        # Use object.__new__ to bypass __init__ (avoids triggering change
-        # tracking). Mirrors the pattern in dhara/serialize/msgspec.py.
-        instance = object.__new__(klass)
+        # Use the class's own __new__ so that PersistentBase.__new__
+        # runs and initializes all four slots (_p_status, _p_serial,
+        # _p_connection, _p_oid). Skipping __new__ (e.g. via
+        # object.__new__) leaves those slots unset, which causes
+        # AttributeError on the first __getattribute__ access — see
+        # ``persistent_load`` below for the same rationale.
+        instance = klass.__new__(klass)  # type: ignore[call-arg]
         instance._p_set_status_ghost()
         return instance
 

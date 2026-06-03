@@ -944,7 +944,6 @@ source = { editable = "." }
 dependencies = [
     { name = "aiosqlite" },
     { name = "cryptography" },
-    { name = "dill" },
     { name = "fastmcp" },
     { name = "ipython" },
     { name = "mcp-common" },
@@ -970,7 +969,6 @@ dev = [
     { name = "azure-storage-blob" },
     { name = "boto3" },
     { name = "crackerjack" },
-    { name = "dill" },
     { name = "google-cloud-storage" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -987,7 +985,6 @@ requires-dist = [
     { name = "azure-storage-blob", marker = "extra == 'cloud'", specifier = ">=12.29.0" },
     { name = "boto3", marker = "extra == 'cloud'", specifier = ">=1.43.20" },
     { name = "cryptography", specifier = ">=48.0.0" },
-    { name = "dill", specifier = ">=0.4.1" },
     { name = "fastmcp", specifier = ">=3.3.1" },
     { name = "google-cloud-storage", marker = "extra == 'cloud'", specifier = ">=3.10.1" },
     { name = "ipython", specifier = ">=9.14.0" },
@@ -1006,22 +1003,12 @@ dev = [
     { name = "azure-storage-blob", specifier = ">=12.29.0" },
     { name = "boto3", specifier = ">=1.43.20" },
     { name = "crackerjack" },
-    { name = "dill", specifier = ">=0.4.1" },
     { name = "google-cloud-storage", specifier = ">=3.10.1" },
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "pytest-asyncio", specifier = ">=1.4.0" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
     { name = "pytest-timeout", specifier = ">=2.4.0" },
     { name = "session-buddy", specifier = ">=0.19.9" },
-]
-
-[[package]]
-name = "dill"
-version = "0.4.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/81/e1/56027a71e31b02ddc53c7d65b01e68edf64dea2932122fe7746a516f75d5/dill-0.4.1.tar.gz", hash = "sha256:423092df4182177d4d8ba8290c8a5b640c66ab35ec7da59ccfa00f6fa3eea5fa", size = 187315, upload-time = "2026-01-19T02:36:56.85Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/1e/77/dc8c558f7593132cf8fefec57c4f60c83b16941c574ac5f619abb3ae7933/dill-0.4.1-py3-none-any.whl", hash = "sha256:1e1ce33e978ae97fcfcff5638477032b801c46c7c65cf717f95fbc2248f79a9d", size = 120019, upload-time = "2026-01-19T02:36:55.663Z" },
 ]
 
 [[package]]

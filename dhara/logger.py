@@ -5,7 +5,7 @@ Provides the legacy stdlib-based API (logger, log, direct_output, is_logging)
 while delegating to structlog via Oneiric for actual formatting/output.
 
 This module intentionally keeps the original API shape so existing code
-(durus.server, storage backends, CLI) continues to work unchanged.
+(dhara server, storage backends, CLI) continues to work unchanged.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ from oneiric.core.logging import (
 
 # ---- Public API (original signatures, same behavior) ----
 
-logger: logging.Logger = logging.getLogger("durus")
+logger: logging.Logger = logging.getLogger("dhara")
 
 
 class _LogFunction:
@@ -38,7 +38,7 @@ class _LogFunction:
 
     def _ensure(self) -> Any:
         if self._log is None:
-            self._log = _structlog_get_logger("durus")
+            self._log = _structlog_get_logger("dhara")
         return self._log
 
     def __call__(self, level: int, msg: str, *args: Any) -> None:

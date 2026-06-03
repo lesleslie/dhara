@@ -175,6 +175,11 @@ ignore-regex = '(b"help"|b"he")'
 [tool.creosote]
 paths = ["dhara"]
 deps-file = "pyproject.toml"
+# Walk the full AST so imports inside try/except blocks, function bodies,
+# and other nested scopes are detected. The default iter_child_nodes
+# only sees top-level imports, which misses IPython/rich/etc. that are
+# loaded lazily inside admin shell fallbacks.
+include-deferred = true
 # uvicorn is not directly imported — it is a transitive runtime for FastMCP.
 # (ipython and rich were previously excluded here too, but creosote
 # detects their imports in dhara/shell/__init__.py and dhara/__main__.py,

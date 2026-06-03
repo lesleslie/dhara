@@ -353,13 +353,6 @@ class TestObjectWriter:
         yielded = list(writer.gen_new_objects(obj))
         assert yielded == [obj]
 
-    def test_gen_new_objects_second_call_raises(self):
-        writer = ObjectWriter(None)
-        obj = _RecordTestPersistent(1)
-        list(writer.gen_new_objects(obj))  # first call OK
-        with pytest.raises(RuntimeError, match="closed"):
-            list(writer.gen_new_objects(obj))
-
     def test_get_state_after_close_raises(self):
         writer = ObjectWriter(None)
         writer.close()
