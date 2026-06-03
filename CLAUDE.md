@@ -127,8 +127,8 @@ dhara/
 ├── serialize/                    # Serialization layer
 │   ├── base.py                   # Serializer interface
 │   ├── msgspec.py                # msgspec (default, fast & safe)
-│   ├── pickle.py                 # Pickle (backward compat)
-│   ├── dill.py                   # Dill (extended capability)
+│   ├── msgpack.py                # Msgpack (msgspec-backed alias)
+│   ├── record.py                 # Per-record framing (replaces serialize_legacy)
 │   └── factory.py                # Serializer creation
 │
 ├── collections/                  # Persistent collection types
@@ -182,8 +182,7 @@ dhara/
 **Serialization** (`dhara/serialize/`):
 
 - `MsgspecSerializer`: Default (fast, type-safe, secure)
-- `PickleSerializer`: For backward compatibility
-- `DillSerializer`: Extended capability (lambdas, nested functions)
+- `MsgpackSerializer`: Msgpack format (msgspec-backed, no protocol arg)
 
 **Persistent Collections** (`dhara/collections/`):
 
@@ -364,9 +363,8 @@ The `BTree` class (in `dhara/collections/btree.py`) implements a B-tree data str
 **Recommendations:**
 
 - Use `msgspec` for new databases (fastest, safest, type-safe)
-- Use `pickle` only for backward compatibility with Durus 4.x
-- Use `dill` only when you need to serialize functions/lambdas
-- Never deserialize untrusted data with pickle or dill
+- Use `MsgpackSerializer` for an explicit msgpack wire format (msgspec-backed)
+- The legacy Durus 4.x pickle format was removed in 0.11.0; there is no backward-compatible serialization option
 
 ### C Extension vs Pure Python
 
@@ -529,8 +527,8 @@ logging:
 ### Serialization Security
 
 - **msgspec**: Safe for untrusted data (default)
-- **pickle**: Vulnerable to arbitrary code execution - use only with trusted data
-- **dill**: Even more vulnerable - avoid with untrusted data
+- **msgpack**: msgspec-backed; safe for untrusted data
+- **pickle/dill**: Removed in 0.11.0 — there is no longer any on-disk format that uses pickle or dill, so this attack surface is closed
 
 ### Secret Management
 
@@ -565,34 +563,6 @@ The MCP server provides:
 - Transaction management
 - Schema inspection
 - Authentication and authorization
-
-## Migration from Durus 4.x
-
-Key changes in dhara 5.0:
-
-1. **Package structure**: Flat `durus/` → Layered `dhara/` with subpackages
-1. **Imports**: `from durus.X` → `from dhara.X` or `from dhara.subpackage.X`
-1. **Serialization**: Pickle-only → msgspec default (pickle still available)
-1. **Configuration**: No config → Oneiric-based configuration
-1. **Testing**: sancho.utest → pytest
-1. **Type hints**: None → Full type hints (Python 3.13+)
-
-### Import Migration
-
-```python
-# Old (Durus 4.x)
-from durus.connection import Connection
-from durus.file_storage import FileStorage
-from durus.persistent import Persistent
-
-# New (dhara 5.0)
-from dhara import Connection, Persistent
-from dhara.storage import FileStorage
-
-# Or more explicit
-from dhara.core import Connection, Persistent
-from dhara.storage.file import FileStorage
-```
 
 ## Troubleshooting
 

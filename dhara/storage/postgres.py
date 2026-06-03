@@ -17,7 +17,7 @@ from typing import Any
 
 import asyncpg
 
-from dhara.serialize_legacy import pack_record, unpack_record
+from dhara.serialize.record import pack_record, unpack_record
 from dhara.storage.base import OID
 from dhara.utils import int8_to_str, str_to_int8
 

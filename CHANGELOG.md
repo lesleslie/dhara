@@ -5,6 +5,21 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-06-03
+
+### Removed (0.11.0)
+
+- `dhara.serialize_legacy` module (pickle-based on-disk record format reader/writer)
+- `dhara.serialize.adapter` module (re-export shim wrapping the legacy reader)
+- `dhara.serialize.dill` module (`DillSerializer` and dill-backed wrapper)
+- `dhara.serialize.fallback` module (`FallbackSerializer` and the msgspec/pickle/dill fallback chain)
+- `dhara.file_storage2` module (DFS20/Durus 4.x file format reader/writer)
+- `PickleSerializer` class (replaced by `MsgpackSerializer`)
+- `DillSerializer` class (deleted entirely)
+- `FallbackSerializer` class (deleted entirely)
+- The DFS20/Durus 4.x on-disk file format (opening one now raises `ValueError`)
+- The CWE-502 pickle deserialization attack surface is closed.
+
 ## [0.10.0] - 2026-06-02
 
 ### Added
@@ -27,11 +42,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add BTree skeleton with get
 - Add complete AsyncStorage protocol with all methods
 - Add storage and cache backend config fields to DharaSettings
-- btree: Add _split_child and _insert_nonfull for insertion
+- btree: Add \_split_child and \_insert_nonfull for insertion
 - btree: Add BNode dataclass with is_leaf helper
-- btree: Add BNode is_full, is_big, _find_position helpers
+- btree: Add BNode is_full, is_big, \_find_position helpers
 - btree: Add borrow-first case 3 deletion (borrow, merge, reduce height)
-- btree: Add delete, update and leaf-only _delete_from_node
+- btree: Add delete, update and leaf-only \_delete_from_node
 - btree: Add error classes, is_full and height helpers
 - btree: Add items, keys, values iteration
 - Complete BTree redesign - passes all quality gates

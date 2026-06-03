@@ -61,6 +61,7 @@ dependencies = [
     "dill>=0.4.1",
     "schedule>=1.2.2",
     "zstandard>=0.25.0",
+    "aiosqlite>=0.22.1",
 ]
 
 [project.optional-dependencies]

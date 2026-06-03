@@ -8,7 +8,7 @@ from collections.abc import AsyncIterator, Iterator
 from typing import TYPE_CHECKING, Any, Protocol
 
 from dhara.core import connection
-from dhara.serialize import extract_class_name, split_oids, unpack_record
+from dhara.serialize.record import extract_class_name, split_oids, unpack_record
 from dhara.utils import int8_to_str
 
 if TYPE_CHECKING:

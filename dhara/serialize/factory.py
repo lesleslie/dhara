@@ -10,13 +10,17 @@ from dhara.serialize.base import Serializer
 
 
 def create_serializer(
-    backend: Literal["pickle", "msgspec", "dill", "fallback"] = "msgspec",
+    backend: Literal["msgpack", "msgspec"] = "msgspec",
     **kwargs: Any,
 ) -> Serializer:
     """Create a serializer instance.
 
     Args:
-        backend: Serializer backend to use
+        backend: Serializer backend to use. ``"msgpack"`` returns a
+            :class:`~dhara.serialize.msgpack.MsgpackSerializer` (historical
+            name; the wire format has been msgpack since the CWE-502
+            migration). ``"msgspec"`` returns the lower-level
+            :class:`~dhara.serialize.msgspec.MsgspecSerializer` directly.
         **kwargs: Backend-specific arguments
 
     Returns:
@@ -26,26 +30,18 @@ def create_serializer(
         ValueError: If backend is unknown
         ImportError: If backend requires optional dependencies
     """
-    if backend == "pickle":
-        from dhara.serialize.pickle import PickleSerializer
+    if backend == "msgpack":
+        from dhara.serialize.msgpack import MsgpackSerializer
 
-        serializer_class: type[Serializer] = PickleSerializer
+        serializer_class: type[Serializer] = MsgpackSerializer
     elif backend == "msgspec":
         from dhara.serialize.msgspec import MsgspecSerializer
 
         serializer_class = MsgspecSerializer
-    elif backend == "dill":
-        from dhara.serialize.dill import DillSerializer
-
-        serializer_class = DillSerializer
-    elif backend == "fallback":
-        from dhara.serialize.fallback import FallbackSerializer
-
-        serializer_class = FallbackSerializer
     else:
         raise ValueError(
             f"Unknown serializer: {backend}. "
-            "Choose from: pickle, msgspec, dill, fallback"
+            "Choose from: msgpack, msgspec"
         )
 
     try:

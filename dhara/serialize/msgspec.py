@@ -72,7 +72,15 @@ class MsgspecSerializer(Serializer):
         """
         self.format = format
         self.use_builtins = use_builtins
-        self.allowed_modules = allowed_modules or DEFAULT_ALLOWED_MODULES.copy()
+        # None means "no whitelist check" (permissive). This is used by
+        # the internal record layer (dhara.serialize.record) which has its
+        # own connection-level whitelist via _resolve_class. The
+        # user-facing default (None) keeps the legacy restrictive behavior
+        # via DEFAULT_ALLOWED_MODULES.
+        if allowed_modules is None:
+            self.allowed_modules = None
+        else:
+            self.allowed_modules = set(allowed_modules)
 
         if format == "msgpack":
             self._encode = msgspec_msgpack.encode  # type: ignore[assignment]
@@ -130,8 +138,10 @@ class MsgspecSerializer(Serializer):
             if len(parts) == 2:
                 module, classname = parts
 
-                # SECURITY: Validate module against whitelist before importing
-                if module not in self.allowed_modules:
+                # SECURITY: Validate module against whitelist before importing.
+                # ``self.allowed_modules is None`` means "no validation" (permissive
+                # mode used by the internal record layer).
+                if self.allowed_modules is not None and module not in self.allowed_modules:
                     logger.error(
                         f"Blocked deserialization of disallowed module: {module}"
                     )

@@ -1,3 +1,5 @@
+<!-- [HISTORICAL — format compatibility removed in 0.11.0] -->
+
 # Dhara Project - Comprehensive Audit Report
 
 **Audit Date:** 2026-02-08

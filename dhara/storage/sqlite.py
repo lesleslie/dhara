@@ -22,7 +22,7 @@ import aiosqlite
 
 from dhara.core import connection
 from dhara.logger import is_logging, log
-from dhara.serialize.adapter import pack_record, split_oids, unpack_record
+from dhara.serialize.record import pack_record, split_oids, unpack_record
 from dhara.storage.base import Storage
 from dhara.utils import as_bytes, int8_to_str, iteritems, str_to_int8
 

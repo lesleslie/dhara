@@ -10,9 +10,12 @@ from __future__ import annotations
 import importlib
 from typing import Any
 
-__version__ = "0.5.0"
+__version__ = "0.11.0"
 
-# Import backward compatibility for Durus 4.x databases.
+# Import-alias shim: re-routes old `durus.*` module paths to `dhara.*`
+# equivalents. This is a Python `import` resolution layer only — it does
+# not provide on-disk format compatibility with Durus 4.x pickle-format
+# databases (those are no longer supported as of 0.11.0).
 from dhara import _compat  # noqa: F401  # side-effect import for compat
 
 # Core persistence framework
@@ -78,9 +81,7 @@ __all__ = [
     "Serializer",
     "SerializerProtocol",
     "MsgspecSerializer",
-    "PickleSerializer",
-    "DillSerializer",
-    "FallbackSerializer",
+    "MsgpackSerializer",
     "create_serializer",
     "as_bytes",
     "int8_to_str",
@@ -100,9 +101,7 @@ def __getattr__(name: str) -> Any:
         "Serializer",
         "SerializerProtocol",
         "MsgspecSerializer",
-        "PickleSerializer",
-        "DillSerializer",
-        "FallbackSerializer",
+        "MsgpackSerializer",
         "create_serializer",
     }:
         module = importlib.import_module("dhara.serialize")

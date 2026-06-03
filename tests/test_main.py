@@ -138,18 +138,15 @@ class TestGetStorageClass:
 
         assert result is FileStorage
 
-    def test_dfs20_header_returns_file_storage2(self):
-        """A file starting with b'DFS20' returns legacy FileStorage2 compatibility."""
+    def test_dfs20_header_raises_value_error(self):
+        """A file starting with b'DFS20' raises ValueError (legacy format refused)."""
         from dhara.__main__ import get_storage_class
 
         mock_file = BytesIO(b"DFS20_some_data_here_extra")
         with patch("dhara.__main__.os.path.exists", return_value=True):
             with patch("builtins.open", return_value=mock_file):
-                result = get_storage_class("test.durus")
-
-        from dhara.file_storage2 import FileStorage2
-
-        assert result is FileStorage2
+                with pytest.raises(ValueError, match="DFS20"):
+                    get_storage_class("test.durus")
 
     def test_sqlite_header_returns_sqlite_storage(self):
         """A file starting with b'SQLite format ' returns SqliteStorage.
@@ -215,11 +212,8 @@ class TestGetStorageClass:
                 with pytest.raises(ValueError, match="unknown storage type"):
                     get_storage_class("short.durus")
 
-    def test_reads_exactly_20_bytes(self):
-        """get_storage_class reads exactly 20 bytes from the file header.
-
-        The DFS20 legacy compatibility header is still recognized here.
-        """
+    def test_dfs20_header_raises_with_clear_message(self):
+        """DFS20 refusal message clearly states the format is no longer supported."""
         from dhara.__main__ import get_storage_class
 
         # Exactly 20 bytes of legacy DFS20 content.
@@ -227,11 +221,10 @@ class TestGetStorageClass:
         mock_file = BytesIO(content)
         with patch("dhara.__main__.os.path.exists", return_value=True):
             with patch("builtins.open", return_value=mock_file):
-                result = get_storage_class("exact.durus")
+                with pytest.raises(ValueError, match="DFS20") as excinfo:
+                    get_storage_class("exact.durus")
 
-        from dhara.file_storage2 import FileStorage2
-
-        assert result is FileStorage2
+        assert "no longer supported" in str(excinfo.value)
 
 
 # ---------------------------------------------------------------------------

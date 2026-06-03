@@ -1,8 +1,7 @@
-"""Tests for pickle-based serializer.
+"""Tests for msgpack-based serializer.
 
-Tests the existing PickleSerializer which is part of Dhara's backward
-compatibility layer. The serializer under test already exists in the
-codebase - these tests verify its behavior.
+Tests the MsgpackSerializer which is part of Dhara's serialization layer.
+The serializer is msgspec-backed (no pickle).
 """
 
 from typing import Any
@@ -10,29 +9,7 @@ from typing import Any
 import pytest
 
 from dhara.serialize.base import DEFAULT_MAX_SIZE
-from dhara.serialize.pickle import PickleSerializer
-
-
-# ============================================================================
-# Constructor
-# ============================================================================
-
-
-class TestPickleConstructor:
-    """Tests for PickleSerializer initialization."""
-
-    def test_default_protocol(self):
-        s = PickleSerializer()
-        assert s.protocol == 2
-
-    def test_custom_protocol(self):
-        s = PickleSerializer(protocol=5)
-        assert s.protocol == 5
-
-    @pytest.mark.parametrize("protocol", [0, 1, 2, 3, 4, 5])
-    def test_all_protocols_accepted(self, protocol):
-        s = PickleSerializer(protocol=protocol)
-        assert s.protocol == protocol
+from dhara.serialize.msgpack import MsgpackSerializer
 
 
 # ============================================================================
@@ -40,7 +17,7 @@ class TestPickleConstructor:
 # ============================================================================
 
 
-class TestPickleRoundtrip:
+class TestMsgpackRoundtrip:
     """Tests for serialize/deserialize roundtrip."""
 
     @pytest.mark.parametrize(
@@ -61,13 +38,13 @@ class TestPickleRoundtrip:
         ],
     )
     def test_roundtrip_primitives(self, obj):
-        s = PickleSerializer()
+        s = MsgpackSerializer()
         data = s.serialize(obj)
         result = s.deserialize(data)
         assert result == obj
 
     def test_roundtrip_preserves_types(self):
-        s = PickleSerializer()
+        s = MsgpackSerializer()
         obj = {"int": 42, "float": 3.14, "bool": True, "none": None}
         data = s.serialize(obj)
         result = s.deserialize(data)
@@ -79,10 +56,10 @@ class TestPickleRoundtrip:
     def test_roundtrip_set_normalizes_to_list(self):
         """Sets normalize to lists in the msgspec wire format.
 
-        This is a known semantic change from the original pickle-based
-        implementation. Set membership is preserved but set type is not.
+        This is a known semantic characteristic of the msgspec wire format.
+        Set membership is preserved but set type is not.
         """
-        s = PickleSerializer()
+        s = MsgpackSerializer()
         obj = {1, 2, 3}
         data = s.serialize(obj)
         result = s.deserialize(data)
@@ -91,7 +68,7 @@ class TestPickleRoundtrip:
 
     def test_roundtrip_tuple_normalizes_to_list(self):
         """Tuples normalize to lists in the msgspec wire format."""
-        s = PickleSerializer()
+        s = MsgpackSerializer()
         obj = (1, "two", 3.0)
         data = s.serialize(obj)
         result = s.deserialize(data)
@@ -100,7 +77,7 @@ class TestPickleRoundtrip:
 
     def test_roundtrip_complex_nesting(self):
         """Inner tuple/set normalize to lists (see msgspec format)."""
-        s = PickleSerializer()
+        s = MsgpackSerializer()
         obj = {"list": [{"dict": {"key": (1, 2, 3)}}], "set": {4, 5, 6}}
         data = s.serialize(obj)
         result = s.deserialize(data)
@@ -109,14 +86,14 @@ class TestPickleRoundtrip:
         assert result["list"][0]["dict"]["key"] == [1, 2, 3]
 
     def test_large_data_roundtrip(self):
-        s = PickleSerializer()
+        s = MsgpackSerializer()
         obj = {f"key_{i}": f"value_{i}" * 100 for i in range(1000)}
         data = s.serialize(obj)
         result = s.deserialize(data)
         assert result == obj
 
     def test_serialize_returns_bytes(self):
-        s = PickleSerializer()
+        s = MsgpackSerializer()
         data = s.serialize(42)
         assert isinstance(data, bytes)
 
@@ -126,25 +103,25 @@ class TestPickleRoundtrip:
 # ============================================================================
 
 
-class TestPickleSizeValidation:
+class TestMsgpackSizeValidation:
     """Tests for max_size enforcement."""
 
     def test_deserialize_respects_max_size(self):
-        s = PickleSerializer()
+        s = MsgpackSerializer()
         obj = {"key": "x" * 1000}
         data = s.serialize(obj)
         with pytest.raises(ValueError, match="too large"):
             s.deserialize(data, max_size=10)
 
     def test_deserialize_at_exact_size_ok(self):
-        s = PickleSerializer()
+        s = MsgpackSerializer()
         obj = {"key": "value"}
         data = s.serialize(obj)
         result = s.deserialize(data, max_size=len(data))
         assert result == obj
 
     def test_deserialize_default_max_size(self):
-        s = PickleSerializer()
+        s = MsgpackSerializer()
         obj = {"key": "x" * 100}
         data = s.serialize(obj)
         result = s.deserialize(data)
@@ -156,7 +133,7 @@ class TestPickleSizeValidation:
 # ============================================================================
 
 
-class TestPickleGetState:
+class TestMsgpackGetState:
     """Tests for get_state method."""
 
     def test_get_state_simple_object(self):
@@ -164,7 +141,7 @@ class TestPickleGetState:
             def __init__(self, value):
                 self.value = value
 
-        s = PickleSerializer()
+        s = MsgpackSerializer()
         obj = SimpleObj(42)
         state = s.get_state(obj)
         assert state == {"value": 42}
@@ -174,13 +151,13 @@ class TestPickleGetState:
             def __getstate__(self):
                 return {"custom": True, "data": 123}
 
-        s = PickleSerializer()
+        s = MsgpackSerializer()
         obj = CustomObj()
         state = s.get_state(obj)
         assert state == {"custom": True, "data": 123}
 
     def test_get_state_no_dict_returns_empty(self):
-        s = PickleSerializer()
+        s = MsgpackSerializer()
         state = s.get_state(42)
         assert state == {}
 
@@ -189,7 +166,7 @@ class TestPickleGetState:
             def __getstate__(self):
                 return [1, 2, 3]
 
-        s = PickleSerializer()
+        s = MsgpackSerializer()
         obj = WeirdState()
         state = s.get_state(obj)
         # Falls back to __dict__ when __getstate__ returns non-dict
@@ -201,17 +178,23 @@ class TestPickleGetState:
 # ============================================================================
 
 
-class TestPickleInterface:
+class TestMsgpackInterface:
     """Tests for Serializer interface compliance."""
 
     def test_is_serializer(self):
         from dhara.serialize.base import Serializer
 
-        s = PickleSerializer()
+        s = MsgpackSerializer()
         assert isinstance(s, Serializer)
 
     def test_satisfies_protocol(self):
         from dhara.serialize.base import SerializerProtocol
 
-        s = PickleSerializer()
+        s = MsgpackSerializer()
         assert isinstance(s, SerializerProtocol)
+
+    def test_no_constructor_args(self):
+        """MsgpackSerializer has no constructor arguments (protocol shim removed)."""
+        s = MsgpackSerializer()
+        # Should be constructible with no args (no protocol= kwarg).
+        assert s is not None

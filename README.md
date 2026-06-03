@@ -251,11 +251,7 @@ append-only journal that includes an on-disk index of object record
 offsets. This module has the advantage of fast startup time with
 slightly slower read performance (two disk seeks per object load).
 
-Also available is `FileStorage2`, an older version of the `FileStorage`
-format. It uses an in-memory index for object offsets and so it has
-slower startup time (reading the index into memory takes time,
-especially on large databases) but faster read performance (one seek per
-object load).
+Removed in 0.11.0; use `FileStorage` (SHELF-1) for all new and migrated databases.
 
 Finally, there is an experimental Sqlite storage module,
 `SqliteStorage`. The module uses a SQLite3 database to persist object

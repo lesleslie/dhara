@@ -8,7 +8,7 @@ import sqlite3
 import pytest
 
 from dhara.core.connection import ROOT_OID
-from dhara.serialize_legacy import pack_record
+from dhara.serialize.record import pack_record
 from dhara.storage.sqlite import SqliteStorage
 from dhara.utils import int8_to_str, str_to_int8
 

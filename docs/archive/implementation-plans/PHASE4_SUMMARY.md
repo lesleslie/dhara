@@ -1,3 +1,5 @@
+<!-- [HISTORICAL — format compatibility removed in 0.11.0] -->
+
 # Phase 4: Serialization Modernization - COMPLETE
 
 ## Executive Summary

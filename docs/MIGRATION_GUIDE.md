@@ -38,8 +38,9 @@ The following paths are removed or retained only in archived history and should 
 - `dhara.persistent_dict` has been removed
 - `dhara.persistent_list` has been removed
 
-For legacy Durus file-format compatibility, `dhara.file_storage2` remains available,
-but new code should prefer `dhara.storage.file.FileStorage`.
+DFS20/Durus 4.x format support is removed as of 0.11.0. Use
+`dhara.storage.file.FileStorage` (SHELF-1). There is no in-place format
+migration.
 
 ## Configuration Migration
 

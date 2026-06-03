@@ -33,7 +33,7 @@ from dhara.security.tls import (
     get_env_tls_config,
     wrap_server_socket,
 )
-from dhara.serialize.adapter import extract_class_name, split_oids
+from dhara.serialize.record import extract_class_name, split_oids
 from dhara.server.socket import get_systemd_socket
 from dhara.utils import (
     as_bytes,

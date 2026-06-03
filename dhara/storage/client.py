@@ -20,7 +20,7 @@ from dhara.security.tls import (
     get_env_tls_config,
     wrap_client_socket,
 )
-from dhara.serialize.adapter import split_oids
+from dhara.serialize.record import split_oids
 from dhara.server.server import (
     DEFAULT_HOST,
     DEFAULT_PORT,

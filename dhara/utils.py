@@ -38,9 +38,6 @@ def iteritems(x):
 
 
 from io import BytesIO
-from pickle import Pickler, Unpickler, dumps, loads
-
-_used = [dumps, loads, Unpickler, Pickler, next]  # to quiet code checker.
 
 
 def as_bytes(s):

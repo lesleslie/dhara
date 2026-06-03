@@ -56,17 +56,16 @@ class Shelf:
 
     An object record consists of the following:
     1) the number of bytes in rest of the record;
-    2) the record, as produced by durus.serialize.pack_record().
+    2) the record, as produced by dhara.serialize.record.pack_record().
 
-    A record produced by durus.serialize.pack_record() is as follows:
+    A record produced by dhara.serialize.record.pack_record() is as follows:
         1) an 8 byte oid;
         2) the number (4-byte, unsigned, big-endian int) of bytes in the
            following;
-        3) the pickle of the object's class followed by the (possibly zlib
-           compressed) pickle of the object's state (pickles produced in
-           sequence using the same pickler, with pickle protocol 2);
+        3) the msgpack-encoded state of the object (a {"__class__", "__state__"}
+           payload produced by dhara.serialize.record);
         4) a sequence of zero or more oids of persistent objects referenced
-           in the pickled object state.
+           in the object state.
 
     Except as noted, all numbers are stored as 8-byte unsigned big-endian ints.
 

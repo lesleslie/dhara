@@ -25,7 +25,8 @@ from dhara.serialize import (
     persistent_load,
     unpack_record,
 )
-from dhara.utils import as_bytes, byte_string, int8_to_str, iteritems, loads
+from dhara.serialize.record import _resolve_class, deserialize_state
+from dhara.utils import as_bytes, byte_string, int8_to_str, iteritems
 
 try:
     from dhara._persistent import _setattribute
@@ -55,7 +56,14 @@ class Connection(ConnectionBase):
         in the cache.
     """
 
-    def __init__(self, storage, cache_size=100000, root_class=None, cache=None):
+    def __init__(
+        self,
+        storage,
+        cache_size=100000,
+        root_class=None,
+        cache=None,
+        allowed_modules=None,
+    ):
         """(storage:Storage|str, cache_size:int=100000,
             root_class:class|None=None)
         Make a connection to `storage`.
@@ -73,7 +81,8 @@ class Connection(ConnectionBase):
             storage = FileStorage(storage)
         assert isinstance(storage, dhara_storage.Storage)
         self.storage = storage
-        self.reader = ObjectReader(self)
+        self._allowed_modules = allowed_modules
+        self.reader = ObjectReader(self, allowed_modules=allowed_modules)
         self.changed = {}
         self.invalid_oids = set()
         self.new_oid = storage.new_oid  # needed by serialize
@@ -159,7 +168,8 @@ class Connection(ConnectionBase):
             data = self.get_stored_pickle(oid)
         except KeyError:
             return None
-        klass = loads(data)
+        class_name, _ = deserialize_state(data)
+        klass = _resolve_class(class_name, self._allowed_modules)
         obj = self.cache.get_instance(oid, klass, self)
         state = self.reader.get_state(data, load=True)
         obj.__setstate__(state)
@@ -189,7 +199,8 @@ class Connection(ConnectionBase):
             else:
                 record_oid, data, refdata = unpack_record(record)
                 if obj is None:
-                    klass = loads(data)
+                    class_name, _ = deserialize_state(data)
+                    klass = _resolve_class(class_name, self._allowed_modules)
                     obj = self.cache.get_instance(oid, klass, self)
                 state = self.reader.get_state(data, load=True)
                 obj.__setstate__(state)
@@ -371,7 +382,9 @@ class AsyncConnection(ConnectionBase):
     """
 
     @classmethod
-    async def new(cls, storage, cache_size=100000, root_class=None, cache=None):
+    async def new(
+        cls, storage, cache_size=100000, root_class=None, cache=None, allowed_modules=None
+    ):
         """Async factory method to create an AsyncConnection.
 
         (storage: AsyncStorage, cache_size:int=100000,
@@ -410,7 +423,8 @@ class AsyncConnection(ConnectionBase):
         # Create instance via __new__ (bypass __init__)
         instance = object.__new__(cls)
         instance.storage = storage
-        instance.reader = ObjectReader(instance)
+        instance._allowed_modules = allowed_modules
+        instance.reader = ObjectReader(instance, allowed_modules=allowed_modules)
         instance.changed = {}
         instance.invalid_oids = set()
         instance.cache = cache if cache is not None else Cache(cache_size)
@@ -514,7 +528,8 @@ class AsyncConnection(ConnectionBase):
             data = await self.get_stored_pickle(oid)
         except KeyError:
             return None
-        klass = loads(data)
+        class_name, _ = deserialize_state(data)
+        klass = _resolve_class(class_name, self._allowed_modules)
         obj = self.cache.get_instance(oid, klass, self)
         state = self.reader.get_state(data, load=True)
         obj.__setstate__(state)
@@ -541,7 +556,8 @@ class AsyncConnection(ConnectionBase):
             else:
                 record_oid, data, refdata = unpack_record(record)
                 if obj is None:
-                    klass = loads(data)
+                    class_name, _ = deserialize_state(data)
+                    klass = _resolve_class(class_name, self._allowed_modules)
                     obj = self.cache.get_instance(oid, klass, self)
                 state = self.reader.get_state(data, load=True)
                 obj.__setstate__(state)
@@ -890,7 +906,7 @@ def touch_every_reference(connection, *words):
     so that all references can be updated.
     """
     get = connection.get
-    reader = ObjectReader(connection)
+    reader = ObjectReader(connection, allowed_modules=connection._allowed_modules)
     words = [as_bytes(w) for w in words]
     for oid, record in connection.get_storage().gen_oid_record():
         record_oid, data, refs = unpack_record(record)
@@ -906,6 +922,7 @@ def gen_every_instance(connection, *classes):
     given classes."""
     for oid, record in connection.get_storage().gen_oid_record():
         record_oid, state, refs = unpack_record(record)
-        record_class = loads(state)
+        class_name, _ = deserialize_state(state)
+        record_class = _resolve_class(class_name, connection._allowed_modules)
         if issubclass(record_class, classes):
             yield connection.get(oid)

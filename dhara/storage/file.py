@@ -9,7 +9,7 @@ from datetime import datetime
 from dhara.error import DruvaKeyError
 from dhara.file import File
 from dhara.logger import is_logging, log
-from dhara.serialize import split_oids, unpack_record
+from dhara.serialize.record import split_oids, unpack_record
 from dhara.shelf import Shelf
 from dhara.storage.base import Storage
 from dhara.utils import IntSet, int8_to_str, iteritems, str_to_int8

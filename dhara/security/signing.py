@@ -224,7 +224,8 @@ class ObjectSigner:
 
         # Note: We don't split data/refs here because the serialization
         # format uses length prefixes. The caller (Storage) handles that.
-        # We just return (oid, data_and_refs) or use the pack_record format.
+        # We just return (oid, data_and_refs) or use the pack_record format
+        # defined in dhara/serialize/record.py.
 
         # For now, return the full record and let caller unpack it
         return oid, data_and_refs, b""  # Third element ignored, use full record

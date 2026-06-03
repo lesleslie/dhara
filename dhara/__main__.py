@@ -8,6 +8,7 @@ import os
 import socket
 import sys
 from optparse import OptionParser
+from pathlib import Path
 from pprint import pprint
 from time import sleep
 from types import ModuleType
@@ -334,20 +335,23 @@ def client_main():
 def get_storage_class(file):
     """Return the storage class for an existing file.
 
-    The legacy DFS20 header remains supported via FileStorage2 for older
-    databases, while SHELF-1 maps to the canonical FileStorage backend.
+    Raises ``ValueError`` if the file is a DFS20/Durus 4.x format. There is
+    no in-place format migration; use ``FileStorage`` (SHELF-1) for new and
+    migrated databases.
     """
-    if not Path(file).exists():
+    if not os.path.exists(file):
         from dhara.storage.file import FileStorage
 
         return FileStorage
-    fp = file.open("rb")
-    d = fp.read(20)
-    fp.close()
+    with open(file, "rb") as fp:
+        d = fp.read(20)
     if d.startswith(b"DFS20"):
-        from dhara.file_storage2 import FileStorage2
-
-        return FileStorage2
+        logger.error("Refused DFS20/Durus 4.x file: %s", file)
+        raise ValueError(
+            "DFS20/Durus 4.x format no longer supported. There is no automatic "
+            "migration path. Use FileStorage (SHELF-1) for new and migrated "
+            "databases."
+        )
     elif d.startswith(b"SQLite format "):
         from dhara.sqlite_storage import SqliteStorage
 

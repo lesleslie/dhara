@@ -55,14 +55,14 @@ Enhanced base serializer interface:
 - Runtime checkable protocol support
 - Comprehensive type hints
 
-### 2. dhara/serialize/pickle.py
+### 2. dhara/serialize/msgpack.py
 
-Enhanced pickle serializer:
+Enhanced msgpack-backed serializer:
 
 - Fixed get_state() to return proper dict
 - Added comprehensive docstrings with security warnings
 - Better error handling for edge cases
-- Maintains protocol 2 default for legacy Durus 4.x compatibility
+- Single no-argument constructor: `MsgpackSerializer()` (no `protocol` arg)
 
 ### 3. dhara/serialize/__init__.py
 

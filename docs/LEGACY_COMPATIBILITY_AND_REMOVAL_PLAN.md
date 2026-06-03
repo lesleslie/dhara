@@ -1,4 +1,11 @@
-# Legacy Compatibility And Removal Plan
+# Legacy Compatibility And Removal Plan (Historical)
+
+> **Removed in 0.11.0:** The DFS20/Durus 4.x pickle-format on-disk database
+> compatibility is no longer supported. Opening a DFS20 file raises
+> `ValueError`; there is no in-place migration path. Use `FileStorage`
+> (SHELF-1) for all new and migrated databases.
+>
+> This document is preserved for historical reference only.
 
 ## Purpose
 
@@ -51,9 +58,9 @@ layer and are deprecated as primary names:
 - `dhara.config.DruvaConfig`
 - `dhara.core.config.DruvaSettings`
 
-The legacy Durus file-format helper `dhara.file_storage2` is still supported
-for historical format compatibility, but it is not the preferred file-storage
-API for new code.
+The legacy Durus file-format helper `dhara.file_storage2` is **removed in
+0.11.0**. Use `dhara.storage.file.FileStorage` (SHELF-1) for all new and
+migrated databases.
 
 ## Timeline
 
