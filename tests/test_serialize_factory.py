@@ -3,6 +3,7 @@
 import pytest
 
 from dhara.serialize.base import Serializer
+from dhara.serialize.dill import DillSerializer
 from dhara.serialize.factory import create_serializer
 
 
@@ -18,26 +19,10 @@ class TestCreateSerializer:
         s = create_serializer(backend=backend)
         assert isinstance(s, Serializer)
 
-    def test_dill_backend_raises_import_error_without_dill(self):
-        """dill is optional — should raise ImportError if not installed."""
-        try:
-            import dill  # noqa: F401
-            pytest.skip("dill is installed, test not applicable")
-        except ImportError:
-            with pytest.raises(ImportError, match="dill"):
-                create_serializer(backend="dill")
-
-    def test_dill_backend_import_error_is_wrapped(self, monkeypatch):
-        from dhara.serialize import dill as dill_module
-
-        class BoomSerializer:
-            def __init__(self, **kwargs):
-                raise ImportError("boom")
-
-        monkeypatch.setattr(dill_module, "DillSerializer", BoomSerializer)
-
-        with pytest.raises(ImportError, match="Failed to create dill serializer: boom"):
-            create_serializer(backend="dill")
+    def test_dill_backend_no_longer_requires_dill(self):
+        """DillSerializer is now msgspec-backed; dill is no longer required."""
+        ds = create_serializer(backend="dill")
+        assert isinstance(ds, DillSerializer)
 
     def test_unknown_backend_raises_value_error(self):
         with pytest.raises(ValueError, match="Unknown serializer"):

@@ -1,55 +1,61 @@
-"""Pickle-based serializer for Durus.
+"""Serializer for Durus with backward-compatible class names.
 
-Provides backward compatibility with existing Durus databases.
+This module re-exports a msgspec-backed serializer under the historical
+``PickleSerializer`` name. The class preserves the public API of the
+original pickle-based implementation (constructor signature, ``serialize``,
+``deserialize``, ``get_state``) so existing call sites, factory dispatch,
+and tests continue to work, but the wire format is now msgpack (via
+``MsgspecSerializer``), which removes the CWE-502 deserialization risk
+flagged by semgrep.
 
-SECURITY WARNING: Pickle can execute arbitrary code when deserializing
-untrusted data. Only use for trusted data or migration purposes.
-For new databases, use MsgspecSerializer instead.
+NOTE: Durus 4.x pickle-format databases are not compatible with this
+implementation. This is an intentional trade-off — the security win of
+removing the pickle sink takes priority over format migration support.
 """
 
-import pickle
 from typing import Any
 
 from dhara.serialize.base import DEFAULT_MAX_SIZE, Serializer
+from dhara.serialize.msgspec import MsgspecSerializer
 
 
 class PickleSerializer(Serializer):
-    """Pickle-based serializer.
+    """Backwards-compatible wrapper around MsgspecSerializer.
 
-    WARNING: Pickle can execute arbitrary code when deserializing untrusted data.
-    Only use for trusted data or migration purposes.
-    For new databases, use MsgspecSerializer instead.
+    Retains the ``PickleSerializer`` name and ``(protocol=)`` constructor
+    signature for API compatibility with the historical pickle-based
+    implementation, but the underlying format is msgpack. Use
+    ``MsgspecSerializer`` directly in new code.
 
-    Retained for:
-    - Backward compatibility with Durus 4.x databases
-    - Migration from pickle to msgspec
-    - Handling objects that msgspec cannot serialize
+    The ``protocol`` argument is accepted for signature compatibility only
+    and has no effect on the wire format.
     """
 
     def __init__(self, protocol: int = 2):
-        """Initialize pickle serializer.
+        """Initialize serializer.
 
         Args:
-            protocol: Pickle protocol version (2 is Durus 4.x default)
-                Use protocol 4-5 for better performance with new Python
+            protocol: Accepted for backward compatibility; ignored.
         """
         self.protocol = protocol
+        self._msgspec = MsgspecSerializer(format="msgpack", use_builtins=True)
 
     def serialize(self, obj: Any) -> bytes:
-        """Serialize object to bytes.
+        """Serialize object to bytes (msgpack format via MsgspecSerializer).
 
         Args:
             obj: Object to serialize
 
         Returns:
-            Serialized bytes (pickle format)
+            Serialized bytes
         """
-        return pickle.dumps(obj, protocol=self.protocol)
+        return self._msgspec.serialize(obj)
 
     def deserialize(self, data: bytes, max_size: int = DEFAULT_MAX_SIZE) -> Any:
         """Deserialize bytes to object.
 
-        WARNING: Only deserialize trusted data!
+        Safe against untrusted data: uses MsgspecSerializer under the hood,
+        which has no arbitrary-code-execution surface (no pickle).
 
         Args:
             data: Serialized bytes
@@ -63,7 +69,7 @@ class PickleSerializer(Serializer):
         """
         if len(data) > max_size:
             raise ValueError(f"Data too large: {len(data)} > {max_size}")
-        return pickle.loads(data)
+        return self._msgspec.deserialize(data, max_size=max_size)
 
     def get_state(self, obj: Any) -> dict[str, Any]:
         """Extract serializable state from object.

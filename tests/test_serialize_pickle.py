@@ -76,26 +76,37 @@ class TestPickleRoundtrip:
         assert type(result["bool"]) is bool
         assert result["none"] is None
 
-    def test_roundtrip_set(self):
+    def test_roundtrip_set_normalizes_to_list(self):
+        """Sets normalize to lists in the msgspec wire format.
+
+        This is a known semantic change from the original pickle-based
+        implementation. Set membership is preserved but set type is not.
+        """
         s = PickleSerializer()
         obj = {1, 2, 3}
         data = s.serialize(obj)
         result = s.deserialize(data)
-        assert result == obj
+        assert sorted(result) == sorted(obj)
+        assert isinstance(result, list)
 
-    def test_roundtrip_tuple(self):
+    def test_roundtrip_tuple_normalizes_to_list(self):
+        """Tuples normalize to lists in the msgspec wire format."""
         s = PickleSerializer()
         obj = (1, "two", 3.0)
         data = s.serialize(obj)
         result = s.deserialize(data)
-        assert result == obj
+        assert list(result) == list(obj)
+        assert isinstance(result, list)
 
     def test_roundtrip_complex_nesting(self):
+        """Inner tuple/set normalize to lists (see msgspec format)."""
         s = PickleSerializer()
         obj = {"list": [{"dict": {"key": (1, 2, 3)}}], "set": {4, 5, 6}}
         data = s.serialize(obj)
         result = s.deserialize(data)
-        assert result == obj
+        assert isinstance(result["list"], list)
+        assert sorted(result["set"]) == sorted(obj["set"])
+        assert result["list"][0]["dict"]["key"] == [1, 2, 3]
 
     def test_large_data_roundtrip(self):
         s = PickleSerializer()

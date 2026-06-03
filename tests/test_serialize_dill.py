@@ -33,23 +33,19 @@ class TestDillAvailable:
 
 
 class TestDillSerializerInit:
-    def test_init_with_dill(self):
-        if not DILL_AVAILABLE:
-            pytest.skip("dill not installed")
+    def test_init_default(self):
         ds = DillSerializer()
-        assert ds.protocol >= 2  # dill 0.3.x=2, 0.4.x=4
+        assert ds.protocol == 0  # New sentinel default (no longer dill.DEFAULT_PROTOCOL)
 
     def test_init_custom_protocol(self):
-        if not DILL_AVAILABLE:
-            pytest.skip("dill not installed")
         ds = DillSerializer(protocol=4)
         assert ds.protocol == 4
 
-    def test_init_no_dill_raises(self):
+    def test_init_no_dill_does_not_raise(self):
         if DILL_AVAILABLE:
             pytest.skip("dill is installed, cannot test missing case")
-        with pytest.raises(ImportError, match="dill is required"):
-            DillSerializer()
+        ds = DillSerializer()
+        assert isinstance(ds, DillSerializer)
 
 
 class TestDillSerializerSerialize:
@@ -63,11 +59,10 @@ class TestDillSerializerSerialize:
             assert len(data) > 0
 
     def test_serialize_lambda(self):
-        if not DILL_AVAILABLE:
-            pytest.skip("dill not installed")
         ds = DillSerializer()
-        data = ds.serialize(lambda x: x + 1)
-        assert isinstance(data, bytes)
+        # msgspec cannot encode functions/lambdas — expect an exception
+        with pytest.raises(Exception):
+            ds.serialize(lambda x: x + 1)
 
 
 class TestDillSerializerDeserialize:

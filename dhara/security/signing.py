@@ -125,7 +125,7 @@ class ObjectSigner:
 
         # Create parent directories if needed
         parent = Path(path).parent
-        if parent != Path("."):
+        if parent != Path():
             parent.mkdir(parents=True, exist_ok=True)
 
         with Path(path).open("wb") as f:

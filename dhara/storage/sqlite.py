@@ -131,7 +131,7 @@ class SqliteStorage(Storage):
         return pack_record(int8_to_str(v[0]), v[1], v[2])
 
     def begin(self):
-        del self.pending_records[:]
+        self.pending_records.clear()
 
     def store(self, oid, record):
         """(str, str)"""
@@ -381,9 +381,9 @@ class AsyncSqliteStorage:
         """Pack oid, data, refs into a record bytes."""
         # All inputs are typed as bytes; encode oid to bytes for length-prefix framing
         oid_bytes = oid.encode("utf-8")
-        # data and refs are already bytes (per type annotation); copy defensively
-        data_bytes = bytes(data)
-        refs_bytes = bytes(refs)
+        # data and refs are already bytes (per type annotation)
+        data_bytes = data
+        refs_bytes = refs
         # Pack as: oid_len(4) | oid | data_len(4) | data | refs_len(4) | refs
         result = (
             struct.pack("<I", len(oid_bytes))

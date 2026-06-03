@@ -5,6 +5,79 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-06-02
+
+### Added
+
+- Add async CLI handlers for MCP tool dispatch (Task 20)
+- Add async methods to PersistentObject for AsyncConnection compatibility
+- Add async-first implementation plan for Dhara
+- Add AsyncAdapterRegistry and async adapter tool impls
+- Add AsyncBackupCatalog for async backup catalog operations
+- Add AsyncBackupScheduler for async scheduler operations (Task 18)
+- Add AsyncBackupVerification for async backup verification
+- Add AsyncConnection class with async persistence methods
+- Add AsyncEcosystemStateStore and wire async KV/event tools
+- Add AsyncKVTimeSeriesStore in kv_timeseries.py
+- Add AsyncMemoryStorage (native async)
+- Add AsyncPostgresStorage using asyncpg
+- Add AsyncRestoreManager for async restore operations
+- Add AsyncSqliteStorage using aiosqlite
+- Add backend selection to DharaMCPServer
+- Add BTree skeleton with get
+- Add complete AsyncStorage protocol with all methods
+- Add storage and cache backend config fields to DharaSettings
+- btree: Add _split_child and _insert_nonfull for insertion
+- btree: Add BNode dataclass with is_leaf helper
+- btree: Add BNode is_full, is_big, _find_position helpers
+- btree: Add borrow-first case 3 deletion (borrow, merge, reduce height)
+- btree: Add delete, update and leaf-only _delete_from_node
+- btree: Add error classes, is_full and height helpers
+- btree: Add items, keys, values iteration
+- Complete BTree redesign - passes all quality gates
+- dhara: Add PostgresStorageAdapter implementing Storage interface
+- dhara: Add RedisCacheAdapter implementing Cache interface
+- dhara: Allow external cache injection in Connection
+- Revise async-first plan — address 3-agent review findings
+- Update storage exports — add AsyncMemoryStorage, AsyncSqliteStorage, AsyncStorage
+
+### Changed
+
+- Dhara (quality: 72/100) - 2026-05-29 05:10:12
+- Dhara (quality: 72/100) - 2026-06-01 19:49:08
+- Dhara (quality: 72/100) - 2026-06-02 20:25:00
+- Dhara (quality: 85/100) - 2026-05-28
+
+### Fixed
+
+- Apply review findings — AsyncConnection factory, shrink_cache await, cache.clear, new_oid shadowing, protocol test, dependency edges
+- dhara: Call cache.clear() on abort for uncommitted oids
+- dhara: Code quality fixes to RedisCacheAdapter
+- dhara: Correct get_stored_pickle() exception handling
+- dhara: Correct tuple concatenation in btree.py
+- dhara: Critical connection leak in begin() and dead parameter
+- dhara: Fix token description and add missing env override tests
+- dhara: Lazy adapter init and remove blocking run_until_complete
+- dhara: Make AsyncSqliteStorage.new_oid() atomic with asyncio.Lock
+- dhara: Prevent initialization race in AsyncConnection.new()
+- dhara: Remove duplicate import in test_async_connection.py
+- docs: Replace absolute path with relative path for README link
+- security: Correct forward reference syntax for fallback_key
+
+### Documentation
+
+- Clarify async storage adapter scope in storage.py (Task 19)
+- Confirm MCP tools fully async-wired (Task 22)
+
+### Testing
+
+- btree: Add hypothesis property-based tests
+- dhara: Add missing PostgresStorageAdapter tests
+
+### Internal
+
+- Add build/ to gitignore
+
 ## [0.9.0] - 2026-05-02
 
 ### Added

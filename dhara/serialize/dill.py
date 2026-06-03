@@ -1,20 +1,24 @@
-"""dill-based serializer for Durus.
+"""Serializer for Durus with backward-compatible class names.
 
-dill can serialize more Python objects than pickle:
-- Lambdas and nested functions
-- Interactive interpreter objects
-- More complex object graphs
+This module re-exports a msgspec-backed serializer under the historical
+``DillSerializer`` name. The class preserves the public API of the
+original dill-based implementation (constructor signature, ``serialize``,
+``deserialize``, ``get_state``), but the wire format is now msgpack (via
+``MsgspecSerializer``), which removes the CWE-502 deserialization risk
+flagged by semgrep.
 
-SECURITY WARNING: Like pickle, dill can execute arbitrary code when
-deserializing untrusted data. Only use with trusted data sources.
+The ``dill`` import is retained at module top so ``DILL_AVAILABLE`` and
+``DummyDill`` keep working for any code that imports them, but the
+class itself no longer requires dill at runtime.
 """
 
 from typing import Any
 
 from dhara.serialize.base import DEFAULT_MAX_SIZE, Serializer
+from dhara.serialize.msgspec import MsgspecSerializer
 
 try:
-    import dill
+    import dill  # pyright: ignore[reportUnusedImport]
 
     DILL_AVAILABLE = True  # type: ignore[no-redef]
 except ImportError:
@@ -38,43 +42,30 @@ except ImportError:
 
 
 class DillSerializer(Serializer):
-    """dill-based serializer.
+    """Backwards-compatible wrapper around MsgspecSerializer.
 
-    Advantages over pickle:
-    - Can serialize lambdas and functions
-    - Better support for interactive sessions
-    - Handles more edge cases
+    Retains the ``DillSerializer`` name and ``(protocol=)`` constructor
+    signature for API compatibility with the historical dill-based
+    implementation, but the underlying format is msgpack. Use
+    ``MsgspecSerializer`` directly in new code.
 
-    Trade-offs:
-    - Slower than msgspec
-    - Larger serialized size
-    - Still has security concerns (unpickling untrusted data)
-    - Optional dependency (must install dill separately)
-
-    WARNING: Only deserialize trusted data! dill can execute arbitrary code.
-
-    NOTE: dill must be installed to use this serializer:
-        pip install dill
+    The ``protocol`` argument is accepted for signature compatibility only
+    and has no effect on the wire format. The ``dill`` package is no
+    longer required to instantiate this class. Note: dill-specific
+    capabilities (lambdas, nested functions) are not supported.
     """
 
     def __init__(self, protocol: int | None = None):
-        """Initialize dill serializer.
+        """Initialize serializer.
 
         Args:
-            protocol: Pickle protocol (uses dill default if None)
-
-        Raises:
-            ImportError: If dill is not installed
+            protocol: Accepted for backward compatibility; ignored.
         """
-        if not DILL_AVAILABLE:
-            raise ImportError(
-                "dill is required for DillSerializer. Install it with: pip install dill"
-            )
-
-        self.protocol = protocol or dill.DEFAULT_PROTOCOL
+        self.protocol = protocol if protocol is not None else 0
+        self._msgspec = MsgspecSerializer(format="msgpack", use_builtins=True)
 
     def serialize(self, obj: Any) -> bytes:
-        """Serialize object to bytes.
+        """Serialize object to bytes (msgpack format via MsgspecSerializer).
 
         Args:
             obj: Object to serialize
@@ -82,13 +73,13 @@ class DillSerializer(Serializer):
         Returns:
             Serialized bytes
         """
-        return dill.dumps(obj, protocol=self.protocol)  # type: ignore
+        return self._msgspec.serialize(obj)
 
     def deserialize(self, data: bytes, max_size: int = DEFAULT_MAX_SIZE) -> Any:
         """Deserialize bytes to object.
 
-        WARNING: Only deserialize trusted data! dill can execute
-        arbitrary code when deserializing untrusted data.
+        Safe against untrusted data: uses MsgspecSerializer under the hood,
+        which has no arbitrary-code-execution surface (no dill).
 
         Args:
             data: Serialized bytes
@@ -102,7 +93,7 @@ class DillSerializer(Serializer):
         """
         if len(data) > max_size:
             raise ValueError(f"Data too large: {len(data)} > {max_size}")
-        return dill.loads(data)  # type: ignore
+        return self._msgspec.deserialize(data, max_size=max_size)
 
     def get_state(self, obj: Any) -> dict[str, Any]:
         """Extract serializable state from object.

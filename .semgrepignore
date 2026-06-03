@@ -1,0 +1,40 @@
+# Generated / vendored / build artifacts
+# Crackerjack's semgrep adapter scans dhara/ with --config=p/python
+# C/Cython extensions are not Python and crash the parser.
+# See: dhara/_persistent.c (Cython-generated CPython C extension).
+
+# Cython / C extension sources
+*.c
+*.h
+*.pyx
+*.pxd
+
+# Generated parsers / lexers
+*.so
+*.pyd
+*.dylib
+
+# Build / dist outputs
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Test artifacts
+htmlcov/
+.coverage
+.pytest_cache/
+.mypy_cache/
+
+# Backup files (from prior refactors)
+*.backup
+*.bak
+
+# Migration temp files
+tmp/
+*.tmp
