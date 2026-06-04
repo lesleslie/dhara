@@ -1,9 +1,10 @@
 """Prometheus metrics collection for dhara.
 
-from __future__ import annotations
 Provides metrics for monitoring storage operations, cache performance,
 and server health.
 """
+
+from __future__ import annotations
 
 import time
 

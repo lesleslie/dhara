@@ -241,3 +241,7 @@ class AsyncKVTimeSeriesStore:
         ]
         results.sort(key=operator.itemgetter("count"), reverse=True)
         return results
+
+
+# Backward-compatible alias (tests / external callers expect the unprefixed name).
+KVTimeSeriesStore = AsyncKVTimeSeriesStore

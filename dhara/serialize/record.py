@@ -257,7 +257,7 @@ class ObjectReader:
         # object.__new__) leaves those slots unset, which causes
         # AttributeError on the first __getattribute__ access — see
         # ``persistent_load`` below for the same rationale.
-        instance = klass.__new__(klass)  # type: ignore[call-arg]
+        instance = klass.__new__(klass)  # type: ignore[misc,call-arg]
         instance._p_set_status_ghost()
         return instance
 
@@ -310,7 +310,7 @@ def persistent_load(connection: Any, cache_objects: Any, oid_class: tuple) -> An
         # leaves _p_status/_p_serial/_p_connection unset, which causes
         # AttributeError on the very first __getattribute__ access
         # (e.g. inside PersistentDict.__init__ → __setattr__ → _p_note_change).
-        instance = klass.__new__(klass)  # type: ignore[call-arg]
+        instance = klass.__new__(klass)  # type: ignore[misc,call-arg]
     except TypeError:
         return None
     with suppress(Exception):

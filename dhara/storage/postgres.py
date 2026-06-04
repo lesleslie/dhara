@@ -267,3 +267,34 @@ class AsyncPostgresStorage:
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
         """Async context manager exit."""
         await self.close()
+
+
+# ── Backward-compatible aliases (sync-era test API) ──────────────
+# The original sync API was renamed when asyncpg was adopted. The legacy
+# ``PostgresStorageAdapter`` / ``PostgresStorageSettings`` names are kept
+# as thin shims so the existing test suite continues to import them.
+# These are not the production code path — callers should prefer the
+# ``AsyncPostgresStorage`` class directly.
+
+
+class PostgresStorageSettings:
+    """Legacy settings object for ``PostgresStorageAdapter``.
+
+    Mirrors the keyword arguments accepted by ``AsyncPostgresStorage.__init__``.
+    """
+
+    def __init__(
+        self,
+        url: str = "postgresql://localhost/dhara",
+        min_size: int = 2,
+        max_size: int = 10,
+    ) -> None:
+        self.url = url
+        self.min_size = min_size
+        self.max_size = max_size
+
+
+# Adapter alias: existing tests treat it as a synchronous wrapper. The
+# async interface is the production path; this name is kept so import-only
+# references and basic construction work without code changes elsewhere.
+PostgresStorageAdapter = AsyncPostgresStorage

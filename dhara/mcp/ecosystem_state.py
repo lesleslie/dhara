@@ -234,3 +234,7 @@ class AsyncEcosystemStateStore:
         if limit is not None:
             results = results[-int(limit) :]
         return results
+
+
+# Backward-compatible alias (tests / external callers expect the unprefixed name).
+EcosystemStateStore = AsyncEcosystemStateStore

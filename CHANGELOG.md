@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.11.0] - 2026-06-03
 
+### Changed
+
+- Complete durus elimination and fix msgspec root causes
+- Dhara (quality: 63/100) - 2026-06-03 03:29:44
+- Dhara (quality: 63/100) - 2026-06-03 08:22:10
+- Dhara (quality: 63/100) - 2026-06-03 09:20:47
+- Dhara (quality: 63/100) - 2026-06-03 12:40:08
+
+## [0.11.0] - 2026-06-03
+
 ### Removed (0.11.0)
 
 - `dhara.serialize_legacy` module (pickle-based on-disk record format reader/writer)

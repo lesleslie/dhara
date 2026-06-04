@@ -127,7 +127,7 @@ class MsgspecSerializer(Serializer):
         # which bypass the whitelist (decode_raw does no class
         # reconstruction; serialize only outputs bytes).
         if allowed_modules is None:
-            self.allowed_modules = set(DEFAULT_ALLOWED_MODULES)
+            self.allowed_modules = DEFAULT_ALLOWED_MODULES.copy()
         else:
             self.allowed_modules = set(allowed_modules)
 
@@ -227,7 +227,7 @@ class MsgspecSerializer(Serializer):
                 # leaves those slots unset, which causes ``AttributeError``
                 # on the first ``__getattribute__`` access (e.g. inside
                 # the test's ``result.value`` lookup).
-                instance = klass.__new__(klass)  # type: ignore[call-arg]
+                instance = klass.__new__(klass)  # type: ignore[arg-type,call-arg]
                 # Directly set __dict__ without triggering change tracking.
                 # The state is normalized to ``{}`` to match the enc_hook
                 # and ``deserialize_state`` conventions.
