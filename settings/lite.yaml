@@ -10,6 +10,14 @@ storage:
   backend: file
   read_only: false
 
+# AsyncSqliteStorage reads from this key, not storage.path. The hardcoded
+# fallback ("/dev/shm/dhara.db") is Linux-only and breaks on macOS. Must use
+# a distinct .db file (not the SHELF-1 sync-storage file at storage.path).
+dhara:
+  storage:
+    sqlite:
+      url: sqlite+aiosqlite:////Users/les/.local/share/dhara/async-lite.db
+
 # Server configuration (localhost only for security)
 host: 127.0.0.1
 port: 8683

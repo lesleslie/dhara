@@ -319,14 +319,33 @@ class AsyncSqliteStorage:
     ) -> None:
         # Load config from Oneiric if URL not provided
         if url is None:
+            # NOTE: The Oneiric class lives at oneiric.core.config.Oneiric; the
+            # top-level `oneiric` package only re-exports `DemoAdapter`, so the
+            # bare `from oneiric import Oneiric` raises ImportError. Try the
+            # canonical path first, then fall back to the symbol at top level.
             try:
-                from oneiric import Oneiric
+                from oneiric.core.config import Oneiric  # type: ignore
+            except ImportError:
+                try:
+                    from oneiric import Oneiric  # type: ignore
+                except ImportError:
+                    Oneiric = None  # type: ignore
 
+            # macOS-friendly default: ~/.local/share/dhara/async.db (resolved
+            # at runtime). The previous default `/dev/shm/dhara.db` is
+            # Linux-only and breaks on macOS.
+            import os
+
+            default_url = "sqlite+aiosqlite://" + os.path.expanduser(
+                "~/.local/share/dhara/async.db"
+            )
+
+            if Oneiric is not None:
                 config = Oneiric.get_config("dhara.storage.sqlite")
-                url = config.get("url", "sqlite+aiosqlite:///dev/shm/dhara.db")
-            except Exception:
-                # Fallback to dev/shm location if Oneiric unavailable
-                url = "sqlite+aiosqlite:///dev/shm/dhara.db"
+                url = config.get("url", default_url)
+            else:
+                # Oneiric unavailable — use the same macOS-friendly default.
+                url = default_url
 
         # Strip aiosqlite prefix for aiosqlite.connect()
         self._url = url

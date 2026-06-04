@@ -3,9 +3,17 @@
 server_name: "dhara"
 
 storage:
-  path: /tmp/dhara_new.dhara
+  path: ~/.local/share/dhara/production.dhara
   read_only: false
   backend: file
+
+# AsyncSqliteStorage reads from this key, not storage.path. The hardcoded
+# fallback ("/dev/shm/dhara.db") is Linux-only and breaks on macOS. Must use
+# a distinct .db file (not the SHELF-1 sync-storage file at storage.path).
+dhara:
+  storage:
+    sqlite:
+      url: sqlite+aiosqlite:////Users/les/.local/share/dhara/async.db
 
 adapters:
   enable_versioning: true

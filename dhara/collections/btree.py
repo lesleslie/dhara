@@ -1284,8 +1284,7 @@ class BTree[K, V]:
 
     def items_backward(self) -> Iterator[tuple[K, V]]:
         """Yield all items in reverse sorted order."""
-        for item in reversed(self.root):
-            yield item
+        yield from reversed(self.root)
 
     def items_backward_from(
         self, key: K, closed: bool = False

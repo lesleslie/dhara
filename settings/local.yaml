@@ -7,5 +7,23 @@
 # (e.g. /data/dhara/...) does not break the local launchd service.
 
 storage:
-  # XDG-compliant: $XDG_DATA_HOME if set, else ~/.local/share.
-  path: ${XDG_DATA_HOME:-$HOME/.local/share}/dhara/production.dhara
+  # XDG-compliant: defaults to ~/.local/share/dhara/.
+  # NOTE: Dhara's path resolver only calls .expanduser() (no expandvars), so we
+  # must use the `~` form rather than ${HOME}.
+  path: ~/.local/share/dhara/production.dhara
+
+# Local override: standard.yaml points backups at /data/dhara/backups, which
+# is a Linux-container convention. On macOS, /data is on a read-only filesystem
+# and mkdir(parents=True) fails at startup. Redirect to a writable XDG path.
+backups:
+  directory: ~/.local/share/dhara/backups
+
+# Local override: AsyncSqliteStorage reads from this key, NOT storage.path
+# above. The hardcoded fallback in AsyncSqliteStorage.__init__ is
+# "sqlite+aiosqlite:///dev/shm/dhara.db" which is Linux-only; /dev/shm does
+# not exist on macOS. Use a distinct .db file because storage.path is the
+# sync SHELF-1 file (not SQLite) and aiosqlite refuses to open it.
+dhara:
+  storage:
+    sqlite:
+      url: sqlite+aiosqlite:////Users/les/.local/share/dhara/async.db
