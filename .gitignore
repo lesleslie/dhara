@@ -38,3 +38,7 @@ dhara.egg-info/
 .coverage
 coverage.json
 build/
+
+# Backup Files (added by gitignore audit)
+# ============================================================================
+*.bak
