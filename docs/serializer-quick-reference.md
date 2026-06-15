@@ -191,4 +191,4 @@ set = create_serializer("msgspec", format="json")
 
 ## Further Reading
 
-- [msgspec documentation](https://jcristharif.com/msgspec/)
+- msgspec documentation
