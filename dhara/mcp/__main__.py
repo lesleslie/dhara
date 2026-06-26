@@ -13,7 +13,7 @@ def main() -> None:
     # Load settings from YAML config file (settings/dhara.yaml)
     config = DharaSettings.load()
     server = DharaMCPServer(config)
-    server.run()
+    server.run(transport="stdio")
 
 
 if __name__ == "__main__":

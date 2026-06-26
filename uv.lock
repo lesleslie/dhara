@@ -941,7 +941,7 @@ wheels = [
 
 [[package]]
 name = "dhara"
-version = "0.11.1"
+version = "0.11.2"
 source = { editable = "." }
 dependencies = [
     { name = "aiosqlite" },
@@ -987,7 +987,7 @@ requires-dist = [
     { name = "azure-storage-blob", marker = "extra == 'cloud'", specifier = ">=12.29.0" },
     { name = "boto3", marker = "extra == 'cloud'", specifier = ">=1.43.20" },
     { name = "cryptography", specifier = ">=48.0.0" },
-    { name = "fastmcp", specifier = ">=3.3.1" },
+    { name = "fastmcp", specifier = ">=3.4.0,<4" },
     { name = "google-cloud-storage", marker = "extra == 'cloud'", specifier = ">=3.10.1" },
     { name = "ipython", specifier = ">=9.14.0" },
     { name = "mcp-common", specifier = ">=0.16.1" },
