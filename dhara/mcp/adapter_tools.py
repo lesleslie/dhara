@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import operator
+import os
 
 """Adapter distribution MCP tools for Dhara.
 
@@ -46,6 +47,9 @@ class Adapter(Persistent):
         updated_at: Timestamp of last update
         health_status: Current health status
         last_health_check: Timestamp of last health check
+        env: Environment tag (e.g. ``prod``, ``staging``, ``dev``) for
+            cross-environment comparison via ``compare-envs``. Sourced from
+            ``MAHAVISHNU_ENV`` when not provided explicitly.
     """
 
     SCHEMA_VERSION = 1
@@ -61,6 +65,7 @@ class Adapter(Persistent):
         dependencies: list[str] | None = None,
         capabilities: list[str] | None = None,
         metadata: dict[str, Any] | None = None,
+        env: str | None = None,
     ):
         self.domain = domain
         self.key = key
@@ -71,6 +76,7 @@ class Adapter(Persistent):
         self.dependencies = dependencies or []
         self.capabilities = capabilities or []
         self.metadata = metadata
+        self.env = env
 
         # Version history for rollback support
         self.version_history: list[dict[str, Any]] = []
@@ -80,6 +86,42 @@ class Adapter(Persistent):
         # Health monitoring
         self.health_status: str = "unknown"  # healthy, unhealthy, unknown
         self.last_health_check: datetime | None = None
+
+    @classmethod
+    def from_env(
+        cls,
+        domain: str,
+        key: str,
+        provider: str,
+        **kwargs: Any,
+    ) -> Adapter:  # noqa: UP037
+        """Build an Adapter whose ``env`` is sourced from ``MAHAVISHNU_ENV``.
+
+        If ``env`` is passed in ``kwargs`` it wins; otherwise we read
+        ``MAHAVISHNU_ENV`` from the environment, defaulting to ``None``.
+        """
+        if "env" not in kwargs:
+            kwargs["env"] = os.environ.get("MAHAVISHNU_ENV")
+        return cls(domain=domain, key=key, provider=provider, **kwargs)
+
+    def with_env(self, value: str | None) -> Adapter:  # noqa: UP037
+        """Return a new Adapter with ``env`` overridden (immutable copy).
+
+        The receiver is not mutated; callers can chain this in pipelines
+        without worrying about shared-state surprises.
+        """
+        return Adapter(
+            domain=self.domain,
+            key=self.key,
+            provider=self.provider,
+            version=self.version,
+            factory_path=self.factory_path,
+            config=self.config,
+            dependencies=list(self.dependencies),
+            capabilities=list(self.capabilities),
+            metadata=self.metadata,
+            env=value,
+        )
 
     def update_version(
         self,
@@ -155,6 +197,7 @@ class Adapter(Persistent):
             "dependencies": self.dependencies,
             "capabilities": self.capabilities,
             "metadata": self.metadata,
+            "env": self.env,
             "adapter_id": f"{self.domain}:{self.key}:{self.provider}",
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
