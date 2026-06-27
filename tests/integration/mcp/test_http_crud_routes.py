@@ -18,13 +18,11 @@ The in-process ASGI app is exercised via ``httpx.AsyncClient`` with
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -32,14 +30,17 @@ import pytest
 
 
 def _make_app_patches() -> tuple:
-    """Return the patches that isolate DharaMCPServer from filesystem deps."""
+    """Return the patches that isolate DharaMCPServer from filesystem deps.
+
+    NOTE: We deliberately do NOT mock ``FastMCP`` — tests need a real
+    ASGI app from ``server.http_app(transport='http')``. Only the storage
+    I/O and auth verifier are stubbed.
+    """
     return (
         # FileStorage: never touches disk
         patch("dhara.mcp.server_core.FileStorage"),
         # Connection: open the mock storage root
         patch("dhara.mcp.server_core.Connection"),
-        # FastMCP class: we drive the same instance from outside
-        patch("dhara.mcp.server_core.FastMCP"),
         # Auth verifier: disabled for tests
         patch("dhara.mcp.server_core.build_token_verifier", return_value=None),
         # Health tools: not exercised here
@@ -80,18 +81,17 @@ def mcp_server(tmp_path: Path):
 
 
 @pytest.fixture
-def http_client(mcp_server):
+async def http_client(mcp_server):
     """Yield an httpx.AsyncClient against the FastMCP ASGI app."""
     import httpx
 
     app = mcp_server.server.http_app(transport="http")
     transport = httpx.ASGITransport(app=app)
     client = httpx.AsyncClient(transport=transport, base_url="http://test")
-    yield client
-    # httpx.AsyncClient.aclose is async; run it in the test's loop
-    import asyncio
-
-    asyncio.get_event_loop().run_until_complete(client.aclose())
+    try:
+        yield client
+    finally:
+        await client.aclose()
 
 
 # ---------------------------------------------------------------------------
