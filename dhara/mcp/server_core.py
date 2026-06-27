@@ -21,8 +21,8 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     pass
 
-from fastmcp import FastMCP
 from fastmcp.server.auth.authorization import require_scopes
+from mcp_common.fastmcp import FastMCP
 from mcp_common.health import (
     DependencyConfig,
     register_health_tools,

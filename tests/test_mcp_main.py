@@ -13,4 +13,4 @@ def test_main_loads_settings_constructs_server_and_runs():
 
     mock_load.assert_called_once_with()
     mock_server.assert_called_once_with(config)
-    server.run.assert_called_once_with()
+    server.run.assert_called_once_with(transport="stdio")
