@@ -44,6 +44,7 @@ from dhara.mcp.adapter_tools import (
 from dhara.mcp.ecosystem_state import AsyncEcosystemStateStore, EventRetention
 from dhara.mcp.fastmcp_auth import build_token_verifier
 from dhara.mcp.kv_timeseries import AsyncKVTimeSeriesStore, TimeSeriesRetention
+from dhara.mcp.substrate_routes import register_substrate_routes
 from dhara.storage.file import FileStorage
 
 logger = get_logger(__name__)
@@ -777,6 +778,11 @@ class DharaMCPServer:
         # Akosha's DharaServiceRegistryClient calls /tools/call (not /mcp) with
         # {"name": "...", "arguments": {...}}. We call underlying store methods directly.
         self._register_tools_call_route()
+
+        # Register substrate CRUD HTTP routes (Workstream C).
+        # Persistence uses the FileStorage-backed Connection.root mapping;
+        # Workstream D will swap to SQL-backed tables.
+        register_substrate_routes(self.server, self.connection)
 
     def _register_tools_call_route(self) -> None:
         """Register /tools/call REST-style endpoint for Akosha client compatibility."""
