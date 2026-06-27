@@ -42,3 +42,4 @@ build/
 # Backup Files (added by gitignore audit)
 # ============================================================================
 *.bak
+.worktrees/
