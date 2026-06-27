@@ -11,6 +11,7 @@ from mcp_common.tools import ToolProfile
 TOOL_GROUP_ADAPTER_REGISTRY = "adapter_registry"
 TOOL_GROUP_KV_TIME_SERIES = "kv_time_series"
 TOOL_GROUP_ECOSYSTEM_STATE = "ecosystem_state"
+TOOL_GROUP_SQL_PROXY = "sql_proxy"
 
 TOOL_GROUP_TOOLS: dict[str, list[str]] = {
     TOOL_GROUP_KV_TIME_SERIES: [
@@ -37,12 +38,17 @@ TOOL_GROUP_TOOLS: dict[str, list[str]] = {
         "record_event",
         "list_events",
     ],
+    TOOL_GROUP_SQL_PROXY: [
+        "dhara_sql_execute",
+        "dhara_sql_query",
+    ],
 }
 
 TOOL_GROUP_DESCRIPTIONS: dict[str, str] = {
     TOOL_GROUP_KV_TIME_SERIES: "Key/value storage with TTL, time-series records, and pattern aggregation",
     TOOL_GROUP_ADAPTER_REGISTRY: "Dhara adapter registry: store, retrieve, validate, and version adapters",
     TOOL_GROUP_ECOSYSTEM_STATE: "Durable ecosystem service and event records",
+    TOOL_GROUP_SQL_PROXY: "Generic SQL proxy (execute DDL/DML, query SELECT/WITH) — DuckDB in dev/test, asyncpg in production",
 }
 
 HEALTH_TOOLS: list[str] = [
@@ -58,6 +64,7 @@ MINIMAL_GROUPS = [TOOL_GROUP_KV_TIME_SERIES]
 STANDARD_GROUPS = MINIMAL_GROUPS + [
     TOOL_GROUP_ADAPTER_REGISTRY,
     TOOL_GROUP_ECOSYSTEM_STATE,
+    TOOL_GROUP_SQL_PROXY,
 ]
 FULL_GROUPS = STANDARD_GROUPS
 
@@ -82,6 +89,7 @@ __all__ = [
     "TOOL_GROUP_DESCRIPTIONS",
     "TOOL_GROUP_ECOSYSTEM_STATE",
     "TOOL_GROUP_KV_TIME_SERIES",
+    "TOOL_GROUP_SQL_PROXY",
     "TOOL_GROUP_TOOLS",
     "TOOL_GROUPS_BY_PROFILE",
     "get_active_profile",

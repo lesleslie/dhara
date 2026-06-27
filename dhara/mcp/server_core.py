@@ -253,9 +253,14 @@ class DharaMCPServer:
             TOOL_GROUP_DESCRIPTIONS,
             TOOL_GROUP_ECOSYSTEM_STATE,
             TOOL_GROUP_KV_TIME_SERIES,
+            TOOL_GROUP_SQL_PROXY,
             TOOL_GROUP_TOOLS,
             TOOL_GROUPS_BY_PROFILE,
             get_active_profile,
+        )
+        from dhara.mcp.tools.sql_proxy import (
+            dhara_sql_execute as _dhara_sql_execute_impl,
+            dhara_sql_query as _dhara_sql_query_impl,
         )
 
         profile = get_active_profile()
@@ -701,6 +706,33 @@ class DharaMCPServer:
                 key=key,
                 provider=provider,
             )
+
+        # --- SQL Proxy tools (FULL profile only) ---
+        @_tool(TOOL_GROUP_SQL_PROXY, auth=auth("write"))  # type: ignore
+        async def dhara_sql_execute(
+            sql: str,
+            params: list[Any] | None = None,
+        ) -> dict[str, Any]:
+            """Execute a DDL/DML statement through the SQL proxy backend.
+
+            Backend is selected via ``DHARA_SQL_BACKEND`` (default
+            ``"duckdb"``); DuckDB is used in dev/test and asyncpg in
+            production. Returns ``rows_affected``, ``last_row_id`` and
+            ``status``. Refuses DROP DATABASE / DROP SCHEMA.
+            """
+            return await _dhara_sql_execute_impl(sql=sql, params=params)  # type: ignore[no-any-return]
+
+        @_tool(TOOL_GROUP_SQL_PROXY, auth=auth("read"))  # type: ignore
+        async def dhara_sql_query(
+            sql: str,
+            params: list[Any] | None = None,
+        ) -> list[dict[str, Any]]:
+            """Execute a read-only SELECT/WITH query through the SQL proxy.
+
+            Returns a ``list[dict]`` (one entry per row, keyed by SELECT
+            projection). Refuses non-SELECT statements.
+            """
+            return await _dhara_sql_query_impl(sql=sql, params=params)  # type: ignore[no-any-return]
 
         # --- Discovery meta-tool (always registered) ---
         all_tools: dict[str, str] = {}
