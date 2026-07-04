@@ -1,19 +1,26 @@
 [build-system]
 requires = ["setuptools", "wheel"]
 
+# PEP 735 dependency-groups (replaces [project.optional-dependencies]).
+# Install with: uv sync --group dev --group cloud
 [dependency-groups]
 dev = [
-    "azure-storage-blob>=12.29.0",
-    "boto3>=1.43.20",
     "crackerjack",
-    "google-cloud-storage>=3.10.1",
-    # onnxruntime removed — Dhara uses Ollama/OpenAI for embeddings via MCP.
-    # No native ONNX inference needed; avoids conflicts with session-buddy.
     "pytest>=9.0.3",
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.1.0",
     "pytest-timeout>=2.4.0",
     "session-buddy>=0.19.9",
+]
+# Cloud storage backends. None are runtime-required; Dhara falls back
+# to local SQLite/duckdb when these aren't installed. The empty
+# `aiosqlite`/`pytest` slots from the old [project.optional-dependencies]
+# cloud group are removed (they were dev-only or already a main dep).
+cloud = [
+    "asyncpg>=0.31.0",
+    "azure-storage-blob>=12.29.0",
+    "boto3>=1.43.20",
+    "google-cloud-storage>=3.10.1",
 ]
 
 # Full-Featured Library Template
@@ -60,15 +67,6 @@ dependencies = [
     "schedule>=1.2.2",
     "zstandard>=0.25.0",
     "aiosqlite>=0.22.1",
-]
-
-[project.optional-dependencies]
-cloud = [
-    "aiosqlite>=0.22.1",
-    "asyncpg>=0.31.0",
-    "azure-storage-blob>=12.29.0",
-    "boto3>=1.43.20",
-    "google-cloud-storage>=3.10.1",
 ]
 
 [project.urls]
