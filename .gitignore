@@ -14,6 +14,7 @@ dist
 .oneiric_cache/
 .complexipy_cache/
 .cache/
+.lycheecache/
 
 # XDG - State directories
 .claude/
