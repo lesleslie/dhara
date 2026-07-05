@@ -14,7 +14,10 @@ dist
 .oneiric_cache/
 .complexipy_cache/
 .cache/
-.lycheecache/
+# No trailing slash so this matches both files (lychee cache files) and
+# directories regardless of how the tool wrote the cache.
+.lycheecache
+.pyscn/
 
 # XDG - State directories
 .claude/
