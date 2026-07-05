@@ -5,6 +5,34 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2026-07-05
+
+### Added
+
+- Add async run_migrations runner + 0001/0002 sql
+- dhara: Add 3 substrate HTTP CRUD routes (Workstream C)
+- dhara: Plan 4 Phase B — Adapter env field
+- dhara: Plan 7 Phase 2 — FastMCP 3.4 consumer bump
+- In-process async event bus + pydantic events + audit_log subscriber
+- sql-proxy: DuckDBAdapter with async execute/query
+- sql-proxy: Register dhara_sql_execute and dhara_sql_query MCP tools
+
+### Fixed
+
+- dhara: Raise mcp-common floor to 0.17.0 (PyPI release ships fastmcp submodule)
+- dhara: Resolve cross-checker (mypy, ty, refurb) errors
+- gitignore: Match .lycheecache whether file or dir; add .pyscn/
+
+### Testing
+
+- dhara: Add failing HTTP CRUD route tests for Workstream C
+
+### Internal
+
+- dhara: Migrate [project.optional-dependencies] → [dependency-groups]
+- gitignore: Track .worktrees/ to silence worktree add artifacts
+- gitignore: Untrack .lycheecache
+
 ## [0.11.2] - 2026-06-15
 
 ### Internal

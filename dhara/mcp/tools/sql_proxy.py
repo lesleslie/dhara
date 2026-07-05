@@ -27,7 +27,6 @@ from dhara.storage.duckdb_adapter import DuckDBAdapter
 # Re-exported so callers don't need to import the storage layer directly.
 from dhara.storage.duckdb_adapter import DuckDBAdapter as _DuckDBAdapter  # noqa: F401
 
-
 # SELECT-prefix policy. ``query`` accepts only these prefixes; anything
 # else raises ValueError. DuckDB-specific read-only statements
 # (``PRAGMA``, ``SHOW``, ``EXPLAIN``) are included for parity with the
@@ -79,9 +78,7 @@ def _enforce_execute_safety(sql: str) -> None:
         raise ValueError("Refusing to execute empty SQL statement.")
     for prefix in _EXECUTE_FORBIDDEN_PREFIXES:
         if normalized.startswith(prefix):
-            raise ValueError(
-                f"Refusing to execute destructive statement: {sql!r}"
-            )
+            raise ValueError(f"Refusing to execute destructive statement: {sql!r}")
 
 
 async def dhara_sql_execute(

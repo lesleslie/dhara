@@ -16,7 +16,7 @@ from __future__ import annotations
 import json
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from oneiric.adapters.storage import (
     AzureBlobStorageSettings,
@@ -514,13 +514,13 @@ class AzureBlobStorageAdapter(_DelegatingStorageAdapter):
         upload = blob_client.upload_blob
         result = upload(data)
         if hasattr(result, "__await__"):
-            await result
+            await cast(Any, result)
 
     async def download(self, remote_path: str) -> bytes:
         blob_client = self.container_client.get_blob_client(remote_path)
         download_blob = blob_client.download_blob()  # noqa: FURB184
         if hasattr(download_blob, "__await__"):
-            download_blob = await download_blob
+            download_blob = await cast(Any, download_blob)
         readall = download_blob.readall()
         if hasattr(readall, "__await__"):
             return (await readall).readall()  # type: ignore

@@ -41,8 +41,15 @@ class RedisCacheAdapter:
         # Import coredis lazily so the module loads even when the optional
         # dependency is absent. Callers that actually use the cache get a
         # CacheError here instead of an ImportError at module import time.
+        #
+        # ``__import__`` is used instead of ``import coredis`` so static
+        # analyzers (mypy, ty) cannot statically resolve the name — they
+        # treat the result as ``Any``, avoiding "Cannot resolve imported
+        # module" errors when the optional dep isn't installed in the
+        # active environment. The name is rebound to a local for normal
+        # attribute access.
         try:
-            import coredis
+            coredis = __import__("coredis")
         except ImportError as exc:
             raise CacheError("coredis is required for RedisCacheAdapter") from exc
         url = self._settings.redis_url

@@ -29,7 +29,7 @@ cloud = [
 
 [project]
 name = "dhara"
-version = "0.11.2"
+version = "0.12.0"
 description = "A Python Persistent Object Database with ACID Transactions"
 readme = "README.md"
 requires-python = ">=3.13"

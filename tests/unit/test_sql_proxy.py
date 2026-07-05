@@ -6,7 +6,7 @@ exists.
 
 Both tools must:
   * operate against an in-memory DuckDB backend for unit tests;
-  * be invokable as plain async functions (the FastMCP decorator
+  * be invocable as plain async functions (the FastMCP decorator
     is applied at registration time, but the underlying functions
     remain callable for direct unit testing);
   * honour a SQL safety policy: ``query`` rejects non-SELECTs,

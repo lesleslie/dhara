@@ -66,9 +66,7 @@ class ProgressSnapshotRecorded(DomainEvent):
     @classmethod
     def _in_range(cls, value: float) -> float:
         if not 0.0 <= value <= 1.0:
-            raise ValueError(
-                f"progress_percent must be in [0.0, 1.0], got {value!r}"
-            )
+            raise ValueError(f"progress_percent must be in [0.0, 1.0], got {value!r}")
         return value
 
 
