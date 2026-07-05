@@ -29,7 +29,7 @@ from dhara.serialize.record import _resolve_class, deserialize_state
 from dhara.utils import as_bytes, byte_string, int8_to_str, iteritems
 
 try:
-    from dhara._persistent import _setattribute
+    from dhara._persistent import _setattribute  # type: ignore
 except ImportError:
     _setattribute = object.__setattr__
 

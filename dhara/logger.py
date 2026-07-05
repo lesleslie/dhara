@@ -61,7 +61,6 @@ def direct_output(file: Any) -> None:
         LoggingConfig(
             level="INFO",
             emit_json=False,
-            traceback_style="string",
             sinks=[],
         )
     )

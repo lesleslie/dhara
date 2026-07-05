@@ -97,9 +97,7 @@ class DuckDBAdapter:
         normalized = sql.strip().upper()
         for prefix in _FORBIDDEN_EXECUTE_PREFIXES:
             if normalized.startswith(prefix):
-                raise ValueError(
-                    f"Refusing to execute destructive statement: {sql!r}"
-                )
+                raise ValueError(f"Refusing to execute destructive statement: {sql!r}")
 
         dml_prefixes = ("INSERT", "UPDATE", "DELETE", "MERGE", "COPY")
         is_dml = normalized.startswith(dml_prefixes)
@@ -108,28 +106,24 @@ class DuckDBAdapter:
         # last_row_id in a single round trip (DuckDB's cursor.rowcount is -1
         # for DML and lastrowid is unreliable for batched statements).
         if is_dml and "RETURNING" not in normalized:
+
             def _run_dml() -> tuple[int, Any]:
                 base = sql.rstrip().rstrip(";").rstrip()
                 wrapped = f"{base} RETURNING 1"
-                cur = self._conn.execute(wrapped, params or [])
-                rows = cur.fetchall()
-                last_id = rows[-1][0] if rows else None
-                return len(rows), last_id
+                rows = self._conn.execute(wrapped, params or []).fetchall()
+                return len(rows), rows[-1][0] if rows else None
 
             rowcount, last_id = await asyncio.to_thread(_run_dml)
         else:
+
             def _run() -> tuple[int, Any]:
                 cursor = self._conn.execute(sql, params or [])
                 raw = cursor.rowcount
                 if raw is None or raw < 0:
                     rowcount = 0
                 else:
-                    rowcount = int(raw)
-                last_id: Any = None
-                try:
-                    last_id = cursor.lastrowid
-                except AttributeError:
-                    last_id = None
+                    rowcount = raw
+                last_id: Any = getattr(cursor, "lastrowid", None)
                 return rowcount, last_id
 
             rowcount, last_id = await asyncio.to_thread(_run)

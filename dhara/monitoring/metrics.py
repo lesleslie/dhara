@@ -7,9 +7,19 @@ and server health.
 from __future__ import annotations
 
 import time
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    from prometheus_client import (
+        CollectorRegistry,
+        Counter,
+        Gauge,
+        Histogram,
+        generate_latest,
+    )
 
 try:
-    from prometheus_client import (
+    from prometheus_client import (  # type: ignore[no-redef, misc]
         CollectorRegistry,
         Counter,
         Gauge,
@@ -20,10 +30,12 @@ try:
     PROMETHEUS_AVAILABLE = True
 except ImportError:
     PROMETHEUS_AVAILABLE = False
-    CollectorRegistry = None  # type: ignore[assignment]
-    Counter = None  # type: ignore[assignment]
-    Gauge = None  # type: ignore[assignment]
-    Histogram = None  # type: ignore[assignment]
+    # Cast so the names stay typed as Any (call sites like ``Counter(...)``
+    # remain valid for static checkers) while runtime values are None.
+    CollectorRegistry = cast(Any, None)  # type: ignore[misc]
+    Counter = cast(Any, None)  # type: ignore[misc]
+    Gauge = cast(Any, None)  # type: ignore[misc]
+    Histogram = cast(Any, None)  # type: ignore[misc]
 
 
 class MetricsCollector:

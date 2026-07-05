@@ -8,11 +8,6 @@ from contextlib import suppress
 from dataclasses import dataclass
 from typing import Any, cast
 
-try:
-    import coredis
-except ImportError:
-    coredis = None  # type: ignore
-
 
 @dataclass
 class RedisCacheSettings:
@@ -43,14 +38,19 @@ class RedisCacheAdapter:
         self._client: Any = None
 
     async def init(self) -> None:
-        if coredis is None:
-            raise CacheError("coredis is required for RedisCacheAdapter")
+        # Import coredis lazily so the module loads even when the optional
+        # dependency is absent. Callers that actually use the cache get a
+        # CacheError here instead of an ImportError at module import time.
+        try:
+            import coredis
+        except ImportError as exc:
+            raise CacheError("coredis is required for RedisCacheAdapter") from exc
         url = self._settings.redis_url
         kwargs: dict[str, Any] = {"decode_responses": False}
         if self._settings.redis_token:
             kwargs["username"] = "default"
             kwargs["password"] = self._settings.redis_token
-        self._client = coredis.Redis.from_url(url, **kwargs)  # type: ignore[union-attr]
+        self._client = coredis.Redis.from_url(url, **kwargs)
         if self._client is None:
             raise CacheError("Failed to create Redis client")
         await self._client.ping()

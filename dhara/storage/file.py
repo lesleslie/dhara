@@ -5,6 +5,7 @@ $Id$
 
 import heapq
 from datetime import datetime
+from typing import Any
 
 from dhara.error import DruvaKeyError
 from dhara.file import File
@@ -44,7 +45,7 @@ class FileStorage(Storage):
         self.shelf = Shelf(filename, readonly=readonly, repair=repair)
         self.pending_records = {}
         self.allocated_unused_oids = set()
-        self.pack_extra = None
+        self.pack_extra: set[str] | None = None
         self.invalid = set()
 
     @classmethod
@@ -99,15 +100,21 @@ class FileStorage(Storage):
         self.invalid.clear()
         return result
 
-    def gen_oid_record(self, start_oid=None, seen=None, **other):
+    def gen_oid_record(
+    self,
+    start_oid: str | None = None,
+    batch_size: int = 100,
+    **kwargs: Any,
+):
         if start_oid is None:
             yield from iteritems(self.shelf)
         else:
-            todo = [start_oid]
+            todo: list[str] = [start_oid]
+            seen: IntSet | None = kwargs.get("seen")
             if seen is None:
                 seen = IntSet()  # This eventually contains them all.
             while todo:
-                oid = heapq.heappop(todo)
+                oid = heapq.heappop(todo)  # type: ignore[arg-type]
                 if str_to_int8(oid) in seen:
                     continue
                 seen.add(str_to_int8(oid))
@@ -115,7 +122,7 @@ class FileStorage(Storage):
                 record_oid, data, refdata = unpack_record(record)
                 assert oid == record_oid
                 for ref_oid in split_oids(refdata):
-                    heapq.heappush(todo, ref_oid)
+                    heapq.heappush(todo, ref_oid.decode("latin1"))  # type: ignore[arg-type]
                 yield oid, record
 
     def new_oid(self):
@@ -159,6 +166,7 @@ class FileStorage(Storage):
                     assert shelf.get_position(oid) is None
                     self.invalid.add(oid)
             yield f"invalidations identified {datetime.now()}"
+            assert self.pack_extra is not None
             for oid in self.pack_extra:
                 seen.discard(str_to_int8(oid))
             for oid in self.pack_extra:

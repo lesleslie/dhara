@@ -2,9 +2,20 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Callable, Iterator
 from dataclasses import dataclass, field
-from typing import Any, TypeVar
+from typing import Any, Protocol, TypeVar, cast
 
-K = TypeVar("K")
+
+class _Comparable(Protocol):
+    """Protocol for keys that support ``<``/``>`` comparison."""
+
+    def __lt__(self, other: Any) -> bool: ...
+    def __gt__(self, other: Any) -> bool: ...
+    def __le__(self, other: Any) -> bool: ...
+    def __ge__(self, other: Any) -> bool: ...
+    def __eq__(self, other: Any) -> bool: ...
+
+
+K = TypeVar("K", bound=_Comparable)
 V = TypeVar("V")
 
 
@@ -117,7 +128,7 @@ class BNode[K, V]:
             mid_key: K = self.items[mid][0]
             if mid_key == key:
                 return (mid, True)
-            elif mid_key < key:  # type: ignore[operator]
+            elif mid_key < key:  # type: ignore
                 lo = mid + 1
             else:
                 hi = mid - 1
@@ -399,11 +410,11 @@ class BNode[K, V]:
             self._split_child_in_place(idx)
             # The promoted median now lives at self.items[idx]. If our key
             # matches it, overwrite in place instead of descending further.
-            if key == self.items[idx][0]:  # type: ignore[operator]
-                self.items[idx] = item  # type: ignore[arg-type]
+            if key == self.items[idx][0]:
+                self.items[idx] = item
                 return
             # Otherwise continue descent; key may now belong in the right child.
-            if key > self.items[idx][0]:  # type: ignore[operator]
+            if key > self.items[idx][0]:  # type: ignore
                 idx += 1
         self.nodes[idx].insert_item(item)
 
@@ -654,7 +665,7 @@ class BTree[K, V]:
         result = self._get_impl(key)
         if result is MISSING:
             return default
-        return result  # type: ignore[return-value]
+        return cast(V, result)
 
     def _set_impl(self, key: K, value: V) -> None:
         """Insert or update key-value pair. Maintains the root ``_count`` cache.
@@ -749,7 +760,7 @@ class BTree[K, V]:
                 if node.items[i][0] == key:
                     node.items[i] = (key, value)
                     return
-                if node.items[i][0] < key:  # type: ignore[operator]
+                if node.items[i][0] < key:  # type: ignore
                     break
                 i -= 1
             node.items.insert(i + 1, (key, value))
@@ -758,10 +769,10 @@ class BTree[K, V]:
             # largest key in this node that is < key, and items[i] is the
             # smallest key >= key. If key == items[i-1] it is present in
             # this internal node — update in place.
-            while i >= 0 and key < node.items[i][0]:  # type: ignore[operator]
+            while i >= 0 and key < node.items[i][0]:  # type: ignore
                 i -= 1
-            if i >= 0 and key == node.items[i][0]:  # type: ignore[operator]
-                node.items[i] = (key, value)  # type: ignore[arg-type]
+            if i >= 0 and key == node.items[i][0]:
+                node.items[i] = (key, value)
                 return
             i += 1
             assert node.nodes is not None  # type narrowing
@@ -770,10 +781,10 @@ class BTree[K, V]:
                 # After split, the promoted median is now at node.items[i].
                 # If our key equals the promoted median, overwrite it in place
                 # (instead of descending into a child and creating a duplicate).
-                if key == node.items[i][0]:  # type: ignore[operator]
-                    node.items[i] = (key, value)  # type: ignore[arg-type]
+                if key == node.items[i][0]:
+                    node.items[i] = (key, value)
                     return
-                if key > node.items[i][0]:  # type: ignore[operator]
+                if key > node.items[i][0]:  # type: ignore
                     i += 1
             self._insert_nonfull(node.nodes[i], key, value)
 
@@ -1149,7 +1160,7 @@ class BTree[K, V]:
         result = self._get_impl(key)
         if result is MISSING:
             raise KeyError(key)
-        return result  # type: ignore[return-value]
+        return cast(V, result)
 
     def __delitem__(self, key: K) -> None:
         """``del t[key]``. Raises ``KeyError`` if missing."""
@@ -1162,20 +1173,20 @@ class BTree[K, V]:
         """Return ``True`` if ``key`` is in the tree (dict-style)."""
         return key in self
 
-    def add(self, key: K, value: V = True) -> None:  # type: ignore[assignment]
+    def add(self, key: K, value: V | bool = True) -> None:
         """``add(key)`` inserts with default value ``True``; ``add(k, v)`` sets value.
 
         Mirrors ``dict.setdefault`` for new keys (does not overwrite).
         """
         if key in self:
             return
-        self._set_impl(key, value)
+        self._set_impl(key, value)  # type: ignore[arg-type]
 
     def setdefault(self, key: K, default: V) -> V:
         """Insert ``default`` if ``key`` missing, else return existing value."""
         existing = self._get_impl(key)
         if existing is not MISSING:
-            return existing  # type: ignore[return-value]
+            return cast(V, existing)
         self._set_impl(key, default)
         return default
 
@@ -1314,11 +1325,11 @@ class BTree[K, V]:
         yields ``[start, end-1, ..., end+1, end]``). ``closed_start`` is
         always True; use ``closed_end`` to control the upper boundary.
         """
-        if start <= end:  # type: ignore[operator]
+        if start <= end:  # type: ignore
             # Forward range — closed_start=True, closed_end controls end
             for item in self.items_from(start, closed=True):
                 k, _v = item
-                if k > end:  # type: ignore[operator]
+                if k > end:  # type: ignore
                     return
                 if k == end and not closed_end:
                     return
@@ -1327,7 +1338,7 @@ class BTree[K, V]:
             # Backward range — closed_start=True (include start, the larger value)
             for item in self.items_backward_from(start, closed=True):
                 k, _v = item
-                if k < end:  # type: ignore[operator]
+                if k < end:  # type: ignore
                     return
                 if k == end and not closed_end:
                     return
@@ -1351,7 +1362,7 @@ class BTree[K, V]:
         result = self._get_impl(key)
         if result is MISSING:
             return None
-        return result  # type: ignore[return-value]
+        return cast(V, result)
 
     async def delete_async(self, key: K) -> bool:
         """Async delete — delegates to _delete_impl."""

@@ -325,12 +325,15 @@ def read_transaction_offsets(file, repair=False):
                 file.truncate()
             else:
                 e = sys.exc_info()[1]
-                e.args = repr(
-                    dict(
-                        transaction_start=transaction_start,
-                        transaction_end=transaction_end,
-                        position=position,
-                    )
+                assert e is not None
+                e.args = (
+                    repr(
+                        dict(
+                            transaction_start=transaction_start,
+                            transaction_end=transaction_end,
+                            position=position,
+                        )
+                    ),
                 )
                 raise
         return None

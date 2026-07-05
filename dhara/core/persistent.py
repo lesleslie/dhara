@@ -24,7 +24,7 @@ try:
     if IS_PYPY:
         # C extensions are slower than pure Python on PyPy
         raise ImportError("Use pure Python implementation on PyPy")
-    from dhara._persistent import (
+    from dhara._persistent import (  # type: ignore
         ConnectionBase,
         PersistentBase,
         _delattribute,
@@ -59,7 +59,7 @@ except ImportError:
 
         def __new__(klass: type, *args: Any, **kwargs: Any) -> "ConnectionBase":
             instance: ConnectionBase = object.__new__(klass)
-            instance.transaction_serial = 1
+            instance.transaction_serial = 1  # type: ignore
             return instance
 
     _GHOST_SAFE_ATTRIBUTES: dict[str, int] = {
@@ -321,7 +321,7 @@ class Persistent(PersistentObject):
     """
 
     def __getstate__(self) -> dict[str, Any]:
-        return _getattribute(self, "__dict__")  # type: ignore
+        return _getattribute(self, "__dict__")  # type: ignore[no-any-return]
 
     def __setstate__(self, state: dict[str, Any] | None) -> None:
         self_dict = _getattribute(self, "__dict__")
@@ -345,7 +345,7 @@ class ComputedAttribute(PersistentObject):
 
     __slots__ = ["value"]
 
-    def __getstate__(self) -> None:  # type: ignore[override]
+    def __getstate__(self) -> dict[str, Any] | None:  # type: ignore
         return None
 
     def _p_load_state(self) -> None:

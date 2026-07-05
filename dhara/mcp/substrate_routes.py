@@ -59,15 +59,14 @@ def _bucket(connection: Any, name: str) -> dict[str, Any]:
     if name not in sub:
         sub[name] = {}
     root[_SUBSTRATE_ROOT_KEY] = sub
-    return sub[name]
+    return sub[name]  # type: ignore[no-any-return]
 
 
-def _resource_bucket(connection: Any, resource: str, resource_id: str) -> dict[str, Any]:
+def _resource_bucket(
+    connection: Any, resource: str, resource_id: str
+) -> dict[str, Any]:
     """Return the per-resource bucket (e.g. ``adapter:abc:def``)."""
-    parent = _bucket(connection, resource)
-    if resource_id not in parent:
-        parent[resource_id] = []
-    return parent[resource_id]
+    return _bucket(connection, resource).setdefault(resource_id, [])  # type: ignore[no-any-return]
 
 
 class _ActiveSettingsVersionIn(BaseModel):
@@ -103,9 +102,7 @@ def _now_iso() -> str:
 
 def _read(connection: Any, resource: str, resource_id: str) -> list[dict[str, Any]]:
     """Return the list of stored records for the given resource."""
-    parent = _bucket(connection, resource)
-    items = parent.get(resource_id, [])
-    return list(items)
+    return _bucket(connection, resource).get(resource_id, []).copy()  # type: ignore[no-any-return]
 
 
 def _store_substrate(
@@ -122,7 +119,7 @@ def _store_substrate(
         "id": uuid4().hex,
         "tenant_id": tenant_id,
         "created_at": _now_iso(),
-        "payload": dict(payload),
+        "payload": payload.copy(),
     }
     parent = _bucket(connection, resource)
     items = list(parent.get(resource_id, []))
@@ -184,12 +181,14 @@ def register_substrate_routes(server: FastMCP, connection: Any) -> None:
             adapter_id,
             parsed.model_dump(),
         )
-        body = {"adapter_id": adapter_id, "version": parsed.version, "record_id": record["id"]}
+        body = {
+            "adapter_id": adapter_id,
+            "version": parsed.version,
+            "record_id": record["id"],
+        }
         return _json(body, status_code=200)
 
-    @server.custom_route(
-        "/tenants/{tenant_id}/context-versions", methods=["GET"]
-    )
+    @server.custom_route("/tenants/{tenant_id}/context-versions", methods=["GET"])
     async def get_context_versions(request: Any) -> Any:
         from starlette.responses import JSONResponse
 
@@ -203,9 +202,7 @@ def register_substrate_routes(server: FastMCP, connection: Any) -> None:
         }
         return JSONResponse(body, status_code=200)
 
-    @server.custom_route(
-        "/tenants/{tenant_id}/context-versions", methods=["POST"]
-    )
+    @server.custom_route("/tenants/{tenant_id}/context-versions", methods=["POST"])
     async def post_context_versions(request: Any) -> Any:
         tenant_id = request.path_params["tenant_id"]
         parsed = await _parse_json_body(request, _ContextVersionIn)
@@ -225,9 +222,7 @@ def register_substrate_routes(server: FastMCP, connection: Any) -> None:
         }
         return _json(body, status_code=200)
 
-    @server.custom_route(
-        "/workflows/{workflow_id}/progress-snapshots", methods=["GET"]
-    )
+    @server.custom_route("/workflows/{workflow_id}/progress-snapshots", methods=["GET"])
     async def get_progress_snapshots(request: Any) -> Any:
         from starlette.responses import JSONResponse
 
@@ -264,9 +259,7 @@ def register_substrate_routes(server: FastMCP, connection: Any) -> None:
         return _json(body, status_code=200)
 
 
-async def _parse_json_body(
-    request: Any, model_cls: type[BaseModel]
-) -> BaseModel | Any:
+async def _parse_json_body(request: Any, model_cls: type[BaseModel]) -> BaseModel | Any:
     """Parse and validate a JSON request body.
 
     Returns the parsed Pydantic instance on success, or a Starlette

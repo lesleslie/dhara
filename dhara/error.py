@@ -13,7 +13,13 @@ class DruvaError(Exception):
 class DruvaKeyError(KeyError, DruvaError):
     """Key not found in database."""
 
+    def __init__(self, oids: list | None = None) -> None:
+        super().__init__()
+        self.oids = oids
+
     def __str__(self):
+        if not self.oids:
+            return ""
         first_oid = self.oids[0]
         return str(first_oid and str_to_int8(first_oid))
 

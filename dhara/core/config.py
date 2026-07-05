@@ -178,7 +178,7 @@ class DharaSettings(MCPServerSettings):
                 os.environ.setdefault(canonical_name, value)
 
     @classmethod
-    def load(cls, config_name: str = "dhara") -> Self:  # type: ignore[override]
+    def load(cls, config_name: str = "dhara") -> Self:  # type: ignore
         """Load settings with mode-aware configuration.
 
         Detects mode from environment and loads appropriate config file:
@@ -215,10 +215,10 @@ class DharaSettings(MCPServerSettings):
 
         # Override mode from environment if set
         if mode:
-            settings.mode = mode  # type: ignore[attr-defined]
+            settings.mode = mode  # type: ignore
             logger.debug(f"Mode overridden from environment: {mode}")
 
-        return settings  # type: ignore[return-value]
+        return settings  # type: ignore
 
     def get_mode_config_path(self) -> Path:
         """Get path to mode-specific configuration file.

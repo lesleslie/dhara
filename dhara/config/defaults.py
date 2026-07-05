@@ -7,7 +7,7 @@ Compatible with legacy Druva/Durus patterns and no external dependencies.
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal, cast
 
 
 @dataclass
@@ -124,11 +124,11 @@ class DharaConfig:
         """Validate overall configuration after initialization."""
         # Ensure all nested configs are properly initialized
         if isinstance(self.storage, dict):
-            object.__setattr__(self, "storage", StorageConfig(**self.storage))
+            object.__setattr__(self, "storage", StorageConfig(**cast(dict[str, Any], self.storage)))
         if isinstance(self.cache, dict):
-            object.__setattr__(self, "cache", CacheConfig(**self.cache))
+            object.__setattr__(self, "cache", CacheConfig(**cast(dict[str, Any], self.cache)))
         if isinstance(self.connection, dict):
-            object.__setattr__(self, "connection", ConnectionConfig(**self.connection))
+            object.__setattr__(self, "connection", ConnectionConfig(**cast(dict[str, Any], self.connection)))
 
     def to_dict(self) -> dict:
         """Convert configuration to dictionary.

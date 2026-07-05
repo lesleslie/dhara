@@ -186,7 +186,7 @@ class DharaMCPServer:
             )
 
         # Default: FileStorage (existing behavior)
-        self.storage = FileStorage(  # type: ignore
+        self.storage = FileStorage(
             storage_path,
             readonly=config.storage.read_only,
         )
@@ -261,6 +261,8 @@ class DharaMCPServer:
         )
         from dhara.mcp.tools.sql_proxy import (
             dhara_sql_execute as _dhara_sql_execute_impl,
+        )
+        from dhara.mcp.tools.sql_proxy import (
             dhara_sql_query as _dhara_sql_query_impl,
         )
 
@@ -278,7 +280,7 @@ class DharaMCPServer:
             return self.server.tool(**kwargs)
 
         # --- Adapter Registry tools (STANDARD+) ---
-        @_tool(TOOL_GROUP_ADAPTER_REGISTRY, auth=auth("write"))  # type: ignore
+        @_tool(TOOL_GROUP_ADAPTER_REGISTRY, auth=auth("write"))
         async def store_adapter(
             domain: str,
             key: str,
@@ -709,7 +711,7 @@ class DharaMCPServer:
             )
 
         # --- SQL Proxy tools (FULL profile only) ---
-        @_tool(TOOL_GROUP_SQL_PROXY, auth=auth("write"))  # type: ignore
+        @_tool(TOOL_GROUP_SQL_PROXY, auth=auth("write"))
         async def dhara_sql_execute(
             sql: str,
             params: list[Any] | None = None,
@@ -723,7 +725,7 @@ class DharaMCPServer:
             """
             return await _dhara_sql_execute_impl(sql=sql, params=params)  # type: ignore[no-any-return]
 
-        @_tool(TOOL_GROUP_SQL_PROXY, auth=auth("read"))  # type: ignore
+        @_tool(TOOL_GROUP_SQL_PROXY, auth=auth("read"))
         async def dhara_sql_query(
             sql: str,
             params: list[Any] | None = None,

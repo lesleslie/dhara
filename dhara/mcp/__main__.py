@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """Dhara MCP Server entry point.
 
+from __future__ import annotations
 Run with: python -m dhara.mcp
 """
 
@@ -13,7 +14,7 @@ def main() -> None:
     # Load settings from YAML config file (settings/dhara.yaml)
     config = DharaSettings.load()
     server = DharaMCPServer(config)
-    server.run(transport="stdio")
+    server.run()
 
 
 if __name__ == "__main__":

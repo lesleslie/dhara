@@ -117,8 +117,8 @@ class Adapter(Persistent):
             version=self.version,
             factory_path=self.factory_path,
             config=self.config,
-            dependencies=list(self.dependencies),
-            capabilities=list(self.capabilities),
+            dependencies=self.dependencies.copy(),
+            capabilities=self.capabilities.copy(),
             metadata=self.metadata,
             env=value,
         )
@@ -144,7 +144,7 @@ class Adapter(Persistent):
                 "changelog": changelog,
                 "state": {
                     "factory_path": self.factory_path,
-                    "config": (self.config or {}).copy(),
+                    "config": (self.config).copy(),
                     "capabilities": self.capabilities.copy(),
                     "dependencies": self.dependencies.copy(),
                 },
@@ -359,7 +359,7 @@ class AdapterRegistry:
         if version:
             for match in matches:
                 if match["version"] == version:
-                    return match  # type: ignore
+                    return match  # type: ignore[no-any-return]
             return None
 
         # Return first match (default provider)

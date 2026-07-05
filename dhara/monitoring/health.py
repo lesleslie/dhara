@@ -1,5 +1,6 @@
 """Health check endpoints for dhara.
 
+from __future__ import annotations
 Provides health status monitoring and readiness checks for dhara servers.
 """
 
@@ -76,7 +77,7 @@ class HealthChecker:
         >>> print(f"Status: {report.status}")
     """
 
-    def __init__(self, storage=None):
+    def __init__(self, storage=None) -> None:
         """Initialize health checker.
 
         Args:
@@ -89,10 +90,10 @@ class HealthChecker:
         # Register default health checks
         self._register_default_checks()
 
-    def _register_default_checks(self):
+    def _register_default_checks(self) -> None:
         """Register default health checks."""
 
-        def check_storage():
+        def check_storage() -> HealthCheck:
             """Check if storage is accessible."""
             if self.storage is None:
                 return HealthCheck(
@@ -118,7 +119,7 @@ class HealthChecker:
                     message=f"Storage error: {e}",
                 )
 
-        def check_cache():
+        def check_cache() -> HealthCheck:
             """Check cache health using metrics."""
             try:
                 collector = get_metrics_collector()
@@ -163,7 +164,7 @@ class HealthChecker:
                     message=f"Failed to check cache: {e}",
                 )
 
-        def check_memory():
+        def check_memory() -> HealthCheck:
             """Check memory usage."""
             import gc
 
@@ -219,7 +220,7 @@ class HealthChecker:
         self.register_check("cache", check_cache)
         self.register_check("memory", check_memory)
 
-    def register_check(self, name: str, check_func: Callable[[], HealthCheck]):
+    def register_check(self, name: str, check_func: Callable[[], HealthCheck]) -> None:
         """Register a custom health check.
 
         Args:

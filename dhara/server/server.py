@@ -25,6 +25,7 @@ from contextlib import suppress
 from datetime import datetime
 from pathlib import Path
 from time import sleep
+from typing import Any
 
 from dhara.error import ConflictError, ReadConflictError
 from dhara.logger import is_logging, log
@@ -87,8 +88,9 @@ class ClientError(Exception):
 
 
 class SocketAddress:
+    @staticmethod
     def new(
-        address: str | SocketAddress | tuple[str, int], **kwargs: object
+        address: str | SocketAddress | tuple[str, int], **kwargs: Any
     ) -> SocketAddress:
         if isinstance(address, SocketAddress):
             return address
@@ -98,9 +100,7 @@ class SocketAddress:
         elif address.startswith("@"):
             return UnixAbstractAddress(address, **kwargs)
 
-        return UnixDomainSocketAddress(address, **kwargs)  # type: ignore[arg-type]
-
-    new = staticmethod(new)
+        return UnixDomainSocketAddress(address, **kwargs)
 
     def get_address_family(self) -> int:
         raise NotImplementedError
@@ -121,6 +121,14 @@ class SocketAddress:
         sock.listen(40)
         return sock
 
+    def get_connected_socket(self) -> socket.socket | None:
+        """Return a connected client socket, or None if the peer is unreachable.
+
+        Subclasses must override. InheritedSocket raises by default because
+        it represents a pre-existing socket — no outbound connect is needed.
+        """
+        raise NotImplementedError
+
 
 class HostPortAddress(SocketAddress):
     def __init__(self, host: str = DEFAULT_HOST, port: int = DEFAULT_PORT) -> None:
@@ -135,7 +143,7 @@ class HostPortAddress(SocketAddress):
 
     def get_address_family(self) -> int:
         if ":" in self.host:
-            return socket.AF_INET6  # type: ignore
+            return socket.AF_INET6
 
         return socket.AF_INET
 
@@ -340,7 +348,7 @@ class StorageServer:
         self.sockets_lock = threading.RLock()  # Thread-safe socket tracking
         self.packer: Iterator[str] | None = None
         self.packer_lock = threading.Lock()  # Serialize pack operations
-        self.address: SocketAddress = SocketAddress.new(address or (host, port))  # type: ignore
+        self.address: SocketAddress = SocketAddress.new(address or (host, port))
         self.load_record: dict[str, int] = {}
         self.load_record_lock = threading.Lock()  # Thread-safe load record
         self.bytes_since_pack = 0
@@ -773,7 +781,7 @@ def wait_for_server(
     server_address = SocketAddress.new(address or (host, port))
     attempt = 0
     while attempt < maxtries:
-        connected = server_address.get_connected_socket()  # type: ignore[attr-defined]
+        connected = server_address.get_connected_socket()
         if connected:
             connected.close()
             return

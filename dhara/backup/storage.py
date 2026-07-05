@@ -339,7 +339,7 @@ class GCSStorageAdapter(_DelegatingStorageAdapter):
             result = blob.download_as_bytes()
             if hasattr(result, "__await__"):
                 result = await result
-            return result  # type: ignore
+            return result  # type: ignore[no-any-return]
         result = blob.download_as_text()
         if hasattr(result, "__await__"):
             result = await result
@@ -529,7 +529,7 @@ class AzureBlobStorageAdapter(_DelegatingStorageAdapter):
     def upload_file(self, local_path: str, remote_path: str) -> bool:
         try:
             blob_client = self.container_client.get_blob_client(remote_path)
-            with local_path.open("rb") as f:  # type: ignore[attr-defined]
+            with Path(local_path).open("rb") as f:
                 blob_client.upload_blob(f.read())
             return True
         except self._resource_exists_error:
@@ -547,8 +547,9 @@ class AzureBlobStorageAdapter(_DelegatingStorageAdapter):
         try:
             blob_client = self.container_client.get_blob_client(remote_path)
             data = blob_client.download_blob().readall()
-            with local_path.open("wb") as f:  # type: ignore[attr-defined]
-                f.write(data)
+            payload = data.encode("utf-8") if isinstance(data, str) else data
+            with Path(local_path).open("wb") as f:
+                f.write(payload)  # type: ignore[arg-type]
             return True
         except Exception:
             return False
@@ -569,7 +570,8 @@ class AzureBlobStorageAdapter(_DelegatingStorageAdapter):
         try:
             blob_client = self.container_client.get_blob_client(remote_path)
             data = blob_client.download_blob().readall()
-            return json.loads(data.decode("utf-8"))
+            text = data.decode("utf-8") if isinstance(data, bytes) else data
+            return json.loads(text)
         except Exception:
             return None
 

@@ -347,8 +347,7 @@ def _validate_path(file_path: str | None) -> Path | None:
         raise typer.Exit(1)
 
     # Check for suspicious patterns in the original path
-    original_str = path
-    if ".." in original_str.split(os.sep):  # type: ignore[attr-defined]
+    if ".." in path.parts:
         typer.echo(
             f"Error: Path traversal not allowed in '{file_path}'",
             err=True,

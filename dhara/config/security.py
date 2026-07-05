@@ -108,7 +108,7 @@ class SecurityConfig:
                         "Please install the Oneiric SDK or enable fallback mode."
                     )
                 else:
-                    self._logger.warning(  # type: ignore[union-attr]
+                    self._logger.warning(  # type: ignore
                         "Oneiric not available, using fallback mode. "
                         "This is less secure than production setup."
                     )
@@ -234,7 +234,7 @@ class SecurityConfig:
         except Exception as e:
             error_msg = f"Failed to create signature: {e}"
             if self.log_security_events:
-                self._logger.error(error_msg)  # type: ignore[union-attr]
+                self._logger.error(error_msg)  # type: ignore
             raise ValueError(error_msg)
 
     def verify_signature(
@@ -274,7 +274,7 @@ class SecurityConfig:
 
         except Exception as e:
             if self.log_security_events:
-                self._logger.warning(f"Signature verification failed: {e}")  # type: ignore[union-attr]
+                self._logger.warning(f"Signature verification failed: {e}")  # type: ignore
             return False
 
     def _create_fallback_signature(self, message: bytes, algorithm: str) -> bytes:
@@ -313,12 +313,12 @@ class SecurityConfig:
             raise RuntimeError("Cannot rotate keys without Oneiric")
 
         try:
-            result = self._adapter.rotate_all_keys()  # type: ignore[union-attr]
+            result = self._adapter.rotate_all_keys()  # type: ignore
             self._log_security_event("Manual key rotation completed")
             return result  # type: ignore[no-any-return]
         except Exception as e:
             error_msg = f"Failed to rotate keys: {e}"
-            self._logger.error(error_msg)  # type: ignore[union-attr]
+            self._logger.error(error_msg)  # type: ignore
             raise RuntimeError(error_msg)
 
     def get_security_status(self) -> dict[str, Any]:
@@ -377,13 +377,13 @@ class SecurityConfig:
             return 0
 
         try:
-            cleaned_count = self._adapter.cleanup_expired_keys()  # type: ignore[union-attr]
+            cleaned_count = self._adapter.cleanup_expired_keys()  # type: ignore
             self._log_security_event(f"Cleaned up {cleaned_count} expired keys")
             return cleaned_count  # type: ignore[no-any-return]
         except Exception as e:
             error_msg = f"Failed to cleanup expired keys: {e}"
             if self._logger:
-                self._logger.error(error_msg)  # type: ignore[union-attr]
+                self._logger.error(error_msg)
             return 0
 
     def create_backup_key(self) -> str:
@@ -403,13 +403,13 @@ class SecurityConfig:
             raise RuntimeError("Cannot create backup keys without Oneiric")
 
         try:
-            key_id = self._adapter.create_backup_key()  # type: ignore[union-attr]
+            key_id = self._adapter.create_backup_key()  # type: ignore
             self._log_security_event(f"Created backup key: {key_id}")
             return key_id  # type: ignore[no-any-return]
         except Exception as e:
             error_msg = f"Failed to create backup key: {e}"
             if self._logger:
-                self._logger.error(error_msg)  # type: ignore[union-attr]
+                self._logger.error(error_msg)
             raise RuntimeError(error_msg)
 
     def _log_security_event(self, message: str) -> None:

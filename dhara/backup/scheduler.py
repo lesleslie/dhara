@@ -68,7 +68,7 @@ class BackupJob:
         elif self.schedule_spec == "weekly":
             schedule.every().week.do(self.run)  # type: ignore[arg-type]
         elif self.schedule_spec == "monthly":
-            schedule.every().month.do(self.run)  # type: ignore[attr-defined]
+            schedule.every().month.do(self.run)  # type: ignore
         else:
             logger.error(f"Invalid schedule spec: {self.schedule_spec}")
 
@@ -305,7 +305,7 @@ class BackupScheduler:
                         else:
                             logger.info(f"Verification passed: {check_name}")
 
-                    self.last_verification = now  # type: ignore
+                    self.last_verification = now
 
                 # Wait before next check
                 await asyncio.sleep(self.verify_interval)

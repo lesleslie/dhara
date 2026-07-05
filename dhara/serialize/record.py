@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import importlib
 from contextlib import suppress
-from typing import Any, Final
+from typing import Any, Final, cast
 
 from dhara.serialize.msgspec import MsgspecSerializer
 from dhara.utils import int4_to_str, join_bytes, str_to_int4
@@ -257,7 +257,12 @@ class ObjectReader:
         # object.__new__) leaves those slots unset, which causes
         # AttributeError on the first __getattribute__ access — see
         # ``persistent_load`` below for the same rationale.
-        instance = klass.__new__(klass)  # type: ignore[misc,call-arg]
+        # Invoke the metaclass ``__new__`` directly so the class's own
+        # ``__new__`` (which initializes the four persistent slots) runs.
+        # Going through ``object.__new__`` leaves the slots unset, which
+        # would cause AttributeError on the first __getattribute__ access —
+        # see ``persistent_load`` below for the same rationale.
+        instance = cast(Any, klass.__new__)(klass)
         instance._p_set_status_ghost()
         return instance
 

@@ -78,7 +78,7 @@ class ClientStorage(Storage):
         self.tls_enabled = tls_enabled and tls_config is not None
 
         # Connect to server
-        self.s = self.address.get_connected_socket()  # type: ignore[attr-defined]
+        self.s = self.address.get_connected_socket()
         if not self.s:
             raise ConnectionError(f"Could not connect to {self.address}")
 
@@ -156,6 +156,7 @@ class ClientStorage(Storage):
         if n != 0:
             packed_oids = read(self.s, n * 8)
             oid_list = split_oids(packed_oids)
+            assert handle_invalidations is not None
             try:
                 handle_invalidations(oid_list)
             except ConflictError:
@@ -186,7 +187,7 @@ class ClientStorage(Storage):
         write(self.s, "S")
         n = read_int4(self.s)
         if n == 0:
-            packed_oids = ""
+            packed_oids = b""
         else:
             packed_oids = read(self.s, n * 8)
         return split_oids(packed_oids)
@@ -206,5 +207,7 @@ class ClientStorage(Storage):
         yield from records
 
     def close(self):
+        if self.s is None:
+            return
         write(self.s, ".")  # Closes the server side.
         self.s.close()

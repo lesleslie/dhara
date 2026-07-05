@@ -16,7 +16,7 @@ import struct
 from collections.abc import AsyncIterator
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import aiosqlite
 
@@ -25,6 +25,9 @@ from dhara.logger import is_logging, log
 from dhara.serialize.record import pack_record, split_oids, unpack_record
 from dhara.storage.base import Storage
 from dhara.utils import as_bytes, int8_to_str, iteritems, str_to_int8
+
+if TYPE_CHECKING:
+    from oneiric.core.config import Oneiric  # type: ignore
 
 _DB_SCHEMA = """\
 BEGIN TRANSACTION;
@@ -179,12 +182,17 @@ class SqliteStorage(Storage):
         for oid, data, refs in c.fetchall():
             yield int8_to_str(oid), pack_record(oid, data, refs)
 
-    def gen_oid_record(self, start_oid=None, **other):
+    def gen_oid_record(
+        self,
+        start_oid: str | None = None,
+        batch_size: int = 100,
+        **kwargs: Any,
+    ):
         if start_oid is None:
             yield from iteritems(self._gen_records())
         else:
-            todo = [start_oid]
-            seen = set()  # This eventually contains them all.
+            todo: list[str] = [start_oid]
+            seen: set[str] = kwargs.get("seen") or set()
             while todo:
                 oid = todo.pop()
                 if oid in seen:
@@ -193,7 +201,12 @@ class SqliteStorage(Storage):
                 record = self.load(oid)
                 record_oid, data, refdata = unpack_record(record)
                 assert oid == record_oid
-                todo.extend(split_oids(refdata))
+                todo.extend(
+                    [
+                        r.decode("latin1") if isinstance(r, bytes) else r
+                        for r in split_oids(refdata)
+                    ]
+                )
                 yield oid, record
 
     def new_oid(self):
@@ -329,7 +342,7 @@ class AsyncSqliteStorage:
                 try:
                     from oneiric import Oneiric  # type: ignore
                 except ImportError:
-                    Oneiric = None  # type: ignore
+                    Oneiric = None
 
             # macOS-friendly default: ~/.local/share/dhara/async.db (resolved
             # at runtime). The previous default `/dev/shm/dhara.db` is

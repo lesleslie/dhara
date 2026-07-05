@@ -210,7 +210,6 @@ def setup_logging(
         LoggingConfig(
             level=level_upper,
             emit_json=emit_json,
-            traceback_style=traceback_style,
             sinks=[LoggingSinkConfig(target=target)],
         )
     )

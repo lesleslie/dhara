@@ -16,7 +16,7 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from dhara.backup.catalog import AsyncBackupCatalog, BackupCatalog
 from dhara.backup.manager import BackupManager, BackupType
@@ -442,21 +442,23 @@ def cmd_verify(args):
         # Verify each backup
         all_passed = True
         for backup in backups_to_verify:
+            if backup is None:
+                continue
             logger.info(f"Verifying backup: {backup.backup_id}")
 
             results = verification.run_all_checks(backup)
 
-            for check_name, result in results.items():
+            for check_name, result in cast(dict[str, Any], results).items():
                 status_icon = (
                     "✓"
-                    if result.status == "passed"
+                    if result.get("status") == "passed"
                     else "✗"
-                    if result.status == "failed"
+                    if result.get("status") == "failed"
                     else "⚠"
                 )
-                print(f"{status_icon} {check_name}: {result.message}")
+                print(f"{status_icon} {check_name}: {result.get('message')}")
 
-                if result.status == "failed":
+                if result.get("status") == "failed":
                     all_passed = False
 
         # Generate report if requested

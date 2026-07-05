@@ -13,13 +13,16 @@ Supported config keys:
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import asyncpg
 
 from dhara.serialize.record import pack_record, unpack_record
 from dhara.storage.base import OID
 from dhara.utils import int8_to_str, str_to_int8
+
+if TYPE_CHECKING:
+    from oneiric.core.config import Oneiric  # type: ignore
 
 # Schema for PostgreSQL storage
 _PG_SCHEMA = """
@@ -53,31 +56,48 @@ class AsyncPostgresStorage:
 
     def __init__(
         self,
-        url: str | None = None,
+        url: str | "PostgresStorageSettings" | None = None,
         min_size: int | None = None,
         max_size: int | None = None,
     ) -> None:
+        # Legacy test API: ``AsyncPostgresStorage(settings)`` — unpack the
+        # settings object so the production path stays the single source
+        # of truth for connection pooling.
+        if isinstance(url, PostgresStorageSettings):
+            s = url
+            url, min_size, max_size = s.url, s.min_size, s.max_size
+
         # Load config from Oneiric if params not provided
         if url is None or min_size is None or max_size is None:
             try:
-                from oneiric import Oneiric
+                from oneiric.core.config import Oneiric  # type: ignore
 
                 config = Oneiric.get_config("dhara.storage.postgres")
                 url = url or config.get("url", "postgresql://localhost/dhara")
                 min_size = min_size or config.get("min_size", 2)
                 max_size = max_size or config.get("max_size", 10)
-            except Exception:
-                # Fallback defaults if Oneiric unavailable
-                url = url or "postgresql://localhost/dhara"
-                min_size = min_size or 2
-                max_size = max_size or 10
+            except ImportError:
+                # Fallback: try the legacy top-level symbol, then defaults.
+                try:
+                    from oneiric import Oneiric  # type: ignore
+
+                    config = Oneiric.get_config("dhara.storage.postgres")
+                    url = url or config.get("url", "postgresql://localhost/dhara")
+                    min_size = min_size or config.get("min_size", 2)
+                    max_size = max_size or config.get("max_size", 10)
+                except Exception:
+                    url = url or "postgresql://localhost/dhara"
+                    min_size = min_size or 2
+                    max_size = max_size or 10
 
         self._url = url
         self._min_size = min_size
         self._max_size = max_size
         self._pool: asyncpg.Pool | None = None
         self._conn: asyncpg.Connection | None = None
-        self._tx: asyncpg.Transaction | None = None
+        # asyncpg.Transaction is intentionally not re-exported; type as Any
+        # to escape the missing top-level symbol.
+        self._tx: Any | None = None
         self._in_transaction: bool = False
         self._pending_records: list[tuple[OID, bytes]] = []
         self._pack_extra: list[OID] | None = None
@@ -153,10 +173,11 @@ class AsyncPostgresStorage:
         """End the transaction, committing or rolling back."""
         if not self._in_transaction:
             raise RuntimeError("end() called without begin()")
+        assert self._tx is not None
         try:
-            await self._tx.commit()  # type: ignore[union-attr]
+            await self._tx.commit()
         except Exception:
-            await self._tx.rollback()  # type: ignore[union-attr]
+            await self._tx.rollback()
             raise
         finally:
             if self._conn and self._pool:
@@ -281,15 +302,21 @@ class PostgresStorageSettings:
     """Legacy settings object for ``PostgresStorageAdapter``.
 
     Mirrors the keyword arguments accepted by ``AsyncPostgresStorage.__init__``.
+    The original sync-era test API used ``pg_url`` as the keyword; we keep
+    that name (and ``url`` as an alias) so the existing test suite continues
+    to import and construct this object.
     """
 
     def __init__(
         self,
-        url: str = "postgresql://localhost/dhara",
+        pg_url: str | None = None,
+        url: str | None = None,
         min_size: int = 2,
         max_size: int = 10,
     ) -> None:
-        self.url = url
+        # Accept either ``pg_url`` (legacy/test API) or ``url`` (production
+        # alias). ``pg_url`` wins when both are provided.
+        self.url = pg_url if pg_url is not None else url
         self.min_size = min_size
         self.max_size = max_size
 
@@ -297,4 +324,9 @@ class PostgresStorageSettings:
 # Adapter alias: existing tests treat it as a synchronous wrapper. The
 # async interface is the production path; this name is kept so import-only
 # references and basic construction work without code changes elsewhere.
+#
+# ``AsyncPostgresStorage.__init__`` detects the legacy
+# ``PostgresStorageSettings`` first positional and unpacks it, so
+# ``PostgresStorageAdapter(settings)`` works unchanged at the call site
+# while the production path stays the single source of truth.
 PostgresStorageAdapter = AsyncPostgresStorage

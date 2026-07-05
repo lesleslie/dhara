@@ -23,7 +23,8 @@ from dhara.storage.memory import AsyncMemoryStorage
 try:
     from dhara.storage.sqlite import AsyncSqliteStorage, SqliteStorage
 except ImportError:
-    AsyncSqliteStorage = SqliteStorage = None  # type: ignore[misc,assignment]
+    AsyncSqliteStorage: type | None = None  # type: ignore[no-redef]
+    SqliteStorage: type | None = None  # type: ignore[no-redef]
 
 __all__ = [
     "Storage",

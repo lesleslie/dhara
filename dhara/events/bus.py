@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections import defaultdict
+from contextlib import suppress
 from typing import Any, Protocol
 
 from dhara.events.events import DomainEvent
@@ -53,11 +54,9 @@ class EventBus:
     ) -> None:
         """Remove ``subscriber`` from the routing list for ``event_type``."""
         bucket = self._subscribers.get(event_type, [])
-        try:
-            bucket.remove(subscriber)
-        except ValueError:
+        with suppress(ValueError):
             # Idempotent: silent if the subscriber wasn't registered.
-            pass
+            bucket.remove(subscriber)
 
     async def publish(self, event: DomainEvent) -> None:
         """Fan out ``event`` to every subscriber registered for its type.

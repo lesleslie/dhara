@@ -353,7 +353,7 @@ def get_storage_class(file):
             "databases."
         )
     elif d.startswith(b"SQLite format "):
-        from dhara.sqlite_storage import SqliteStorage
+        from dhara.storage.sqlite import SqliteStorage  # type: ignore[no-redef]
 
         return SqliteStorage
     elif d.startswith(b"SHELF-1"):

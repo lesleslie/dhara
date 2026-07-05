@@ -83,10 +83,13 @@ class Storage:
             yield self.load(oid)
 
     def gen_oid_record(
-        self, start_oid: OID | None = None, batch_size: int = 100
-    ) -> Iterator[tuple[bytes, bytes]]:
+        self,
+        start_oid: OID | None = None,
+        batch_size: int = 100,
+        **kwargs: Any,
+    ) -> Iterator[tuple[OID, bytes]]:
         """(start_oid:str = None, batch_size:int = 100) ->
-            sequence((oid:bytes, record:bytes))
+            sequence((oid:str, record:bytes))
         Returns a generator for the sequence of (oid, record) pairs.
 
         If a start_oid is given, the resulting sequence follows a
@@ -97,11 +100,15 @@ class Storage:
 
         If no start_oid is given, the sequence may include oids and records
         that are not reachable from the root.
+
+        Concrete storages may accept additional keyword arguments (e.g.
+        ``seen`` for visited-set reuse) via ``**kwargs``; the default
+        implementation ignores them.
         """
         if start_oid is None:
             start_oid = connection.ROOT_OID
         todo = [start_oid]
-        seen = set[OID]()
+        seen: set[OID] = set()
         while todo:
             batch: list[OID] = []
             while todo and len(batch) < batch_size:
@@ -110,17 +117,23 @@ class Storage:
                     batch.append(oid)
                     seen.add(oid)
             for record in self.bulk_load(batch):
-                oid, data, refdata = unpack_record(record)
-                yield oid, record
+                oid_bytes, data, refdata = unpack_record(record)
+                # Decode to OID (str) to match what concrete storages yield.
+                oid_str = (
+                    oid_bytes.decode("latin1")
+                    if isinstance(oid_bytes, bytes)
+                    else oid_bytes
+                )
+                yield oid_str, record
                 for ref in split_oids(refdata):
                     if ref not in seen:
-                        heapq.heappush(todo, ref)
+                        heapq.heappush(todo, ref.decode("latin1"))
 
 
 def gen_referring_oid_record(
     storage: Storage, referred_oid: OID
-) -> Iterator[tuple[bytes, bytes]]:
-    """(storage:Storage, referred_oid:str) -> sequence([oid:bytes, record:bytes])
+) -> Iterator[tuple[OID, bytes]]:
+    """(storage:Storage, referred_oid:str) -> sequence([oid:str, record:bytes])
     Generate oid, record pairs for all objects that include a
     reference to the `referred_oid`.
 
@@ -135,9 +148,9 @@ def gen_referring_oid_record(
             yield oid, record
 
 
-def gen_oid_class(storage: Storage, *classes: str) -> Iterator[tuple[bytes, str]]:
+def gen_oid_class(storage: Storage, *classes: str) -> Iterator[tuple[OID, str]]:
     """(storage:Storage, classes:(str)) ->
-        sequence([(oid:bytes, class_name:str)])
+        sequence([(oid:str, class_name:str)])
     Generate a sequence of oid, class_name pairs.
     If classes are provided, only output pairs for which the
     class_name is in `classes`.
@@ -156,15 +169,20 @@ def get_census(storage: Storage) -> dict[str, int]:
     return result
 
 
-def get_reference_index(storage: Storage) -> dict[bytes, list[bytes]]:
-    """(storage:Storage) -> {oid:bytes : [referring_oid:bytes]}
+def get_reference_index(storage: Storage) -> dict[OID, list[OID]]:
+    """(storage:Storage) -> {oid:str : [referring_oid:str]}
     Return a full index giving the referring oids for each oid.
     This might be large.
     """
-    result: dict[bytes, list[bytes]] = {}
+    result: dict[OID, list[OID]] = {}
     for oid, record in storage.gen_oid_record():
-        for ref in split_oids(unpack_record(record)[2]):
-            result.setdefault(ref, []).append(oid)
+        for ref_bytes in split_oids(unpack_record(record)[2]):
+            ref_str = (
+                ref_bytes.decode("latin1")
+                if isinstance(ref_bytes, bytes)
+                else ref_bytes
+            )
+            result.setdefault(ref_str, []).append(oid)
     return result
 
 

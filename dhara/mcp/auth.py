@@ -75,19 +75,19 @@ def _permission_write_permissions(cls) -> set[Permission]:
 
 # Backward-compatible helpers expected by legacy tests and middleware.
 if not hasattr(Permission, "all_permissions"):
-    Permission.all_permissions = classmethod(_permission_all_permissions)  # type: ignore[attr-defined]
+    Permission.all_permissions = classmethod(_permission_all_permissions)  # type: ignore
 if not hasattr(Permission, "read_permissions"):
-    Permission.read_permissions = classmethod(_permission_read_permissions)  # type: ignore[attr-defined]
+    Permission.read_permissions = classmethod(_permission_read_permissions)  # type: ignore
 if not hasattr(Permission, "write_permissions"):
-    Permission.write_permissions = classmethod(_permission_write_permissions)  # type: ignore[attr-defined]
+    Permission.write_permissions = classmethod(_permission_write_permissions)  # type: ignore
 
 # Legacy permission names that map onto the current permission set.
 if not hasattr(Permission, "LIST"):
-    Permission.LIST = Permission.READ  # type: ignore[attr-defined]
+    Permission.LIST = Permission.READ  # type: ignore
 if not hasattr(Permission, "CHECKPOINT"):
-    Permission.CHECKPOINT = Permission.ADMIN  # type: ignore[attr-defined]
+    Permission.CHECKPOINT = Permission.ADMIN  # type: ignore
 if not hasattr(Permission, "RESTORE"):
-    Permission.RESTORE = Permission.ADMIN  # type: ignore[attr-defined]
+    Permission.RESTORE = Permission.ADMIN  # type: ignore
 
 
 def require_dhara_auth(
@@ -121,7 +121,7 @@ def require_dhara_auth(
                     service="dhara",
                     caller_service=payload.issuer,
                     caller_id=payload.subject,
-                    action=func.__name__,
+                    action=wrapper.__name__,
                     permission=perm,
                     result="allowed",
                     reason=None,
@@ -270,7 +270,7 @@ class TokenAuth:
         try:
             with open(filepath) as f:
                 content = f.read().strip()
-                data = json.loads(content) if content else {}  # type: ignore
+                data = json.loads(content) if content else {}
 
             for token_id, token_data in data.get("tokens", {}).items():
                 self.tokens[token_id] = TokenInfo(
@@ -683,7 +683,7 @@ class AuthMiddleware:
         }
 
         if context:
-            log_data["client_id"] = context.client_id  # type: ignore
+            log_data["client_id"] = context.client_id or ""
 
         if extra:
             log_data.update(extra)

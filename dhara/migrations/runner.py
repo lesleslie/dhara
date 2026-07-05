@@ -35,7 +35,7 @@ class SupportsMigrations(Protocol):
 def _maybe_await(value: Any) -> Awaitable[Any]:
     """Return ``value`` if it's awaitable, else wrap it as a completed coroutine."""
     if hasattr(value, "__await__"):
-        return value  # type: ignore[return-value]
+        return value  # type: ignore[no-any-return]
     return _CompletedAwaitable(value)
 
 
@@ -99,11 +99,13 @@ async def _ensure_bookkeeping_table(conn: Any) -> None:
 
 
 async def _fetch_applied_versions(conn: Any) -> set[str]:
-    result = conn.execute(
-        "SELECT version FROM dhara_migrations ORDER BY version"
-    )
+    result = conn.execute("SELECT version FROM dhara_migrations ORDER BY version")
     result = await _maybe_await(result)
-    rows = await _maybe_await(result.fetchall()) if hasattr(result, "fetchall") else result.fetchall()
+    rows = (
+        await _maybe_await(result.fetchall())
+        if hasattr(result, "fetchall")
+        else result.fetchall()
+    )
     return {row[0] for row in rows}
 
 
@@ -156,9 +158,7 @@ async def run_migrations(
             # Execute the migration DDL.
             await _wait(_execute_raw(connection, sql_body))
         except Exception as exc:
-            raise MigrationError(
-                f"Migration {version} failed: {exc}"
-            ) from exc
+            raise MigrationError(f"Migration {version} failed: {exc}") from exc
         # Record the version only after the DDL succeeded.
         await _wait(
             _execute_raw(

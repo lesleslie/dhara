@@ -13,10 +13,19 @@ import time
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
+# Declare as Any because the ``oneiric.secrets`` module is optional and its
+# attribute surface (``get``, ``set``, ``list``, ``token_bytes``,
+# ``SecretNotFoundError``) isn't visible to static checkers when the
+# dependency is not installed. Marking it ``Any`` lets callers use any
+# attribute without per-call suppression comments; runtime guards below
+# ensure we only call into it when the import succeeded.
+oneiric_secrets: Any
 try:
-    from oneiric import secrets as oneiric_secrets
+    from oneiric import secrets as _oneiric_secrets  # type: ignore
 
+    oneiric_secrets = _oneiric_secrets
     ONEIRIC_AVAILABLE = True
     # Use oneiric_secrets module for secrets operations
 except ImportError:
