@@ -523,8 +523,12 @@ class AzureBlobStorageAdapter(_DelegatingStorageAdapter):
             download_blob = await cast(Any, download_blob)
         readall = download_blob.readall()
         if hasattr(readall, "__await__"):
-            return (await readall).readall()  # type: ignore
-        return readall.readall()  # type: ignore
+            readall = await readall  # type: ignore[func-returns-value]
+        # ``readall`` may be raw bytes (newer azure-storage-blob sync
+        # path) or a stream object exposing ``.readall()`` (older paths).
+        if isinstance(readall, (bytes, bytearray)):
+            return bytes(readall)
+        return readall.readall()  # type: ignore[union-attr]  #
 
     def upload_file(self, local_path: str, remote_path: str) -> bool:
         try:
@@ -685,7 +689,14 @@ class StorageAdapterFactory:
                 f"Unsupported storage provider: {provider!r}. Choose from: {sorted(_PROVIDERS)}"
             )
         adapter_name, settings_cls = _PROVIDERS[key]
-        adapter_cls = _ADAPTER_CLASSES[adapter_name]
+        # Look up the adapter class through the module attribute so that
+        # tests can ``patch("dhara.backup.storage.AzureBlobStorage")``
+        # and have the factory pick up the mock. (``_ADAPTER_CLASSES``
+        # captures the class object at import time, which makes that
+        # patch style ineffective.)
+        adapter_cls = globals().get(adapter_name) or _ADAPTER_CLASSES.get(adapter_name)
+        if adapter_cls is None:
+            raise RuntimeError(f"No adapter class found for {adapter_name!r}")
         if adapter_name == "LocalStorageAdapter":
             settings = settings_cls(**kwargs)
             return adapter_cls(settings)

@@ -191,8 +191,13 @@ class SqliteStorage(Storage):
         if start_oid is None:
             yield from iteritems(self._gen_records())
         else:
-            todo: list[str] = [start_oid]
-            seen: set[str] = kwargs.get("seen") or set()
+            # Normalize to bytes — SQLite stores oid as int8 (8-byte
+            # big-endian); ``str_to_int8`` and ``self.load`` both
+            # require bytes. Yield is also bytes (preserved contract).
+            if isinstance(start_oid, str):
+                start_oid = start_oid.encode("latin1")
+            todo: list[bytes] = [start_oid]
+            seen: set[bytes] = kwargs.get("seen") or set()
             while todo:
                 oid = todo.pop()
                 if oid in seen:
@@ -201,12 +206,7 @@ class SqliteStorage(Storage):
                 record = self.load(oid)
                 record_oid, data, refdata = unpack_record(record)
                 assert oid == record_oid
-                todo.extend(
-                    [
-                        r.decode("latin1") if isinstance(r, bytes) else r
-                        for r in split_oids(refdata)
-                    ]
-                )
+                todo.extend(split_oids(refdata))
                 yield oid, record
 
     def new_oid(self):

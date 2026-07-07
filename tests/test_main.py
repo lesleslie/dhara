@@ -169,7 +169,13 @@ class TestGetStorageClass:
         mock_file = BytesIO(b"SQLite format 3\x00extra")
         with patch("dhara.__main__.os.path.exists", return_value=True):
             with patch("builtins.open", return_value=mock_file):
-                with patch.dict(sys.modules, {"dhara.sqlite_storage": mock_sqlite_module}):
+                # ``dhara.__main__.get_storage_class`` imports from the
+                # canonical path ``dhara.storage.sqlite`` (the legacy
+                # ``dhara.sqlite_storage`` module was removed in the
+                # 0.12.0 cross-checker cleanup).
+                with patch.dict(
+                    sys.modules, {"dhara.storage.sqlite": mock_sqlite_module}
+                ):
                     result = get_storage_class("test.sqlite")
 
         assert result is mock_sqlite_storage

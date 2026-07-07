@@ -269,6 +269,7 @@ def test_cmd_backup_verbose_and_key_file_failure(tmp_path):
     source = tmp_path / "source.dhara"
     source.write_text("data")
     key_file = tmp_path / "key.bin"
+    key_file.write_bytes(b"enc-key")
 
     backup_manager = MagicMock()
     backup_manager.perform_full_backup.side_effect = RuntimeError("boom")

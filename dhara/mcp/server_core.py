@@ -946,11 +946,30 @@ class DharaMCPServer:
                     connection = Connection(storage)
                     root = connection.get_root()
                     backups = root.get("backups", {})
+                    # Unwrap PersistentDict's ``__state__`` envelope when
+                    # the on-disk format is the legacy pickle-style state
+                    # representation rather than a hydrated mapping.
+                    if (
+                        isinstance(backups, dict)
+                        and "__state__" in backups
+                        and isinstance(backups["__state__"], dict)
+                        and "data" in backups["__state__"]
+                    ):
+                        backups = backups["__state__"]["data"]
                     total_backups = len(list(backups.keys()))
                     latest_payload = None
                     latest_timestamp = None
                     for payload in backups.values():
                         data = dict(payload)
+                        # Each stored entry is itself a PersistentDict that
+                        # round-trips through the ``__state__`` envelope.
+                        if (
+                            isinstance(data, dict)
+                            and "__state__" in data
+                            and isinstance(data["__state__"], dict)
+                            and "data" in data["__state__"]
+                        ):
+                            data = data["__state__"]["data"]
                         timestamp = data.get("timestamp")
                         if isinstance(timestamp, str) and (
                             latest_timestamp is None or timestamp > latest_timestamp

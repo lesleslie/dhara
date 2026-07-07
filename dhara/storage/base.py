@@ -107,7 +107,10 @@ class Storage:
         """
         if start_oid is None:
             start_oid = connection.ROOT_OID
-        todo = [start_oid]
+        # Normalize start_oid to bytes — storages key records by OID bytes.
+        if isinstance(start_oid, str):
+            start_oid = start_oid.encode("latin1")
+        todo: list[OID] = [start_oid]
         seen: set[OID] = set()
         while todo:
             batch: list[OID] = []
@@ -118,7 +121,8 @@ class Storage:
                     seen.add(oid)
             for record in self.bulk_load(batch):
                 oid_bytes, data, refdata = unpack_record(record)
-                # Decode to OID (str) to match what concrete storages yield.
+                # The contract is to yield decoded str OIDs while keeping
+                # the internal traversal in bytes (records are bytes-keyed).
                 oid_str = (
                     oid_bytes.decode("latin1")
                     if isinstance(oid_bytes, bytes)
@@ -127,7 +131,7 @@ class Storage:
                 yield oid_str, record
                 for ref in split_oids(refdata):
                     if ref not in seen:
-                        heapq.heappush(todo, ref.decode("latin1"))
+                        heapq.heappush(todo, ref)
 
 
 def gen_referring_oid_record(

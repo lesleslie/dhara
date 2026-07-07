@@ -1,40 +1,30 @@
-"""Regression test for Plan 7 Phase 2: explicit ``transport=`` kwarg.
+"""Regression test: ``DharaMCPServer.run`` signature.
 
-FastMCP 3.x made ``transport=`` a required kwarg for ``server.run()``
-(in 2.x it was optional / positional-friendly). The breaking-change table
-in the plan flags ``dhara/mcp/__main__.py:16`` as the lone remaining
-implicit call site.
-
-This test inspects the source of ``dhara.mcp.__main__`` and asserts the
-``server.run(...)`` call passes the transport kwarg explicitly so that
-the runtime intent is unambiguous on FastMCP 3.x.
+The cross-checker cleanup in 0.12.0 removed the legacy ``transport=``
+keyword from ``DharaMCPServer.run`` (the FastMCP HTTP transport was
+migrated to ``run_http_async``; ``run()`` now defaults to the stdio
+transport). These tests guard the current shape of the symbol so a
+future regression that re-introduces the keyword is detected early.
 """
 
 from __future__ import annotations
 
 import inspect
-import re
-from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
-MAIN_PY = REPO_ROOT / "dhara" / "mcp" / "__main__.py"
+from dhara.mcp.server_core import DharaMCPServer
 
 
-def _read_source() -> str:
-    return MAIN_PY.read_text(encoding="utf-8")
+def test_run_signature_omits_transport_kwarg() -> None:
+    """``DharaMCPServer.run`` should no longer accept a ``transport=`` kwarg.
 
-
-def test_main_module_uses_transport_kwarg() -> None:
-    """``dhara/mcp/__main__.py`` must call ``server.run(transport=...)`` explicitly."""
-    source = _read_source()
-    # Match server.run(...) — transport= may be inside the parens.
-    run_calls = re.findall(r"server\.run\([^)]*\)", source)
-    assert run_calls, "expected at least one server.run(...) call in __main__.py"
-    for call in run_calls:
-        assert "transport=" in call, (
-            f"server.run() call {call!r} in dhara/mcp/__main__.py is missing "
-            f"the explicit transport= kwarg required by FastMCP 3.x."
-        )
+    The HTTP transport moved to ``run_http_async``; ``run()`` is now
+    stdio-only.
+    """
+    sig = inspect.signature(DharaMCPServer.run)
+    assert "transport" not in sig.parameters, (
+        "DharaMCPServer.run should not accept transport=; the FastMCP HTTP "
+        f"transport was migrated to run_http_async. Got parameters: {list(sig.parameters)!r}"
+    )
 
 
 def test_main_function_signature_still_simple() -> None:

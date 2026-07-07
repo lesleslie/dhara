@@ -57,7 +57,10 @@ class BackupMetadata:
         self.backup_id = backup_id
         self.backup_type = backup_type
         self.timestamp = timestamp
-        self.source_path = source_path
+        # ``source_path`` is annotated ``str`` but a few call sites pass
+        # ``pathlib.Path`` instances; normalize so downstream string
+        # operations (``.endswith(...)``, ``os.path.*``) work.
+        self.source_path = str(source_path)
         self.size_bytes = size_bytes
         self.checksum = checksum
         self.compression_ratio = compression_ratio

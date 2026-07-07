@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from dhara.collections.btree import BTree
+from dhara.collections.btree import BTree, MISSING
 
 
 class TestBtreeAsyncWrapper:
@@ -35,7 +35,9 @@ class TestBtreeAsyncWrapper:
         tree._set_impl("key", "value")
         result = await tree.delete_async("key")
         assert result is True
-        assert tree._get_impl("key") is None
+        # _get_impl returns a MISSING sentinel for absent keys (so callers
+        # can disambiguate from ``None`` values).
+        assert tree._get_impl("key") is MISSING
 
     @pytest.mark.asyncio
     async def test_delete_async_missing(self):

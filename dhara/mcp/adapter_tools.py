@@ -72,10 +72,14 @@ class Adapter(Persistent):
         self.provider = provider
         self.version = version
         self.factory_path = factory_path or f"{domain}.{key}.{provider}"
-        self.config = config
+        # ``config`` and ``metadata`` are intentionally stored as empty
+        # dicts (not ``None``) by default so callers can use
+        # ``adapter.config.copy()`` etc. without a null-check at every
+        # call site.
+        self.config = config if config is not None else {}
         self.dependencies = dependencies or []
         self.capabilities = capabilities or []
-        self.metadata = metadata
+        self.metadata = metadata if metadata is not None else {}
         self.env = env
 
         # Version history for rollback support

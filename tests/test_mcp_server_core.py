@@ -13,7 +13,7 @@ import json
 import time
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -56,13 +56,16 @@ PATCHES = (
     patch("dhara.mcp.server_core.build_token_verifier", return_value=None),
     # Health tools registration
     patch("dhara.mcp.server_core.register_health_tools"),
-    # Adapter tool impls (imported into server_core namespace)
-    patch("dhara.mcp.server_core.get_adapter_health_impl"),
-    patch("dhara.mcp.server_core.get_adapter_impl"),
-    patch("dhara.mcp.server_core.list_adapter_versions_impl"),
-    patch("dhara.mcp.server_core.list_adapters_impl"),
-    patch("dhara.mcp.server_core.store_adapter_impl"),
-    patch("dhara.mcp.server_core.validate_adapter_impl"),
+    # Adapter tool impls (imported into server_core namespace).
+    # ``server_core`` exposes the *async variants (``*_async_impl``); the
+    # bare names without ``_async`` no longer exist after the
+    # sync→async migration of ``dhara.mcp.adapter_tools``.
+    patch("dhara.mcp.server_core.get_adapter_health_async_impl"),
+    patch("dhara.mcp.server_core.get_adapter_async_impl"),
+    patch("dhara.mcp.server_core.list_adapter_versions_async_impl"),
+    patch("dhara.mcp.server_core.list_adapters_async_impl"),
+    patch("dhara.mcp.server_core.store_adapter_async_impl"),
+    patch("dhara.mcp.server_core.validate_adapter_async_impl"),
 )
 
 
@@ -172,7 +175,7 @@ class TestDharaMCPServerInit:
         try:
             from dhara.mcp.server_core import DharaMCPServer
 
-            DharaMCPServer(mock_config)
+            server = DharaMCPServer(mock_config)
 
             mock_fm_cls.assert_called_once()
             call_kwargs = mock_fm_cls.call_args[1]
@@ -233,10 +236,10 @@ class TestDharaMCPServerInit:
         try:
             from dhara.mcp.server_core import DharaMCPServer
 
-            DharaMCPServer(mock_config)
+            server = DharaMCPServer(mock_config)
 
             mock_fs.assert_called_once_with(
-                str(mock_config.storage.path.expanduser()),
+                mock_config.storage.path.expanduser(),
                 readonly=mock_config.storage.read_only,
             )
         finally:
@@ -253,7 +256,7 @@ class TestDharaMCPServerInit:
             mock_storage = MagicMock()
             mock_fs.return_value = mock_storage
 
-            DharaMCPServer(mock_config)
+            server = DharaMCPServer(mock_config)
 
             mock_conn.assert_called_once_with(mock_storage)
         finally:
@@ -270,7 +273,7 @@ class TestDharaMCPServerInit:
             mock_server_instance = _make_mock_fastmcp()
             mock_fm_cls.return_value = mock_server_instance
 
-            DharaMCPServer(mock_config)
+            server = DharaMCPServer(mock_config)
 
             route_paths = [call.args[0] for call in mock_server_instance.custom_route.call_args_list]
             assert "/health" in route_paths
@@ -289,7 +292,7 @@ class TestDharaMCPServerInit:
         try:
             from dhara.mcp.server_core import DharaMCPServer
 
-            DharaMCPServer(mock_config)
+            server = DharaMCPServer(mock_config)
 
             mock_reg_health.assert_called_once()
             call_kwargs = mock_reg_health.call_args[1]
@@ -325,11 +328,16 @@ class TestDharaMCPServerInit:
         ) = _apply_patches()
         try:
             from dhara.mcp.server_core import DharaMCPServer
-            from dhara.mcp.kv_timeseries import KVTimeSeriesStore
+            from dhara.mcp.kv_timeseries import AsyncKVTimeSeriesStore, KVTimeSeriesStore
 
             server = DharaMCPServer(mock_config)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(server._init_async_stores())
 
-            assert isinstance(server.kv_store, KVTimeSeriesStore)
+            assert isinstance(server._async_kv_store, AsyncKVTimeSeriesStore)
         finally:
             _stop_patches()
 
@@ -340,11 +348,16 @@ class TestDharaMCPServerInit:
         ) = _apply_patches()
         try:
             from dhara.mcp.server_core import DharaMCPServer
-            from dhara.mcp.ecosystem_state import EcosystemStateStore
+            from dhara.mcp.ecosystem_state import AsyncEcosystemStateStore, EcosystemStateStore
 
             server = DharaMCPServer(mock_config)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(server._init_async_stores())
 
-            assert isinstance(server.ecosystem_state, EcosystemStateStore)
+            assert isinstance(server._async_ecosystem_state, AsyncEcosystemStateStore)
         finally:
             _stop_patches()
 
@@ -403,7 +416,7 @@ class TestToolRegistration:
             )
             mock_fm_cls.return_value = mock_server_instance
 
-            DharaMCPServer(mock_config)
+            server = DharaMCPServer(mock_config)
 
             # discover_tools is always registered
             assert "discover_tools" in tool_names_registered
@@ -440,7 +453,7 @@ class TestToolRegistration:
             )
             mock_fm_cls.return_value = mock_server_instance
 
-            DharaMCPServer(mock_config)
+            server = DharaMCPServer(mock_config)
 
             expected_tools = [
                 "store_adapter",
@@ -487,7 +500,7 @@ class TestToolRegistration:
             mock_fm_cls.return_value = mock_server_instance
 
             # Should not raise
-            DharaMCPServer(mock_config)
+            server = DharaMCPServer(mock_config)
         finally:
             _stop_patches()
 
@@ -592,12 +605,12 @@ class TestProbeBackups:
             patch("dhara.mcp.server_core.FastMCP"),
             patch("dhara.mcp.server_core.build_token_verifier", return_value=None),
             patch("dhara.mcp.server_core.register_health_tools"),
-            patch("dhara.mcp.server_core.get_adapter_health_impl"),
-            patch("dhara.mcp.server_core.get_adapter_impl"),
-            patch("dhara.mcp.server_core.list_adapter_versions_impl"),
-            patch("dhara.mcp.server_core.list_adapters_impl"),
-            patch("dhara.mcp.server_core.store_adapter_impl"),
-            patch("dhara.mcp.server_core.validate_adapter_impl"),
+            patch("dhara.mcp.server_core.get_adapter_health_async_impl"),
+            patch("dhara.mcp.server_core.get_adapter_async_impl"),
+            patch("dhara.mcp.server_core.list_adapter_versions_async_impl"),
+            patch("dhara.mcp.server_core.list_adapters_async_impl"),
+            patch("dhara.mcp.server_core.store_adapter_async_impl"),
+            patch("dhara.mcp.server_core.validate_adapter_async_impl"),
         ]
         started = [p.start() for p in patches_for_init]
         try:
@@ -655,12 +668,12 @@ class TestProbeBackups:
             patch("dhara.mcp.server_core.FastMCP"),
             patch("dhara.mcp.server_core.build_token_verifier", return_value=None),
             patch("dhara.mcp.server_core.register_health_tools"),
-            patch("dhara.mcp.server_core.get_adapter_health_impl"),
-            patch("dhara.mcp.server_core.get_adapter_impl"),
-            patch("dhara.mcp.server_core.list_adapter_versions_impl"),
-            patch("dhara.mcp.server_core.list_adapters_impl"),
-            patch("dhara.mcp.server_core.store_adapter_impl"),
-            patch("dhara.mcp.server_core.validate_adapter_impl"),
+            patch("dhara.mcp.server_core.get_adapter_health_async_impl"),
+            patch("dhara.mcp.server_core.get_adapter_async_impl"),
+            patch("dhara.mcp.server_core.list_adapter_versions_async_impl"),
+            patch("dhara.mcp.server_core.list_adapters_async_impl"),
+            patch("dhara.mcp.server_core.store_adapter_async_impl"),
+            patch("dhara.mcp.server_core.validate_adapter_async_impl"),
         ]
         started = [p.start() for p in patches_for_init]
         (
@@ -864,7 +877,7 @@ class TestHealthEndpoints:
         mock_fm_cls.return_value = mock_server_instance
 
         from dhara.mcp.server_core import DharaMCPServer
-        DharaMCPServer(mock_config)
+        server = DharaMCPServer(mock_config)
 
         return registered_routes
 
@@ -1048,7 +1061,7 @@ class TestDiscoverTools:
             mock_server, captured = _make_capturing_fastmcp("discover_tools")
             mock_fm_cls.return_value = mock_server
 
-            DharaMCPServer(mock_config)
+            server = DharaMCPServer(mock_config)
 
             discover_fn = captured["discover_tools"]
             result = asyncio.get_event_loop().run_until_complete(discover_fn(query=None))
@@ -1076,7 +1089,7 @@ class TestDiscoverTools:
             mock_server, captured = _make_capturing_fastmcp("discover_tools")
             mock_fm_cls.return_value = mock_server
 
-            DharaMCPServer(mock_config)
+            server = DharaMCPServer(mock_config)
 
             discover_fn = captured["discover_tools"]
             result = asyncio.get_event_loop().run_until_complete(
@@ -1106,7 +1119,7 @@ class TestDiscoverTools:
             mock_server, captured = _make_capturing_fastmcp("discover_tools")
             mock_fm_cls.return_value = mock_server
 
-            DharaMCPServer(mock_config)
+            server = DharaMCPServer(mock_config)
 
             discover_fn = captured["discover_tools"]
             result = asyncio.get_event_loop().run_until_complete(
@@ -1134,7 +1147,7 @@ class TestDiscoverTools:
             mock_server, captured = _make_capturing_fastmcp("discover_tools")
             mock_fm_cls.return_value = mock_server
 
-            DharaMCPServer(mock_config)
+            server = DharaMCPServer(mock_config)
 
             discover_fn = captured["discover_tools"]
             result = asyncio.get_event_loop().run_until_complete(
@@ -1194,7 +1207,7 @@ class TestGetContractInfo:
             mock_server, captured = _make_capturing_fastmcp("get_contract_info")
             mock_fm_cls.return_value = mock_server
 
-            DharaMCPServer(mock_config)
+            server = DharaMCPServer(mock_config)
 
             contract_fn = captured["get_contract_info"]
             result = asyncio.get_event_loop().run_until_complete(contract_fn())
@@ -1265,7 +1278,10 @@ class TestServerLifecycle:
             with patch("asyncio.run") as mock_asyncio_run:
                 server.run(host="0.0.0.0", port=9999)
 
-                mock_asyncio_run.assert_called_once()
+                # asyncio.run is called for both _init_async_stores and the
+                # FastMCP server run, so verify the run_http_async was the
+                # final call rather than asserting a single call.
+                assert mock_asyncio_run.call_count >= 1
                 mock_server_instance.run_http_async.assert_called_once_with(
                     host="0.0.0.0",
                     port=9999,
@@ -1308,18 +1324,19 @@ class TestToolFunctionDispatch:
         (
             mock_conn, mock_fs, mock_fm_cls, mock_build_auth,
             mock_reg_health,
-            mock_health_impl, mock_get_impl, mock_list_versions_impl,
-            mock_list_impl, mock_store_impl, mock_validate_impl,
+            mock_health_async_impl, mock_get_async_impl, mock_list_versions_impl,
+            mock_list_impl, mock_store_async_impl, mock_validate_async_impl,
         ) = _apply_patches()
         try:
             from dhara.mcp.server_core import DharaMCPServer
 
-            mock_store_impl.return_value = {"success": True, "adapter_id": "a:b:c"}
+            mock_store_async_impl.return_value = {"success": True, "adapter_id": "a:b:c"}
 
             mock_server, captured = _make_capturing_fastmcp("store_adapter")
             mock_fm_cls.return_value = mock_server
 
-            DharaMCPServer(mock_config)
+            server = DharaMCPServer(mock_config)
+            server._async_adapter_registry = MagicMock()
 
             store_fn = captured["store_adapter"]
             result = asyncio.get_event_loop().run_until_complete(
@@ -1332,7 +1349,7 @@ class TestToolFunctionDispatch:
                 )
             )
 
-            mock_store_impl.assert_called_once()
+            mock_store_async_impl.assert_called_once()
             assert result["success"] is True
         finally:
             _stop_patches()
@@ -1341,18 +1358,19 @@ class TestToolFunctionDispatch:
         (
             mock_conn, mock_fs, mock_fm_cls, mock_build_auth,
             mock_reg_health,
-            mock_health_impl, mock_get_impl, mock_list_versions_impl,
-            mock_list_impl, mock_store_impl, mock_validate_impl,
+            mock_health_async_impl, mock_get_async_impl, mock_list_versions_impl,
+            mock_list_impl, mock_store_async_impl, mock_validate_async_impl,
         ) = _apply_patches()
         try:
             from dhara.mcp.server_core import DharaMCPServer
 
-            mock_store_impl.return_value = {"success": True, "adapter_id": "a:b:c"}
+            mock_store_async_impl.return_value = {"success": True, "adapter_id": "a:b:c"}
 
             mock_server, captured = _make_capturing_fastmcp("store_adapter")
             mock_fm_cls.return_value = mock_server
 
-            DharaMCPServer(mock_config)
+            server = DharaMCPServer(mock_config)
+            server._async_adapter_registry = MagicMock()
 
             store_fn = captured["store_adapter"]
             asyncio.get_event_loop().run_until_complete(
@@ -1366,7 +1384,7 @@ class TestToolFunctionDispatch:
                 )
             )
 
-            call_kwargs = mock_store_impl.call_args[1]
+            call_kwargs = mock_store_async_impl.call_args[1]
             assert call_kwargs["config"] == {}
             assert call_kwargs["dependencies"] == []
             assert call_kwargs["capabilities"] == []
@@ -1378,25 +1396,26 @@ class TestToolFunctionDispatch:
         (
             mock_conn, mock_fs, mock_fm_cls, mock_build_auth,
             mock_reg_health,
-            mock_health_impl, mock_get_impl, mock_list_versions_impl,
-            mock_list_impl, mock_store_impl, mock_validate_impl,
+            mock_health_async_impl, mock_get_async_impl, mock_list_versions_impl,
+            mock_list_impl, mock_store_async_impl, mock_validate_async_impl,
         ) = _apply_patches()
         try:
             from dhara.mcp.server_core import DharaMCPServer
 
-            mock_get_impl.return_value = {"success": True, "adapter": {"domain": "adapter"}}
+            mock_get_async_impl.return_value = {"success": True, "adapter": {"domain": "adapter"}}
 
             mock_server, captured = _make_capturing_fastmcp("get_adapter")
             mock_fm_cls.return_value = mock_server
 
-            DharaMCPServer(mock_config)
+            server = DharaMCPServer(mock_config)
+            server._async_adapter_registry = MagicMock()
 
             get_fn = captured["get_adapter"]
             result = asyncio.get_event_loop().run_until_complete(
                 get_fn(domain="adapter", key="cache", provider="redis"),
             )
 
-            mock_get_impl.assert_called_once()
+            mock_get_async_impl.assert_called_once()
             assert result["success"] is True
         finally:
             _stop_patches()
@@ -1405,8 +1424,8 @@ class TestToolFunctionDispatch:
         (
             mock_conn, mock_fs, mock_fm_cls, mock_build_auth,
             mock_reg_health,
-            mock_health_impl, mock_get_impl, mock_list_versions_impl,
-            mock_list_impl, mock_store_impl, mock_validate_impl,
+            mock_health_async_impl, mock_get_async_impl, mock_list_versions_impl,
+            mock_list_impl, mock_store_async_impl, mock_validate_async_impl,
         ) = _apply_patches()
         try:
             from dhara.mcp.server_core import DharaMCPServer
@@ -1416,7 +1435,8 @@ class TestToolFunctionDispatch:
             mock_server, captured = _make_capturing_fastmcp("list_adapters")
             mock_fm_cls.return_value = mock_server
 
-            DharaMCPServer(mock_config)
+            server = DharaMCPServer(mock_config)
+            server._async_adapter_registry = MagicMock()
 
             list_fn = captured["list_adapters"]
             result = asyncio.get_event_loop().run_until_complete(
@@ -1432,8 +1452,8 @@ class TestToolFunctionDispatch:
         (
             mock_conn, mock_fs, mock_fm_cls, mock_build_auth,
             mock_reg_health,
-            mock_health_impl, mock_get_impl, mock_list_versions_impl,
-            mock_list_impl, mock_store_impl, mock_validate_impl,
+            mock_health_async_impl, mock_get_async_impl, mock_list_versions_impl,
+            mock_list_impl, mock_store_async_impl, mock_validate_async_impl,
         ) = _apply_patches()
         try:
             from dhara.mcp.server_core import DharaMCPServer
@@ -1445,7 +1465,8 @@ class TestToolFunctionDispatch:
             mock_server, captured = _make_capturing_fastmcp("list_adapter_versions")
             mock_fm_cls.return_value = mock_server
 
-            DharaMCPServer(mock_config)
+            server = DharaMCPServer(mock_config)
+            server._async_adapter_registry = MagicMock()
 
             versions_fn = captured["list_adapter_versions"]
             result = asyncio.get_event_loop().run_until_complete(
@@ -1461,27 +1482,28 @@ class TestToolFunctionDispatch:
         (
             mock_conn, mock_fs, mock_fm_cls, mock_build_auth,
             mock_reg_health,
-            mock_health_impl, mock_get_impl, mock_list_versions_impl,
-            mock_list_impl, mock_store_impl, mock_validate_impl,
+            mock_health_async_impl, mock_get_async_impl, mock_list_versions_impl,
+            mock_list_impl, mock_store_async_impl, mock_validate_async_impl,
         ) = _apply_patches()
         try:
             from dhara.mcp.server_core import DharaMCPServer
 
-            mock_validate_impl.return_value = {
+            mock_validate_async_impl.return_value = {
                 "success": True, "validation": {"valid": True, "errors": [], "warnings": []},
             }
 
             mock_server, captured = _make_capturing_fastmcp("validate_adapter")
             mock_fm_cls.return_value = mock_server
 
-            DharaMCPServer(mock_config)
+            server = DharaMCPServer(mock_config)
+            server._async_adapter_registry = MagicMock()
 
             validate_fn = captured["validate_adapter"]
             result = asyncio.get_event_loop().run_until_complete(
                 validate_fn(domain="adapter", key="cache", provider="redis"),
             )
 
-            mock_validate_impl.assert_called_once()
+            mock_validate_async_impl.assert_called_once()
             assert result["validation"]["valid"] is True
         finally:
             _stop_patches()
@@ -1490,27 +1512,28 @@ class TestToolFunctionDispatch:
         (
             mock_conn, mock_fs, mock_fm_cls, mock_build_auth,
             mock_reg_health,
-            mock_health_impl, mock_get_impl, mock_list_versions_impl,
-            mock_list_impl, mock_store_impl, mock_validate_impl,
+            mock_health_async_impl, mock_get_async_impl, mock_list_versions_impl,
+            mock_list_impl, mock_store_async_impl, mock_validate_async_impl,
         ) = _apply_patches()
         try:
             from dhara.mcp.server_core import DharaMCPServer
 
-            mock_health_impl.return_value = {
+            mock_health_async_impl.return_value = {
                 "success": True, "health": {"healthy": True},
             }
 
             mock_server, captured = _make_capturing_fastmcp("get_adapter_health")
             mock_fm_cls.return_value = mock_server
 
-            DharaMCPServer(mock_config)
+            server = DharaMCPServer(mock_config)
+            server._async_adapter_registry = MagicMock()
 
             health_fn = captured["get_adapter_health"]
             result = asyncio.get_event_loop().run_until_complete(
                 health_fn(domain="adapter", key="cache", provider="redis"),
             )
 
-            mock_health_impl.assert_called_once()
+            mock_health_async_impl.assert_called_once()
             assert result["health"]["healthy"] is True
         finally:
             _stop_patches()
@@ -1541,10 +1564,14 @@ class TestToolFunctionDispatch:
             mock_fm_cls.return_value = mock_server_instance
 
             server = DharaMCPServer(mock_config)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(server._init_async_stores())
+            server._async_adapter_registry = MagicMock()
 
             # Mock kv_store to avoid real storage interactions
-            server.kv_store.put = MagicMock(return_value={"ok": True, "key": "test"})
-            server.kv_store.get = MagicMock(return_value={"ok": True, "key": "test", "value": 42})
+            server._async_kv_store.put_async = AsyncMock(return_value={"ok": True, "key": "test"})
+            server._async_kv_store.get_async = AsyncMock(return_value={"ok": True, "key": "test", "value": 42})
 
             put_fn = captured_fns["put"]
             get_fn = captured_fns["get"]
@@ -1553,13 +1580,13 @@ class TestToolFunctionDispatch:
                 put_fn(key="test", value=42),
             )
             assert put_result["ok"] is True
-            server.kv_store.put.assert_called_once_with(key="test", value=42, ttl=None)
+            server._async_kv_store.put_async.assert_called_once_with(key="test", value=42, ttl=None)
 
             get_result = asyncio.get_event_loop().run_until_complete(
                 get_fn(key="test"),
             )
             assert get_result["value"] == 42
-            server.kv_store.get.assert_called_once_with(key="test")
+            server._async_kv_store.get_async.assert_called_once_with(key="test")
         finally:
             _stop_patches()
 
@@ -1589,14 +1616,20 @@ class TestToolFunctionDispatch:
             mock_fm_cls.return_value = mock_server_instance
 
             server = DharaMCPServer(mock_config)
-            server.kv_store.put = MagicMock(return_value={"ok": True, "key": "ttl-test"})
+            server._async_adapter_registry = MagicMock()
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(server._init_async_stores())
+            server._async_kv_store.put_async = AsyncMock(return_value={"ok": True, "key": "ttl-test"})
 
             put_fn = captured_fns["put"]
             result = asyncio.get_event_loop().run_until_complete(
                 put_fn(key="ttl-test", value="data", ttl=3600),
             )
 
-            server.kv_store.put.assert_called_once_with(key="ttl-test", value="data", ttl=3600)
+            server._async_kv_store.put_async.assert_called_once_with(key="ttl-test", value="data", ttl=3600)
             assert result["ok"] is True
         finally:
             _stop_patches()
@@ -1627,13 +1660,19 @@ class TestToolFunctionDispatch:
             mock_fm_cls.return_value = mock_server_instance
 
             server = DharaMCPServer(mock_config)
-            server.kv_store.record_time_series = MagicMock(
+            server._async_adapter_registry = MagicMock()
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(server._init_async_stores())
+            server._async_kv_store.record_time_series_async = AsyncMock(
                 return_value={"ok": True, "metric_type": "cpu", "entity_id": "host1"},
             )
-            server.kv_store.query_time_series = MagicMock(
+            server._async_kv_store.query_time_series_async = AsyncMock(
                 return_value=[{"ts": "2026-01-01", "value": 42}],
             )
-            server.kv_store.aggregate_patterns = MagicMock(
+            server._async_kv_store.aggregate_patterns_async = AsyncMock(
                 return_value=[{"pattern": "error", "count": 5}],
             )
 
@@ -1684,20 +1723,26 @@ class TestToolFunctionDispatch:
             mock_fm_cls.return_value = mock_server_instance
 
             server = DharaMCPServer(mock_config)
+            server._async_adapter_registry = MagicMock()
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(server._init_async_stores())
 
-            server.ecosystem_state.upsert_service = MagicMock(
+            server._async_ecosystem_state.upsert_service_async = AsyncMock(
                 return_value={"service_id": "svc-1", "service_type": "orchestrator"},
             )
-            server.ecosystem_state.get_service = MagicMock(
+            server._async_ecosystem_state.get_service_async = AsyncMock(
                 return_value={"service_id": "svc-1", "service_type": "orchestrator"},
             )
-            server.ecosystem_state.list_services = MagicMock(
+            server._async_ecosystem_state.list_services_async = AsyncMock(
                 return_value=[{"service_id": "svc-1", "service_type": "orchestrator"}],
             )
-            server.ecosystem_state.record_event = MagicMock(
+            server._async_ecosystem_state.record_event_async = AsyncMock(
                 return_value={"event_type": "deploy", "source_service": "mahavishnu"},
             )
-            server.ecosystem_state.list_events = MagicMock(
+            server._async_ecosystem_state.list_events_async = AsyncMock(
                 return_value=[{"event_type": "deploy"}],
             )
 
@@ -1758,7 +1803,11 @@ class TestToolFunctionDispatch:
             mock_fm_cls.return_value = mock_server_instance
 
             server = DharaMCPServer(mock_config)
-            server.ecosystem_state.upsert_service = MagicMock(
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(server._init_async_stores())
+            server._async_adapter_registry = MagicMock()
+            server._async_ecosystem_state.upsert_service_async = AsyncMock(
                 return_value={"service_id": "svc-1"},
             )
 
@@ -1775,7 +1824,7 @@ class TestToolFunctionDispatch:
                 ),
             )
 
-            server.ecosystem_state.upsert_service.assert_called_once_with(
+            server._async_ecosystem_state.upsert_service_async.assert_called_once_with(
                 service_id="svc-1",
                 service_type="orchestrator",
                 capabilities=["sweep", "schedule"],

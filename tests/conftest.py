@@ -10,14 +10,20 @@ from os import unlink
 from os.path import exists
 
 import pytest
+import pytest_asyncio
 
-from dhara.core import Connection
-from dhara.storage import FileStorage, MemoryStorage
+from dhara.core import AsyncConnection, Connection
+from dhara.storage import AsyncMemoryStorage, FileStorage, MemoryStorage
 
 
 @pytest.fixture
 def memory_storage():
     return MemoryStorage()
+
+
+@pytest.fixture
+def async_memory_storage():
+    return AsyncMemoryStorage()
 
 
 @pytest.fixture
@@ -34,6 +40,12 @@ def temp_file_storage():
 @pytest.fixture
 def connection(memory_storage):
     return Connection(memory_storage)
+
+
+@pytest_asyncio.fixture
+async def async_connection(async_memory_storage):
+    """AsyncConnection backed by AsyncMemoryStorage for async tests."""
+    return await AsyncConnection.new(async_memory_storage)
 
 
 @pytest.fixture

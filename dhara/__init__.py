@@ -8,9 +8,15 @@ Modernized for Python 3.13+ with Oneiric ecosystem integration.
 from __future__ import annotations
 
 import importlib
-from typing import Any
+from importlib.metadata import version as _pkg_version
 
-__version__ = "0.11.0"
+try:
+    # Read the version from package metadata so it stays in sync with releases.
+    # Falls back to a dev sentinel if the package is imported without being
+    # installed (e.g. running tests directly from a source checkout).
+    __version__ = _pkg_version("dhara")
+except Exception:  # pragma: no cover - dev/source-checkout path
+    __version__ = "0.0.0+unknown"
 
 # Core persistence framework
 from dhara.collections import (

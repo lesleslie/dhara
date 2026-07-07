@@ -179,7 +179,7 @@ class TestBackupJobSchedule:
         job.backup_type = "unsupported"
         result = job.run()
         assert result["status"] == "failed"
-        assert "unsupported backup type" in result["reason"]
+        assert "Unknown backup type" in result["error"]
 
 
 class TestBackupJobRun:

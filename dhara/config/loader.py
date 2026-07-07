@@ -122,10 +122,32 @@ def load_config(
     if not path.exists():
         raise FileNotFoundError(f"Configuration file not found: {path}")
 
-    # Read and parse file
+    # Read and parse file — enforce max_size against the actual byte
+    # size of the file on disk rather than the decoded text length so
+    # very large files are rejected before we materialize them as str.
+    file_size = path.stat().st_size
+    if file_size > max_size:
+        raise ValueError(
+            f"Configuration file too large: {file_size} bytes > {max_size} bytes "
+            f"(max_size). Refusing to load."
+        )
     content = path.read_text()
-    # Narrow format from "yaml"|"json"|"dict"|"auto" to "yaml"|"json" for parser
-    parse_format = cast(Literal["yaml", "json"], format)
+
+    # Resolve "auto" / "dict" to the actual wire format. ``"dict"`` is
+    # rejected at this layer — the dict source path is handled above
+    # before we reach here.
+    if format == "auto":
+        parse_format: Literal["yaml", "json"] = _detect_config_format(path)
+    elif format == "dict":
+        raise ValueError(
+            "Unsupported format 'dict': pass a dict directly to load_config, "
+            "not a path."
+        )
+    elif format in ("yaml", "json"):
+        parse_format = cast(Literal["yaml", "json"], format)
+    else:  # pragma: no cover - Literal guard
+        raise ValueError(f"Unsupported format: {format!r}")
+
     data = _parse_config_content(content, parse_format)
 
     # Ensure we got a dictionary

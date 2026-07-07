@@ -9,7 +9,8 @@ after the CWE-502 / pickle-removal migration:
   ``FallbackSerializer``, ``ObjectReader``) raise ``AttributeError``
   when imported at the top level. (They may still exist under
   ``dhara.serialize``; only the top-level package must reject them.)
-* ``dhara.__version__`` is pinned to ``"0.11.0"``.
+* ``dhara.__version__`` matches the installed distribution version
+  (dynamic lookup, not a hard-coded string — see dhara/__init__.py).
 
 The top-level package uses a ``__getattr__`` lazy-export shim for
 serializer symbols, so an ``AttributeError`` here proves the shim is
@@ -17,6 +18,8 @@ not (and must not be) back-filled with removed backends.
 """
 
 from __future__ import annotations
+
+from importlib.metadata import PackageNotFoundError, version as _pkg_version
 
 import pytest
 
@@ -32,13 +35,36 @@ from dhara.serialize import create_serializer as _create_serializer
 
 
 class TestVersion:
-    """``dhara.__version__`` is pinned to the post-migration release."""
+    """``dhara.__version__`` is sourced from package metadata.
 
-    def test_version_is_0_11_0(self):
-        assert dhara.__version__ == "0.11.0"
+    The lookup in ``dhara/__init__.py`` is dynamic via
+    ``importlib.metadata.version``. When the package is installed normally
+    (real ``.dist-info``), ``dhara.__version__`` must equal the installed
+    version. When running from a source checkout via a PEP 660 editable
+    finder (no ``.dist-info``), it must fall back to the dev sentinel —
+    and that fallback path must still produce a parseable version string.
+    """
+
+    def test_version_matches_installed_distribution(self):
+        try:
+            installed = _pkg_version("dhara")
+        except PackageNotFoundError:
+            # Source-checkout / PEP 660 editable: no .dist-info, sentinel used.
+            assert dhara.__version__ == "0.0.0+unknown"
+        else:
+            assert dhara.__version__ == installed
 
     def test_version_is_string(self):
         assert isinstance(dhara.__version__, str)
+
+    def test_version_is_parseable(self):
+        # Guards against accidentally exposing a non-version string.
+        from packaging.version import Version, InvalidVersion
+
+        try:
+            Version(dhara.__version__)
+        except InvalidVersion:
+            pytest.fail(f"dhara.__version__={dhara.__version__!r} is not parseable")
 
 
 # ---------------------------------------------------------------------------

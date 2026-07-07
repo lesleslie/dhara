@@ -20,8 +20,22 @@ from dhara.storage.base import (
 from dhara.utils import int8_to_str
 
 
-def _oid(i: int) -> str:
+def _oid(i: int) -> bytes:
     return int8_to_str(i)
+
+
+def _oid_str(i: int) -> str:
+    """String form of an OID, matching ``gen_oid_record``'s yielded contract.
+
+    ``MemoryStorage`` is bytes-keyed but ``gen_oid_record`` (post the
+    cross-checker migration) decodes each yielded OID back to a latin1
+    string. Tests that look up *yielded* OIDs need the str form.
+    """
+    return int8_to_str(i).decode("latin1")
+
+
+# ROOT_OID decoded to str for the new ``gen_oid_record`` contract.
+_ROOT_OID_STR = ROOT_OID.decode("latin1")
 
 
 # Shared msgpack serializer for building wire-format payloads.
@@ -221,26 +235,28 @@ class TestGenOidRecord:
         ms = self._make_storage({ROOT_OID: record})
         pairs = list(ms.gen_oid_record())
         assert len(pairs) == 1
-        assert pairs[0][0] == ROOT_OID
+        assert pairs[0][0] == _ROOT_OID_STR
 
     def test_chain_two_records(self):
         ref_oid = _oid(1)
+        ref_oid_str = _oid_str(1)
         record_root = _pack(ROOT_OID, b"\nRoot\n{}", ref_oid)
         record_child = _pack(ref_oid, b"\nChild\n{}", b"")
         ms = self._make_storage({ROOT_OID: record_root, ref_oid: record_child})
         pairs = dict(ms.gen_oid_record())
-        assert ROOT_OID in pairs
-        assert ref_oid in pairs
+        assert _ROOT_OID_STR in pairs
+        assert ref_oid_str in pairs
 
     def test_start_oid_parameter(self):
         ref_oid = _oid(1)
+        ref_oid_str = _oid_str(1)
         record_root = _pack(ROOT_OID, b"\nRoot\n{}", ref_oid)
         record_child = _pack(ref_oid, b"\nChild\n{}", b"")
         ms = self._make_storage({ROOT_OID: record_root, ref_oid: record_child})
         # Start from ref_oid — should only yield that record (no outgoing refs)
         pairs = list(ms.gen_oid_record(start_oid=ref_oid))
         assert len(pairs) == 1
-        assert pairs[0][0] == ref_oid
+        assert pairs[0][0] == ref_oid_str
 
     def test_batch_size(self):
         ref_oid = _oid(1)
@@ -262,12 +278,13 @@ class TestGenOidRecord:
 
     def test_duplicate_ref_is_skipped_by_seen(self):
         ref_oid = _oid(1)
+        ref_oid_str = _oid_str(1)
         record_root = _pack(ROOT_OID, b"\nRoot\n{}", ref_oid + ref_oid)
         record_child = _pack(ref_oid, b"\nChild\n{}", b"")
         ms = self._make_storage({ROOT_OID: record_root, ref_oid: record_child})
         assert list(ms.gen_oid_record()) == [
-            (ROOT_OID, record_root),
-            (ref_oid, record_child),
+            (_ROOT_OID_STR, record_root),
+            (ref_oid_str, record_child),
         ]
 
     def test_seen_ref_is_not_requeued(self):
@@ -287,16 +304,17 @@ class TestGenOidRecord:
             }
         )
         oids = [oid for oid, _ in ms.gen_oid_record()]
-        assert oids == [ROOT_OID, ref_a, ref_b, shared]
+        assert oids == [_ROOT_OID_STR, _oid_str(1), _oid_str(2), _oid_str(3)]
 
     def test_seen_oid_ref_is_not_requeued(self):
         ref_oid = _oid(1)
+        ref_oid_str = _oid_str(1)
         root = _pack(ROOT_OID, b"\nRoot\n{}", ref_oid)
         child = _pack(ref_oid, b"\nChild\n{}", ROOT_OID)
         ms = self._make_storage({ROOT_OID: root, ref_oid: child})
 
         oids = [oid for oid, _ in ms.gen_oid_record()]
-        assert oids == [ROOT_OID, ref_oid]
+        assert oids == [_ROOT_OID_STR, ref_oid_str]
 
 
 # ===========================================================================
@@ -314,7 +332,7 @@ class TestGenReferringOidRecord:
 
         referrers = list(gen_referring_oid_record(ms, ref_oid))
         assert len(referrers) == 1
-        assert referrers[0][0] == ROOT_OID
+        assert referrers[0][0] == _ROOT_OID_STR
 
     def test_no_referrers(self):
         record = _pack(ROOT_OID, b"\nRoot\n{}", b"")
@@ -386,14 +404,15 @@ class TestGetCensus:
 class TestGetReferenceIndex:
     def test_builds_index(self):
         ref_oid = _oid(1)
+        ref_oid_str = _oid_str(1)
         record_root = _pack(ROOT_OID, b"\nRoot\n{}", ref_oid)
         record_child = _pack(ref_oid, b"\nChild\n{}", b"")
         ms = MemoryStorage()
         ms.records.update({ROOT_OID: record_root, ref_oid: record_child})
 
         index = get_reference_index(ms)
-        assert ref_oid in index
-        assert ROOT_OID in index[ref_oid]
+        assert ref_oid_str in index
+        assert _ROOT_OID_STR in index[ref_oid_str]
 
     def test_single_root(self):
         ms = MemoryStorage()

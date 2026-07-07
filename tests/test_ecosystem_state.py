@@ -3,17 +3,14 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock
 
-import pytest
-
-from dhara.mcp.ecosystem_state import (
-    EcosystemStateStore,
-    EventRetention,
-    _utcnow,
-)
 from dhara.collections.dict import PersistentDict
 from dhara.collections.list import PersistentList
+from dhara.mcp.ecosystem_state import (
+    AsyncEcosystemStateStore,
+    EventRetention,
+    _prune_events,
+)
 
 
 def _ts(hours_ago: int = 0) -> str:
@@ -32,180 +29,199 @@ class TestEventRetention:
 
 
 class TestEcosystemStateInitialization:
-    def test_existing_root_skips_commit(self, connection):
-        root = connection.get_root()
+    async def test_existing_root_skips_commit(self, async_connection):
+        root = await async_connection.get_root()
         root["ecosystem_services"] = PersistentDict()
         root["ecosystem_events"] = PersistentList()
-        connection.commit = MagicMock()
+        original_commit = async_connection.commit
+        called: list[int] = []
 
-        store = EcosystemStateStore(connection)
+        async def tracking_commit() -> None:
+            called.append(1)
 
-        assert store._services() is root["ecosystem_services"]
-        assert store._events() is root["ecosystem_events"]
-        connection.commit.assert_not_called()
+        async_connection.commit = tracking_commit  # type: ignore[method-assign]
+
+        try:
+            store = AsyncEcosystemStateStore(async_connection)
+            assert await store._services() is root["ecosystem_services"]
+            assert await store._events() is root["ecosystem_events"]
+            assert called == []
+        finally:
+            async_connection.commit = original_commit  # type: ignore[method-assign]
 
 
 class TestEcosystemStateService:
-    def test_upsert_and_get(self, connection):
-        store = EcosystemStateStore(connection)
-        record = store.upsert_service("s1", "adapter", capabilities=["storage"])
+    async def test_upsert_and_get(self, async_connection):
+        store = AsyncEcosystemStateStore(async_connection)
+        record = await store.upsert_service_async(
+            "s1", "adapter", capabilities=["storage"]
+        )
         assert record["service_id"] == "s1"
         assert record["capabilities"] == ["storage"]
 
-        fetched = store.get_service("s1")
+        fetched = await store.get_service_async("s1")
         assert fetched is not None
         assert fetched["service_type"] == "adapter"
 
-    def test_get_missing(self, connection):
-        store = EcosystemStateStore(connection)
-        assert store.get_service("nope") is None
+    async def test_get_missing(self, async_connection):
+        store = AsyncEcosystemStateStore(async_connection)
+        assert await store.get_service_async("nope") is None
 
-    def test_upsert_preserves_created_at(self, connection):
-        store = EcosystemStateStore(connection)
-        r1 = store.upsert_service("s1", "type1")
+    async def test_upsert_preserves_created_at(self, async_connection):
+        store = AsyncEcosystemStateStore(async_connection)
+        r1 = await store.upsert_service_async("s1", "type1")
         created = r1["created_at"]
-        store.upsert_service("s1", "type2")
-        assert store.get_service("s1")["created_at"] == created
+        await store.upsert_service_async("s1", "type2")
+        fetched = await store.get_service_async("s1")
+        assert fetched is not None
+        assert fetched["created_at"] == created
 
-    def test_upsert_updates_timestamps(self, connection):
-        store = EcosystemStateStore(connection)
-        r1 = store.upsert_service("s1", "type1")
-        r2 = store.upsert_service("s1", "type1")
+    async def test_upsert_updates_timestamps(self, async_connection):
+        store = AsyncEcosystemStateStore(async_connection)
+        r1 = await store.upsert_service_async("s1", "type1")
+        r2 = await store.upsert_service_async("s1", "type1")
         assert r2["updated_at"] >= r1["updated_at"]
 
-    def test_list_all(self, connection):
-        store = EcosystemStateStore(connection)
-        store.upsert_service("a", "t1")
-        store.upsert_service("b", "t2")
-        services = store.list_services()
+    async def test_list_all(self, async_connection):
+        store = AsyncEcosystemStateStore(async_connection)
+        await store.upsert_service_async("a", "t1")
+        await store.upsert_service_async("b", "t2")
+        services = await store.list_services_async()
         assert len(services) == 2
 
-    def test_list_filter_by_type(self, connection):
-        store = EcosystemStateStore(connection)
-        store.upsert_service("a", "adapter")
-        store.upsert_service("b", "tool")
-        assert len(store.list_services(service_type="adapter")) == 1
+    async def test_list_filter_by_type(self, async_connection):
+        store = AsyncEcosystemStateStore(async_connection)
+        await store.upsert_service_async("a", "adapter")
+        await store.upsert_service_async("b", "tool")
+        assert len(await store.list_services_async(service_type="adapter")) == 1
 
-    def test_list_filter_by_status(self, connection):
-        store = EcosystemStateStore(connection)
-        store.upsert_service("a", "t", status="healthy")
-        store.upsert_service("b", "t", status="unhealthy")
-        assert len(store.list_services(status="healthy")) == 1
+    async def test_list_filter_by_status(self, async_connection):
+        store = AsyncEcosystemStateStore(async_connection)
+        await store.upsert_service_async("a", "t", status="healthy")
+        await store.upsert_service_async("b", "t", status="unhealthy")
+        assert len(await store.list_services_async(status="healthy")) == 1
 
-    def test_list_filter_by_capability(self, connection):
-        store = EcosystemStateStore(connection)
-        store.upsert_service("a", "t", capabilities=["storage", "cache"])
-        store.upsert_service("b", "t", capabilities=["cache"])
-        assert len(store.list_services(capability="storage")) == 1
+    async def test_list_filter_by_capability(self, async_connection):
+        store = AsyncEcosystemStateStore(async_connection)
+        await store.upsert_service_async("a", "t", capabilities=["storage", "cache"])
+        await store.upsert_service_async("b", "t", capabilities=["cache"])
+        assert len(await store.list_services_async(capability="storage")) == 1
 
-    def test_list_sorted_by_id(self, connection):
-        store = EcosystemStateStore(connection)
-        store.upsert_service("z", "t")
-        store.upsert_service("a", "t")
-        services = store.list_services()
+    async def test_list_sorted_by_id(self, async_connection):
+        store = AsyncEcosystemStateStore(async_connection)
+        await store.upsert_service_async("z", "t")
+        await store.upsert_service_async("a", "t")
+        services = await store.list_services_async()
         assert services[0]["service_id"] == "a"
 
-    def test_normalize_adds_defaults(self, connection):
-        store = EcosystemStateStore(connection)
-        store.upsert_service("s1", "t")
-        record = store.get_service("s1")
+    async def test_normalize_adds_defaults(self, async_connection):
+        store = AsyncEcosystemStateStore(async_connection)
+        await store.upsert_service_async("s1", "t")
+        record = await store.get_service_async("s1")
+        assert record is not None
         assert record["schema_version"] == 1
         assert record["status"] == "unknown"
         assert record["capabilities"] == []
         assert record["metadata"] == {}
 
-    def test_heartbeat_at_defaults_to_now(self, connection):
-        store = EcosystemStateStore(connection)
-        record = store.upsert_service("s1", "t")
+    async def test_heartbeat_at_defaults_to_now(self, async_connection):
+        store = AsyncEcosystemStateStore(async_connection)
+        record = await store.upsert_service_async("s1", "t")
         assert record["heartbeat_at"] is not None
 
 
 class TestEcosystemStateEvents:
-    def test_record_and_list(self, connection):
-        store = EcosystemStateStore(
-            connection,
+    async def test_record_and_list(self, async_connection):
+        store = AsyncEcosystemStateStore(
+            async_connection,
             event_retention=EventRetention(retention_days=365),
         )
-        store.record_event("deploy", "mahavishnu", payload={"repo": "akosha"})
-        events = store.list_events()
+        await store.record_event_async(
+            "deploy", "mahavishnu", payload={"repo": "akosha"}
+        )
+        events = await store.list_events_async()
         assert len(events) == 1
         assert events[0]["event_type"] == "deploy"
 
-    def test_record_with_custom_timestamp(self, connection):
-        store = EcosystemStateStore(
-            connection,
+    async def test_record_with_custom_timestamp(self, async_connection):
+        store = AsyncEcosystemStateStore(
+            async_connection,
             event_retention=EventRetention(retention_days=365),
         )
         ts = _ts(hours_ago=1)
-        store.record_event("e", "src", timestamp=ts)
-        events = store.list_events()
+        await store.record_event_async("e", "src", timestamp=ts)
+        events = await store.list_events_async()
         assert len(events) == 1
         assert events[0]["timestamp"] == ts
 
-    def test_list_filter_by_type(self, connection):
-        store = EcosystemStateStore(
-            connection,
+    async def test_list_filter_by_type(self, async_connection):
+        store = AsyncEcosystemStateStore(
+            async_connection,
             event_retention=EventRetention(retention_days=365),
         )
-        store.record_event("deploy", "s1")
-        store.record_event("error", "s1")
-        assert len(store.list_events(event_type="deploy")) == 1
+        await store.record_event_async("deploy", "s1")
+        await store.record_event_async("error", "s1")
+        assert len(await store.list_events_async(event_type="deploy")) == 1
 
-    def test_list_filter_by_source(self, connection):
-        store = EcosystemStateStore(
-            connection,
+    async def test_list_filter_by_source(self, async_connection):
+        store = AsyncEcosystemStateStore(
+            async_connection,
             event_retention=EventRetention(retention_days=365),
         )
-        store.record_event("e", "src_a")
-        store.record_event("e", "src_b")
-        assert len(store.list_events(source_service="src_a")) == 1
+        await store.record_event_async("e", "src_a")
+        await store.record_event_async("e", "src_b")
+        assert len(await store.list_events_async(source_service="src_a")) == 1
 
-    def test_list_filter_by_related(self, connection):
-        store = EcosystemStateStore(
-            connection,
+    async def test_list_filter_by_related(self, async_connection):
+        store = AsyncEcosystemStateStore(
+            async_connection,
             event_retention=EventRetention(retention_days=365),
         )
-        store.record_event("e", "s1", related_service="target")
-        store.record_event("e", "s1", related_service="other")
-        assert len(store.list_events(related_service="target")) == 1
+        await store.record_event_async("e", "s1", related_service="target")
+        await store.record_event_async("e", "s1", related_service="other")
+        assert len(await store.list_events_async(related_service="target")) == 1
 
-    def test_list_limit(self, connection):
-        store = EcosystemStateStore(
-            connection,
+    async def test_list_limit(self, async_connection):
+        store = AsyncEcosystemStateStore(
+            async_connection,
             event_retention=EventRetention(retention_days=365),
         )
         for i in range(10):
-            store.record_event("e", "s")
-        events = store.list_events(limit=3)
+            await store.record_event_async("e", "s")
+        events = await store.list_events_async(limit=3)
         assert len(events) == 3
 
-    def test_prune_old_events(self, connection):
-        store = EcosystemStateStore(
-            connection,
+    async def test_prune_old_events(self, async_connection):
+        store = AsyncEcosystemStateStore(
+            async_connection,
             event_retention=EventRetention(retention_days=1),
         )
-        store.record_event("old", "s", timestamp=_ts(48))
-        store.record_event("new", "s", timestamp=_ts(1))
-        events = store.list_events()
+        await store.record_event_async("old", "s", timestamp=_ts(48))
+        await store.record_event_async("new", "s", timestamp=_ts(1))
+        events = await store.list_events_async()
         assert len(events) == 1
         assert events[0]["event_type"] == "new"
 
-    def test_normalize_event(self, connection):
-        store = EcosystemStateStore(
-            connection,
+    async def test_normalize_event(self, async_connection):
+        store = AsyncEcosystemStateStore(
+            async_connection,
             event_retention=EventRetention(retention_days=365),
         )
-        store.record_event("e", "s")
-        event = store.list_events()[0]
+        await store.record_event_async("e", "s")
+        events = await store.list_events_async()
+        assert len(events) == 1
+        event = events[0]
         assert event["schema_version"] == 1
         assert event["payload"] == {}
 
-    def test_list_events_handles_invalid_and_naive_timestamps(self, connection):
-        store = EcosystemStateStore(
-            connection,
+    async def test_list_events_handles_invalid_and_naive_timestamps(self, async_connection):
+        store = AsyncEcosystemStateStore(
+            async_connection,
             event_retention=EventRetention(retention_days=365),
         )
-        events = store._events()
+        # Force initialization so _events() returns the underlying list
+        await store._ensure_root_async()
+        events = await store._events()
         events.append(
             PersistentDict(
                 {
@@ -225,15 +241,17 @@ class TestEcosystemStateEvents:
             )
         )
 
-        results = store.list_events(limit=None)
+        results = await store.list_events_async(limit=None)
         assert [event["event_type"] for event in results] == ["broken", "naive"]
 
-    def test_list_events_skips_old_manual_event(self, connection):
-        store = EcosystemStateStore(
-            connection,
+    async def test_list_events_skips_old_manual_event(self, async_connection):
+        store = AsyncEcosystemStateStore(
+            async_connection,
             event_retention=EventRetention(retention_days=1),
         )
-        store._events().append(
+        await store._ensure_root_async()
+        events = await store._events()
+        events.append(
             PersistentDict(
                 {
                     "event_type": "old",
@@ -243,14 +261,15 @@ class TestEcosystemStateEvents:
             )
         )
 
-        assert store.list_events(limit=None) == []
+        assert await store.list_events_async(limit=None) == []
 
-    def test_prune_events_handles_invalid_and_naive_timestamps(self, connection):
-        store = EcosystemStateStore(
-            connection,
+    async def test_prune_events_handles_invalid_and_naive_timestamps(self, async_connection):
+        store = AsyncEcosystemStateStore(
+            async_connection,
             event_retention=EventRetention(retention_days=365),
         )
-        events = store._events()
+        await store._ensure_root_async()
+        events = await store._events()
         events.append(
             PersistentDict(
                 {
@@ -270,6 +289,6 @@ class TestEcosystemStateEvents:
             )
         )
 
-        store._prune_events(events)
+        _prune_events(events, store.event_retention)
 
         assert [event["event_type"] for event in events] == ["broken", "naive"]

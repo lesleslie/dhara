@@ -288,6 +288,14 @@ class PersistentObject(PersistentBase):
                     commit = conn.commit()
                     if hasattr(commit, "__await__"):
                         await commit
+        else:
+            # Fallback to direct ``__setitem__`` for unsaved objects. The
+            # async helper otherwise becomes a no-op when ``_p_connection``
+            # is ``None``, which is surprising for tests that load a
+            # root object via ``AsyncConnection.get_root`` without
+            # registering the connection on the object itself.
+            if hasattr(self, "__setitem__"):
+                self[key] = value
 
     async def _p_commit_async(self) -> None:
         """Async version of committing changes to this persistent object.

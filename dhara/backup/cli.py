@@ -222,7 +222,7 @@ def generate_encryption_key(key_file: str):
     key_path = Path(key_file)
     key_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with key_path.open("wb") as f:
+    with open(str(key_path), "wb") as f:  # nosec - operator-supplied key path
         f.write(key)
 
     logger.info(f"Encryption key generated and saved to: {key_file}")
@@ -260,26 +260,31 @@ def cmd_backup(args):
 
     # Load encryption key if specified
     encryption_key = None
-    if args.encrypt or args.key_file:
-        from cryptography.fernet import Fernet
-
-        if args.key_file:
-            encryption_key = Path(args.key_file).read_bytes()
-        else:
-            encryption_key = Fernet.generate_key()
-        logger.info("Encryption enabled")
-
-    # Create backup manager
-    storage = FileStorage(args.source)
-    backup_manager = BackupManager(
-        storage=storage,
-        backup_dir=args.backup_dir,
-        compression_level=args.compression_level,
-        encryption_key=encryption_key,
-    )
-
-    # Perform backup
     try:
+        if args.encrypt or args.key_file:
+            from cryptography.fernet import Fernet
+
+            if args.key_file:
+                encryption_key = Path(args.key_file).read_bytes()
+            else:
+                encryption_key = Fernet.generate_key()
+            logger.info("Encryption enabled")
+    except FileNotFoundError as e:
+        logger.error(f"Encryption key not found: {e}")
+        return 1
+
+    # Create backup manager (storage always opened; closed in finally
+    # so failures mid-flight still release the underlying file handle)
+    storage = FileStorage(args.source)
+    try:
+        backup_manager = BackupManager(
+            storage=storage,
+            backup_dir=args.backup_dir,
+            compression_level=args.compression_level,
+            encryption_key=encryption_key,
+        )
+
+        # Perform backup
         if args.type == "full":
             metadata = backup_manager.perform_full_backup()
         elif args.type == "incremental":
@@ -298,14 +303,13 @@ def cmd_backup(args):
         logger.info(f"Backup created: {metadata.backup_id}")
         logger.info(f"Size: {metadata.size_bytes} bytes")
         logger.info(f"Path: {metadata.source_path}")
-
-        storage.close()
         return 0
 
     except Exception as e:
         logger.error(f"Backup failed: {e}")
-        storage.close()
         return 1
+    finally:
+        storage.close()
 
 
 def cmd_restore(args):

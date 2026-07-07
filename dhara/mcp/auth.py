@@ -316,7 +316,7 @@ class TokenAuth:
                 }
             }
 
-            with Path(filepath).open("w") as f:
+            with open(filepath, "w") as f:
                 json.dump(data, f, indent=2)
 
             logger.info(f"Saved {len(self.tokens)} tokens to {filepath}")

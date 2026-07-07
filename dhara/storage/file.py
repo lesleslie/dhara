@@ -96,7 +96,7 @@ class FileStorage(Storage):
 
     def sync(self):
         """() -> [str]"""
-        result = self.invalid.copy()
+        result = list(self.invalid)
         self.invalid.clear()
         return result
 
@@ -109,12 +109,17 @@ class FileStorage(Storage):
         if start_oid is None:
             yield from iteritems(self.shelf)
         else:
-            todo: list[str] = [start_oid]
+            # Normalize start_oid to bytes — Shelf keys are stored as
+            # ``int8_to_str`` (8-byte big-endian) and ``str_to_int8``
+            # only accepts bytes / bytes-like input.
+            if isinstance(start_oid, str):
+                start_oid = start_oid.encode("latin1")
+            todo: list[bytes] = [start_oid]
             seen: IntSet | None = kwargs.get("seen")
             if seen is None:
                 seen = IntSet()  # This eventually contains them all.
             while todo:
-                oid = heapq.heappop(todo)  # type: ignore[arg-type]
+                oid = heapq.heappop(todo)
                 if str_to_int8(oid) in seen:
                     continue
                 seen.add(str_to_int8(oid))
@@ -122,7 +127,7 @@ class FileStorage(Storage):
                 record_oid, data, refdata = unpack_record(record)
                 assert oid == record_oid
                 for ref_oid in split_oids(refdata):
-                    heapq.heappush(todo, ref_oid.decode("latin1"))  # type: ignore[arg-type]
+                    heapq.heappush(todo, ref_oid)
                 yield oid, record
 
     def new_oid(self):

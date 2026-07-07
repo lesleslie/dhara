@@ -166,12 +166,12 @@ class TestTLSConfigInit:
 
     def test_nonexistent_capath_raises(self, temp_tls_certs):
         certfile, keyfile = temp_tls_certs
-        with pytest.raises(FileNotFoundError, match="CA directory not found"):
+        with pytest.raises(FileNotFoundError, match="CA directory file not found"):
             TLSConfig(certfile=certfile, keyfile=keyfile, capath="/nonexistent/ca_dir")
 
     def test_nonexistent_client_cert_file_raises(self, temp_tls_certs):
         certfile, keyfile = temp_tls_certs
-        with pytest.raises(FileNotFoundError, match="Client certificate not found"):
+        with pytest.raises(FileNotFoundError, match="Client certificate file not found"):
             TLSConfig(
                 certfile=certfile,
                 keyfile=keyfile,
@@ -181,7 +181,7 @@ class TestTLSConfigInit:
 
     def test_nonexistent_client_key_file_raises(self, temp_tls_certs):
         certfile, keyfile = temp_tls_certs
-        with pytest.raises(FileNotFoundError, match="Client key not found"):
+        with pytest.raises(FileNotFoundError, match="Client key file not found"):
             TLSConfig(
                 certfile=certfile,
                 keyfile=keyfile,

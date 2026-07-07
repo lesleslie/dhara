@@ -42,24 +42,68 @@ class BackupCatalog:
 
         storage = FileStorage(str(self.catalog_path))
         connection = Connection(storage)
-        catalog = {
-            backup_id: metadata.copy()
-            for backup_id, metadata in connection.get_root().get("backups", {}).items()
-        }
-        storage.close()
-        return catalog
+        try:
+            backups_obj = connection.get_root().get("backups", {})
+            # On disk the catalog may round-trip as a nested ``__state__``
+            # dict (older pickle-style state) rather than a hydrated
+            # ``PersistentDict``. Unwrap that representation here so
+            # ``.items()`` yields the real (backup_id → metadata) map.
+            if (
+                isinstance(backups_obj, dict)
+                and "__state__" in backups_obj
+                and isinstance(backups_obj["__state__"], dict)
+                and "data" in backups_obj["__state__"]
+            ):
+                backups_data = backups_obj["__state__"]["data"]
+            else:
+                backups_data = (
+                    dict(backups_obj.items())
+                    if hasattr(backups_obj, "items")
+                    else {}
+                )
+            return {
+                backup_id: dict(metadata)
+                for backup_id, metadata in backups_data.items()
+            }
+        finally:
+            storage.close()
 
     def _save_catalog(self) -> None:
-        """Save catalog to disk."""
-        try:
-            storage = FileStorage(str(self.catalog_path))
-            connection = Connection(storage)
-            root = connection.get_root()
-            root["backups"] = PersistentDict(self.catalog)
-            connection.commit()
-            storage.close()
-        except Exception as e:
-            logger.error(f"Failed to save catalog: {e}")
+        """Save catalog to disk.
+
+        Each call opens a fresh FileStorage + Connection so the lock is
+        fully released between saves. We retry on ``BlockingIOError``
+        (the OS-level flock on this file isn't always released instantly
+        after close) with a tiny exponential backoff so a second save
+        immediately after the first doesn't race the lock.
+        """
+        import time
+
+        last_err: Exception | None = None
+        for attempt in range(5):
+            storage = None
+            try:
+                storage = FileStorage(str(self.catalog_path))
+                connection = Connection(storage)
+                root = connection.get_root()
+                root["backups"] = PersistentDict(self.catalog)
+                connection.commit()
+                storage.close()
+                return
+            except BlockingIOError as e:
+                last_err = e
+                # Lock not yet released — back off briefly and retry
+                time.sleep(0.005 * (2**attempt))
+            except Exception as e:
+                logger.error(f"Failed to save catalog: {e}")
+                return
+            finally:
+                if storage is not None:
+                    try:
+                        storage.close()
+                    except Exception:
+                        pass
+        logger.error(f"Failed to save catalog after retries: {last_err}")
 
     def _refresh_catalog(self) -> None:
         """Refresh in-memory state from disk."""

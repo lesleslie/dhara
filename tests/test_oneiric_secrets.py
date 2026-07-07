@@ -368,7 +368,7 @@ class TestOneiricSecretsAdapterInit:
 
     def test_init_raises_when_oneiric_not_available(self):
         with patch.object(self.mod, "ONEIRIC_AVAILABLE", False):
-            with pytest.raises(RuntimeError, match="Oneiric secrets library"):
+            with pytest.raises(RuntimeError, match="Oneiric oneiric_secrets library"):
                 self.mod.OneiricSecretsAdapter()
 
     def test_init_rotates_expired_key(self):
@@ -1233,7 +1233,7 @@ class TestEdgeCases:
         self.mod._adapter = None
 
     def test_load_secrets_generic_exception(self):
-        """Covers lines 122-123: RuntimeError from _load_secrets."""
+        """Covers lines 122-123: RuntimeError from _load_oneiric_secrets."""
         adapter = self.mod.OneiricSecretsAdapter(secret_prefix="test/hmac")
         adapter._initialized = False
         # Make _get_or_create_key raise a generic exception
@@ -1242,8 +1242,8 @@ class TestEdgeCases:
             "_get_or_create_key",
             side_effect=RuntimeError("boom"),
         ):
-            with pytest.raises(RuntimeError, match="Failed to load secrets"):
-                adapter._load_secrets()
+            with pytest.raises(RuntimeError, match="Failed to load"):
+                adapter._load_oneiric_secrets()
 
     def test_get_or_create_key_generic_exception(self):
         """Covers lines 167-168: RuntimeError from _get_or_create_key."""
@@ -1263,10 +1263,10 @@ class TestEdgeCases:
             adapter._get_or_create_key("signing_key")
 
     def test_init_loads_with_double_checked_locking(self):
-        """Covers lines 104, 107: double-checked locking in _load_secrets."""
+        """Covers lines 104, 107: double-checked locking in _load_oneiric_secrets."""
         adapter = self.mod.OneiricSecretsAdapter(secret_prefix="test/hmac")
         # Already initialized; calling again should be a no-op
-        adapter._load_secrets()
+        adapter._load_oneiric_secrets()
         assert adapter._initialized is True
 
     def test_singleton_double_check(self):

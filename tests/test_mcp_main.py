@@ -13,4 +13,6 @@ def test_main_loads_settings_constructs_server_and_runs():
 
     mock_load.assert_called_once_with()
     mock_server.assert_called_once_with(config)
-    server.run.assert_called_once_with(transport="stdio")
+    # ``DharaMCPServer.run`` no longer accepts a ``transport=`` keyword
+    # (the FastMCP HTTP transport was migrated to ``run_http_async``).
+    server.run.assert_called_once_with()
