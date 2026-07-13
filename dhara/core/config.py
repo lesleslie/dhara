@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 from typing import ClassVar, Self
 
-from mcp_common import MCPServerSettings
+from oneiric.core.config import OneiricMCPConfig
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -80,8 +80,8 @@ class BackupRuntimeConfig(BaseModel):
     directory: Path = Field(default=Path("./backups"))
 
 
-class DharaSettings(MCPServerSettings):
-    """Dhara MCP Server settings extending MCPServerSettings.
+class DharaSettings(OneiricMCPConfig):
+    """Dhara MCP Server settings extending OneiricMCPConfig.
 
     Configuration loading order (later overrides earlier):
     1. Default values (below)
