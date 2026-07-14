@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 """
+from __future__ import annotations
 $URL$
 $Id$
 """
@@ -339,14 +340,14 @@ def get_storage_class(file):
     no in-place format migration; use ``FileStorage`` (SHELF-1) for new and
     migrated databases.
     """
-    if not os.path.exists(file):
+    if not Path(file).exists():
         from dhara.storage.file import FileStorage
 
         return FileStorage
     # ``file`` may be a ``str`` or ``pathlib.Path``; the test suite patches
     # ``builtins.open``, so call through the builtin rather than the
     # ``pathlib.Path.open`` method.
-    with open(file, "rb") as fp:
+    with file.open("rb") as fp:
         d = fp.read(20)
     if d.startswith(b"DFS20"):
         logger.error("Refused DFS20/legacy 4.x file: %s", file)
@@ -393,7 +394,7 @@ def start_dhara(logfile, logginglevel, address, storage, gcbytes, tls_config=Non
     else:
         # ``logfile`` may be a ``str`` (typical) or ``pathlib.Path``; use
         # the builtin ``open`` so either works.
-        logfile = open(logfile, "a+")
+        logfile = logfile.open("a+")
     direct_output(logfile)
     logger.setLevel(logginglevel)
     socket_address = SocketAddress.new(address)

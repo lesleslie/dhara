@@ -1,5 +1,6 @@
 """Default configuration for Dhara.
 
+from __future__ import annotations
 This module provides configuration classes using dataclasses,
 following Oneiric patterns for configuration management.
 Compatible with legacy Druva/Durus patterns and no external dependencies.
@@ -124,11 +125,19 @@ class DharaConfig:
         """Validate overall configuration after initialization."""
         # Ensure all nested configs are properly initialized
         if isinstance(self.storage, dict):
-            object.__setattr__(self, "storage", StorageConfig(**cast(dict[str, Any], self.storage)))
+            object.__setattr__(
+                self, "storage", StorageConfig(**cast(dict[str, Any], self.storage))
+            )
         if isinstance(self.cache, dict):
-            object.__setattr__(self, "cache", CacheConfig(**cast(dict[str, Any], self.cache)))
+            object.__setattr__(
+                self, "cache", CacheConfig(**cast(dict[str, Any], self.cache))
+            )
         if isinstance(self.connection, dict):
-            object.__setattr__(self, "connection", ConnectionConfig(**cast(dict[str, Any], self.connection)))
+            object.__setattr__(
+                self,
+                "connection",
+                ConnectionConfig(**cast(dict[str, Any], self.connection)),
+            )
 
     def to_dict(self) -> dict:
         """Convert configuration to dictionary.

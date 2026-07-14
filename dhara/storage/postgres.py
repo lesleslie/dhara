@@ -13,16 +13,13 @@ Supported config keys:
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import asyncpg
 
 from dhara.serialize.record import pack_record, unpack_record
 from dhara.storage.base import OID
 from dhara.utils import int8_to_str, str_to_int8
-
-if TYPE_CHECKING:
-    from oneiric.core.config import Oneiric  # type: ignore
 
 # Schema for PostgreSQL storage
 _PG_SCHEMA = """
@@ -56,7 +53,7 @@ class AsyncPostgresStorage:
 
     def __init__(
         self,
-        url: str | "PostgresStorageSettings" | None = None,
+        url: str | PostgresStorageSettings | None = None,
         min_size: int | None = None,
         max_size: int | None = None,
     ) -> None:

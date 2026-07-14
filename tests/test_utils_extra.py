@@ -67,13 +67,13 @@ class TestTraceMode:
     """Exercise the TRACE branches in read() and write()."""
 
     @pytest.fixture(autouse=True)
-    def _restore_trace(self):
+    def _restore_trace(self) -> None:
         """Ensure TRACE is reset after each test."""
         original = utils_module.TRACE
         yield
         utils_module.TRACE = original
 
-    def test_read_with_trace(self, capsys):
+    def test_read_with_trace(self, capsys) -> None:
         """read() prints debug info when TRACE is True."""
         utils_module.TRACE = True
         buf = io.BytesIO(b"hello")
@@ -83,7 +83,7 @@ class TestTraceMode:
         assert "read(" in captured.out
         assert "-> b'hello'" in captured.out
 
-    def test_write_with_trace(self, capsys):
+    def test_write_with_trace(self, capsys) -> None:
         """write() prints debug info when TRACE is True."""
         utils_module.TRACE = True
         buf = io.BytesIO()
@@ -92,7 +92,7 @@ class TestTraceMode:
         assert "write(" in captured.out
         assert "b'hello'" in captured.out
 
-    def test_read_int8_with_trace(self, capsys):
+    def test_read_int8_with_trace(self, capsys) -> None:
         """read_int8 with TRACE enabled prints both read calls."""
         utils_module.TRACE = True
         buf = io.BytesIO()
@@ -104,7 +104,7 @@ class TestTraceMode:
         # At least one read() call should be traced
         assert "read(" in captured.out
 
-    def test_read_int4_with_trace(self, capsys):
+    def test_read_int4_with_trace(self, capsys) -> None:
         """read_int4 with TRACE enabled."""
         utils_module.TRACE = True
         buf = io.BytesIO()
@@ -115,7 +115,7 @@ class TestTraceMode:
         captured = capsys.readouterr()
         assert "read(" in captured.out
 
-    def test_write_int8_with_trace(self, capsys):
+    def test_write_int8_with_trace(self, capsys) -> None:
         """write_int8 with TRACE enabled."""
         utils_module.TRACE = True
         buf = io.BytesIO()
@@ -123,7 +123,7 @@ class TestTraceMode:
         captured = capsys.readouterr()
         assert "write(" in captured.out
 
-    def test_write_int4_with_trace(self, capsys):
+    def test_write_int4_with_trace(self, capsys) -> None:
         """write_int4 with TRACE enabled."""
         utils_module.TRACE = True
         buf = io.BytesIO()
@@ -131,7 +131,7 @@ class TestTraceMode:
         captured = capsys.readouterr()
         assert "write(" in captured.out
 
-    def test_read_int8_str_with_trace(self, capsys):
+    def test_read_int8_str_with_trace(self, capsys) -> None:
         """read_int8_str triggers two read calls, both traced."""
         utils_module.TRACE = True
         buf = io.BytesIO()
@@ -143,7 +143,7 @@ class TestTraceMode:
         # Should see at least the length read and the data read
         assert "read(" in captured.out
 
-    def test_write_int8_str_with_trace(self, capsys):
+    def test_write_int8_str_with_trace(self, capsys) -> None:
         """write_int8_str triggers two write calls, both traced."""
         utils_module.TRACE = True
         buf = io.BytesIO()
@@ -151,7 +151,7 @@ class TestTraceMode:
         captured = capsys.readouterr()
         assert captured.out.count("write(") >= 2
 
-    def test_read_int4_str_with_trace(self, capsys):
+    def test_read_int4_str_with_trace(self, capsys) -> None:
         """read_int4_str with TRACE enabled."""
         utils_module.TRACE = True
         buf = io.BytesIO()
@@ -161,7 +161,7 @@ class TestTraceMode:
         captured = capsys.readouterr()
         assert "read(" in captured.out
 
-    def test_write_int4_str_with_trace(self, capsys):
+    def test_write_int4_str_with_trace(self, capsys) -> None:
         """write_int4_str with TRACE enabled."""
         utils_module.TRACE = True
         buf = io.BytesIO()
@@ -169,7 +169,7 @@ class TestTraceMode:
         captured = capsys.readouterr()
         assert captured.out.count("write(") >= 2
 
-    def test_write_all_with_trace(self, capsys):
+    def test_write_all_with_trace(self, capsys) -> None:
         """write_all with TRACE enabled."""
         utils_module.TRACE = True
         buf = io.BytesIO()
@@ -177,11 +177,11 @@ class TestTraceMode:
         captured = capsys.readouterr()
         assert "write(" in captured.out
 
-    def test_read_socket_with_trace(self, capsys):
+    def test_read_socket_with_trace(self, capsys) -> None:
         """read() via socket path prints debug info when TRACE is True."""
 
         class FakeSock:
-            def recv(self, n):
+            def recv(self, n) -> None:
                 return b"hi"
 
         utils_module.TRACE = True
@@ -200,18 +200,18 @@ class TestTraceMode:
 class TestIteritemsFunction:
     """Test the module-level iteritems helper defined for Py2/Py3 compat."""
 
-    def test_iteritems_dict(self):
+    def test_iteritems_dict(self) -> None:
         """iteritems returns dict items iterator."""
         d = {"a": 1, "b": 2}
         result = list(iteritems(d))
         assert ("a", 1) in result
         assert ("b", 2) in result
 
-    def test_iteritems_empty(self):
+    def test_iteritems_empty(self) -> None:
         """iteritems on empty dict returns empty."""
         assert list(iteritems({})) == []
 
-    def test_iteritems_ordered(self):
+    def test_iteritems_ordered(self) -> None:
         """iteritems preserves insertion order (Python 3.7+)."""
         d = {}
         d["x"] = 10
@@ -228,23 +228,23 @@ class TestIteritemsFunction:
 class TestModuleConstants:
     """Verify module-level values imported correctly."""
 
-    def test_byte_string_is_tuple(self):
+    def test_byte_string_is_tuple(self) -> None:
         """In Python 3, byte_string is (bytearray, bytes)."""
         assert byte_string == (bytearray, bytes)
 
-    def test_xrange_is_range(self):
+    def test_xrange_is_range(self) -> None:
         """In Python 3, xrange is aliased to range."""
         assert xrange is range
 
-    def test_empty_byte_string_is_empty(self):
+    def test_empty_byte_string_is_empty(self) -> None:
         assert empty_byte_string == b""
 
-    def test_join_bytes(self):
+    def test_join_bytes(self) -> None:
         """join_bytes concatenates byte strings."""
         assert join_bytes([b"a", b"b", b"c"]) == b"abc"
         assert join_bytes([]) == b""
 
-    def test_join_bytes_is_callable(self):
+    def test_join_bytes_is_callable(self) -> None:
         """join_bytes is the bound join method of empty_byte_string."""
         assert callable(join_bytes)
 
@@ -257,13 +257,13 @@ class TestModuleConstants:
 class _ExactSizeSocket:
     """Socket that delivers exactly the requested bytes in one recv call."""
 
-    def __init__(self, data: bytes):
+    def __init__(self, data: bytes) -> None:
         self._data = data
         self._offset = 0
 
     def recv(self, n: int) -> bytes:
         end = min(self._offset + n, len(self._data))
-        chunk = self._data[self._offset:end]
+        chunk = self._data[self._offset : end]
         self._offset = end
         return chunk
 
@@ -271,7 +271,7 @@ class _ExactSizeSocket:
 class _MultiChunkSocket:
     """Socket that delivers data in fixed-size chunks."""
 
-    def __init__(self, data: bytes, chunk_size: int):
+    def __init__(self, data: bytes, chunk_size: int) -> None:
         self._data = data
         self._chunk_size = chunk_size
         self._offset = 0
@@ -286,38 +286,38 @@ class _MultiChunkSocket:
 class TestReadSocketEdgeCases:
     """Test socket read paths not covered by test_utils_extended.py."""
 
-    def test_socket_exact_size_delivery(self):
+    def test_socket_exact_size_delivery(self) -> None:
         """recv returns exactly the right amount; loop exits immediately."""
         sock = _ExactSizeSocket(b"exact!")
         result = read(sock, 6)
         assert result == b"exact!"
 
-    def test_socket_multi_chunk_fills_exactly(self):
+    def test_socket_multi_chunk_fills_exactly(self) -> None:
         """recv delivers chunks that sum to exactly n bytes."""
         sock = _MultiChunkSocket(b"ABCDEFGHIJ", chunk_size=3)
         # Request 10 bytes; recv will give 3+3+3+1
         result = read(sock, 10)
         assert result == b"ABCDEFGHIJ"
 
-    def test_socket_recv_zero_bytes_immediately(self):
+    def test_socket_recv_zero_bytes_immediately(self) -> None:
         """recv returns b'' on first call raises ShortRead."""
         sock = _ExactSizeSocket(b"")
         with pytest.raises(ShortRead):
             read(sock, 5)
 
-    def test_socket_recv_min_clamping(self):
+    def test_socket_recv_min_clamping(self) -> None:
         """recv is called with min(remaining, 1000000)."""
         sock = _ExactSizeSocket(b"AB")
         result = read(sock, 2)
         assert result == b"AB"
 
-    def test_file_read_exact_size_ok(self):
+    def test_file_read_exact_size_ok(self) -> None:
         """File read with exact byte count does not raise."""
         buf = io.BytesIO(b"hello")
         result = read(buf, 5)
         assert result == b"hello"
 
-    def test_file_read_zero_bytes(self):
+    def test_file_read_zero_bytes(self) -> None:
         """Reading 0 bytes succeeds."""
         buf = io.BytesIO(b"")
         result = read(buf, 0)
@@ -332,7 +332,7 @@ class TestReadSocketEdgeCases:
 class _RecoveringSendSocket:
     """Socket that returns 0 a few times, then sends successfully."""
 
-    def __init__(self, zeros_before_success: int):
+    def __init__(self, zeros_before_success: int) -> None:
         self._zeros = zeros_before_success
         self._total_sent = 0
         self.sent_data: list[bytes] = []
@@ -350,7 +350,7 @@ class _RecoveringSendSocket:
 class TestWriteSocketEdgeCases:
     """Test socket write paths not covered by test_utils_extended.py."""
 
-    def test_socket_zero_then_succeed(self):
+    def test_socket_zero_then_succeed(self) -> None:
         """Socket returns 0 a few times then sends successfully."""
         sock = _RecoveringSendSocket(zeros_before_success=3)
         write(sock, b"data")
@@ -358,16 +358,16 @@ class TestWriteSocketEdgeCases:
         assert sock.sent_data[0] == b"data"
 
     @pytest.mark.skip("implementation differs from test assumption")
-    def test_socket_partial_then_rest(self):
+    def test_socket_partial_then_rest(self) -> None:
         """Socket sends partial data, then the remainder."""
         results = [3, 0, 2]
         idx = [0]
 
         class Sock:
-            def __init__(self_inner):
+            def __init__(self_inner) -> None:
                 self_inner.sent = []
 
-            def send(self_inner, data):
+            def send(self_inner, data) -> None:
                 n = results[idx[0]]
                 idx[0] += 1
                 chunk = data[:n]
@@ -378,7 +378,7 @@ class TestWriteSocketEdgeCases:
         write(sock, b"hello")
         assert sock.sent == [b"help", b"he"]
 
-    def test_socket_zero_below_threshold_then_succeed(self):
+    def test_socket_zero_below_threshold_then_succeed(self) -> None:
         """9 zeros (below threshold of 10) then success is OK."""
         sock = _RecoveringSendSocket(zeros_before_success=9)
         write(sock, b"ok")
@@ -393,25 +393,25 @@ class TestWriteSocketEdgeCases:
 class TestAsBytesElseBranch:
     """Test as_bytes with non-byte-string inputs."""
 
-    def test_regular_string(self):
+    def test_regular_string(self) -> None:
         """Plain str goes through encode('latin1')."""
         assert as_bytes("hello") == b"hello"
 
-    def test_latin1_extended(self):
+    def test_latin1_extended(self) -> None:
         """Latin1 maps codepoints 0-255 directly to bytes."""
         for cp in [0, 127, 128, 255]:
             assert as_bytes(chr(cp)) == bytes([cp])
 
-    def test_int_not_byte_string(self):
+    def test_int_not_byte_string(self) -> None:
         """Non-byte-string types go through encode()."""
         assert as_bytes("test") == b"test"
 
-    def test_bytearray_passthrough(self):
+    def test_bytearray_passthrough(self) -> None:
         """bytearray is a byte_string subclass, returned as-is."""
         ba = bytearray(b"abc")
         assert as_bytes(ba) is ba
 
-    def test_bytes_passthrough(self):
+    def test_bytes_passthrough(self) -> None:
         """bytes is a byte_string subclass, returned as-is."""
         b = b"xyz"
         assert as_bytes(b) is b
@@ -425,14 +425,14 @@ class TestAsBytesElseBranch:
 class TestByteArrayGenSetSizePartialChunk:
     """Test gen_set_size when remaining < len(chunk) at the end."""
 
-    def test_expand_by_one(self):
+    def test_expand_by_one(self) -> None:
         """Expanding by exactly 1 byte exercises the partial-chunk path."""
         ba = ByteArray(size=0)
         steps = list(ba.gen_set_size(1))
         assert ba.get_size() == 1
         assert len(steps) >= 1
 
-    def test_expand_to_non_chunk_aligned_size(self):
+    def test_expand_to_non_chunk_aligned_size(self) -> None:
         """Expanding to a size that is not a multiple of 8196."""
         ba = ByteArray(size=0)
         target = 16392 + 7
@@ -441,7 +441,7 @@ class TestByteArrayGenSetSizePartialChunk:
         # The last step should have a small remaining value
         assert steps[-1] < 8196
 
-    def test_expand_from_nonzero_small(self):
+    def test_expand_from_nonzero_small(self) -> None:
         """Expanding from a small non-zero size."""
         ba = ByteArray(size=5)
         steps = list(ba.gen_set_size(10))
@@ -449,7 +449,7 @@ class TestByteArrayGenSetSizePartialChunk:
         assert len(steps) >= 1
 
     @pytest.mark.skip("implementation differs from test assumption")
-    def test_gen_set_size_yields_remaining(self):
+    def test_gen_set_size_yields_remaining(self) -> None:
         """Each yielded value is the remaining bytes still to write."""
         ba = ByteArray(size=0)
         steps = list(ba.gen_set_size(20))
@@ -459,7 +459,7 @@ class TestByteArrayGenSetSizePartialChunk:
         # Last step should be the last chunk written
         assert steps[-1] > 0
 
-    def test_gen_set_size_zero_to_zero(self):
+    def test_gen_set_size_zero_to_zero(self) -> None:
         """gen_set_size(0) on a zero-size array does nothing."""
         ba = ByteArray(size=0)
         steps = list(ba.gen_set_size(0))
@@ -467,7 +467,7 @@ class TestByteArrayGenSetSizePartialChunk:
         assert ba.get_size() == 0
 
     @pytest.mark.skip("implementation differs from test assumption")
-    def test_set_size_with_custom_init_byte_expansion(self):
+    def test_set_size_with_custom_init_byte_expansion(self) -> None:
         """set_size with custom init byte when expanding."""
         ba = ByteArray(size=2)
         ba.set_size(6, init_byte=as_bytes("\xff"))
@@ -483,45 +483,45 @@ class TestByteArrayGenSetSizePartialChunk:
 class TestByteSetitemClearBit:
     """Test Byte.__setitem__ with v=0 (clearing a set bit)."""
 
-    def test_clear_bit(self):
+    def test_clear_bit(self) -> None:
         b = Byte(0b11111111)
         b[0] = 0
         assert b[0] == 0
         assert int(b) == 0b01111111
 
-    def test_clear_bit_negative_index(self):
+    def test_clear_bit_negative_index(self) -> None:
         b = Byte(0b11111111)
         b[-1] = 0
         assert b[-1] == 0
         assert int(b) == 0b11111110
 
-    def test_set_all_bits_individually(self):
+    def test_set_all_bits_individually(self) -> None:
         b = Byte(0)
         for i in range(8):
             b[i] = 1
         assert int(b) == 255
 
-    def test_clear_all_bits_individually(self):
+    def test_clear_all_bits_individually(self) -> None:
         b = Byte(255)
         for i in range(8):
             b[i] = 0
         assert int(b) == 0
 
-    def test_alternating_bits(self):
+    def test_alternating_bits(self) -> None:
         b = Byte(0)
         for i in range(0, 8, 2):
             b[i] = 1
         # Bits 0, 2, 4, 6 set = 0b10101010 = 170
         assert int(b) == 170
 
-    def test_set_same_bit_twice(self):
+    def test_set_same_bit_twice(self) -> None:
         b = Byte(0)
         b[3] = 1
         b[3] = 1
         assert b[3] == 1
         assert int(b) == 0b00010000
 
-    def test_clear_then_set(self):
+    def test_clear_then_set(self) -> None:
         b = Byte(0)
         b[5] = 1
         assert b[5] == 1
@@ -530,7 +530,7 @@ class TestByteSetitemClearBit:
         b[5] = 1
         assert b[5] == 1
 
-    def test_negative_index_boundary(self):
+    def test_negative_index_boundary(self) -> None:
         """Negative index -8 maps to 0, -1 maps to 7."""
         b = Byte(0)
         b[-8] = 1
@@ -538,22 +538,22 @@ class TestByteSetitemClearBit:
         b[-1] = 1
         assert b[7] == 1
 
-    def test_getitem_negative_out_of_range(self):
+    def test_getitem_negative_out_of_range(self) -> None:
         b = Byte(0)
         with pytest.raises(IndexError):
             _ = b[-9]
 
-    def test_setitem_negative_out_of_range(self):
+    def test_setitem_negative_out_of_range(self) -> None:
         b = Byte(0)
         with pytest.raises(IndexError):
             b[-9] = 1
 
-    def test_getitem_positive_out_of_range(self):
+    def test_getitem_positive_out_of_range(self) -> None:
         b = Byte(0)
         with pytest.raises(IndexError):
             _ = b[8]
 
-    def test_setitem_positive_out_of_range(self):
+    def test_setitem_positive_out_of_range(self) -> None:
         b = Byte(0)
         with pytest.raises(IndexError):
             b[8] = 1
@@ -567,13 +567,13 @@ class TestByteSetitemClearBit:
 class TestBitArrayNonMultipleOf8:
     """Test BitArray when size is not a multiple of 8."""
 
-    def test_size_3_iteration(self):
+    def test_size_3_iteration(self) -> None:
         """A 3-bit array yields exactly 3 values on iteration."""
         bits = BitArray(size=3)
         items = list(bits)
         assert len(items) == 3
 
-    def test_size_5_set_and_iterate(self):
+    def test_size_5_set_and_iterate(self) -> None:
         bits = BitArray(size=5)
         bits[0] = 1
         bits[2] = 1
@@ -581,20 +581,20 @@ class TestBitArrayNonMultipleOf8:
         items = list(bits)
         assert items == [1, 0, 1, 0, 1]
 
-    def test_size_1(self):
+    def test_size_1(self) -> None:
         bits = BitArray(size=1)
         bits[0] = 1
         assert bits[0] == 1
         assert len(list(bits)) == 1
 
-    def test_size_7(self):
+    def test_size_7(self) -> None:
         bits = BitArray(size=7)
         for i in range(7):
             bits[i] = 1
         items = list(bits)
         assert items == [1, 1, 1, 1, 1, 1, 1]
 
-    def test_size_9_spans_two_bytes(self):
+    def test_size_9_spans_two_bytes(self) -> None:
         bits = BitArray(size=9)
         bits[0] = 1
         bits[8] = 1
@@ -603,7 +603,7 @@ class TestBitArrayNonMultipleOf8:
         assert items[0] == 1
         assert items[8] == 1
 
-    def test_str_representation_non_multiple(self):
+    def test_str_representation_non_multiple(self) -> None:
         bits = BitArray(size=5)
         bits[0] = 1
         bits[1] = 0
@@ -612,14 +612,14 @@ class TestBitArrayNonMultipleOf8:
         bits[4] = 1
         assert str(bits) == "10101"
 
-    def test_set_size_to_non_multiple(self):
+    def test_set_size_to_non_multiple(self) -> None:
         bits = BitArray(size=8)
         bits.set_size(13)
         assert bits.get_size() == 13
         items = list(bits)
         assert len(items) == 13
 
-    def test_negative_index_boundary(self):
+    def test_negative_index_boundary(self) -> None:
         bits = BitArray(size=4)
         bits[-1] = 1
         assert bits[3] == 1
@@ -636,7 +636,7 @@ class TestBitArrayNonMultipleOf8:
 class TestWordArrayIteration:
     """Test WordArray iteration returns all words."""
 
-    def test_iteration_all_words(self):
+    def test_iteration_all_words(self) -> None:
         wa = WordArray(file=None, bytes_per_word=4, number_of_words=3)
         wa[0] = b"\x00\x00\x00\x01"
         wa[1] = b"\x00\x00\x00\x02"
@@ -647,13 +647,13 @@ class TestWordArrayIteration:
         assert items[1] == b"\x00\x00\x00\x02"
         assert items[2] == b"\x00\x00\x00\x03"
 
-    def test_iteration_negative_index(self):
+    def test_iteration_negative_index(self) -> None:
         wa = WordArray(file=None, bytes_per_word=4, number_of_words=3)
         wa[-1] = b"\xff\xff\xff\xff"
         items = list(wa)
         assert items[-1] == b"\xff\xff\xff\xff"
 
-    def test_1_byte_words(self):
+    def test_1_byte_words(self) -> None:
         wa = WordArray(file=None, bytes_per_word=1, number_of_words=4)
         wa[0] = b"\x01"
         wa[3] = b"\xff"
@@ -662,16 +662,18 @@ class TestWordArrayIteration:
         items = list(wa)
         assert len(items) == 4
 
-    def test_generate_with_custom_init(self):
+    def test_generate_with_custom_init(self) -> None:
         """WordArray.generate with a non-zero init byte."""
         buf = io.BytesIO()
-        for _ in WordArray.generate(buf, bytes_per_word=2, number_of_words=2, init_byte=b"\xff"):
+        for _ in WordArray.generate(
+            buf, bytes_per_word=2, number_of_words=2, init_byte=b"\xff"
+        ):
             pass
         buf.seek(24)  # Skip header
         data = buf.read()
         assert data == b"\xff\xff\xff\xff"
 
-    def test_getitem_and_setitem_boundary(self):
+    def test_getitem_and_setitem_boundary(self) -> None:
         wa = WordArray(file=None, bytes_per_word=4, number_of_words=5)
         wa[4] = b"\x00\x00\x00\x09"
         assert wa[4] == b"\x00\x00\x00\x09"
@@ -687,23 +689,23 @@ class TestWordArrayIteration:
 class TestIntArrayGetAndIteritems:
     """Test IntArray.get() with set values and iteritems edge cases."""
 
-    def test_get_returns_set_value(self):
+    def test_get_returns_set_value(self) -> None:
         """get() returns the stored value for a set entry."""
         ia = IntArray(file=None, number_of_ints=5)
         ia[2] = 999
         assert ia.get(2) == 999
 
-    def test_get_custom_default_for_set_entry(self):
+    def test_get_custom_default_for_set_entry(self) -> None:
         """get() ignores default when entry is set."""
         ia = IntArray(file=None, number_of_ints=5)
         ia[1] = 42
         assert ia.get(1, -1) == 42
 
-    def test_get_blank_entry_custom_default(self):
+    def test_get_blank_entry_custom_default(self) -> None:
         ia = IntArray(file=None, number_of_ints=5)
         assert ia.get(3, "missing") == "missing"
 
-    def test_iteritems_all_set(self):
+    def test_iteritems_all_set(self) -> None:
         """iteritems yields all entries when all are set."""
         ia = IntArray(file=None, number_of_ints=3)
         ia[0] = 10
@@ -712,67 +714,67 @@ class TestIntArrayGetAndIteritems:
         items = list(ia.iteritems())
         assert len(items) == 3
 
-    def test_iteritems_none_set(self):
+    def test_iteritems_none_set(self) -> None:
         """iteritems yields nothing when all entries are blank."""
         ia = IntArray(file=None, number_of_ints=3)
         items = list(ia.iteritems())
         assert items == []
 
-    def test_items_is_iteritems(self):
+    def test_items_is_iteritems(self) -> None:
         """items and iteritems return the same results."""
         ia = IntArray(file=None, number_of_ints=3)
         ia[0] = 1
         ia[2] = 3
         assert list(ia.items()) == list(ia.iteritems())
 
-    def test_getitem_negative_index(self):
+    def test_getitem_negative_index(self) -> None:
         ia = IntArray(file=None, number_of_ints=5)
         ia[0] = 100
         ia[-1] = 500
         assert ia[-1] == 500
 
-    def test_getitem_negative_out_of_range(self):
+    def test_getitem_negative_out_of_range(self) -> None:
         ia = IntArray(file=None, number_of_ints=3)
         with pytest.raises(IndexError):
             _ = ia[-4]
 
-    def test_setitem_negative_index(self):
+    def test_setitem_negative_index(self) -> None:
         ia = IntArray(file=None, number_of_ints=5)
         ia[-1] = 777
         assert ia[4] == 777
 
-    def test_setitem_negative_out_of_range(self):
+    def test_setitem_negative_out_of_range(self) -> None:
         ia = IntArray(file=None, number_of_ints=3)
         with pytest.raises(IndexError):
             ia[-4] = 1
 
-    def test_compact_storage_zero_max(self):
+    def test_compact_storage_zero_max(self) -> None:
         """maximum_int=0 means only value 0 fits in 1 byte."""
         ia = IntArray(file=None, number_of_ints=3, maximum_int=0)
         ia[0] = 0
         assert ia[0] == 0
 
-    def test_compact_storage_get_set_value(self):
+    def test_compact_storage_get_set_value(self) -> None:
         """get() returns the value for a compact storage entry."""
         ia = IntArray(file=None, number_of_ints=5, maximum_int=255)
         ia[0] = 42
         assert ia.get(0) == 42
         assert ia.get(0, -1) == 42
 
-    def test_compact_storage_negative_index(self):
+    def test_compact_storage_negative_index(self) -> None:
         ia = IntArray(file=None, number_of_ints=5, maximum_int=255)
         ia[-1] = 200
         assert ia[-1] == 200
 
     @pytest.mark.skip("implementation differs from test assumption")
-    def test_get_blank_value_compact(self):
+    def test_get_blank_value_compact(self) -> None:
         """get_blank_value returns the max value for the compact word size."""
         ia = IntArray(file=None, number_of_ints=5, maximum_int=255)
         blank = ia.get_blank_value()
         # 1-byte word: pad = 7 zero bytes, blank = 1 byte of 0xff
         assert blank == (1 << 64) - 1
 
-    def test_iteration_compact_storage(self):
+    def test_iteration_compact_storage(self) -> None:
         """Iteration over compact IntArray includes blank values."""
         ia = IntArray(file=None, number_of_ints=3, maximum_int=255)
         ia[0] = 10
@@ -780,7 +782,7 @@ class TestIntArrayGetAndIteritems:
         assert len(items) == 3
         assert items[0] == 10
 
-    def test_compact_generate_static(self):
+    def test_compact_generate_static(self) -> None:
         """IntArray.generate creates a valid file."""
         buf = io.BytesIO()
         for _ in IntArray.generate(buf, number_of_ints=3, maximum_int=255):
@@ -799,50 +801,50 @@ class TestIntArrayGetAndIteritems:
 class TestIntSetBoundaryConditions:
     """Test IntSet edge cases around size boundaries."""
 
-    def test_add_at_exact_size_boundary(self):
+    def test_add_at_exact_size_boundary(self) -> None:
         """Adding at exactly the current size triggers expansion."""
         s = IntSet(size=10)
         s.add(10)
         assert 10 in s
 
-    def test_add_one_beyond_size(self):
+    def test_add_one_beyond_size(self) -> None:
         s = IntSet(size=10)
         s.add(11)
         assert 11 in s
 
-    def test_contains_at_size_boundary(self):
+    def test_contains_at_size_boundary(self) -> None:
         """Checking contains at exactly the size boundary returns False."""
         s = IntSet(size=10)
         assert 10 not in s
 
-    def test_contains_just_under_size(self):
+    def test_contains_just_under_size(self) -> None:
         s = IntSet(size=10)
         s.add(9)
         assert 9 in s
 
-    def test_discard_at_size_boundary(self):
+    def test_discard_at_size_boundary(self) -> None:
         """Discard at the size boundary is a no-op."""
         s = IntSet(size=10)
         s.discard(10)
 
-    def test_large_expansion(self):
+    def test_large_expansion(self) -> None:
         """Adding a very large value causes significant expansion."""
         s = IntSet(size=10)
         s.add(10000)
         assert 10000 in s
 
-    def test_add_zero(self):
+    def test_add_zero(self) -> None:
         s = IntSet(size=10)
         s.add(0)
         assert 0 in s
 
-    def test_discard_zero(self):
+    def test_discard_zero(self) -> None:
         s = IntSet(size=10)
         s.add(0)
         s.discard(0)
         assert 0 not in s
 
-    def test_multiple_adds_same_value(self):
+    def test_multiple_adds_same_value(self) -> None:
         s = IntSet(size=10)
         s.add(5)
         s.add(5)
@@ -858,20 +860,20 @@ class TestIntSetBoundaryConditions:
 class TestInt8BoundaryValues:
     """Test int8 conversions at boundaries."""
 
-    def test_max_value(self):
+    def test_max_value(self) -> None:
         max_val = (1 << 64) - 1
         encoded = int8_to_str(max_val)
         assert len(encoded) == 8
         assert str_to_int8(encoded) == max_val
 
-    def test_min_value(self):
+    def test_min_value(self) -> None:
         assert str_to_int8(int8_to_str(0)) == 0
 
-    def test_large_value(self):
+    def test_large_value(self) -> None:
         val = 2**63 + 42
         assert str_to_int8(int8_to_str(val)) == val
 
-    def test_encoded_bytes_are_big_endian(self):
+    def test_encoded_bytes_are_big_endian(self) -> None:
         """Verify the most-significant byte is first."""
         encoded = int8_to_str(0x0102030405060708)
         assert encoded[0] == 0x01
@@ -881,14 +883,14 @@ class TestInt8BoundaryValues:
 class TestInt4BoundaryValues:
     """Test int4 conversions at boundaries."""
 
-    def test_max_value(self):
+    def test_max_value(self) -> None:
         max_val = (1 << 32) - 1
         assert str_to_int4(int4_to_str(max_val)) == max_val
 
-    def test_min_value(self):
+    def test_min_value(self) -> None:
         assert str_to_int4(int4_to_str(0)) == 0
 
-    def test_encoded_bytes_are_big_endian(self):
+    def test_encoded_bytes_are_big_endian(self) -> None:
         encoded = int4_to_str(0x01020304)
         assert encoded[0] == 0x01
         assert encoded[3] == 0x04
@@ -902,15 +904,15 @@ class TestInt4BoundaryValues:
 class TestShortReadException:
     """Test ShortRead is an IOError subclass with correct behavior."""
 
-    def test_instantiation_no_args(self):
+    def test_instantiation_no_args(self) -> None:
         exc = ShortRead()
         assert isinstance(exc, IOError)
 
-    def test_catch_as_ioerror(self):
+    def test_catch_as_ioerror(self) -> None:
         with pytest.raises(IOError):
             raise ShortRead()
 
-    def test_catch_as_oserror(self):
+    def test_catch_as_oserror(self) -> None:
         """IOError is an alias for OSError in Python 3."""
         with pytest.raises(OSError):
             raise ShortRead()
@@ -924,25 +926,25 @@ class TestShortReadException:
 class TestWriteAllMixed:
     """Test write_all with various type combinations."""
 
-    def test_all_strings(self):
+    def test_all_strings(self) -> None:
         buf = io.BytesIO()
         write_all(buf, "a", "b", "c")
         buf.seek(0)
         assert buf.read() == b"abc"
 
-    def test_all_bytes(self):
+    def test_all_bytes(self) -> None:
         buf = io.BytesIO()
         write_all(buf, b"x", b"y", b"z")
         buf.seek(0)
         assert buf.read() == b"xyz"
 
-    def test_empty_args(self):
+    def test_empty_args(self) -> None:
         buf = io.BytesIO()
         write_all(buf)
         buf.seek(0)
         assert buf.read() == b""
 
-    def test_single_bytearray_arg(self):
+    def test_single_bytearray_arg(self) -> None:
         buf = io.BytesIO()
         write_all(buf, bytearray(b"hello"))
         buf.seek(0)
@@ -957,7 +959,7 @@ class TestWriteAllMixed:
 class TestInt8StrEdgeCases:
     """Edge cases for length-prefixed (8-byte) string I/O."""
 
-    def test_binary_data(self):
+    def test_binary_data(self) -> None:
         """Can write and read arbitrary binary data."""
         payload = b"\x00\xff\x80\x7f"
         buf = io.BytesIO()
@@ -965,7 +967,7 @@ class TestInt8StrEdgeCases:
         buf.seek(0)
         assert read_int8_str(buf) == payload
 
-    def test_single_byte(self):
+    def test_single_byte(self) -> None:
         buf = io.BytesIO()
         write_int8_str(buf, b"\x42")
         buf.seek(0)
@@ -980,14 +982,14 @@ class TestInt8StrEdgeCases:
 class TestInt4StrEdgeCases:
     """Edge cases for length-prefixed (4-byte) string I/O."""
 
-    def test_binary_data(self):
+    def test_binary_data(self) -> None:
         payload = b"\x00\xff\x80\x7f"
         buf = io.BytesIO()
         write_int4_str(buf, payload)
         buf.seek(0)
         assert read_int4_str(buf) == payload
 
-    def test_single_byte(self):
+    def test_single_byte(self) -> None:
         buf = io.BytesIO()
         write_int4_str(buf, b"\x42")
         buf.seek(0)
@@ -1003,7 +1005,7 @@ class TestByteArrayFileBacked:
     """Test ByteArray backed by an external file-like object."""
 
     @pytest.mark.skip("implementation differs from test assumption")
-    def test_write_then_read_back(self):
+    def test_write_then_read_back(self) -> None:
         buf = io.BytesIO()
         ba = ByteArray(size=5, file=buf)
         ba[0] = b"A"
@@ -1013,7 +1015,7 @@ class TestByteArrayFileBacked:
         assert data[0] == b"A"
         assert data[4] == b"E"
 
-    def test_set_size_on_file_backed(self):
+    def test_set_size_on_file_backed(self) -> None:
         buf = io.BytesIO()
         ba = ByteArray(size=2, file=buf)
         ba[0] = b"X"
@@ -1030,7 +1032,7 @@ class TestByteArrayFileBacked:
 class TestBitArrayFileBacked:
     """Test BitArray backed by an external file."""
 
-    def test_operations_on_file_backed(self):
+    def test_operations_on_file_backed(self) -> None:
         buf = io.BytesIO()
         bits = BitArray(size=16, file=buf)
         bits[0] = 1
@@ -1049,12 +1051,12 @@ class TestBitArrayFileBacked:
 class TestWordArraySetitemNegative:
     """Test WordArray __setitem__ with negative indices."""
 
-    def test_set_negative_last(self):
+    def test_set_negative_last(self) -> None:
         wa = WordArray(file=None, bytes_per_word=4, number_of_words=3)
         wa[-1] = b"\x00\x00\x00\xff"
         assert wa[2] == b"\x00\x00\x00\xff"
 
-    def test_set_negative_first(self):
+    def test_set_negative_first(self) -> None:
         wa = WordArray(file=None, bytes_per_word=4, number_of_words=3)
         wa[-3] = b"\x00\x00\x00\x0a"
         assert wa[0] == b"\x00\x00\x00\x0a"
@@ -1068,7 +1070,7 @@ class TestWordArraySetitemNegative:
 class TestIntArraySetitemOverflow:
     """Test IntArray.__setitem__ ValueError for compact storage overflow."""
 
-    def test_value_exceeds_compact_width_256(self):
+    def test_value_exceeds_compact_width_256(self) -> None:
         """With maximum_int=100, bytes_per_word=1 (pad=7 zero bytes).
         Value 256 encodes as b'\\x00...\\x01\\x00' with only 6 leading zeros,
         which does not match the 7-byte pad, raising ValueError."""
@@ -1078,7 +1080,7 @@ class TestIntArraySetitemOverflow:
         with pytest.raises(ValueError):
             ia[0] = 256
 
-    def test_value_fits_compactly(self):
+    def test_value_fits_compactly(self) -> None:
         """With maximum_int=100, value 100 still fits (1 byte)."""
         ia = IntArray(file=None, number_of_ints=3, maximum_int=100)
         ia[0] = 100
@@ -1093,19 +1095,19 @@ class TestIntArraySetitemOverflow:
 class TestIntSetDefaultSize:
     """Test IntSet with the default size parameter."""
 
-    def test_default_size_can_hold_1023(self):
+    def test_default_size_can_hold_1023(self) -> None:
         """Default size is 2**10 - 1 = 1023, so 1023 is within range."""
         s = IntSet()
         s.add(1023)
         assert 1023 in s
 
-    def test_default_size_overflow(self):
+    def test_default_size_overflow(self) -> None:
         """Adding beyond default 1023 triggers expansion."""
         s = IntSet()
         s.add(2000)
         assert 2000 in s
 
-    def test_default_size_1023_not_present_by_default(self):
+    def test_default_size_1023_not_present_by_default(self) -> None:
         """Value 1023 is within range but not present until explicitly added."""
         s = IntSet()
         assert 1023 not in s

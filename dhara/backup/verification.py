@@ -360,7 +360,9 @@ class BackupVerification:
 
             for backup in catalog.get_all_backups():
                 backup_results_single = self.run_all_checks(backup)
-                all_results[backup.backup_id] = cast("dict[str, CheckResult]", backup_results_single)
+                all_results[backup.backup_id] = cast(
+                    "dict[str, CheckResult]", backup_results_single
+                )
 
             return all_results
 
@@ -397,7 +399,9 @@ class BackupVerification:
         if backup_metadata is not None:
             # Single backup report
             overall_status = "passed"
-            results_dict: dict[str, CheckResult] = cast("dict[str, CheckResult]", results)
+            results_dict: dict[str, CheckResult] = cast(
+                "dict[str, CheckResult]", results
+            )
             for result in results_dict.values():
                 if result.status == "failed":
                     overall_status = "failed"
@@ -418,7 +422,9 @@ class BackupVerification:
 
             for backup_id, backup_results in results.items():
                 status: str = "passed"
-                backup_results_dict: dict[str, CheckResult] = cast("dict[str, CheckResult]", backup_results)
+                backup_results_dict: dict[str, CheckResult] = cast(
+                    "dict[str, CheckResult]", backup_results
+                )
                 for result in backup_results_dict.values():
                     if result.status == "failed":
                         status = "failed"

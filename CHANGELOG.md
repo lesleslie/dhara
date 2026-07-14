@@ -5,6 +5,13 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.1] - 2026-07-14
+
+### Changed
+
+- Dhara (quality: 66/100) - 2026-07-06 22:40:50
+- settings: Migrate dhara to OneiricMCPConfig
+
 ## [0.12.0] - 2026-07-05
 
 ### Added

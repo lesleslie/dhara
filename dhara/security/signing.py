@@ -1,4 +1,5 @@
 """
+from __future__ import annotations
 Cryptographic object signing for dhara.
 
 Provides HMAC-based signing to detect tampering and authenticate data.

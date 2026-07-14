@@ -13,6 +13,7 @@ This module provides:
 
 import json
 import logging
+from contextlib import suppress
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -57,12 +58,10 @@ class BackupCatalog:
                 backups_data = backups_obj["__state__"]["data"]
             else:
                 backups_data = (
-                    dict(backups_obj.items())
-                    if hasattr(backups_obj, "items")
-                    else {}
+                    dict(backups_obj.items()) if hasattr(backups_obj, "items") else {}
                 )
             return {
-                backup_id: dict(metadata)
+                backup_id: metadata.copy()
                 for backup_id, metadata in backups_data.items()
             }
         finally:
@@ -76,6 +75,16 @@ class BackupCatalog:
         (the OS-level flock on this file isn't always released instantly
         after close) with a tiny exponential backoff so a second save
         immediately after the first doesn't race the lock.
+
+        When the catalog file already exists, the loaded root's
+        ``_p_connection`` may be detached (Dhara's pure-Python fallback
+        does not always re-attach it after ``get_root``), so direct
+        ``root["backups"] = ...`` mutations could fail to register in
+        the connection's ``changed`` map and the commit would silently
+        drop the new state. We re-attach the connection and reset the
+        root's status to ``SAVED`` (when the slot is available) so the
+        next mutation correctly fires ``_p_note_change`` and the commit
+        persists the entire ``self.catalog`` payload.
         """
         import time
 
@@ -86,6 +95,17 @@ class BackupCatalog:
                 storage = FileStorage(str(self.catalog_path))
                 connection = Connection(storage)
                 root = connection.get_root()
+                # Re-attach the connection so the assignment below is
+                # tracked for commit. Use ``setattr`` with a default
+                # fallback so test doubles that swap ``root`` for a
+                # plain ``dict`` (e.g. ``TestBackupCatalogSave``) keep
+                # working — the assignment is a no-op there and the
+                # downstream ``root[...] = ...`` exercises the same
+                # code path that the original implementation did.
+                with suppress(AttributeError):
+                    root._p_connection = connection
+                with suppress(AttributeError):
+                    root._p_set_status_saved()
                 root["backups"] = PersistentDict(self.catalog)
                 connection.commit()
                 storage.close()
@@ -99,10 +119,8 @@ class BackupCatalog:
                 return
             finally:
                 if storage is not None:
-                    try:
+                    with suppress(Exception):
                         storage.close()
-                    except Exception:
-                        pass
         logger.error(f"Failed to save catalog after retries: {last_err}")
 
     def _refresh_catalog(self) -> None:
@@ -378,7 +396,7 @@ class AsyncBackupCatalog:
         conn = await self._get_connection()
         root = await conn.get_root()
         backups = root.get("backups", {})
-        return dict(backups) if backups else {}
+        return backups.copy() if backups else {}
 
     async def _save_catalog(self, catalog: dict[str, dict[str, Any]]) -> None:
         conn = await self._get_connection()

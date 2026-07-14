@@ -21,6 +21,7 @@ changing the storage layout.
 from __future__ import annotations
 
 import importlib
+from collections.abc import Iterator
 from contextlib import suppress
 from typing import Any, Final, cast
 
@@ -200,7 +201,7 @@ class ObjectWriter:
         refs_blob = join_bytes(sorted(self.refs))
         return data, refs_blob
 
-    def gen_new_objects(self, obj: Any):
+    def gen_new_objects(self, obj: Any) -> Iterator[Any]:
         """Yield the object (legacy compatibility shim).
 
         The new implementation yields the root object only. The

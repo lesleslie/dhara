@@ -180,16 +180,18 @@ class DharaMCPServer:
         storage_backend = getattr(config, "storage_backend", "file")
 
         if storage_backend == "postgres":
-            raise NotImplementedError(
-                "PostgreSQL storage backend is not yet implemented. "
-                "Only 'file' (default) and 'redis' cache are supported."
-            )
+            from dhara.storage.postgres import PostgresStorageAdapter
 
-        # Default: FileStorage (existing behavior)
-        self.storage = FileStorage(
-            storage_path,
-            readonly=config.storage.read_only,
-        )
+            self.storage = PostgresStorageAdapter(
+                url=getattr(config, "storage_pg_url", None)
+                or "postgresql://localhost/dhara",
+            )
+        else:
+            # Default: FileStorage (existing behavior)
+            self.storage = FileStorage(
+                storage_path,
+                readonly=config.storage.read_only,
+            )
 
         # ── Cache backend selection ─────────────────────────────────────────
         cache_backend = getattr(config, "cache_backend", "memory")

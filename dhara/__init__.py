@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import importlib
 from importlib.metadata import version as _pkg_version
+from typing import Any
 
 try:
     # Read the version from package metadata so it stays in sync with releases.

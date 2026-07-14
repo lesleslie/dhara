@@ -1,4 +1,5 @@
 """
+from __future__ import annotations
 $URL$
 $Id$
 """
@@ -108,18 +109,23 @@ class Storage:
         if start_oid is None:
             start_oid = connection.ROOT_OID
         # Normalize start_oid to bytes — storages key records by OID bytes.
+        # Use a local var: ty doesn't narrow the parameter's type after
+        # ``.encode()`` reassignment.
+        start_oid_bytes: bytes
         if isinstance(start_oid, str):
-            start_oid = start_oid.encode("latin1")
-        todo: list[OID] = [start_oid]
-        seen: set[OID] = set()
+            start_oid_bytes = start_oid.encode("latin1")
+        else:
+            start_oid_bytes = start_oid  # type: ignore[assignment]
+        todo: list[bytes] = [start_oid_bytes]
+        seen: set[bytes] = set()
         while todo:
-            batch: list[OID] = []
+            batch: list[bytes] = []
             while todo and len(batch) < batch_size:
-                oid = heapq.heappop(todo)
+                oid = heapq.heappop(todo)  # type: ignore[arg-type]
                 if oid not in seen:
                     batch.append(oid)
                     seen.add(oid)
-            for record in self.bulk_load(batch):
+            for record in self.bulk_load(batch):  # ty: ignore[invalid-argument-type]  # bulk_load signature is list[OID], batch is bytes internally
                 oid_bytes, data, refdata = unpack_record(record)
                 # The contract is to yield decoded str OIDs while keeping
                 # the internal traversal in bytes (records are bytes-keyed).
@@ -128,10 +134,10 @@ class Storage:
                     if isinstance(oid_bytes, bytes)
                     else oid_bytes
                 )
-                yield oid_str, record
+                yield oid_str, record  # type: ignore[misc]
                 for ref in split_oids(refdata):
                     if ref not in seen:
-                        heapq.heappush(todo, ref)
+                        heapq.heappush(todo, ref)  # type: ignore[arg-type]  # ty: ty can't narrow list as non-empty after heappop
 
 
 def gen_referring_oid_record(

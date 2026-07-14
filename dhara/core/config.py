@@ -178,7 +178,7 @@ class DharaSettings(OneiricMCPConfig):
                 os.environ.setdefault(canonical_name, value)
 
     @classmethod
-    def load(cls, config_name: str = "dhara") -> Self:  # type: ignore
+    def load(cls, config_name: str = "dhara") -> Self:
         """Load settings with mode-aware configuration.
 
         Detects mode from environment and loads appropriate config file:
@@ -207,7 +207,7 @@ class DharaSettings(OneiricMCPConfig):
 
         # Load settings using parent class
         try:
-            settings = super().load(config_file, env_prefix="DHARA")  # type: ignore[call-arg]
+            settings = super().load(config_file, env_prefix="DHARA")  # type: ignore
             logger.debug(f"Loaded settings from {config_file}.yaml")
         except Exception as e:
             logger.warning(f"Could not load {config_file}.yaml: {e}, using defaults")
@@ -215,10 +215,10 @@ class DharaSettings(OneiricMCPConfig):
 
         # Override mode from environment if set
         if mode:
-            settings.mode = mode  # type: ignore
+            settings.mode = mode
             logger.debug(f"Mode overridden from environment: {mode}")
 
-        return settings  # type: ignore
+        return settings
 
     def get_mode_config_path(self) -> Path:
         """Get path to mode-specific configuration file.

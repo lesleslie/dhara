@@ -1,5 +1,6 @@
 """msgspec-based serializer for Dhara.
 
+from __future__ import annotations
 msgspec is a fast and safe serialization library that supports:
 - MessagePack format (binary, compact)
 - JSON format (text, interoperable)

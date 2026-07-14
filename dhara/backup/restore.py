@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 """
-from __future__ import annotations
 Restore manager for Dhara databases.
 
 This module implements restore functionality including:
@@ -17,6 +16,7 @@ import logging
 import os
 import shutil
 import tempfile
+from contextlib import suppress
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -38,7 +38,7 @@ class RestorePoint:
         backup_id: str,
         timestamp: datetime,
         restore_type: str,
-        backup_path: str,
+        backup_path: str | Path,
         metadata: dict[str, Any],
     ):
         self.backup_id = backup_id
@@ -116,10 +116,70 @@ class RestoreManager:
             self._ensure_target_directory()
             shutil.copy2(backup_path, self.target_path)
 
+            # Step 4: Re-hydrate the restored file. Without this, a
+            # restored DB whose on-disk root round-trips through the
+            # ``__state__`` envelope (older pickle-style state) would
+            # surface ``root.data == {"__state__": {"data": {...}}}``,
+            # making ``"key" in root`` always False even though the
+            # real key is nested inside ``__state__["data"]``. We open
+            # the target with a fresh ``Connection`` and, if the root
+            # still has the envelope, unwrap and rewrite the in-memory
+            # root so the on-disk format is normalised. The same fix
+            # is documented in ``dhara/mcp/server_core.py:_probe_backups``.
+            self._rehydrate_restored_target()
+
             self.logger.info(
                 f"Database restored from backup: {backup_metadata.backup_id}"
             )
             return str(self.target_path)
+
+    def _rehydrate_restored_target(self) -> None:
+        """Open the restored target and normalise a ``__state__`` envelope.
+
+        Defensive: some legacy backup payloads hydrate as
+        ``{"__class__": ..., "__state__": {"data": {...}}}`` rather than a
+        fully reconstructed ``PersistentDict``. Re-opening the target and
+        unwrapping any envelope keeps ``"key" in restored_root`` working
+        for downstream consumers (see ``_probe_backups`` in
+        ``dhara/mcp/server_core.py`` for the same workaround).
+
+        No-op when the target isn't a parseable Dhara file (e.g. tests
+        that restore a plain text fixture); the original target is left
+        untouched in that case.
+        """
+        target = Path(self.target_path)
+        if not target.exists():
+            return
+
+        try:
+            storage = FileStorage(str(target))
+        except Exception:
+            # Not a Dhara-format file — leave it alone, the caller's
+            # own validation will surface the underlying error.
+            return
+
+        try:
+            connection = Connection(storage)
+            try:
+                root = connection.get_root()
+            except Exception:
+                # ``get_root`` on a non-root file raises; the caller
+                # (or its own assertion) decides how to surface that.
+                return
+            data = root.data
+            if (
+                isinstance(data, dict)
+                and "__state__" in data
+                and isinstance(data["__state__"], dict)
+                and "data" in data["__state__"]
+            ):
+                # Replace the envelope with the unwrapped mapping so
+                # ``in``/``[]`` lookups hit the real keys.
+                root.data = data["__state__"]["data"]
+                connection.commit()
+        finally:
+            with suppress(Exception):
+                storage.close()
 
     def _download_backup_from_cloud(self, backup_metadata: BackupMetadata) -> Path:
         """Download backup from cloud storage."""
@@ -310,14 +370,15 @@ class RestoreManager:
             self.logger.error(f"Restore verification failed: {e}")
             return False
 
-    def _calculate_checksum(self, file_path: str) -> str:
+    def _calculate_checksum(self, file_path: str | Path) -> str:
         """Calculate SHA256 checksum of a file."""
         import hashlib
 
         sha256_hash = hashlib.sha256()
+        # Use built-in ``open()`` so this works for both ``str`` and ``Path``.
         with open(file_path, "rb") as f:
             for byte_block in iter(lambda: f.read(4096), b""):  # type: ignore[arg-type]
-                sha256_hash.update(byte_block)  # type: ignore[arg-type]
+                sha256_hash.update(byte_block)
         return sha256_hash.hexdigest()
 
     def get_restore_summary(self) -> dict[str, Any]:

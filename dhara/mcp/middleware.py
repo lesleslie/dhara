@@ -1,4 +1,5 @@
 """
+from __future__ import annotations
 MCP Server Middleware
 
 This module provides middleware for MCP servers including authentication,

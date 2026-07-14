@@ -523,12 +523,12 @@ class AzureBlobStorageAdapter(_DelegatingStorageAdapter):
             download_blob = await cast(Any, download_blob)
         readall = download_blob.readall()
         if hasattr(readall, "__await__"):
-            readall = await readall  # type: ignore[func-returns-value]
+            readall = await readall  # ty: ignore[invalid-await]
         # ``readall`` may be raw bytes (newer azure-storage-blob sync
         # path) or a stream object exposing ``.readall()`` (older paths).
         if isinstance(readall, (bytes, bytearray)):
             return bytes(readall)
-        return readall.readall()  # type: ignore[union-attr]  #
+        return readall.readall()  # ty: ignore[unresolved-attribute]  #
 
     def upload_file(self, local_path: str, remote_path: str) -> bool:
         try:

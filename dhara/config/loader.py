@@ -144,7 +144,7 @@ def load_config(
             "not a path."
         )
     elif format in ("yaml", "json"):
-        parse_format = cast(Literal["yaml", "json"], format)
+        parse_format = format
     else:  # pragma: no cover - Literal guard
         raise ValueError(f"Unsupported format: {format!r}")
 

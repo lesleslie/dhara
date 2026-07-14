@@ -1,18 +1,21 @@
 """
+from __future__ import annotations
 $URL$
 $Id$
 """
 
 import heapq
+from collections.abc import Iterator
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
+from typing import Self
 
 from dhara.error import DruvaKeyError
 from dhara.file import File
 from dhara.logger import is_logging, log
 from dhara.serialize.record import split_oids, unpack_record
 from dhara.shelf import Shelf
-from dhara.storage.base import Storage
+from dhara.storage.base import OID, Storage
 from dhara.utils import IntSet, int8_to_str, iteritems, str_to_int8
 
 
@@ -41,38 +44,38 @@ class FileStorage(Storage):
         set of oids removed by packs since the last call to sync().
     """
 
-    def __init__(self, filename=None, readonly=False, repair=False):
+    def __init__(self, filename=None, readonly=False, repair=False) -> None:
         self.shelf = Shelf(filename, readonly=readonly, repair=repair)
         self.pending_records = {}
-        self.allocated_unused_oids = set()
+        self.allocated_unused_oids: set[OID] = set()
         self.pack_extra: set[str] | None = None
         self.invalid = set()
 
     @classmethod
-    def has_format(klass, file):
+    def has_format(klass, file) -> bool:
         """(File) -> bool
         Does the given file contain the expected header string?
         """
         return Shelf.has_format(file)
 
-    def get_filename(self):
+    def get_filename(self) -> str:
         """() -> str
         Returns the full path name of the file that contains the data.
         """
         return self.shelf.get_file().get_name()
 
-    def load(self, oid):
-        """(str) -> str"""
+    def load(self, oid: OID) -> bytes:
+        """(str) -> bytes"""
         result = self.shelf.get_value(oid)
         if result is None:
-            raise DruvaKeyError(oid)
+            raise DruvaKeyError([oid])
         return result
 
-    def begin(self):
+    def begin(self) -> None:
         self.pending_records.clear()
 
-    def store(self, oid, record):
-        """(str, str)"""
+    def store(self, oid: OID, record: bytes) -> None:
+        """(str, bytes)"""
         self.pending_records[oid] = record
         if (
             oid not in self.allocated_unused_oids
@@ -82,7 +85,7 @@ class FileStorage(Storage):
             self.begin()
             raise ValueError(f"oid {oid!r} is a surprise")
 
-    def end(self, handle_invalidations=None):
+    def end(self, handle_invalidations: Any | None = None) -> None:
         self.shelf.store(iteritems(self.pending_records))
         if is_logging(20):
             shelf_file = self.shelf.get_file()
@@ -94,27 +97,27 @@ class FileStorage(Storage):
         self.allocated_unused_oids -= set(self.pending_records)
         self.begin()
 
-    def sync(self):
+    def sync(self) -> list[OID]:
         """() -> [str]"""
         result = list(self.invalid)
         self.invalid.clear()
         return result
 
     def gen_oid_record(
-    self,
-    start_oid: str | None = None,
-    batch_size: int = 100,
-    **kwargs: Any,
-):
+        self,
+        start_oid: str | None = None,
+        batch_size: int = 100,
+        **kwargs: Any,
+    ) -> Iterator[tuple[OID, bytes]]:
         if start_oid is None:
-            yield from iteritems(self.shelf)
+            yield from iteritems(self.shelf)  # type: ignore[misc]
         else:
             # Normalize start_oid to bytes — Shelf keys are stored as
             # ``int8_to_str`` (8-byte big-endian) and ``str_to_int8``
             # only accepts bytes / bytes-like input.
             if isinstance(start_oid, str):
-                start_oid = start_oid.encode("latin1")
-            todo: list[bytes] = [start_oid]
+                start_oid = start_oid.encode("latin1")  # ty: ignore[invalid-assignment]
+            todo: list[bytes] = [start_oid]  # ty: ignore[invalid-assignment]
             seen: IntSet | None = kwargs.get("seen")
             if seen is None:
                 seen = IntSet()  # This eventually contains them all.
@@ -123,14 +126,14 @@ class FileStorage(Storage):
                 if str_to_int8(oid) in seen:
                     continue
                 seen.add(str_to_int8(oid))
-                record = self.load(oid)
+                record = self.load(oid)  # ty: ignore[invalid-argument-type]
                 record_oid, data, refdata = unpack_record(record)
                 assert oid == record_oid
                 for ref_oid in split_oids(refdata):
                     heapq.heappush(todo, ref_oid)
-                yield oid, record
+                yield oid, record  # ty: ignore[invalid-yield]  # oid is bytes form (matches base.py pattern)
 
-    def new_oid(self):
+    def new_oid(self) -> OID:
         while True:
             name = self.shelf.next_name()
             if name in self.allocated_unused_oids:
@@ -140,7 +143,7 @@ class FileStorage(Storage):
             self.allocated_unused_oids.add(name)
             return name
 
-    def get_packer(self):
+    def get_packer(self) -> Any | None:
         if (
             self.pending_records
             or self.pack_extra is not None
@@ -154,7 +157,7 @@ class FileStorage(Storage):
         file.truncate()  # obtains lock and clears.
         assert file.tell() == 0
 
-        def packer():
+        def packer() -> Iterator[str | int]:
             yield f"started {datetime.now()}"
             seen = IntSet()
             items = self.gen_oid_record(start_oid=int8_to_str(0), seen=seen)
@@ -188,14 +191,16 @@ class FileStorage(Storage):
 
         return packer()
 
-    def pack(self):
-        for iteration in self.get_packer():
-            pass
+    def pack(self) -> Any | None:
+        packer = self.get_packer()
+        if packer is not None:
+            for _iteration in packer:
+                pass
 
-    def close(self):
+    def close(self) -> None:
         self.shelf.close()
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         """Context manager entry - returns self for use in with statements.
 
         Example:
@@ -205,7 +210,7 @@ class FileStorage(Storage):
         """
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> bool:
         """Context manager exit - automatically closes storage and releases lock.
 
         Args:
@@ -214,16 +219,16 @@ class FileStorage(Storage):
             exc_tb: Exception traceback if an exception occurred
 
         Returns:
-            None (exceptions are propagated normally)
+            False (don't suppress exceptions)
         """
         self.close()
         return False  # Don't suppress exceptions
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.__class__.__name__}({self.get_filename()!r})"
 
 
-def TempFileStorage():
+def TempFileStorage() -> FileStorage:
     """
     This is just a more explicit way of opening a storage that uses a temporary
     file for the data.  This type of storage can be useful for testing.

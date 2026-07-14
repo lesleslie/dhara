@@ -1,26 +1,23 @@
 # tests/unit/test_postgres_storage.py
 #
-# These tests target the PostgresStorageAdapter / AsyncPostgresStorage
-# implementations. The PostgreSQL storage backend is not yet implemented —
-# dhara.mcp.server_core.__init__ raises NotImplementedError when
-# storage_backend == "postgres". The tests are skipped until the
-# backend lands; once it does, re-enable the tests and remove this
-# module-level skip.
+# These tests target the AsyncPostgresStorage implementation
+# (aliased as PostgresStorageAdapter for backward compatibility).
+# The PostgreSQL storage backend is fully implemented — see
+# dhara/storage/postgres.py and the wiring in dhara/mcp/server_core.py.
 #
-# See dhara/storage/postgres.py for the (unimplemented) backend.
+# OID API note: dhara/utils.py:str_to_int8 requires bytes input.
+# All OIDs in the tests below are 8-byte big-endian bytes, matching
+# the bytes-based OID contract used by every storage backend after
+# the 69e812d commit.
 
 from __future__ import annotations
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock
-from dhara.storage.postgres import PostgresStorageAdapter, PostgresStorageSettings
 
-pytestmark = pytest.mark.skip(
-    reason=(
-        "PostgreSQL storage backend is not yet implemented. "
-        "See dhara/storage/postgres.py and dhara/mcp/server_core.py."
-    )
-)
+from dhara.storage.postgres import PostgresStorageAdapter, PostgresStorageSettings
+from dhara.utils import int8_to_str
+from dhara.serialize.record import pack_record
 
 
 class TestPostgresStorageAdapterInit:
@@ -34,10 +31,21 @@ class TestPostgresStorageAdapterInit:
         assert adapter._pool is None  # lazy init
         assert adapter._in_transaction is False
 
-    def test_init_without_explicit_url_raises(self):
-        with pytest.raises(ValueError, match="pg_url"):
-            settings = PostgresStorageSettings(pg_url=None)
-            PostgresStorageAdapter(settings)
+    def test_init_without_explicit_url_falls_through_to_oneiric(self):
+        """When pg_url is None, AsyncPostgresStorage falls through to the
+        Oneiric-config URL (or the hard-coded default). This replaced the
+        pre-69e812d behavior of raising ValueError. The settings object
+        itself accepts pg_url=None and stores url=None; the adapter's
+        __init__ resolves the final URL lazily via Oneiric config.
+        """
+        settings = PostgresStorageSettings(pg_url=None)
+        assert settings.url is None
+        # Adapter construction must succeed (not raise) — URL resolution
+        # is deferred until first connect.
+        adapter = PostgresStorageAdapter(settings)
+        # The adapter either picks up Oneiric config or the local default.
+        assert adapter._url is not None
+        assert adapter._url.startswith("postgresql://")
 
     @pytest.mark.asyncio
     async def test_health_returns_true_when_pool_responds(self):
@@ -83,7 +91,9 @@ class TestPostgresStorageAdapterSync:
         adapter._pool = mock_pool
 
         result = await adapter.sync()
-        assert result == ["1", "2"]  # string format
+        # After 69e812d, sync() returns bytes (int8_to_str), not str.
+        assert result == [int8_to_str(1), int8_to_str(2)]
+        assert all(isinstance(oid, bytes) for oid in result)
         # Verify delete was called
         mock_conn.execute.assert_called()
 
@@ -130,7 +140,12 @@ class TestPostgresStorageAdapterTransaction:
         adapter._pool = mock_pool
 
         await adapter.begin()
-        await adapter.store("123", b"test_data")
+        # OID must be bytes (8-byte big-endian) after the 69e812d commit.
+        # The record arg must be a real packed record (oid|data_len|data|
+        # refs_len|refs), not raw bytes — Postgres store() unpacks it.
+        oid = int8_to_str(123)
+        packed = pack_record(oid, b"test_data", b"")
+        await adapter.store(oid, packed)
         await adapter.end()
 
         # Verify execute was called for insert and dirty_mark
@@ -157,14 +172,15 @@ class TestPostgresStorageAdapterLoad:
         adapter._pool = mock_pool
 
         with pytest.raises(KeyError):
-            await adapter.load("123")
+            # OID must be bytes (8-byte big-endian) after 69e812d.
+            await adapter.load(int8_to_str(123))
 
 
 class TestPostgresStorageAdapterOid:
     """Test new_oid uses nextval()."""
 
     @pytest.mark.asyncio
-    async def test_new_oid_returns_int_string_from_sequence(self):
+    async def test_new_oid_returns_int_bytes_from_sequence(self):
         settings = PostgresStorageSettings(pg_url="postgresql://localhost/dhara")
         adapter = PostgresStorageAdapter(settings)
         mock_pool = MagicMock()
@@ -177,5 +193,8 @@ class TestPostgresStorageAdapterOid:
         adapter._pool = mock_pool
 
         oid = await adapter.new_oid()
-        assert oid == "42"
+        # After 69e812d, new_oid() returns bytes (int8_to_str), not str.
+        assert oid == int8_to_str(42)
+        assert isinstance(oid, bytes)
+        assert len(oid) == 8
         mock_conn.fetchval.assert_called_once_with("SELECT nextval('dhara_oid_seq')")

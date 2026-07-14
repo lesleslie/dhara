@@ -1,4 +1,5 @@
 """
+from __future__ import annotations
 $URL$
 $Id$
 """
@@ -88,6 +89,14 @@ class Connection(ConnectionBase):
         self.new_oid = storage.new_oid  # needed by serialize
         self.cache = cache if cache is not None else Cache(cache_size)
         self.root = self.get(ROOT_OID)
+        if self.root is not None:
+            # Re-attach the connection on the loaded root. Without this
+            # any later ``root[k] = v`` triggers ``_p_note_change`` which
+            # bails when ``_p_connection`` is None, and the subsequent
+            # ``commit`` is a silent no-op. This is the load path's
+            # counterpart to the new-instance path below (which already
+            # assigns ``_p_connection`` to ``self``).
+            self.root._p_connection = self
         if self.root is None:
             new_oid = self.new_oid()
             assert ROOT_OID == new_oid

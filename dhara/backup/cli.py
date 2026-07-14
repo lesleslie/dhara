@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """
+from __future__ import annotations
 Command-line interface for Dhara backup and restore operations.
 
 This CLI provides easy-to-use commands for:
@@ -14,6 +15,7 @@ import argparse
 import logging
 import os
 import sys
+from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
@@ -222,8 +224,7 @@ def generate_encryption_key(key_file: str):
     key_path = Path(key_file)
     key_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with open(str(key_path), "wb") as f:  # nosec - operator-supplied key path
-        f.write(key)
+    key_path.write_bytes(key)  # nosec - operator-supplied key path
 
     logger.info(f"Encryption key generated and saved to: {key_file}")
     logger.info(f"Key: {key.decode()}")
@@ -453,16 +454,26 @@ def cmd_verify(args):
             results = verification.run_all_checks(backup)
 
             for check_name, result in cast(dict[str, Any], results).items():
+                check_status = (
+                    result.get("status")
+                    if isinstance(result, Mapping)
+                    else getattr(result, "status", None)
+                )
+                check_message = (
+                    result.get("message")
+                    if isinstance(result, Mapping)
+                    else getattr(result, "message", None)
+                )
                 status_icon = (
                     "✓"
-                    if result.get("status") == "passed"
+                    if check_status == "passed"
                     else "✗"
-                    if result.get("status") == "failed"
+                    if check_status == "failed"
                     else "⚠"
                 )
-                print(f"{status_icon} {check_name}: {result.get('message')}")
+                print(f"{status_icon} {check_name}: {check_message}")
 
-                if result.get("status") == "failed":
+                if check_status == "failed":
                     all_passed = False
 
         # Generate report if requested

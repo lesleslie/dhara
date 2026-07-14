@@ -270,7 +270,7 @@ class TokenAuth:
         try:
             with open(filepath) as f:
                 content = f.read().strip()
-                data = json.loads(content) if content else {}
+                data: dict[str, Any] = json.loads(content) if content else {}
 
             for token_id, token_data in data.get("tokens", {}).items():
                 self.tokens[token_id] = TokenInfo(

@@ -31,13 +31,14 @@ Usage:
 
 from __future__ import annotations
 
-import os
 import time
 from pathlib import Path
+from typing import cast
 
 import typer
 from mcp_common.cli import (
     MCPServerCLIFactory,
+    MCPServerSettings,
     RuntimeHealthSnapshot,
 )
 from mcp_common.cli.health import load_runtime_health, write_runtime_health
@@ -625,10 +626,13 @@ def create_cli() -> typer.Typer:
     # Load settings (YAML + env vars)
     settings = DharaSettings.load("dhara")
 
-    # Create CLI factory with custom handlers and MCP subcommand mode
+    # Create CLI factory with custom handlers and MCP subcommand mode.
+    # ``DharaSettings`` extends ``OneiricMCPConfig`` and shares ``BaseModel``
+    # structure with ``MCPServerSettings``, but they are sibling classes
+    # (not in the same inheritance chain); cast at the boundary.
     app = MCPServerCLIFactory(
         server_name="dhara",
-        settings=settings,
+        settings=cast(MCPServerSettings, settings),
         start_handler=start_handler,
         stop_handler=stop_handler,
         health_probe_handler=health_probe_handler,

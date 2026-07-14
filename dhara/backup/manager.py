@@ -45,7 +45,7 @@ class BackupMetadata:
         backup_id: str,
         backup_type: BackupType,
         timestamp: datetime,
-        source_path: str,
+        source_path: str | Path,
         size_bytes: int,
         checksum: str,
         compression_ratio: float = 0.0,
@@ -57,10 +57,9 @@ class BackupMetadata:
         self.backup_id = backup_id
         self.backup_type = backup_type
         self.timestamp = timestamp
-        # ``source_path`` is annotated ``str`` but a few call sites pass
-        # ``pathlib.Path`` instances; normalize so downstream string
-        # operations (``.endswith(...)``, ``os.path.*``) work.
-        self.source_path = str(source_path)
+        # ``source_path`` accepts ``str | Path``; coercion to ``str`` happens
+        # at the JSON serialization boundary in ``to_dict``.
+        self.source_path: str | Path = source_path
         self.size_bytes = size_bytes
         self.checksum = checksum
         self.compression_ratio = compression_ratio
@@ -75,7 +74,7 @@ class BackupMetadata:
             "backup_id": self.backup_id,
             "backup_type": self.backup_type.value,
             "timestamp": self.timestamp.isoformat(),
-            "source_path": self.source_path,
+            "source_path": str(self.source_path),
             "size_bytes": self.size_bytes,
             "checksum": self.checksum,
             "compression_ratio": self.compression_ratio,
@@ -198,14 +197,14 @@ class BackupManager:
         """Calculate SHA256 checksum of a file."""
         sha256_hash = hashlib.sha256()
         with Path(file_path).open("rb") as f:
-            for byte_block in iter(lambda: f.read(4096), b""):
+            for byte_block in iter(f.read(4096), b""):  # type: ignore
                 sha256_hash.update(byte_block)
         return sha256_hash.hexdigest()
 
     def _create_backup_metadata(
         self,
         backup_type: BackupType,
-        source_path: str,
+        source_path: str | Path,
         size_bytes: int,
         parent_backup_id: str | None = None,
     ) -> BackupMetadata:
@@ -344,7 +343,7 @@ class BackupManager:
             # Create metadata with parent reference
             metadata = self._create_backup_metadata(
                 BackupType.INCREMENTAL,
-                final_backup_path,  # type: ignore
+                final_backup_path,
                 Path(final_backup_path).stat().st_size,
                 last_backup.backup_id,
             )
@@ -400,7 +399,7 @@ class BackupManager:
             # Create metadata
             metadata = self._create_backup_metadata(
                 BackupType.DIFFERENTIAL,
-                final_backup_path,  # type: ignore
+                final_backup_path,
                 Path(final_backup_path).stat().st_size,
                 last_full.backup_id,
             )

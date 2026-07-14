@@ -357,6 +357,7 @@ class TestConnectionGetCrawler:
         conn.reader = MagicMock()
         conn.storage = MagicMock()
         conn.cache = Cache(10)
+        conn._allowed_modules = None
 
         cached = MagicMock()
         cached._p_is_ghost.return_value = False
@@ -373,8 +374,15 @@ class TestConnectionGetCrawler:
         ]
 
         with patch("dhara.core.connection.unpack_record", side_effect=lambda record: (record[0], b"data", b"refs")):
-            with patch("dhara.core.connection.loads", side_effect=[MagicMock, MagicMock]):
-                items = list(Connection.get_crawler(conn))
+            with patch(
+                "dhara.core.connection.deserialize_state",
+                return_value=("dhara.collections.dict.PersistentDict", {}),
+            ):
+                with patch(
+                    "dhara.core.connection._resolve_class",
+                    return_value=PersistentDict,
+                ):
+                    items = list(Connection.get_crawler(conn))
 
         assert items[0] is cached
         assert items[1] is loaded
@@ -678,8 +686,18 @@ class TestStandaloneFunctions:
             )
             c.get = MagicMock(side_effect=[target, MagicMock()])
             with patch("dhara.core.connection.unpack_record", side_effect=lambda record: record):
-                with patch("dhara.core.connection.loads", side_effect=[PersistentDict, _Other]):
-                    instances = list(gen_every_instance(c, PersistentDict))
+                with patch(
+                    "dhara.core.connection.deserialize_state",
+                    side_effect=[
+                        ("dhara.collections.dict.PersistentDict", {}),
+                        ("_Other", {}),
+                    ],
+                ):
+                    with patch(
+                        "dhara.core.connection._resolve_class",
+                        side_effect=[PersistentDict, _Other],
+                    ):
+                        instances = list(gen_every_instance(c, PersistentDict))
         assert len(instances) == 1
         c.abort()
         store.close()

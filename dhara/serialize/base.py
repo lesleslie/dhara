@@ -1,5 +1,6 @@
 """Base serializer interface for Durus.
 
+from __future__ import annotations
 Provides abstract interface for all serializer implementations.
 """
 

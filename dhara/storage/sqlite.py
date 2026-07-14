@@ -13,10 +13,12 @@ import asyncio
 import collections
 import sqlite3
 import struct
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any, cast
+
+from dhara.storage.base import OID
 
 import aiosqlite
 
@@ -25,9 +27,6 @@ from dhara.logger import is_logging, log
 from dhara.serialize.record import pack_record, split_oids, unpack_record
 from dhara.storage.base import Storage
 from dhara.utils import as_bytes, int8_to_str, iteritems, str_to_int8
-
-if TYPE_CHECKING:
-    from oneiric.core.config import Oneiric  # type: ignore
 
 _DB_SCHEMA = """\
 BEGIN TRANSACTION;
@@ -78,7 +77,7 @@ class SqliteStorage(Storage):
 
     _PACK_INCREMENT = 100  # number of records to pack before yielding
 
-    def __init__(self, filename, readonly=False, repair=False):
+    def __init__(self, filename, readonly=False, repair=False) -> None:
         if readonly:
             raise NotImplementedError
         self.filename = filename
@@ -93,23 +92,23 @@ class SqliteStorage(Storage):
         self.pack_extra = None
         self.invalid = set()
 
-    def _commit(self):
+    def _commit(self) -> None:
         self._conn.commit()
 
-    def _init(self):
+    def _init(self) -> None:
         self._conn = sqlite3.connect(self.filename)
         c = self._conn.cursor()
         c.executescript(_DB_SCHEMA)
         self._commit()
         self._last_oid = 0
 
-    def get_filename(self):
+    def get_filename(self) -> str:
         """() -> str
         Returns the full path name of the file that contains the data.
         """
         return self.filename
 
-    def _get_last_oid(self):
+    def _get_last_oid(self) -> int:
         """() -> int
         Return the highest OID in the database as integer.
         """
@@ -120,8 +119,8 @@ class SqliteStorage(Storage):
             return 0
         return v[0]
 
-    def load(self, oid):
-        """(str) -> str
+    def load(self, oid: OID) -> bytes:
+        """(str) -> bytes
         Return object record identified by 'oid'.
         """
         c = self._conn.cursor()
@@ -133,15 +132,15 @@ class SqliteStorage(Storage):
             raise KeyError(oid)
         return pack_record(int8_to_str(v[0]), v[1], v[2])
 
-    def begin(self):
+    def begin(self) -> None:
         self.pending_records.clear()
 
-    def store(self, oid, record):
+    def store(self, oid, record) -> None:
         """(str, str)"""
         self.pending_records.append(record)
 
-    def _store_records(self, records):
-        def gen_items(records):
+    def _store_records(self, records) -> None:
+        def gen_items(records: list[bytes]) -> Iterator[tuple[bytes, bytes, bytes]]:
             for record in records:
                 oid, data, refdata = unpack_record(record)
                 yield str_to_int8(oid), as_bytes(data), as_bytes(refdata)
@@ -156,13 +155,13 @@ class SqliteStorage(Storage):
         )
         self._commit()
 
-    def end(self, handle_invalidations=None):
+    def end(self, handle_invalidations=None) -> None:
         self._store_records(self.pending_records)
         if is_logging(20):
             log(20, f"Transaction at [{datetime.now()}]")
         self.begin()
 
-    def sync(self):
+    def sync(self) -> list[OID]:
         """() -> [str]
         Return a list of oids that should be invalidated.
         """
@@ -170,13 +169,13 @@ class SqliteStorage(Storage):
         self.invalid.clear()
         return result
 
-    def _list_all_oids(self):
+    def _list_all_oids(self) -> Iterator[OID]:
         c = self._conn.cursor()
         c.execute("SELECT id FROM objects ORDER BY id")
         for (oid,) in c.fetchall():
             yield int8_to_str(oid)
 
-    def _gen_records(self):
+    def _gen_records(self) -> Iterator[tuple[OID, bytes]]:
         c = self._conn.cursor()
         c.execute("SELECT (id, data, refs) FROM objects ORDER BY id")
         for oid, data, refs in c.fetchall():
@@ -187,49 +186,48 @@ class SqliteStorage(Storage):
         start_oid: str | None = None,
         batch_size: int = 100,
         **kwargs: Any,
-    ):
+    ) -> Iterator[tuple[OID, bytes]]:
         if start_oid is None:
             yield from iteritems(self._gen_records())
         else:
             # Normalize to bytes — SQLite stores oid as int8 (8-byte
-            # big-endian); ``str_to_int8`` and ``self.load`` both
-            # require bytes. Yield is also bytes (preserved contract).
+            # big-endian); ``split_oids`` returns bytes.
             if isinstance(start_oid, str):
-                start_oid = start_oid.encode("latin1")
-            todo: list[bytes] = [start_oid]
-            seen: set[bytes] = kwargs.get("seen") or set()
+                start_oid = start_oid.encode("latin1")  # ty: ignore[invalid-assignment]
+            todo: list[bytes] = [start_oid]  # ty: ignore[invalid-assignment]
+            seen: set[bytes] = cast(set[bytes], kwargs.get("seen") or set())
             while todo:
                 oid = todo.pop()
                 if oid in seen:
                     continue
                 seen.add(oid)
-                record = self.load(oid)
+                record = self.load(oid)  # ty: ignore[invalid-argument-type]
                 record_oid, data, refdata = unpack_record(record)
                 assert oid == record_oid
                 todo.extend(split_oids(refdata))
-                yield oid, record
+                yield oid, record  # ty: ignore[invalid-yield]  # oid is bytes form (preserves runtime semantics; matches base.py pattern)
 
-    def new_oid(self):
+    def new_oid(self) -> OID:
         oid = int8_to_str(self._last_oid)
         self._last_oid += 1
         return oid
 
-    def is_temporary(self):
+    def is_temporary(self) -> bool:
         return False
 
-    def is_readonly(self):
+    def is_readonly(self) -> bool:
         return False
 
-    def _get_refs(self, oid):
+    def _get_refs(self, oid: OID) -> list[OID]:
         c = self._conn.cursor()
         c.execute("SELECT refs FROM objects WHERE id = ?", (str_to_int8(oid),))
         v = c.fetchone()
         if v is None:
             raise KeyError(oid)
-        return split_oids(v[0])
+        return [int8_to_str(ref) for ref in split_oids(v[0])]  # bytes from split_oids, str from int8_to_str
 
-    def _delete(self, oids):
-        def gen_ids():
+    def _delete(self, oids) -> None:
+        def gen_ids() -> Iterator[tuple[bytes]]:
             for oid in oids:
                 yield (str_to_int8(oid),)
 
@@ -237,7 +235,7 @@ class SqliteStorage(Storage):
         c.executemany("DELETE FROM objects WHERE id = ?", gen_ids())
         self._commit()
 
-    def get_packer(self):
+    def get_packer(self) -> Any | None:
         if (
             self.pending_records
             or self.pack_extra is not None
@@ -248,7 +246,7 @@ class SqliteStorage(Storage):
         self.pack_extra = []
         alive = set()  # will contain OIDs of all reachable from root
 
-        def packer():
+        def packer() -> Iterator[str | None]:
             yield f"started {datetime.now()}"
             n = 0
             # find all reachable objects.  Note that when we yield, new
@@ -290,20 +288,22 @@ class SqliteStorage(Storage):
 
         return packer()
 
-    def pack(self):
-        for iteration in self.get_packer():
-            pass
+    def pack(self) -> Any | None:
+        packer = self.get_packer()
+        if packer is not None:
+            for iteration in packer:
+                pass
 
-    def close(self):
+    def close(self) -> None:
         self._conn.close()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.__class__.__name__}({self.get_filename()!r})"
 
-    def create_from_records(self, oid_records):
+    def create_from_records(self, oid_records) -> None:
         assert self._last_oid == 0, "db not empty"
 
-        def gen_recs(items):
+        def gen_recs(items: list[tuple[OID, bytes]]) -> Iterator[bytes]:
             for oid, record in items:
                 yield record
 
@@ -461,7 +461,7 @@ class AsyncSqliteStorage:
 
         # Store records with their OIDs directly as (id, data, refs) tuples
         # The record passed to store() is raw application data (not packed format)
-        def gen_items():
+        def gen_items() -> Iterator[tuple[bytes, bytes, bytes]]:
             for oid, record in self._pending_records:
                 oid_int = str_to_int8(oid)
                 # record is raw bytes - store as data with empty refs

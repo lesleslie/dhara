@@ -1,5 +1,6 @@
 """HTTP server for exposing metrics and health endpoints.
 
+from __future__ import annotations
 Deprecated: HTTP services in the Bodai ecosystem now standardize on exposing
 `/metrics` from the main service port. This standalone metrics server remains
 only as a temporary migration aid and should be removed after main-port cutover.

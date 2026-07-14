@@ -104,6 +104,11 @@ class TestFactoryAzureCreation:
 
     def test_factory_create_azure_basic(self):
         """Factory should create Azure adapter with connection string."""
+        # NOTE: This test only constructs an AzureBlobStorageSettings object
+        # via the Oneiric storage adapter. The Oneiric settings can be
+        # constructed without the Azure SDK installed — we don't need to
+        # skip just because the SDK is missing. The matching S3/GCS tests
+        # in this file don't skip either; the same pattern applies here.
         adapter = StorageAdapterFactory.create_storage(
             "azure", container="test-container", connection_string="DefaultEndpointsProtocol=https;..."
         )
