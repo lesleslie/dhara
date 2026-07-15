@@ -6,11 +6,13 @@ which makes FileStorage (when using the Shelf format) more compact
 and efficient for some operations.
 """
 
+import asyncio
 import sys
 from os.path import exists
 from tempfile import TemporaryFile
 
-from dhara.connection import Connection
+from dhara.core.connection import AsyncConnection
+from dhara.storage.sqlite import AsyncSqliteStorage
 
 if sys.version < "3":
     from cPickle import dump, load
@@ -24,29 +26,35 @@ def usage():
     raise SystemExit
 
 
-def main(old_file, new_file):
+async def main(old_file, new_file):
     if old_file.startswith("-"):
         usage()
     if new_file.startswith("-"):
         usage()
     assert not exists(new_file)
-    connection = Connection(sys.argv[1])
+    old_storage = AsyncSqliteStorage(old_file)
+    await old_storage.init()
+    connection = await AsyncConnection.new(old_storage)
     tmpfile = TemporaryFile()
     print("pickling from " + old_file)
-    dump(connection.get_root().__getstate__(), tmpfile, 2)
-    connection = None
+    dump((await connection.get_root()).__getstate__(), tmpfile, 2)
+    await connection.pack()
+    await old_storage.close()
     tmpfile.seek(0)
-    connection2 = Connection(sys.argv[2])
+    new_storage = AsyncSqliteStorage(new_file)
+    await new_storage.init()
+    connection2 = await AsyncConnection.new(new_storage)
     print("unpickling")
-    connection2.get_root().__setstate__(load(tmpfile))
-    connection2.get_root()._p_note_change()
+    (await connection2.get_root()).__setstate__(load(tmpfile))
+    (await connection2.get_root())._p_note_change()
     print("commit to " + new_file)
-    connection2.commit()
+    await connection2.commit()
     print("pack")
-    connection2.pack()
+    await connection2.pack()
+    await new_storage.close()
 
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         usage()
-    main(*sys.argv[1:])
+    asyncio.run(main(*sys.argv[1:]))
