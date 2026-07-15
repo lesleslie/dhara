@@ -5,7 +5,6 @@ This file provides common fixtures used across multiple test files,
 migrated from the legacy test/ directory.
 """
 
-import asyncio
 from os import unlink
 from os.path import exists
 
@@ -105,15 +104,3 @@ def persistent_class():
             self.value = value
 
     return TestObject
-
-
-@pytest.fixture(autouse=True)
-def event_loop():
-    """Provide a current event loop for tests that still use get_event_loop()."""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    try:
-        yield loop
-    finally:
-        loop.close()
-        asyncio.set_event_loop(None)
