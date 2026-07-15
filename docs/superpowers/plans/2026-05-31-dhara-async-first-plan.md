@@ -86,39 +86,39 @@ ______________________________________________________________________
 
 ### Phase 1: AsyncStorage Protocol + Async Backends
 
-- [ ] **Task 1:** Add complete `AsyncStorage` protocol to `dhara/storage/base.py`
-- [ ] **Task 2:** Create `AsyncSqliteStorage` in `dhara/storage/sqlite.py` using aiosqlite
-- [ ] **Task 3:** Create `AsyncPostgresStorage` in `dhara/storage/postgres.py` using asyncpg
-- [ ] **Task 4:** Add `AsyncMemoryStorage` in `dhara/storage/memory.py` (native async)
-- [ ] **Task 6:** Update `dhara/__init__.py` exports (remove `FileStorage`)
-- [ ] **Task 5:** Delete `dhara/storage/file.py` (FileStorage removed) — **runs after Task 6**
+- [x] **Task 1:** Add complete `AsyncStorage` protocol to `dhara/storage/base.py` *(verified done 2026-07-15: dhara/storage/base.py:233)*
+- [x] **Task 2:** Create `AsyncSqliteStorage` in `dhara/storage/sqlite.py` using aiosqlite *(verified done 2026-07-15: dhara/storage/sqlite.py:313)*
+- [x] **Task 3:** Create `AsyncPostgresStorage` in `dhara/storage/postgres.py` using asyncpg *(verified done 2026-07-15: dhara/storage/postgres.py:39)*
+- [x] **Task 4:** Add `AsyncMemoryStorage` in `dhara/storage/memory.py` (native async) *(verified done 2026-07-15: dhara/storage/memory.py:18)*
+- [ ] **Task 6:** Update `dhara/__init__.py` exports (remove `FileStorage`) — *Genuinely remaining: FileStorage still exported at dhara/__init__.py:70*
+- [ ] **Task 5:** Delete `dhara/storage/file.py` (FileStorage removed) — **runs after Task 6** *(Genuinely remaining; blocked on Task 6 + downstream migrations)*
 
 ### Phase 2: AsyncConnection
 
-- [ ] **Task 7:** Add `AsyncConnection` class in `dhara/core/connection.py` (all methods explicit)
-- [ ] **Task 8:** Add async methods to `PersistentObject` in `dhara/core/persistent.py`
-- [ ] **Task 9:** Add `AsyncPersistentDict` in `dhara/collections/dict.py`
-- [ ] **Task 10:** Add `AsyncPersistentList` in `dhara/collections/list.py`
-- [ ] **Task 11:** Add async wrapper for `BTree` in `dhara/collections/btree.py`
+- [x] **Task 7:** Add `AsyncConnection` class in `dhara/core/connection.py` (all methods explicit) *(verified done 2026-07-15: dhara/core/connection.py:381)*
+- [x] **Task 8:** Add async methods to `PersistentObject` in `dhara/core/persistent.py` *(verified done 2026-07-15: dhara/core/persistent.py)*
+- [ ] **Task 9:** Add `AsyncPersistentDict` in `dhara/collections/dict.py` — *Genuinely remaining; not yet implemented*
+- [x] **Task 10:** Add `AsyncPersistentList` in `dhara/collections/list.py` *(verified done 2026-07-15: dhara/collections/list.py:160-188)*
+- [x] **Task 11:** Add async wrapper for `BTree` in `dhara/collections/btree.py` *(verified done 2026-07-15: dhara/collections/btree.py:1352-1385)*
 
 ### Phase 3: MCP Server Async
 
-- [ ] **Task 12:** Update `dhara/mcp/kv_timeseries.py` to use `AsyncConnection`
-- [ ] **Task 13:** Update `dhara/mcp/server_core.py` to use `AsyncConnection`
-- [ ] **Task 14:** Update `dhara/mcp/adapter_tools.py` to use `AsyncConnection`
+- [x] **Task 12:** Update `dhara/mcp/kv_timeseries.py` to use `AsyncConnection` *(verified done 2026-07-15: dhara/mcp/kv_timeseries.py:60)*
+- [x] **Task 13:** Update `dhara/mcp/server_core.py` to use `AsyncConnection` *(verified done 2026-07-15: dhara/mcp/server_core.py:1049)*
+- [x] **Task 14:** Update `dhara/mcp/adapter_tools.py` to use `AsyncConnection` *(verified done 2026-07-15: dhara/mcp/adapter_tools.py:808)*
 
 ### Phase 4: Backup/CLI/Bin Async
 
-- [ ] **Task 15:** Update `dhara/backup/catalog.py` to use `AsyncConnection`
-- [ ] **Task 16:** Update `dhara/backup/restore.py` to use `AsyncConnection`
-- [ ] **Task 17:** Update `dhara/cli.py` to use async entry point
-- [ ] **Task 18:** Update `dhara/__main__.py` for async
-- [ ] **Task 19:** Update `bin/db_renumber.py` to use `AsyncConnection`
+- [x] **Task 15:** Update `dhara/backup/catalog.py` to use `AsyncConnection` *(verified done 2026-07-15: dhara/backup/catalog.py:365)*
+- [x] **Task 16:** Update `dhara/backup/restore.py` to use `AsyncConnection` *(verified done 2026-07-15: dhara/backup/restore.py:410)*
+- [ ] **Task 17:** Update `dhara/cli.py` to use async entry point — *Genuinely remaining: cli.py still sync*
+- [ ] **Task 18:** Update `dhara/__main__.py` for async — *Genuinely remaining: __main__.py still sync*
+- [ ] **Task 19:** Update `bin/db_renumber.py` to use `AsyncConnection` — *Genuinely remaining: bin/db_renumber.py:13 still uses `from dhara.connection import Connection`*
 - [ ] **Task 20:** Update `bin/db_to_py3k.py` to use `AsyncConnection`
 
 ### Phase 5: Tests
 
-- [ ] **Task 21:** Update `tests/conftest.py` — remove deprecated `event_loop` fixture, use `AsyncSqliteStorage`
+- [ ] **Task 21:** Update `tests/conftest.py` — remove deprecated `event_loop` fixture, use `AsyncSqliteStorage` — *Genuinely remaining: tests/conftest.py:111 still defines `event_loop` fixture*
 - [ ] **Task 22:** Update `tests/test_core_connection_methods.py` — async tests
 - [ ] **Task 23:** Update `tests/test_mcp_kv_timeseries.py` — async tests
 - [ ] **Task 24:** Update `tests/test_mcp_server_core.py` — async tests
@@ -1792,6 +1792,25 @@ Task 1 (AsyncStorage protocol — complete)
 ```
 
 **Note:** Task 7 (AsyncConnection) imports from `dhara/storage/base.py` for the `AsyncStorage` type annotation, so it must run after Task 1 completes. Tasks 9, 10, 11 use `AsyncConnection` in their tests, so they must run after Task 7.
+
+______________________________________________________________________
+
+## Genuinely Remaining (verified 2026-07-15)
+
+These tasks are still open per drift-sync audit. Their checkboxes above are intentionally NOT flipped to `- [x]`.
+
+- **Task 5 — Delete `dhara/storage/file.py`:** `dhara/storage/file.py` still exists; `FileStorage` is exported in `dhara/__init__.py:70`. Blocked on Task 6 (exports update) plus downstream migrations (CLI, `bin/db_renumber.py`).
+- **Task 6 — Update `dhara/__init__.py` exports (remove `FileStorage`):** `FileStorage` still exported at `dhara/__init__.py:49,70`. Must run before Task 5.
+- **Task 9 — `AsyncPersistentDict` in `dhara/collections/dict.py`:** Not yet implemented. Async-only dict API missing.
+- **Task 17 — Async CLI entry point in `dhara/cli.py`:** Still sync; needs `asyncio.run` wrap and async command handlers.
+- **Task 18 — `dhara/__main__.py` async:** Still sync; mirrors Task 17.
+- **Task 19 — `bin/db_renumber.py` to `AsyncConnection`:** `bin/db_renumber.py:13` still imports `from dhara.connection import Connection`.
+- **Task 21 — Remove deprecated `event_loop` fixture:** `tests/conftest.py:111` still defines `def event_loop()` — deprecated in pytest-asyncio.
+- **Task 20 — `bin/db_to_py3k.py` to `AsyncConnection`:** Unverified; check if still uses sync `Connection`.
+- **Task 22, 23, 24 — Convert remaining sync tests to async:** `tests/test_core_connection_methods.py`, `tests/test_mcp_kv_timeseries.py`, `tests/test_mcp_server_core.py` still sync.
+- **Task 25, 26 — Crackerjack `DharaAdapterLearner` MCP client:** Not yet started in crackerjack repo.
+
+The active follow-up plan `docs/2026-07-15-async-migration-cleanup.md` enumerates the small-batch follow-up work needed to close these gaps.
 
 ______________________________________________________________________
 
