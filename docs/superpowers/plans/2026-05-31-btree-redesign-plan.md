@@ -1,5 +1,19 @@
 # BTree Redesign Implementation Plan
 
+> **SUPERSEDED (2026-07-15).** This plan describes a single-`BNode` dataclass design
+> (`list[tuple[K,V]]` items + `list[BNode] | None` children) that was **never built**.
+> The codebase kept the original degree-specific design:
+> `BNode` base + `BNode4`, `BNode8`, `BNode16` subclasses (see `dhara/collections/btree.py:99,564,572,580`).
+> The async wrapper work tracked in `docs/2026-05-31-dhara-async-first-plan.md` Task 11
+> landed at `dhara/collections/btree.py:1352-1385` against the original design.
+>
+> **Do not execute this plan.** Active BTree work, if any, must start from a new plan.
+> This document is preserved for historical reference.
+
+---
+
+# BTree Redesign Implementation Plan
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace `dhara/collections/btree.py` with a type-safe, modern Python B-Tree implementation that passes pyright strict mode and all 9 crackerjack quality gates.

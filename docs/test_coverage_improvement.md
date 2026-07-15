@@ -150,19 +150,30 @@ async def test_readonly_mode_operations(self, lite_mode):
 - Health monitoring reliability is ensured
 - Mode switching behavior is verified
 
-## Next Steps
+## Next Steps (still remaining as of 2026-07-15)
+
+> **Plan reconciliation 2026-07-15.** Drift-sync audit verified these next-step items remain
+> genuinely open — none has landed since this document was originally written.
 
 ### Immediate
 
-1. Integrate tests into CI/CD pipeline
-1. Add property-based testing with Hypothesis
-1. Implement integration tests with real dependencies
+1. **Integrate tests into CI/CD pipeline** — not yet wired (no perftest hook, no Hypothesis in
+   CI).
+1. **Add property-based testing with Hypothesis** — genuinely missing per BTree tests; see
+   `docs/superpowers/plans/2026-05-31-btree-redesign-plan.md` (superseded — Hypothesis work
+   never landed against the live `BNode4/8/16` design).
+1. **Implement integration tests with real dependencies** — only mock-based unit tests in
+   `test_backup_simple.py`, `test_monitoring_simple.py`, `test_modes_simple.py`; no real
+   SQLite/Postgres/Redis integration coverage.
 
 ### Future Enhancements
 
-1. Add performance benchmarks for critical paths
-1. Implement chaos engineering experiments
-1. Add contract tests for external integrations
+1. **Add performance benchmarks for critical paths** — no `tests/perf/` directory, no
+   `pytest-benchmark` hook in `pyproject.toml`.
+1. **Implement chaos engineering experiments** — no `tests/chaos/` directory, no fault-injection
+   fixtures.
+1. **Add contract tests for external integrations** — no Pact / contract suite against MCP
+   server contract.
 
 ## Conclusion
 

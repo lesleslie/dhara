@@ -1,5 +1,26 @@
 # Dhara Remediation And Canonicalization Plan
 
+> **Plan reconciliation 2026-07-15.** Drift-sync audit verified the following phase statuses:
+>
+> **DONE:**
+> - Phase 2: Packaging and installability
+> - Phase 3: Import hygiene / optional dependency groups (commit 8edf961)
+> - Phase 5: Lifecycle hardening
+> - Phase 6: Test discovery repair
+> - Phase 7: Configuration model unification (`DHARA_*` prefix canonical)
+>
+> **PARTIAL:**
+> - Phase 1: Canonical naming cleanup — Druva aliases still in `dhara/core/connection.py:17,239,601`,
+>   `dhara/core/config.py:247`, `dhara/config/__init__.py:16,34`. Tracked in
+>   `docs/2026-07-15-async-migration-cleanup.md` Task 7.
+> - Phase 4: MCP consolidation — both `dhara/mcp/server.py` and `dhara/mcp/server_core.py`
+>   still coexist; canonical is `server_core.py` but `server.py` not yet deprecated/moved.
+> - Phase 8: Ecosystem schema/versioning — persisted schemas for service registrations and
+>   health snapshots exist in `dhara/mcp/ecosystem_state.py`, but explicit versioning/migration
+>   rules for those structures are not yet documented.
+> - Phase 9: Documentation and migration — `MIGRATION_GUIDE.md` exists; README updates
+>   still mention pre-0.11.0 surface names; archived stale docs still link from README.
+
 ## Purpose
 
 This plan turns the current Dhara review findings into an execution roadmap that:

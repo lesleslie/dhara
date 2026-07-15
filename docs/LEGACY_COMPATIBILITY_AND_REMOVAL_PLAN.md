@@ -1,5 +1,20 @@
 # Legacy Compatibility And Removal Plan (Historical)
 
+> **Reality Check (2026-07-15):** This plan claims the following surfaces were "removed in 0.11.0":
+> - `dhara.file_storage`
+> - `dhara.connection`
+> - `dhara.persistent_dict`
+> - `dhara.persistent_list`
+>
+> **The drift-sync audit verified these claims are false.** As of 2026-07-15:
+> - `dhara/storage/file.py` still exists; `FileStorage` is exported at `dhara/__init__.py:49,70`.
+> - `dhara.connection` is still imported by `bin/db_renumber.py:13` (`from dhara.connection import Connection`).
+> - `dhara.persistent_dict` / `dhara.persistent_list` legacy aliases are referenced by `examples/backup_example.py:25` and other paths.
+>
+> **Status (corrected):** None of the claimed "removed in 0.11.0" surfaces were actually removed. They remain in active use. The historical "removed in 0.11.0" claim is **struck** as factually incorrect. Actual removal work is captured in the new active plan `docs/2026-07-15-async-migration-cleanup.md`.
+>
+> This document is preserved for historical reference; do not rely on its "Removed compatibility surfaces" section for current state.
+
 > **Removed in 0.11.0:** The DFS20/Durus 4.x pickle-format on-disk database
 > compatibility is no longer supported. Opening a DFS20 file raises
 > `ValueError`; there is no in-place migration path. Use `FileStorage`
@@ -44,13 +59,17 @@ The following are deprecated and should not be used in new code:
 - `dhara.mcp.server`
 - `druva`
 
-Removed compatibility surfaces:
+Removed compatibility surfaces (claimed, NOT verified — see Reality Check above):
 
-- `dhara.file_storage`
-- `dhara.connection`
-- `dhara.persistent`
-- `dhara.persistent_dict`
-- `dhara.persistent_list`
+> **STRUCK 2026-07-15:** The list below claims these were "Removed in 0.11.0." Audit found
+> `dhara.file_storage`, `dhara.connection`, and the persistent shims still in use. The historical
+> claim is preserved here for traceability but should not be cited as current state.
+
+- ~~`dhara.file_storage`~~ — still exists; see `dhara/storage/file.py` and `dhara/__init__.py:70`
+- ~~`dhara.connection`~~ — still imported by `bin/db_renumber.py:13`
+- ~~`dhara.persistent`~~
+- ~~`dhara.persistent_dict`~~ — still referenced by `examples/backup_example.py:25`
+- ~~`dhara.persistent_list`~~
 
 The following remain compatibility aliases inside the dataclass config helper
 layer and are deprecated as primary names:
@@ -58,9 +77,10 @@ layer and are deprecated as primary names:
 - `dhara.config.DruvaConfig`
 - `dhara.core.config.DruvaSettings`
 
-The legacy Durus file-format helper `dhara.file_storage2` is **removed in
-0.11.0**. Use `dhara.storage.file.FileStorage` (SHELF-1) for all new and
-migrated databases.
+The legacy Durus file-format helper `dhara.file_storage2` is **claimed removed in
+0.11.0** (UNVERIFIED — see Reality Check). Use `dhara.storage.file.FileStorage`
+(SHELF-1) for all new and migrated databases pending the cleanup tracked in
+`docs/2026-07-15-async-migration-cleanup.md`.
 
 ## Timeline
 
