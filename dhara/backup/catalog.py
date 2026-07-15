@@ -19,8 +19,8 @@ from pathlib import Path
 from typing import Any
 
 from dhara.collections.dict import PersistentDict
-from dhara.core.connection import AsyncConnection, Connection
-from dhara.storage.file import FileStorage
+from dhara.core.connection import AsyncConnection
+from dhara.storage.async_file import AsyncFileStorage
 
 from .manager import BackupMetadata, BackupType
 
@@ -41,39 +41,56 @@ class BackupCatalog:
         if not self.catalog_path.exists():
             return {}
 
-        storage = FileStorage(str(self.catalog_path))
-        connection = Connection(storage)
+        import asyncio
+
+        async def _do_load() -> dict[str, dict[str, Any]]:
+            storage = AsyncFileStorage(str(self.catalog_path))
+            try:
+                await storage.init()
+                connection = await AsyncConnection.new(storage)
+                root = await connection.get_root()
+                backups_obj = root.get("backups", {})
+                # On disk the catalog may round-trip as a nested
+                # ``__state__`` dict (older pickle-style state)
+                # rather than a hydrated ``PersistentDict``.
+                # Unwrap that representation here so ``.items()``
+                # yields the real (backup_id → metadata) map.
+                if (
+                    isinstance(backups_obj, dict)
+                    and "__state__" in backups_obj
+                    and isinstance(backups_obj["__state__"], dict)
+                    and "data" in backups_obj["__state__"]
+                ):
+                    backups_data = backups_obj["__state__"]["data"]
+                else:
+                    backups_data = (
+                        dict(backups_obj.items())
+                        if hasattr(backups_obj, "items")
+                        else {}
+                    )
+                result = {
+                    backup_id: metadata.copy()
+                    for backup_id, metadata in backups_data.items()
+                }
+                await storage.close()
+                return result
+            except Exception:
+                with suppress(Exception):
+                    await storage.close()
+                raise
+
         try:
-            backups_obj = connection.get_root().get("backups", {})
-            # On disk the catalog may round-trip as a nested ``__state__``
-            # dict (older pickle-style state) rather than a hydrated
-            # ``PersistentDict``. Unwrap that representation here so
-            # ``.items()`` yields the real (backup_id → metadata) map.
-            if (
-                isinstance(backups_obj, dict)
-                and "__state__" in backups_obj
-                and isinstance(backups_obj["__state__"], dict)
-                and "data" in backups_obj["__state__"]
-            ):
-                backups_data = backups_obj["__state__"]["data"]
-            else:
-                backups_data = (
-                    dict(backups_obj.items()) if hasattr(backups_obj, "items") else {}
-                )
-            return {
-                backup_id: metadata.copy()
-                for backup_id, metadata in backups_data.items()
-            }
-        finally:
-            storage.close()
+            return asyncio.run(_do_load())
+        except Exception as e:
+            logger.error(f"Failed to load catalog: {e}")
+            return {}
 
     def _save_catalog(self) -> None:
         """Save catalog to disk.
 
-        Each call opens a fresh FileStorage + Connection so the lock is
-        fully released between saves. We retry on ``BlockingIOError``
-        (the OS-level flock on this file isn't always released instantly
-        after close) with a tiny exponential backoff so a second save
+        Each call opens a fresh AsyncFileStorage + AsyncConnection so the
+        lock is fully released between saves. We retry on transient I/O
+        errors with a tiny exponential backoff so a second save
         immediately after the first doesn't race the lock.
 
         When the catalog file already exists, the loaded root's
@@ -86,41 +103,56 @@ class BackupCatalog:
         next mutation correctly fires ``_p_note_change`` and the commit
         persists the entire ``self.catalog`` payload.
         """
+        import asyncio
         import time
 
         last_err: Exception | None = None
-        for attempt in range(5):
-            storage = None
+
+        async def _do_save() -> None:
+            storage = AsyncFileStorage(str(self.catalog_path))
             try:
-                storage = FileStorage(str(self.catalog_path))
-                connection = Connection(storage)
-                root = connection.get_root()
-                # Re-attach the connection so the assignment below is
-                # tracked for commit. Use ``setattr`` with a default
-                # fallback so test doubles that swap ``root`` for a
-                # plain ``dict`` (e.g. ``TestBackupCatalogSave``) keep
-                # working — the assignment is a no-op there and the
-                # downstream ``root[...] = ...`` exercises the same
-                # code path that the original implementation did.
-                with suppress(AttributeError):
-                    root._p_connection = connection
-                with suppress(AttributeError):
-                    root._p_set_status_saved()
-                root["backups"] = PersistentDict(self.catalog)
-                connection.commit()
-                storage.close()
+                await storage.init()
+            except Exception:
+                # Already-initialized files raise on init; ignore and
+                # rely on AsyncConnection to open.
+                pass
+            connection = await AsyncConnection.new(storage)
+            root = await connection.get_root()
+            # Re-attach the connection so the assignment below is
+            # tracked for commit. Use ``setattr`` with a default
+            # fallback so test doubles that swap ``root`` for a
+            # plain ``dict`` (e.g. ``TestBackupCatalogSave``) keep
+            # working — the assignment is a no-op there and the
+            # downstream ``root[...] = ...`` exercises the same
+            # code path that the original implementation did.
+            with suppress(AttributeError):
+                root._p_connection = connection
+            with suppress(AttributeError):
+                root._p_set_status_saved()
+            root["backups"] = PersistentDict(self.catalog)
+            # Manually register the change on the async connection —
+            # ``_p_note_change`` schedules ``conn.note_change`` as a
+            # background task via ``asyncio.create_task``, which would
+            # race ``commit`` in a sync wrapper. Calling the async
+            # method directly guarantees ``connection.changed`` has
+            # the root before commit walks it.
+            with suppress(AttributeError):
+                root._p_connection = connection
+            await connection.note_change(root)
+            await connection.commit()
+            await storage.close()
+
+        for attempt in range(5):
+            try:
+                asyncio.run(_do_save())
                 return
-            except BlockingIOError as e:
+            except (BlockingIOError, OSError) as e:
                 last_err = e
                 # Lock not yet released — back off briefly and retry
                 time.sleep(0.005 * (2**attempt))
             except Exception as e:
                 logger.error(f"Failed to save catalog: {e}")
                 return
-            finally:
-                if storage is not None:
-                    with suppress(Exception):
-                        storage.close()
         logger.error(f"Failed to save catalog after retries: {last_err}")
 
     def _refresh_catalog(self) -> None:
@@ -386,9 +418,9 @@ class AsyncBackupCatalog:
 
     async def _get_connection(self) -> AsyncConnection:
         if self._connection is None:
-            from dhara.storage.file import FileStorage
+            from dhara.storage.async_file import AsyncFileStorage
 
-            storage = FileStorage(str(self.catalog_path))
+            storage = AsyncFileStorage(str(self.catalog_path))
             self._connection = await AsyncConnection.new(storage)
         return self._connection
 

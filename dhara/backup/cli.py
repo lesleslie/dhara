@@ -25,7 +25,7 @@ from dhara.backup.manager import BackupManager, BackupType
 from dhara.backup.restore import AsyncRestoreManager, RestoreManager
 from dhara.backup.scheduler import AsyncBackupScheduler
 from dhara.backup.verification import AsyncBackupVerification, BackupVerification
-from dhara.storage.file import FileStorage
+from dhara.storage.async_file import AsyncFileStorage
 
 # Configure logging
 logging.basicConfig(
@@ -276,7 +276,7 @@ def cmd_backup(args):
 
     # Create backup manager (storage always opened; closed in finally
     # so failures mid-flight still release the underlying file handle)
-    storage = FileStorage(args.source)
+    storage = AsyncFileStorage(args.source)
     try:
         backup_manager = BackupManager(
             storage=storage,

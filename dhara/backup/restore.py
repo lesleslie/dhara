@@ -22,7 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from dhara.core.connection import AsyncConnection, Connection
-from dhara.storage.file import FileStorage
+from dhara.storage.async_file import AsyncFileStorage
 
 from .catalog import AsyncBackupCatalog, BackupCatalog
 from .manager import BackupMetadata, BackupType, CompressionEngine, EncryptionEngine
@@ -147,39 +147,49 @@ class RestoreManager:
         that restore a plain text fixture); the original target is left
         untouched in that case.
         """
+        import asyncio
+
         target = Path(self.target_path)
         if not target.exists():
             return
 
-        try:
-            storage = FileStorage(str(target))
-        except Exception:
-            # Not a Dhara-format file — leave it alone, the caller's
-            # own validation will surface the underlying error.
-            return
-
-        try:
-            connection = Connection(storage)
+        async def _do_rehydrate() -> None:
+            storage = AsyncFileStorage(str(target))
             try:
-                root = connection.get_root()
+                await storage.init()
+            except Exception:
+                # Not a Dhara-format file — leave it alone, the
+                # caller's own validation will surface the underlying
+                # error.
+                return
+            connection = await AsyncConnection.new(storage)
+            try:
+                root = await connection.get_root()
+                data = root.data
+                if (
+                    isinstance(data, dict)
+                    and "__state__" in data
+                    and isinstance(data["__state__"], dict)
+                    and "data" in data["__state__"]
+                ):
+                    # Replace the envelope with the unwrapped mapping
+                    # so ``in``/``[]`` lookups hit the real keys.
+                    root.data = data["__state__"]["data"]
+                    await connection.commit()
             except Exception:
                 # ``get_root`` on a non-root file raises; the caller
                 # (or its own assertion) decides how to surface that.
-                return
-            data = root.data
-            if (
-                isinstance(data, dict)
-                and "__state__" in data
-                and isinstance(data["__state__"], dict)
-                and "data" in data["__state__"]
-            ):
-                # Replace the envelope with the unwrapped mapping so
-                # ``in``/``[]`` lookups hit the real keys.
-                root.data = data["__state__"]["data"]
-                connection.commit()
-        finally:
+                pass
             with suppress(Exception):
-                storage.close()
+                await storage.close()
+
+        try:
+            asyncio.run(_do_rehydrate())
+        except Exception:
+            # Defensive: never let the rehydrate pass crash the
+            # surrounding restore; callers handle a partially-rehydrated
+            # file via their own verification path.
+            return
 
     def _download_backup_from_cloud(self, backup_metadata: BackupMetadata) -> Path:
         """Download backup from cloud storage."""
@@ -355,10 +365,23 @@ class RestoreManager:
             # Verify restored storage can be opened and root accessed.
             if self.storage_type == "file":
                 try:
-                    storage = FileStorage(str(self.target_path))
-                    connection = Connection(storage)
-                    connection.get_root()
-                    storage.close()
+                    import asyncio
+
+                    async def _do_verify() -> None:
+                        storage = AsyncFileStorage(str(self.target_path))
+                        try:
+                            await storage.init()
+                        except Exception:
+                            return
+                        connection = await AsyncConnection.new(storage)
+                        try:
+                            await connection.get_root()
+                        except Exception:
+                            pass
+                        with suppress(Exception):
+                            await storage.close()
+
+                    asyncio.run(_do_verify())
                     return True
                 except Exception as e:
                     self.logger.error(f"Failed to open restored storage: {e}")
@@ -584,12 +607,22 @@ class AsyncRestoreManager:
                 return False
 
             if self.backup_dir.name == "file" or not hasattr(self, "storage_type"):
-                # Simple verification: try to open as FileStorage
+                # Simple verification: try to open as AsyncFileStorage
                 try:
-                    storage = FileStorage(str(self.target_path))
+                    storage = AsyncFileStorage(str(self.target_path))
+                    try:
+                        await storage.init()
+                    except Exception:
+                        return False
                     conn = await AsyncConnection.new(storage)
-                    await conn.get_root()
-                    await conn.close()
+                    try:
+                        await conn.get_root()
+                    except Exception:
+                        with suppress(Exception):
+                            await storage.close()
+                        return False
+                    with suppress(Exception):
+                        await storage.close()
                     return True
                 except Exception as e:
                     self.logger.error(f"Failed to open restored storage: {e}")

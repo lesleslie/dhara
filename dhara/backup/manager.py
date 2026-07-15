@@ -26,7 +26,14 @@ import zstandard as zstd
 from cryptography.fernet import Fernet
 
 from dhara.storage import Storage
-from dhara.storage.file import FileStorage
+from dhara.storage.async_file import AsyncFileStorage
+
+
+def _async_get_filename(storage: AsyncFileStorage) -> str:
+    """Run an async ``get_filename`` call from sync code."""
+    import asyncio
+
+    return asyncio.run(storage.get_filename())
 
 logger = logging.getLogger(__name__)
 
@@ -253,9 +260,13 @@ class BackupManager:
             backup_path = os.path.join(temp_dir, "full_backup.dhara")
 
             # Copy database files
-            if isinstance(self.storage, FileStorage):
-                # For FileStorage, copy the entire file
-                source_path = self.storage.get_filename()
+            if isinstance(self.storage, AsyncFileStorage):
+                # For AsyncFileStorage, copy the entire file. The
+                # async ``get_filename`` is driven from sync code via
+                # ``asyncio.run`` so the surrounding backup flow can
+                # stay synchronous until the wider backup subsystem is
+                # converted to async.
+                source_path = _async_get_filename(self.storage)
                 shutil.copy2(source_path, backup_path)
             else:
                 # For other storage types, serialize the database
@@ -317,8 +328,8 @@ class BackupManager:
 
             # Copy changes since last backup
             # This is simplified - in practice, you'd track changes
-            if isinstance(self.storage, FileStorage):
-                source_path = self.storage.get_filename()
+            if isinstance(self.storage, AsyncFileStorage):
+                source_path = _async_get_filename(self.storage)
                 shutil.copy2(source_path, backup_path)
             else:
                 raise NotImplementedError(
@@ -373,8 +384,8 @@ class BackupManager:
             backup_path = os.path.join(temp_dir, "differential_backup.dhara")
 
             # Copy changes since last full backup
-            if isinstance(self.storage, FileStorage):
-                source_path = self.storage.get_filename()
+            if isinstance(self.storage, AsyncFileStorage):
+                source_path = _async_get_filename(self.storage)
                 shutil.copy2(source_path, backup_path)
             else:
                 raise NotImplementedError(
