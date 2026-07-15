@@ -13,9 +13,9 @@ from .defaults import (
     CacheConfig,
     ConnectionConfig,
     DharaConfig,
-    DruvaConfig,
     StorageConfig,
 )
+from dhara._compat.druva import DruvaConfig
 from .loader import (
     load_config,
     load_config_from_env,
@@ -31,7 +31,6 @@ __all__ = [
     "initialize_security",
     # Core configuration classes
     "DharaConfig",
-    "DruvaConfig",
     "StorageConfig",
     "CacheConfig",
     "ConnectionConfig",

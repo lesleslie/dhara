@@ -195,4 +195,13 @@ class DharaConfig:
 
 
 # Legacy compatibility alias
-DruvaConfig = DharaConfig
+# DruvaConfig is provided lazily via PEP 562 __getattr__ so that
+# downstream `from dhara.config.defaults import DruvaConfig` keeps working
+# without introducing a circular import through dhara._compat.druva.
+
+
+def __getattr__(name: str):
+    if name == "DruvaConfig":
+        from dhara._compat.druva import DruvaConfig
+        return DruvaConfig
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

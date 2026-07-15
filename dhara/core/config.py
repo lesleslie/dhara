@@ -244,4 +244,13 @@ class DharaSettings(OneiricMCPConfig):
 
 
 # Backward-compatible aliases for the in-progress dhara rename.
-DruvaSettings = DharaSettings
+# DruvaSettings is provided lazily via PEP 562 __getattr__ so that
+# downstream `from dhara.core.config import DruvaSettings` keeps working
+# without introducing a circular import through dhara._compat.druva.
+
+
+def __getattr__(name: str):
+    if name == "DruvaSettings":
+        from dhara._compat.druva import DruvaSettings
+        return DruvaSettings
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
