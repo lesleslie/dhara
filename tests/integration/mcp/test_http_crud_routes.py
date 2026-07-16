@@ -37,8 +37,8 @@ def _make_app_patches() -> tuple:
     I/O and auth verifier are stubbed.
     """
     return (
-        # FileStorage: never touches disk
-        patch("dhara.mcp.server_core.FileStorage"),
+        # AsyncFileStorage: never touches disk
+        patch("dhara.mcp.server_core.AsyncFileStorage"),
         # Connection: open the mock storage root
         patch("dhara.mcp.server_core.Connection"),
         # Auth verifier: disabled for tests

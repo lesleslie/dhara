@@ -48,8 +48,11 @@ def _make_config(**overrides: Any) -> DharaSettings:
 PATCHES = (
     # Mock Connection so no real storage is opened
     patch("dhara.mcp.server_core.Connection"),
-    # Mock FileStorage so no real file is created
-    patch("dhara.mcp.server_core.FileStorage"),
+    # Mock AsyncFileStorage so no real file is created. The server has
+    # been ported to ``AsyncFileStorage`` (the legacy ``FileStorage`` is
+    # deleted); the symbol is imported into ``server_core`` under that
+    # new name.
+    patch("dhara.mcp.server_core.AsyncFileStorage"),
     # Mock FastMCP class
     patch("dhara.mcp.server_core.FastMCP"),
     # Auth builder returns None (auth disabled)
@@ -614,8 +617,10 @@ class TestProbeBackups:
         ]
         started = [p.start() for p in patches_for_init]
         try:
-            from dhara.core import Connection as RealConnection
-            from dhara.storage import FileStorage as RealFileStorage
+            import asyncio
+
+            from dhara.core.connection import AsyncConnection
+            from dhara.storage.async_file import AsyncFileStorage
             from dhara.collections.dict import PersistentDict
 
             config = _make_config(
@@ -630,12 +635,21 @@ class TestProbeBackups:
             backup_dir.mkdir(parents=True, exist_ok=True)
             catalog_path = backup_dir / "backup_catalog.dhara"
 
-            real_storage = RealFileStorage(str(catalog_path))
-            real_conn = RealConnection(real_storage)
-            root = real_conn.get_root()
-            root["backups"] = PersistentDict()
-            real_conn.commit()
-            real_storage.close()
+            # The new server reads the catalog with ``AsyncFileStorage``
+            # + ``AsyncConnection``; the test must create a real catalog
+            # file in the same async format so ``_probe_backups`` can
+            # load an empty PersistentDict root and report
+            # ``total_backups == 0``.
+            async def _seed_empty_catalog(path: Path) -> None:
+                storage = AsyncFileStorage(str(path))
+                await storage.init()
+                connection = await AsyncConnection.new(storage)
+                root = await connection.get_root()
+                root["backups"] = PersistentDict()
+                await connection.commit()
+                await storage.close()
+
+            asyncio.run(_seed_empty_catalog(catalog_path))
 
             from dhara.mcp.server_core import DharaMCPServer
 
@@ -665,7 +679,7 @@ class TestProbeBackups:
 
             server = DharaMCPServer(mock_config_with_backups)
             monkeypatch.setattr(
-                "dhara.mcp.server_core.FileStorage",
+                "dhara.mcp.server_core.AsyncFileStorage",
                 MagicMock(side_effect=RuntimeError("catalog broken")),
             )
             monkeypatch.setattr(
