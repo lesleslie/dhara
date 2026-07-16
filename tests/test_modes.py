@@ -580,7 +580,7 @@ class TestLiteMode:
         assert opts["host"] == "127.0.0.1"
         assert opts["port"] == 8683
         assert opts["storage_path"] == str(mode.DEFAULT_STORAGE_PATH)
-        assert opts["storage_backend"] == "file"
+        assert opts["storage_backend"] == "sqlite"  # was 'file' before sub-task 1i
         assert opts["read_only"] is False
         assert opts["log_level"] == "DEBUG"
         assert opts["log_format"] == "text"
@@ -997,7 +997,7 @@ class TestStandardMode:
         opts = mode.get_startup_options()
         assert opts["host"] == "0.0.0.0"
         assert opts["port"] == 8683
-        assert opts["storage_backend"] == "file"
+        assert opts["storage_backend"] == "sqlite"  # was 'file' before sub-task 1i
         assert opts["read_only"] is False
         assert opts["log_level"] == "INFO"
         assert opts["log_format"] == "json"
