@@ -15,14 +15,26 @@ import pytest
 import dhara.backup.catalog as backup_catalog_mod
 import dhara.backup.manager as backup_manager_mod
 from dhara.backup.manager import BackupManager, BackupMetadata, BackupType
+from dhara.storage.async_file import AsyncFileStorage
 
 
-class DummyStorage:
-    def __init__(self, filename: Path):
-        self._filename = filename
+class DummyStorage(AsyncFileStorage):
+    """Test double for an async file-backed storage.
 
-    def get_filename(self) -> str:
-        return str(self._filename)
+    The real production path now uses
+    ``isinstance(self.storage, AsyncFileStorage)`` to decide whether to
+    copy the on-disk file. Subclassing ``AsyncFileStorage`` keeps the
+    sync test harness compatible without requiring a real database
+    file: the manager's ``_async_get_filename`` helper calls
+    ``asyncio.run(storage.get_filename())`` which is satisfied by the
+    inherited async shim.
+    """
+
+    def __init__(self, filename: Path) -> None:
+        # AsyncFileStorage.__init__ takes a path-like; we point it at the
+        # temp file the test wrote so the manager's shutil.copy2 step
+        # can read real bytes.
+        super().__init__(str(filename))
 
 
 class FakeCatalog:
@@ -53,8 +65,16 @@ def _make_manager(tmp_path: Path, source_file: Path) -> BackupManager:
     return BackupManager(storage=storage, backup_dir=str(tmp_path / "backups"))
 
 
-def _patch_file_storage(monkeypatch):
-    monkeypatch.setattr(backup_manager_mod, "FileStorage", DummyStorage)
+def _patch_file_storage(monkeypatch) -> None:
+    """No-op shim retained for legacy call sites.
+
+    The manager no longer instantiates ``FileStorage`` itself; storage is
+    injected through the constructor. The patch is intentionally kept so
+    existing test bodies (which call it for symmetry with the previous
+    design) continue to be valid without raising
+    ``AttributeError: module has no attribute 'FileStorage'``.
+    """
+    return None
 
 
 class TestBackupManagerInit:

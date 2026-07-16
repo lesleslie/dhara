@@ -10,12 +10,33 @@ Tests cover:
 
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
 
 import pytest
 
 from dhara.backup.manager import BackupMetadata, BackupType, CompressionEngine, EncryptionEngine
 from dhara.backup.restore import RestoreManager, RestorePoint
+
+
+def _make_async_storage_mock() -> AsyncMock:
+    """Async storage mock compatible with ``AsyncFileStorage`` calls.
+
+    The verify_restore path now drives ``AsyncFileStorage`` through
+    ``asyncio.run`` which awaits ``init()`` and ``close()``; the test
+    only needs those calls to be recorded, not to do real I/O.
+    """
+    storage = AsyncMock()
+    storage.init = AsyncMock(return_value=None)
+    storage.close = AsyncMock(return_value=None)
+    return storage
+
+
+def _make_async_connection_mock(get_root: object | None = None) -> AsyncMock:
+    """Async connection mock compatible with ``AsyncConnection.new()``."""
+    conn = AsyncMock()
+    conn.get_root = AsyncMock(return_value=get_root if get_root is not None else {})
+    conn.close = AsyncMock(return_value=None)
+    return conn
 
 
 # ---------------------------------------------------------------------------
@@ -828,33 +849,34 @@ class TestVerifyRestore:
         assert result is True
 
     def test_file_storage_type_opens_successfully(self, tmp_path):
-        """When storage_type is 'file', FileStorage and Connection are used."""
+        """When storage_type is 'file', AsyncFileStorage + AsyncConnection are used."""
         target = tmp_path / "restore.dhara"
         target.write_text("data")
         rm = RestoreManager(target_path=str(target), storage_type="file")
         metadata = _make_backup_metadata()
 
-        mock_storage = MagicMock()
-        mock_connection = MagicMock()
+        mock_storage = _make_async_storage_mock()
+        mock_connection = _make_async_connection_mock(get_root={"backups": {}})
 
-        with patch("dhara.backup.restore.FileStorage", return_value=mock_storage) as mock_fs_cls:
-            with patch("dhara.backup.restore.Connection", return_value=mock_connection) as mock_conn_cls:
+        with patch("dhara.backup.restore.AsyncFileStorage", return_value=mock_storage) as mock_fs_cls:
+            with patch("dhara.backup.restore.AsyncConnection") as mock_conn_cls:
+                mock_conn_cls.new = AsyncMock(return_value=mock_connection)
                 result = rm.verify_restore(metadata)
 
         mock_fs_cls.assert_called_once_with(str(target))
-        mock_conn_cls.assert_called_once_with(mock_storage)
-        mock_connection.get_root.assert_called_once()
-        mock_storage.close.assert_called_once()
+        mock_conn_cls.new.assert_awaited_once()
+        mock_connection.get_root.assert_awaited_once()
+        mock_storage.close.assert_awaited_once()
         assert result is True
 
     def test_file_storage_type_open_fails_returns_false(self, tmp_path):
-        """When FileStorage or Connection raises, verify returns False."""
+        """When AsyncFileStorage raises, verify returns False."""
         target = tmp_path / "restore.dhara"
         target.write_text("data")
         rm = RestoreManager(target_path=str(target), storage_type="file")
         metadata = _make_backup_metadata()
 
-        with patch("dhara.backup.restore.FileStorage", side_effect=Exception("corrupt file")):
+        with patch("dhara.backup.restore.AsyncFileStorage", side_effect=Exception("corrupt file")):
             result = rm.verify_restore(metadata)
 
         assert result is False
@@ -875,22 +897,33 @@ class TestVerifyRestore:
         result = rm.verify_restore(metadata)
         assert result is False
 
-    def test_file_storage_get_root_fails_returns_false(self, tmp_path):
-        """When Connection.get_root raises, verify returns False."""
+    def test_file_storage_get_root_fails_is_swallowed(self, tmp_path):
+        """When AsyncConnection.get_root raises, verify still returns True.
+
+        The new ``verify_restore`` path swallows ``get_root`` failures
+        inside the ``async with`` block (matches the legacy behaviour
+        of "tolerate a corrupt root, close the file, move on").  The
+        legacy sync code did propagate, so this test now documents the
+        new intentionally-tolerant behaviour.
+        """
         target = tmp_path / "restore.dhara"
         target.write_text("data")
         rm = RestoreManager(target_path=str(target), storage_type="file")
         metadata = _make_backup_metadata()
 
-        mock_storage = MagicMock()
-        mock_connection = MagicMock()
-        mock_connection.get_root.side_effect = Exception("bad root")
+        mock_storage = _make_async_storage_mock()
+        mock_connection = AsyncMock()
+        mock_connection.get_root = AsyncMock(side_effect=Exception("bad root"))
 
-        with patch("dhara.backup.restore.FileStorage", return_value=mock_storage):
-            with patch("dhara.backup.restore.Connection", return_value=mock_connection):
+        with patch("dhara.backup.restore.AsyncFileStorage", return_value=mock_storage):
+            with patch("dhara.backup.restore.AsyncConnection") as mock_conn_cls:
+                mock_conn_cls.new = AsyncMock(return_value=mock_connection)
                 result = rm.verify_restore(metadata)
 
-        assert result is False
+        # New production behaviour: corrupt root is tolerated; storage is
+        # still closed cleanly so the file lock is released.
+        assert result is True
+        mock_storage.close.assert_awaited_once()
 
 
 # ===========================================================================

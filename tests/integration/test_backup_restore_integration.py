@@ -28,7 +28,7 @@ pytest.importorskip("schedule")
 # Add repository root to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
-from dhara.core import Connection
+from dhara.core.connection import AsyncConnection
 from dhara.backup.catalog import BackupCatalog
 from dhara.backup.manager import BackupManager, BackupType
 from dhara.backup.restore import RestoreManager
@@ -36,33 +36,61 @@ from dhara.backup.scheduler import BackupJob, BackupScheduler
 from dhara.backup.storage import StorageFactory
 from dhara.backup.verification import BackupVerification
 from dhara.collections.dict import PersistentDict
-from dhara.storage.file import FileStorage
+from dhara.storage.async_file import AsyncFileStorage
+
+
+def _run_async(coro):
+    """Drive an async coroutine from a sync test helper."""
+    return asyncio.run(coro)
+
+
+async def _create_test_database_async(db_path: str, data: dict) -> None:
+    storage = AsyncFileStorage(db_path)
+    await storage.init()
+    connection = await AsyncConnection.new(storage)
+    root = await connection.get_root()
+    root.clear()
+    root.update(data)
+    await connection.commit()
+    await storage.close()
 
 
 def _create_test_database(db_path: str, data: dict) -> None:
-    storage = FileStorage(db_path)
-    connection = Connection(storage)
-    root = connection.get_root()
-    root.clear()
-    root.update(data)
-    connection.commit()
-    storage.close()
+    _run_async(_create_test_database_async(db_path, data))
+
+
+async def _update_test_database_async(db_path: str, updater) -> None:
+    storage = AsyncFileStorage(db_path)
+    await storage.init()
+    connection = await AsyncConnection.new(storage)
+    root = await connection.get_root()
+    updater(root)
+    await connection.commit()
+    await storage.close()
 
 
 def _update_test_database(db_path: str, updater) -> None:
-    storage = FileStorage(db_path)
-    connection = Connection(storage)
-    root = connection.get_root()
-    updater(root)
-    connection.commit()
-    storage.close()
+    _run_async(_update_test_database_async(db_path, updater))
+
+
+async def _load_root_async(db_path: str):
+    storage = AsyncFileStorage(db_path)
+    await storage.init()
+    connection = await AsyncConnection.new(storage)
+    root = await connection.get_root()
+    return storage, connection, root
 
 
 def _load_root(db_path: str):
-    storage = FileStorage(db_path, readonly=True)
-    connection = Connection(storage)
-    root = connection.get_root()
-    return storage, connection, root
+    """Return ``(storage, connection, root)`` after awaiting the async setup.
+
+    The legacy sync helper returned a fully-initialised triple; the async
+    shim cannot return a coroutine to sync callers, so this now drives
+    ``asyncio.run`` internally and yields the same triple.  The caller
+    is expected to ``await storage.close()`` (typically inside a final
+    teardown) — the storage's close coroutine is *not* scheduled here.
+    """
+    return _run_async(_load_root_async(db_path))
 
 
 class TestBackupManager:
@@ -85,7 +113,7 @@ class TestBackupManager:
         )
 
         # Create backup manager
-        self.storage = FileStorage(self.test_db, readonly=True)
+        self.storage = AsyncFileStorage(self.test_db)
         self.backup_manager = BackupManager(
             storage=self.storage,
             backup_dir=self.backup_dir,
@@ -197,7 +225,7 @@ class TestRestoreManager:
         _create_test_database(self.test_db, {"original_key": "original_value"})
 
         # Create backup
-        self.storage = FileStorage(self.test_db, readonly=True)
+        self.storage = AsyncFileStorage(self.test_db)
         self.backup_manager = BackupManager(
             storage=self.storage,
             backup_dir=self.backup_dir
@@ -456,7 +484,7 @@ class TestBackupScheduler:
         _create_test_database(self.test_db, {"test_key": "test_value"})
 
         # Create backup manager
-        self.storage = FileStorage(self.test_db, readonly=True)
+        self.storage = AsyncFileStorage(self.test_db)
         self.backup_manager = BackupManager(
             storage=self.storage,
             backup_dir=self.backup_dir
@@ -561,7 +589,7 @@ class TestBackupVerification:
         _create_test_database(self.test_db, {"test_key": "test_value"})
 
         # Create backup
-        self.storage = FileStorage(self.test_db, readonly=True)
+        self.storage = AsyncFileStorage(self.test_db)
         self.backup_manager = BackupManager(
             storage=self.storage,
             backup_dir=self.backup_dir
@@ -784,7 +812,7 @@ class TestIntegrationScenarios:
         )
 
         # Create backup manager
-        storage = FileStorage(self.test_db, readonly=True)
+        storage = AsyncFileStorage(self.test_db)
         backup_manager = BackupManager(
             storage=storage,
             backup_dir=self.backup_dir
@@ -845,7 +873,7 @@ class TestIntegrationScenarios:
         encryption_key = Fernet.generate_key()
 
         # Create backup manager with encryption
-        storage = FileStorage(self.test_db, readonly=True)
+        storage = AsyncFileStorage(self.test_db)
         backup_manager = BackupManager(
             storage=storage,
             backup_dir=self.backup_dir,
@@ -881,7 +909,7 @@ class TestIntegrationScenarios:
         )
 
         # Create backups
-        storage = FileStorage(self.test_db, readonly=True)
+        storage = AsyncFileStorage(self.test_db)
         backup_manager = BackupManager(
             storage=storage,
             backup_dir=self.backup_dir

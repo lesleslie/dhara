@@ -15,12 +15,43 @@ Covers BackupCatalog including:
 import json
 from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from dhara.backup.catalog import BackupCatalog
 from dhara.backup.manager import BackupMetadata, BackupType
+
+
+def _make_async_storage_mock() -> AsyncMock:
+    """Build an AsyncMock that quacks like ``AsyncFileStorage``.
+
+    The catalog's new async lifecycle (``async with AsyncFileStorage(...) as
+    storage``) requires a context-manager-friendly mock with awaitable
+    methods. ``AsyncMock`` already handles ``__aenter__``/``__aexit__`` and
+    converts any sync method to an awaitable, so this single object stands
+    in for both the ``AsyncFileStorage`` factory and the storage instance.
+    """
+    mock = AsyncMock()
+    # Mirror the production API surface the catalog actually touches.
+    mock.get_filename = AsyncMock(return_value=":memory:")
+    mock.close = AsyncMock(return_value=None)
+    mock.init = AsyncMock(return_value=None)
+    return mock
+
+
+def _make_async_connection_mock(get_root: object | None = None) -> AsyncMock:
+    """Build an AsyncMock that quacks like ``AsyncConnection``.
+
+    ``AsyncConnection.new`` is an ``@classmethod`` returning a coroutine;
+    the tests below patch it via ``MagicMock`` and arrange ``get_root``
+    via the returned connection instance.
+    """
+    conn = AsyncMock()
+    conn.get_root = AsyncMock(return_value=get_root if get_root is not None else {})
+    conn.commit = AsyncMock(return_value=None)
+    conn.note_change = AsyncMock(return_value=None)
+    return conn
 
 
 # ---------------------------------------------------------------------------
@@ -90,16 +121,18 @@ class TestBackupCatalogInit:
 class TestBackupCatalogLoad:
     """Test _load_catalog internals."""
 
-    @patch("dhara.backup.catalog.FileStorage")
-    @patch("dhara.backup.catalog.Connection")
-    def test_load_from_existing_file(self, MockConnection, MockFileStorage, tmp_path):
+    @patch("dhara.backup.catalog.AsyncConnection")
+    def test_load_from_existing_file(self, MockAsyncConnection, tmp_path):
         catalog = BackupCatalog(str(tmp_path))
         # Place a catalog file so the exists() check passes
         catalog.catalog_path.touch()
 
         mock_root = {"backups": {"b1": {"backup_id": "b1", "backup_type": "full", "timestamp": datetime.now().isoformat()}}}
-        mock_conn = MockConnection.return_value
-        mock_conn.get_root.return_value = mock_root
+        # The new code calls ``await AsyncConnection.new(storage)``; arrange
+        # the classmethod to return a coroutine that yields a connection
+        # whose ``get_root`` returns our canned data.
+        mock_conn = _make_async_connection_mock(get_root=mock_root)
+        MockAsyncConnection.new = AsyncMock(return_value=mock_conn)
 
         result = catalog._load_catalog()
         assert "b1" in result
@@ -115,27 +148,36 @@ class TestBackupCatalogLoad:
 class TestBackupCatalogSave:
     """Test _save_catalog."""
 
-    @patch("dhara.backup.catalog.FileStorage")
-    @patch("dhara.backup.catalog.Connection")
+    @patch("dhara.backup.catalog.AsyncConnection")
     @patch("dhara.backup.catalog.PersistentDict")
-    def test_save_writes_catalog(self, MockPDict, MockConnection, MockFileStorage, tmp_path):
+    def test_save_writes_catalog(self, MockPDict, MockAsyncConnection, tmp_path):
         catalog = BackupCatalog(str(tmp_path))
         catalog.catalog = {"b1": {"backup_id": "b1"}}
 
-        mock_conn = MockConnection.return_value
-        root = {}
-        mock_conn.get_root.return_value = root
+        root: dict = {}
+        mock_conn = _make_async_connection_mock(get_root=root)
+        MockAsyncConnection.new = AsyncMock(return_value=mock_conn)
 
         catalog._save_catalog()
         mock_conn.commit.assert_called_once()
-        MockFileStorage.return_value.close.assert_called()
+        # ``AsyncFileStorage(str(catalog_path))`` runs through the new
+        # async context-manager lifecycle; assert the ``close`` coroutine
+        # was awaited at least once.
+        assert mock_conn.commit.await_count == 1
 
-    @patch("dhara.backup.catalog.FileStorage", side_effect=OSError("write err"))
-    def test_save_handles_error(self, MockFileStorage, tmp_path, caplog):
+    def test_save_handles_error(self, tmp_path, caplog):
         catalog = BackupCatalog(str(tmp_path))
         catalog.catalog = {"b1": {"backup_id": "b1"}}
-        with caplog.at_level("ERROR"):
-            catalog._save_catalog()
+
+        # ``AsyncFileStorage`` raises ``OSError`` when the underlying
+        # ``aiosqlite.connect`` cannot reach the file. Surface that from
+        # the ``new`` classmethod so the existing retry/error path fires.
+        with patch(
+            "dhara.backup.catalog.AsyncFileStorage",
+            side_effect=OSError("write err"),
+        ):
+            with caplog.at_level("ERROR"):
+                catalog._save_catalog()
         assert "Failed to save catalog" in caplog.text
 
 
