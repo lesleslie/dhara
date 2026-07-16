@@ -239,11 +239,11 @@ class SignedStorage:
     records on storage and verify on load.
 
     Example:
-        from dhara.storage import FileStorage
+        from dhara.storage.async_file import AsyncFileStorage
         from dhara.security.signing import SignedStorage, ObjectSigner
 
         signer = ObjectSigner.from_password(b"my-secret-key")
-        base_storage = FileStorage("data.dhara")
+        base_storage = AsyncFileStorage("data.dhara")
         storage = SignedStorage(base_storage, signer)
 
         # Now all operations are automatically signed/verified

@@ -38,11 +38,13 @@ class DharaShell(AdminShell):
     Example:
         >>> from dhara.shell import DharaShell
         >>> from dhara.core.config import DharaSettings
-        >>> from dhara.core.connection import Connection
-        >>> from dhara.storage.file import FileStorage
+        >>> from dhara.core.connection import AsyncConnection
+        >>> from dhara.storage.async_file import AsyncFileStorage
+        >>> import asyncio
         >>> config = DharaSettings.load()
-        >>> storage = FileStorage(str(config.storage.path))
-        >>> connection = Connection(storage)
+        >>> connection = asyncio.run(
+        ...     AsyncConnection.new(str(config.storage.path))
+        ... )
         >>> shell = DharaShell(connection, config)
         >>> shell.start()
     """
