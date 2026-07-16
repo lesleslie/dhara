@@ -127,8 +127,8 @@ class DharaSettings(OneiricMCPConfig):
     authentication: AuthenticationConfig = Field(default_factory=AuthenticationConfig)
     backups: BackupRuntimeConfig = Field(default_factory=BackupRuntimeConfig)
 
-    # Storage backend config (file or postgres)
-    storage_backend: str = Field(default="file", description="file or postgres")
+    # Storage backend config (sqlite or postgres)
+    storage_backend: str = Field(default="sqlite", description="sqlite or postgres")
     storage_pg_url: str = Field(
         default="", description="Postgres DSN for serverless mode"
     )

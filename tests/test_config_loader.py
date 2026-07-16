@@ -479,9 +479,12 @@ class TestModuleConstants:
         assert MAX_CONFIG_SIZE == 10 * 1024 * 1024
 
     def test_valid_storage_backends(self):
-        assert "file" in VALID_STORAGE_BACKENDS
         assert "sqlite" in VALID_STORAGE_BACKENDS
         assert "memory" in VALID_STORAGE_BACKENDS
+        assert "postgres" in VALID_STORAGE_BACKENDS
+        # 'file' was the legacy FileStorage backend; it was removed by the
+        # async-migration cleanup. See docs/2026-07-15-async-migration-cleanup.md.
+        assert "file" not in VALID_STORAGE_BACKENDS
 
     def test_port_range(self):
         assert MIN_PORT == 1

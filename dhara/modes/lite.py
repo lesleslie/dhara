@@ -173,7 +173,7 @@ class LiteMode(OperationalMode):
             "host": self.DEFAULT_HOST,
             "port": self.DEFAULT_PORT,
             "storage_path": str(self.DEFAULT_STORAGE_PATH),
-            "storage_backend": "file",
+            "storage_backend": "sqlite",
             "read_only": False,
             "log_level": "DEBUG",
             "log_format": "text",

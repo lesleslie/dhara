@@ -177,7 +177,7 @@ class DharaMCPServer:
         storage_path.parent.mkdir(parents=True, exist_ok=True)
 
         # ── Storage backend selection ─────────────────────────────────────────
-        storage_backend = getattr(config, "storage_backend", "file")
+        storage_backend = getattr(config, "storage_backend", "sqlite")
 
         if storage_backend == "postgres":
             from dhara.storage.postgres import PostgresStorageAdapter

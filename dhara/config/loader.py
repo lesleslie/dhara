@@ -20,7 +20,7 @@ from dhara.config.defaults import (
 MAX_CONFIG_SIZE = 10 * 1024 * 1024
 
 # Valid storage backend types
-VALID_STORAGE_BACKENDS = {"file", "sqlite", "client", "memory"}
+VALID_STORAGE_BACKENDS = {"sqlite", "client", "memory", "postgres"}
 
 # Valid port range for TCP/UDP
 MIN_PORT = 1
@@ -169,7 +169,7 @@ def _validate_storage_backend(prefixes: tuple[str, ...], config: DharaConfig) ->
                 f"Must be one of: {', '.join(sorted(VALID_STORAGE_BACKENDS))}"
             )
         config.storage.backend = cast(
-            Literal["file", "sqlite", "client", "memory"], backend
+            Literal["sqlite", "client", "memory", "postgres"], backend
         )
 
 

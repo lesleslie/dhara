@@ -201,7 +201,7 @@ class StandardMode(OperationalMode):
         return {
             "host": self.DEFAULT_HOST,
             "port": self.DEFAULT_PORT,
-            "storage_backend": "file",  # Will be overridden by config
+            "storage_backend": "sqlite",  # Will be overridden by config
             "storage_path": str(self.DEFAULT_STORAGE_PATH),
             "read_only": False,
             "log_level": "INFO",
