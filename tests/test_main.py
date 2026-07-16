@@ -183,14 +183,14 @@ class TestGetStorageClass:
     def test_shelf_header_returns_file_storage(self):
         """A file starting with b'SHELF-1' returns AsyncFileStorage.
 
-        Production reads magic bytes via ``file.open("rb")`` (a ``pathlib.Path``
-        method), not the ``open`` builtin, so the test patches ``Path.open``.
+        Production reads magic bytes via the ``open`` builtin, so the
+        test patches ``builtins.open``.
         """
         from dhara.__main__ import get_storage_class
 
         mock_file = BytesIO(b"SHELF-1_some_data_padding_xx")
         with patch("dhara.__main__.os.path.exists", return_value=True):
-            with patch("pathlib.Path.open", return_value=mock_file):
+            with patch("builtins.open", return_value=mock_file):
                 result = get_storage_class("test.shelf")
 
         from dhara.storage.async_file import AsyncFileStorage

@@ -340,14 +340,14 @@ def get_storage_class(file):
     no in-place format migration; use ``AsyncFileStorage`` (sqlite+aiosqlite)
     for new and migrated databases.
     """
-    if not Path(file).exists():
+    if not os.path.exists(file):
         from dhara.storage.async_file import AsyncFileStorage
 
         return AsyncFileStorage
     # ``file`` may be a ``str`` or ``pathlib.Path``; the test suite patches
     # ``builtins.open``, so call through the builtin rather than the
     # ``pathlib.Path.open`` method.
-    with file.open("rb") as fp:
+    with open(file, "rb") as fp:
         d = fp.read(20)
     if d.startswith(b"DFS20"):
         logger.error("Refused DFS20/legacy 4.x file: %s", file)
@@ -394,7 +394,7 @@ def start_dhara(logfile, logginglevel, address, storage, gcbytes, tls_config=Non
     else:
         # ``logfile`` may be a ``str`` (typical) or ``pathlib.Path``; use
         # the builtin ``open`` so either works.
-        logfile = logfile.open("a+")
+        logfile = open(logfile, "a+")
     direct_output(logfile)
     logger.setLevel(logginglevel)
     socket_address = SocketAddress.new(address)
