@@ -7,6 +7,7 @@ $Id$
 import asyncio
 from collections import OrderedDict
 from os import getpid
+from pathlib import Path
 from time import time
 from weakref import KeyedRef, ref
 
@@ -77,9 +78,19 @@ class Connection(ConnectionBase):
         class of the root object.
         """
         if isinstance(storage, str):
-            from dhara.storage.file import FileStorage
-
-            storage = FileStorage(storage)
+            # Sync ``Connection`` cannot bridge to an async storage backend
+            # (the only remaining backend, ``AsyncFileStorage``/aiosqlite, is
+            # fundamentally async). ``AsyncConnection.new(path)`` is the
+            # canonical path factory; legacy callers using ``Connection(path)``
+            # must migrate to it. See docs/2026-07-15-async-migration-cleanup.md
+            # for the full migration.
+            raise TypeError(
+                "Connection(path) is no longer supported — the sync path factory "
+                "used FileStorage (the legacy Durus SHELF backend) which has been "
+                "deleted. Use AsyncConnection.new(path) instead, which returns an "
+                "initialized AsyncConnection backed by AsyncFileStorage (sqlite + "
+                "aiosqlite). See dhara.core.connection.AsyncConnection.new."
+            )
         assert isinstance(storage, dhara_storage.Storage)
         self.storage = storage
         self._allowed_modules = allowed_modules
@@ -409,8 +420,14 @@ class AsyncConnection(ConnectionBase):
     ):
         """Async factory method to create an AsyncConnection.
 
-        (storage: AsyncStorage, cache_size:int=100000,
+        (storage: AsyncStorage | str | Path, cache_size:int=100000,
             root_class:class|None=None, cache=None)
+
+        ``storage`` may be an initialized :class:`AsyncStorage` instance or a
+        filesystem path (str / Path). When a path is supplied, this factory
+        builds an :class:`AsyncFileStorage` (sqlite + aiosqlite), awaits its
+        ``__aenter__`` to acquire the underlying connection, and returns an
+        initialized :class:`AsyncConnection`.
 
         Make a connection to `storage`.
         Set the target number of non-ghosted persistent objects to keep in
@@ -421,6 +438,11 @@ class AsyncConnection(ConnectionBase):
 
         Note: Python __init__ cannot be async, so use AsyncConnection.new() instead.
         """
+        if isinstance(storage, (str, bytes, Path)):
+            from dhara.storage.async_file import AsyncFileStorage
+
+            storage = AsyncFileStorage(storage)
+            await storage.__aenter__()
         # Check for required async storage methods
         required_methods = [
             "init",

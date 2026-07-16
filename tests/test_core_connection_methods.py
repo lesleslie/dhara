@@ -58,14 +58,39 @@ class TestConnectionInit:
         c.abort()
 
     def test_storage_from_string(self, tmp_path):
-        from dhara.storage.file import FileStorage
+        # ``Connection(path)`` is no longer supported — the sync path factory
+        # used the deleted ``FileStorage`` backend. ``AsyncConnection.new(path)``
+        # is the canonical replacement. Verify the legacy API raises the
+        # documented error so callers get an actionable migration message.
+        import pytest
 
         path = str(tmp_path / "from_str.dhara")
-        c = Connection(path, cache_size=50)
-        assert c.get_root() is not None
-        assert isinstance(c.get_storage(), FileStorage)
-        c.abort()
-        c.get_storage().close()
+        with pytest.raises(TypeError, match="AsyncConnection.new"):
+            Connection(path, cache_size=50)
+
+    def test_async_connection_from_string(self, tmp_path):
+        # Companion to ``test_storage_from_string`` covering the async path
+        # factory that replaces the legacy ``Connection(path)`` API. The async
+        # factory accepts a path str/Path directly and returns an initialized
+        # AsyncConnection backed by AsyncFileStorage (sqlite + aiosqlite).
+        import asyncio
+
+        from dhara.core.connection import AsyncConnection
+
+        path = str(tmp_path / "async_from_str.dhara")
+
+        async def _open() -> None:
+            c = await AsyncConnection.new(path, cache_size=50)
+            try:
+                root = await c.get_root()
+                assert root is not None
+                storage = await c.get_storage()
+                assert storage is not None
+            finally:
+                # AsyncConnection has no close() — cleanup is on the storage.
+                await storage.close()
+
+        asyncio.run(_open())
 
     def test_root_class_validation(self, store):
         c = Connection(store, cache_size=100, root_class=PersistentDict)
