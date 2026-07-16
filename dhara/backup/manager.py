@@ -204,7 +204,10 @@ class BackupManager:
         """Calculate SHA256 checksum of a file."""
         sha256_hash = hashlib.sha256()
         with Path(file_path).open("rb") as f:
-            for byte_block in iter(f.read(4096), b""):  # type: ignore
+            # iter(callable, sentinel) form: lambda called repeatedly until
+            # it returns the sentinel. f.read(4096) returns bytes (not callable)
+            # so the original iter(f.read(4096), b"") was a TypeError.
+            for byte_block in iter(lambda: f.read(4096), b""):
                 sha256_hash.update(byte_block)
         return sha256_hash.hexdigest()
 
