@@ -195,6 +195,14 @@ class DharaMCPServer:
                 readonly=config.storage.read_only,
             )
 
+        # Async stores (initialized lazily on first async tool call).
+        # Declared before the cache_backend block so that the wiring step
+        # (which uses `self._async_adapter_registry`) can run during the
+        # cache block without an AttributeError.
+        self._async_kv_store: AsyncKVTimeSeriesStore | None = None
+        self._async_ecosystem_state: AsyncEcosystemStateStore | None = None
+        self._async_adapter_registry: AsyncAdapterRegistry | None = None
+
         # ── Cache backend selection ─────────────────────────────────────────
         cache_backend = getattr(config, "cache_backend", "memory")
         self.cache = None
@@ -217,11 +225,6 @@ class DharaMCPServer:
 
         # Initialize adapter registry
         self.adapter_registry = AdapterRegistry(self.connection)
-
-        # Async stores (initialized lazily on first async tool call)
-        self._async_kv_store: AsyncKVTimeSeriesStore | None = None
-        self._async_ecosystem_state: AsyncEcosystemStateStore | None = None
-        self._async_adapter_registry: AsyncAdapterRegistry | None = None
 
         # Register tools using FastMCP decorators
         self._register_tools()
