@@ -80,6 +80,58 @@ class BackupRuntimeConfig(BaseModel):
     directory: Path = Field(default=Path("./backups"))
 
 
+def _deep_merge(
+    base: dict[str, Any], override: dict[str, Any]
+) -> dict[str, Any]:
+    """Recursively merge ``override`` into ``base``. ``override`` wins."""
+    result = dict(base)
+    for key, value in override.items():
+        if (
+            key in result
+            and isinstance(result[key], dict)
+            and isinstance(value, dict)
+        ):
+            result[key] = _deep_merge(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+
+def _coerce_env_value(value: str) -> Any:
+    """Best-effort type coercion for env-var string values."""
+    lowered = value.lower()
+    if lowered in {"true", "false"}:
+        return lowered == "true"
+    for caster in (int, float):
+        try:
+            return caster(value)
+        except ValueError:
+            continue
+    if "," in value:
+        return [item.strip() for item in value.split(",")]
+    return value
+
+
+def _env_overrides(prefix: str) -> dict[str, Any]:
+    """Build nested dict overrides from ``{prefix}_SECTION__FIELD`` env vars.
+
+    Example: ``DHARA_STORAGE__BACKEND=sqlite`` produces
+    ``{"storage": {"backend": "sqlite"}}``.
+    """
+    env_prefix = f"{prefix}_"
+    overrides: dict[str, Any] = {}
+    for key, value in os.environ.items():
+        if not key.startswith(env_prefix):
+            continue
+        path = key[len(env_prefix) :].lower().split("__")
+        coerced = _coerce_env_value(value)
+        cursor = overrides
+        for part in path[:-1]:
+            cursor = cursor.setdefault(part, {})
+        cursor[path[-1]] = coerced
+    return overrides
+
+
 class DharaSettings(OneiricMCPConfig):
     """Dhara MCP Server settings extending OneiricMCPConfig.
 
@@ -186,12 +238,20 @@ class DharaSettings(OneiricMCPConfig):
         - DHARA_MODE=standard → settings/standard.yaml
         - No mode set → settings/dhara.yaml
 
+        The loader reads ``settings/{config_file}.yaml`` and merges it with
+        ``settings/local.yaml`` (if present), then applies DHARA_ env-var
+        overrides. Implementation here is self-contained (not delegating to
+        Oneiric's parent ``load()``) because ``OneiricMCPConfig`` is a bare
+        Pydantic ``BaseModel`` and does not provide a ``load()`` classmethod.
+
         Args:
             config_name: Base config name (default: "dhara")
 
         Returns:
             Loaded DharaSettings instance
         """
+        import yaml  # local import: avoids hard dep at module load time
+
         cls._apply_legacy_env_aliases()
 
         # Detect mode from environment
@@ -205,12 +265,43 @@ class DharaSettings(OneiricMCPConfig):
         else:
             config_file = config_name
 
-        # Load settings using parent class
+        # Layered YAML merge: settings/{config_file}.yaml + settings/local.yaml
+        data: dict[str, Any] = {}
+        project_yaml = Path("settings") / f"{config_file}.yaml"
+        if project_yaml.exists():
+            try:
+                data = yaml.safe_load(project_yaml.read_text()) or {}
+                logger.debug(f"Loaded settings from {project_yaml}")
+            except Exception as e:
+                logger.warning(
+                    f"Could not load {project_yaml}: {e}, using defaults"
+                )
+                data = {}
+
+        local_yaml = Path("settings") / "local.yaml"
+        if local_yaml.exists():
+            try:
+                local_data = yaml.safe_load(local_yaml.read_text()) or {}
+                data = _deep_merge(data, local_data)
+                logger.debug(f"Merged local override from {local_yaml}")
+            except Exception as e:
+                logger.warning(
+                    f"Could not load {local_yaml}: {e}, skipping override"
+                )
+
+        # Apply DHARA_ env-var overrides (DHARA_SECTION__FIELD=value syntax).
+        env_overrides = _env_overrides("DHARA")
+        if env_overrides:
+            data = _deep_merge(data, env_overrides)
+            logger.debug(f"Applied {len(env_overrides)} env-var override(s)")
+
+        # Validate and instantiate DharaSettings.
         try:
-            settings = super().load(config_file, env_prefix="DHARA")  # type: ignore
-            logger.debug(f"Loaded settings from {config_file}.yaml")
+            settings = cls.model_validate(data)
         except Exception as e:
-            logger.warning(f"Could not load {config_file}.yaml: {e}, using defaults")
+            logger.warning(
+                f"Could not validate loaded settings ({e}), using defaults"
+            )
             settings = cls()
 
         # Override mode from environment if set

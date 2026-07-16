@@ -224,11 +224,14 @@ class TestLoadConfigFromEnv:
         assert cfg.cache.size == 5000  # YAML has 5000, JSON has 3000
 
     def test_env_overrides_backend(self, yaml_config_file, monkeypatch):
+        # Default backend was 'file' (legacy FileStorage) before sub-task 1i;
+        # now it's 'sqlite' (AsyncFileStorage / AsyncSqliteStorage). The
+        # VALID_STORAGE_BACKENDS allowlist also dropped 'file'.
         monkeypatch.setenv("DHARA_CONFIG", str(yaml_config_file))
-        monkeypatch.setenv("DHARA_STORAGE_BACKEND", "file")
+        monkeypatch.setenv("DHARA_STORAGE_BACKEND", "sqlite")
         monkeypatch.setenv("DHARA_STORAGE_PATH", "/tmp/test.dhara")
         cfg = load_config_from_env()
-        assert cfg.storage.backend == "file"
+        assert cfg.storage.backend == "sqlite"
 
     def test_invalid_backend_raises(self, yaml_config_file, monkeypatch):
         monkeypatch.setenv("DHARA_CONFIG", str(yaml_config_file))

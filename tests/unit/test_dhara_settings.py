@@ -8,9 +8,12 @@ from dhara.core.config import DharaSettings
 
 
 class TestDharaSettingsBackendConfig:
-    def test_storage_backend_defaults_to_file(self):
+    def test_storage_backend_defaults_to_sqlite(self):
+        # Default changed from 'file' (legacy FileStorage) to 'sqlite'
+        # (AsyncFileStorage / AsyncSqliteStorage) when FileStorage was
+        # deleted by sub-task 1i of the async-migration cleanup plan.
         settings = DharaSettings()
-        assert settings.storage_backend == "file"
+        assert settings.storage_backend == "sqlite"
 
     def test_cache_backend_defaults_to_memory(self):
         settings = DharaSettings()
