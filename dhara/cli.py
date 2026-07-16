@@ -58,20 +58,30 @@ _server_instance: DharaMCPServer | None = None
 
 def _probe_storage_runtime(settings: DharaSettings) -> dict[str, object]:
     """Probe storage accessibility for CLI health output."""
-    from dhara.core.connection import Connection
-    from dhara.storage.file import FileStorage
+    import asyncio
+
+    from dhara.core.connection import AsyncConnection
+    from dhara.storage.async_file import AsyncFileStorage
 
     storage_path = settings.storage.path.expanduser()
-    try:
-        with FileStorage(storage_path, readonly=True) as storage:
-            connection = Connection(storage)
-            root = connection.get_root()
+
+    async def _probe() -> dict[str, object]:
+        storage = AsyncFileStorage(str(storage_path))
+        await storage.init()
+        try:
+            connection = await AsyncConnection.new(storage)
+            root = await connection.get_root()
             return {
                 "storage_exists": storage_path.exists(),
                 "storage_readable": True,
                 "storage_accessible": True,
                 "root_keys": len(list(root.keys())),
             }
+        finally:
+            await storage.close()
+
+    try:
+        return asyncio.run(_probe())
     except Exception as exc:
         return {
             "storage_exists": storage_path.exists(),
@@ -83,14 +93,39 @@ def _probe_storage_runtime(settings: DharaSettings) -> dict[str, object]:
 
 def _probe_backup_runtime(settings: DharaSettings) -> dict[str, object]:
     """Probe backup catalog visibility for CLI health output."""
-    from dhara.core.connection import Connection
-    from dhara.storage.file import FileStorage
+    import asyncio
+
+    from dhara.core.connection import AsyncConnection
+    from dhara.storage.async_file import AsyncFileStorage
 
     if not settings.backups.enabled:
         return {"backup_configured": False}
 
     backup_dir = settings.backups.directory.expanduser()
     catalog_path = backup_dir / "backup_catalog.dhara"
+
+    async def _read_catalog() -> tuple[int, str | None, str | None]:
+        storage = AsyncFileStorage(str(catalog_path))
+        await storage.init()
+        try:
+            connection = await AsyncConnection.new(storage)
+            root = await connection.get_root()
+            backups = root.get("backups", {})
+            backup_count = len(list(backups.keys()))
+            latest_timestamp: str | None = None
+            latest_id: str | None = None
+            for payload in backups.values():
+                data = dict(payload)
+                timestamp = data.get("timestamp")
+                if isinstance(timestamp, str) and (
+                    latest_timestamp is None or timestamp > latest_timestamp
+                ):
+                    latest_timestamp = timestamp
+                    latest_id = data.get("backup_id")
+            return backup_count, latest_id, latest_timestamp
+        finally:
+            await storage.close()
+
     try:
         backup_dir.mkdir(parents=True, exist_ok=True)
         latest_backup_id = None
@@ -98,21 +133,9 @@ def _probe_backup_runtime(settings: DharaSettings) -> dict[str, object]:
         backup_count = 0
 
         if catalog_path.exists():
-            with FileStorage(catalog_path, readonly=True) as storage:
-                connection = Connection(storage)
-                root = connection.get_root()
-                backups = root.get("backups", {})
-                backup_count = len(list(backups.keys()))
-                latest_timestamp = None
-                for payload in backups.values():
-                    data = dict(payload)
-                    timestamp = data.get("timestamp")
-                    if isinstance(timestamp, str) and (
-                        latest_timestamp is None or timestamp > latest_timestamp
-                    ):
-                        latest_timestamp = timestamp
-                        latest_backup_id = data.get("backup_id")
-                        latest_backup_at = timestamp
+            backup_count, latest_backup_id, latest_backup_at = asyncio.run(
+                _read_catalog()
+            )
 
         return {
             "backup_configured": True,
@@ -222,7 +245,7 @@ def stop_handler(_pid: int) -> None:
 
     ★ Insight: Stop Handler Lifecycle ─────────────────────────────────
     1. Close Dhara connection (flushes pending changes)
-    2. Close FileStorage (releases file locks)
+    2. Close AsyncFileStorage (releases file locks)
     3. Update health snapshot to 'stopped' state
     4. Clean up any background tasks
     ────────────────────────────────────────────────────────────────────
@@ -372,25 +395,33 @@ def _create_adapters_command(app: typer.Typer, settings: DharaSettings) -> None:
         category: str | None = typer.Option(None, help="Filter by category"),
     ) -> None:
         """List registered adapters in Dhara."""
-        from dhara.core.connection import Connection
-        from dhara.mcp.adapter_tools import AdapterRegistry
-        from dhara.storage.file import FileStorage
+        import asyncio
 
-        # Open connection with context manager for automatic cleanup
-        with FileStorage(str(settings.storage.path), readonly=True) as storage:
-            connection = Connection(storage)
-            registry = AdapterRegistry(connection)
+        from dhara.core.connection import AsyncConnection
+        from dhara.mcp.adapter_tools import AsyncAdapterRegistry
+        from dhara.storage.async_file import AsyncFileStorage
 
-            # List adapters
-            adapters = registry.list_adapters(domain=domain, category=category)
-
-            typer.echo(f"\n📦 Found {len(adapters)} adapters:\n")
-
-            for adapter in adapters:
-                typer.echo(f"  {adapter['adapter_id']} @ {adapter['version']}")
-                typer.echo(
-                    f"    {adapter['metadata'].get('description', 'No description')}"
+        async def _list_adapters() -> list[dict[str, object]]:
+            storage = AsyncFileStorage(str(settings.storage.path))
+            await storage.init()
+            try:
+                connection = await AsyncConnection.new(storage)
+                registry = AsyncAdapterRegistry(connection)
+                return await registry.list_adapters_async(
+                    domain=domain, category=category
                 )
+            finally:
+                await storage.close()
+
+        adapters = asyncio.run(_list_adapters())
+
+        typer.echo(f"\n📦 Found {len(adapters)} adapters:\n")
+
+        for adapter in adapters:
+            typer.echo(f"  {adapter['adapter_id']} @ {adapter['version']}")
+            typer.echo(
+                f"    {adapter['metadata'].get('description', 'No description')}"
+            )
 
 
 def _create_storage_command(app: typer.Typer, settings: DharaSettings) -> None:
@@ -404,21 +435,30 @@ def _create_storage_command(app: typer.Typer, settings: DharaSettings) -> None:
     @app.command("storage")
     def storage() -> None:
         """Display storage information."""
-        from dhara.core.connection import Connection
-        from dhara.storage.file import FileStorage
+        import asyncio
 
-        with FileStorage(str(settings.storage.path), readonly=True) as storage:
-            connection = Connection(storage)
+        from dhara.core.connection import AsyncConnection
+        from dhara.storage.async_file import AsyncFileStorage
 
-            root = connection.get_root()
+        async def _info() -> int:
+            storage = AsyncFileStorage(str(settings.storage.path))
+            await storage.init()
+            try:
+                connection = await AsyncConnection.new(storage)
+                root = await connection.get_root()
+                return len(list(root.keys()))
+            finally:
+                await storage.close()
 
-            typer.echo("\n💾 Storage Information:")
-            typer.echo(f"  Path: {settings.storage.path}")
-            typer.echo(f"  Exists: {settings.storage.path.exists()}")
-            typer.echo(
-                f"  Size: {settings.storage.path.stat().st_size if settings.storage.path.exists() else 0} bytes"
-            )
-            typer.echo(f"  Root keys: {len(list(root.keys()))}")
+        root_key_count = asyncio.run(_info())
+
+        typer.echo("\n💾 Storage Information:")
+        typer.echo(f"  Path: {settings.storage.path}")
+        typer.echo(f"  Exists: {settings.storage.path.exists()}")
+        typer.echo(
+            f"  Size: {settings.storage.path.stat().st_size if settings.storage.path.exists() else 0} bytes"
+        )
+        typer.echo(f"  Root keys: {root_key_count}")
 
 
 def _create_admin_command(app: typer.Typer, settings: DharaSettings) -> None:
@@ -450,16 +490,29 @@ def _create_admin_command(app: typer.Typer, settings: DharaSettings) -> None:
             )
             raise typer.Exit(1)
 
-        from dhara.core.connection import Connection
+        from dhara.core.connection import AsyncConnection
         from dhara.shell import DharaShell
-        from dhara.storage.file import FileStorage
+        from dhara.storage.async_file import AsyncFileStorage
 
         # Open connection with proper resource management
         try:
-            with FileStorage(str(settings.storage.path)) as storage:
-                connection = Connection(storage)
-                shell = DharaShell(connection, settings)
-                shell.start()
+            import asyncio
+
+            async def _open_shell() -> None:
+                storage = AsyncFileStorage(str(settings.storage.path))
+                await storage.init()
+                try:
+                    connection = await AsyncConnection.new(storage)
+                    # NOTE: DharaShell currently uses sync AdapterRegistry; this
+                    # command is a known partial port — full async wiring is
+                    # Task 2 scope. ``type: ignore`` silences the mismatched
+                    # connection type until the shell is ported (sub-task 1f).
+                    shell = DharaShell(connection, settings)  # type: ignore[arg-type]
+                    shell.start()
+                finally:
+                    await storage.close()
+
+            asyncio.run(_open_shell())
         except FileNotFoundError:
             typer.echo(
                 f"Error: Storage file not found: {settings.storage.path}", err=True
