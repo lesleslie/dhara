@@ -103,7 +103,7 @@ This plan has a single phase (Phase 2 of the cross-cutting consolidation, made s
 - Consumes: existing factory strings `"oneiric.adapters.cache.redis: RedisCacheAdapter"` and `"oneiric.adapters.cache.memory: MemoryCacheAdapter"`
 - Produces: factory strings with no leading space
 
-- [ ] **Step 1: Locate factory strings**
+- [x] **Step 1: Locate factory strings**
 
 ```bash
 grep -n 'factory=' /Users/les/Projects/oneiric/oneiric/adapters/cache/redis.py
@@ -112,7 +112,7 @@ grep -n 'factory=' /Users/les/Projects/oneiric/oneiric/adapters/cache/memory.py
 
 Expected: `redis.py:94` and `memory.py:33`.
 
-- [ ] **Step 2: Edit `redis.py:94`**
+- [x] **Step 2: Edit `redis.py:94`**
 
 Replace the line:
 
@@ -126,7 +126,7 @@ with:
         factory="oneiric.adapters.cache.redis:RedisCacheAdapter",
 ```
 
-- [ ] **Step 3: Edit `memory.py:33`**
+- [x] **Step 3: Edit `memory.py:33`**
 
 Replace the line:
 
@@ -140,7 +140,7 @@ with:
         factory="oneiric.adapters.cache.memory:MemoryCacheAdapter",
 ```
 
-- [ ] **Step 4: Sanity-check the import path for both classes**
+- [x] **Step 4: Sanity-check the import path for both classes**
 
 ```bash
 cd /Users/les/Projects/oneiric && \
@@ -160,7 +160,7 @@ oneiric.adapters.cache.memory.MemoryCacheAdapter
 
 If `AttributeError`, the leading space wasn't fully stripped.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 cd /Users/les/Projects/oneiric && \
@@ -188,14 +188,14 @@ and lands in the same companion PR."
 - Consumes: existing `RedisCacheSettings` pydantic model; existing `enable_client_cache` field at lines 69-72
 - Produces: `ttl_seconds: int` (default 3600, ge=0); `stampede_jitter_ms: int` (default 0, ge=0); explicit D7 doc-comment near `enable_client_cache`
 
-- [ ] **Step 1: Locate the last field and `enable_client_cache`**
+- [x] **Step 1: Locate the last field and `enable_client_cache`**
 
 ```bash
 grep -n 'class RedisCacheSettings\|enable_client_cache' /Users/les/Projects/oneiric/oneiric/adapters/cache/redis.py
 sed -n '60,95p' /Users/les/Projects/oneiric/oneiric/adapters/cache/redis.py
 ```
 
-- [ ] **Step 2: Add fields after the last existing field**
+- [x] **Step 2: Add fields after the last existing field**
 
 Insert immediately after the line that defines `client_cache_max_idle_seconds` (or whichever is currently last among the existing fields):
 
@@ -218,7 +218,7 @@ Insert immediately after the line that defines `client_cache_max_idle_seconds` (
     # RedisCacheSettings override the default.
 ```
 
-- [ ] **Step 3: Add `import random` to the imports (unconditional)**
+- [x] **Step 3: Add `import random` to the imports (unconditional)**
 
 ```bash
 grep -n '^import\|^from' /Users/les/Projects/oneiric/oneiric/adapters/cache/redis.py | head -10
@@ -235,7 +235,7 @@ import random
 from typing import TYPE_CHECKING, Any
 ```
 
-- [ ] **Step 4: Round-trip the defaults**
+- [x] **Step 4: Round-trip the defaults**
 
 ```bash
 cd /Users/les/Projects/oneiric && \
@@ -244,7 +244,7 @@ cd /Users/les/Projects/oneiric && \
 
 Expected: `3600 0`.
 
-- [ ] **Step 5: Boundary check (both fields allowed at zero, both rejected at -1)**
+- [x] **Step 5: Boundary check (both fields allowed at zero, both rejected at -1)**
 
 ```bash
 cd /Users/les/Projects/oneiric && \
@@ -266,7 +266,7 @@ ttl_seconds=-1 rejected
 stampede_jitter_ms=-1 rejected
 ```
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 cd /Users/les/Projects/oneiric && \
@@ -297,7 +297,7 @@ This task follows strict TDD: write the failing test first (Step 1), confirm it 
   - `set()`: applies `self._settings.ttl_seconds` (with `max(1, ms)` sub-ms clamp) when no per-call `ttl` is supplied AND that value is `> 0`; preserves the existing `LifecycleError("redis-cache-negative-ttl")` for per-call `ttl <= 0`.
   - `get()`: sleeps `random.uniform(0, ms) / 1000` when `client.get(...)` returns `None` AND `self._settings.stampede_jitter_ms > 0`; no sleep on hit; no sleep when `jitter == 0`; just `return value` (no fabricated deserialization).
 
-- [ ] **Step 1: Write the failing tests (extend `tests/adapters/cache/test_redis_mock.py`)**
+- [x] **Step 1: Write the failing tests (extend `tests/adapters/cache/test_redis_mock.py`)**
 
 ```bash
 tail -20 /Users/les/Projects/oneiric/tests/adapters/cache/test_redis_mock.py
@@ -478,7 +478,7 @@ async def test_get_skips_stampede_jitter_when_setting_is_zero(monkeypatch: pytes
     assert result is None
 ```
 
-- [ ] **Step 2: Run the new tests and confirm the consumer-behavior tests fail**
+- [x] **Step 2: Run the new tests and confirm the consumer-behavior tests fail**
 
 ```bash
 cd /Users/les/Projects/oneiric && pytest tests/adapters/cache/test_redis_mock.py -v -k "ttl_seconds or stampede_jitter or per_call_ttl or default_ttl or settings_ttl or overrides_settings or default-construction"
@@ -488,7 +488,7 @@ Expected: 9 of the 11 new tests FAIL (`test_set_per_call_ttl_*_raises_lifecycle_
 
 If everything passes: the consumer code is *already* in place — unusual but not impossible; investigate.
 
-- [ ] **Step 3: Implement `set()` and `get()` consumer code**
+- [x] **Step 3: Implement `set()` and `get()` consumer code**
 
 Find `async def get(self, key):` and the existing `value = await client.get(...)` line in `redis.py`. Modify the body to:
 
@@ -525,7 +525,7 @@ Notes:
 - The explicit `if ttl is not None and ttl <= 0: raise` MUST come before `effective_ttl` is computed; this preserves the existing `LifecycleError("redis-cache-negative-ttl")` for explicit per-call values while allowing `settings.ttl_seconds=0` (a legitimate "no TTL" choice) to silently disable the `px` kwarg.
 - `max(1, int(effective_ttl * 1000))` keeps the sub-ms clamp from the existing code (no `px=0` shipments to coredis).
 
-- [ ] **Step 4: Run the new tests and confirm all 7 pass**
+- [x] **Step 4: Run the new tests and confirm all 7 pass**
 
 ```bash
 cd /Users/les/Projects/oneiric && pytest tests/adapters/cache/test_redis_mock.py -v -k "ttl_seconds or stampede_jitter or per_call_ttl"
@@ -533,7 +533,7 @@ cd /Users/les/Projects/oneiric && pytest tests/adapters/cache/test_redis_mock.py
 
 Expected: all 7 tests PASSED.
 
-- [ ] **Step 5: Run the full file**
+- [x] **Step 5: Run the full file**
 
 ```bash
 cd /Users/les/Projects/oneiric && pytest tests/adapters/cache/test_redis_mock.py -v
@@ -541,7 +541,7 @@ cd /Users/les/Projects/oneiric && pytest tests/adapters/cache/test_redis_mock.py
 
 Expected: existing tests PASSED (including `test_set_negative_ttl_raises` and `test_set_zero_ttl_raises`); new tests PASSED. If either of the two `raise` tests now FAILS, the consumer code accidentally dropped the explicit guard.
 
-- [ ] **Step 6: Quick smoke**
+- [x] **Step 6: Quick smoke**
 
 ```bash
 cd /Users/les/Projects/oneiric && \
@@ -550,7 +550,7 @@ cd /Users/les/Projects/oneiric && \
 
 Expected: `120 200`. No `AttributeError`.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 cd /Users/les/Projects/oneiric && \
@@ -583,7 +583,7 @@ windows."
 - Consumes: `from oneiric.adapters.cache.redis import RedisCacheSettings`; `import_module` for the factory-string guards
 - Produces: 8 tests covering the two new fields plus factory-string leading-space guards
 
-- [ ] **Step 1: Create the settings test file**
+- [x] **Step 1: Create the settings test file**
 
 ```python
 # /Users/les/Projects/oneiric/tests/unit/test_redis_cache_settings.py
@@ -669,7 +669,7 @@ def test_existing_fields_round_trip_unchanged() -> None:
     assert s.stampede_jitter_ms == 10
 ```
 
-- [ ] **Step 2: Run the new settings test file**
+- [x] **Step 2: Run the new settings test file**
 
 ```bash
 cd /Users/les/Projects/oneiric && pytest tests/unit/test_redis_cache_settings.py -v
@@ -677,7 +677,7 @@ cd /Users/les/Projects/oneiric && pytest tests/unit/test_redis_cache_settings.py
 
 Expected: all 8 tests PASSED.
 
-- [ ] **Step 3: Run the full Oneiric test suite**
+- [x] **Step 3: Run the full Oneiric test suite**
 
 ```bash
 cd /Users/les/Projects/oneiric && pytest tests/ -q
@@ -685,7 +685,7 @@ cd /Users/les/Projects/oneiric && pytest tests/ -q
 
 Expected: all green.
 
-- [ ] **Step 4: Commit the test additions**
+- [x] **Step 4: Commit the test additions**
 
 ```bash
 cd /Users/les/Projects/oneiric && \
@@ -695,7 +695,7 @@ cd /Users/les/Projects/oneiric && \
 
 #### Direct merge to `main`
 
-- [ ] **Step 1: Verify all four commits are on `main` on Oneiric**
+- [x] **Step 1: Verify all four commits are on `main` on Oneiric**
 
 ```bash
 git -C /Users/les/Projects/oneiric log --oneline main -10 | head -10
@@ -703,7 +703,7 @@ git -C /Users/les/Projects/oneiric log --oneline main -10 | head -10
 
 Expected: the four commits from Tasks 2.0 / 2.1 / 2.2 / 2.3 are at `HEAD` (or near `HEAD` if other work has landed since).
 
-- [ ] **Step 2: Push direct to `main` (no PR)**
+- [x] **Step 2: Push direct to `main` (no PR)**
 
 ```bash
 cd /Users/les/Projects/oneiric && git push origin main
