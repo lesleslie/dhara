@@ -45,7 +45,7 @@ from dhara.mcp.ecosystem_state import AsyncEcosystemStateStore, EventRetention
 from dhara.mcp.fastmcp_auth import build_token_verifier
 from dhara.mcp.kv_timeseries import AsyncKVTimeSeriesStore, TimeSeriesRetention
 from dhara.mcp.substrate_routes import register_substrate_routes
-from dhara.storage.file import FileStorage
+from dhara.storage.async_file import AsyncFileStorage
 
 logger = get_logger(__name__)
 
@@ -187,8 +187,10 @@ class DharaMCPServer:
                 or "postgresql://localhost/dhara",
             )
         else:
-            # Default: FileStorage (existing behavior)
-            self.storage = FileStorage(
+            # Default: AsyncFileStorage (the legacy FileStorage is deleted
+            # after sub-task 1i). The mock in test_mcp_server_core.py patches
+            # ``AsyncFileStorage`` at this name.
+            self.storage = AsyncFileStorage(
                 storage_path,
                 readonly=config.storage.read_only,
             )
@@ -784,7 +786,7 @@ class DharaMCPServer:
         self._register_tools_call_route()
 
         # Register substrate CRUD HTTP routes (Workstream C).
-        # Persistence uses the FileStorage-backed Connection.root mapping;
+        # Persistence uses the AsyncFileStorage-backed Connection.root mapping;
         # Workstream D will swap to SQL-backed tables.
         register_substrate_routes(self.server, self.connection)
 
@@ -944,43 +946,10 @@ class DharaMCPServer:
             total_backups = 0
 
             if catalog_path.exists():
-                with FileStorage(catalog_path, readonly=True) as storage:
-                    connection = Connection(storage)
-                    root = connection.get_root()
-                    backups = root.get("backups", {})
-                    # Unwrap PersistentDict's ``__state__`` envelope when
-                    # the on-disk format is the legacy pickle-style state
-                    # representation rather than a hydrated mapping.
-                    if (
-                        isinstance(backups, dict)
-                        and "__state__" in backups
-                        and isinstance(backups["__state__"], dict)
-                        and "data" in backups["__state__"]
-                    ):
-                        backups = backups["__state__"]["data"]
-                    total_backups = len(list(backups.keys()))
-                    latest_payload = None
-                    latest_timestamp = None
-                    for payload in backups.values():
-                        data = dict(payload)
-                        # Each stored entry is itself a PersistentDict that
-                        # round-trips through the ``__state__`` envelope.
-                        if (
-                            isinstance(data, dict)
-                            and "__state__" in data
-                            and isinstance(data["__state__"], dict)
-                            and "data" in data["__state__"]
-                        ):
-                            data = data["__state__"]["data"]
-                        timestamp = data.get("timestamp")
-                        if isinstance(timestamp, str) and (
-                            latest_timestamp is None or timestamp > latest_timestamp
-                        ):
-                            latest_timestamp = timestamp
-                            latest_payload = data
-                    if latest_payload is not None:
-                        latest_backup_id = latest_payload.get("backup_id")
-                        latest_backup_at = latest_payload.get("timestamp")
+                catalog_data = self._read_backup_catalog_async(catalog_path)
+                total_backups = catalog_data["total_backups"]
+                latest_backup_id = catalog_data["latest_backup_id"]
+                latest_backup_at = catalog_data["latest_backup_at"]
 
             return {
                 "configured": True,
@@ -998,6 +967,74 @@ class DharaMCPServer:
                 "catalog_accessible": False,
                 "error": str(exc),
             }
+
+    def _read_backup_catalog_async(self, catalog_path: Any) -> dict[str, Any]:
+        """Read the backup catalog using async storage.
+
+        The catalog is now backed by ``AsyncFileStorage`` (sqlite under the
+        hood). The legacy ``FileStorage`` (Duru SHELF) cannot open the new
+        catalog format, so we must use the async API.
+
+        This method is a sync wrapper that runs the async I/O via
+        ``asyncio.run``. It is invoked from the sync ``_probe_backups``,
+        which is itself called from sync ``_runtime_status`` (test code
+        path). The FastMCP ``custom_route`` handler awaits ``_runtime_status``
+        results, so the inner event loop is paused while this runs.
+        """
+        import asyncio
+
+        from dhara.core.connection import AsyncConnection
+
+        async def _read() -> dict[str, Any]:
+            storage = AsyncFileStorage(str(catalog_path), readonly=True)
+            await storage.init()
+            try:
+                connection = await AsyncConnection.new(storage)
+                root = await connection.get_root()
+                backups = root.get("backups", {})
+                # Unwrap PersistentDict's ``__state__`` envelope when
+                # the on-disk format is the legacy pickle-style state
+                # representation rather than a hydrated mapping.
+                if (
+                    isinstance(backups, dict)
+                    and "__state__" in backups
+                    and isinstance(backups["__state__"], dict)
+                    and "data" in backups["__state__"]
+                ):
+                    backups = backups["__state__"]["data"]
+                total = len(list(backups.keys()))
+                latest_payload: dict[str, Any] | None = None
+                latest_timestamp: str | None = None
+                for payload in backups.values():
+                    data = dict(payload)
+                    # Each stored entry is itself a PersistentDict that
+                    # round-trips through the ``__state__`` envelope.
+                    if (
+                        isinstance(data, dict)
+                        and "__state__" in data
+                        and isinstance(data["__state__"], dict)
+                        and "data" in data["__state__"]
+                    ):
+                        data = data["__state__"]["data"]
+                    timestamp = data.get("timestamp")
+                    if isinstance(timestamp, str) and (
+                        latest_timestamp is None or timestamp > latest_timestamp
+                    ):
+                        latest_timestamp = timestamp
+                        latest_payload = data
+                return {
+                    "total_backups": total,
+                    "latest_backup_id": latest_payload.get("backup_id")
+                    if latest_payload is not None
+                    else None,
+                    "latest_backup_at": latest_payload.get("timestamp")
+                    if latest_payload is not None
+                    else None,
+                }
+            finally:
+                await storage.close()
+
+        return asyncio.run(_read())
 
     def _runtime_status(self) -> dict[str, Any]:
         """Return canonical runtime health and readiness data."""
