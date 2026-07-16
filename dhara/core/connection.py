@@ -731,6 +731,43 @@ class AsyncConnection(ConnectionBase):
         await self.storage.pack()
 
 
+async def create_async_connection(
+    path: str,
+    cache_size: int = 100000,
+    root_class=None,
+    cache=None,
+    allowed_modules=None,
+):
+    """Async factory mirroring the sync ``Connection(path)`` pattern.
+
+    (path:str, cache_size:int=100000, root_class:class|None=None, ...)
+
+    Constructs an :class:`AsyncFileStorage` from ``path``, awaits its
+    ``init()``, then delegates to :meth:`AsyncConnection.new` to produce
+    the returned connection.
+
+    This is the async counterpart to the ``str`` -> ``FileStorage``
+    coercion inside :class:`Connection.__init__`. Sub-task 1i deletes the
+    sync coercion along with ``dhara.storage.file.FileStorage``; callers
+    that need an async connection should use this factory instead.
+
+    The import of :class:`AsyncFileStorage` is deferred to call time so the
+    sync code path keeps working even before the async backend is wired
+    into all call sites.
+    """
+    from dhara.storage.async_file import AsyncFileStorage
+
+    storage = AsyncFileStorage(path)
+    await storage.init()
+    return await AsyncConnection.new(
+        storage,
+        cache_size=cache_size,
+        root_class=root_class,
+        cache=cache,
+        allowed_modules=allowed_modules,
+    )
+
+
 class ObjectDictionary:
     """
     Like a WeakValueDictionary, except that the actual removal of keys is
