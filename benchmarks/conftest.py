@@ -7,7 +7,7 @@ import pytest
 
 from dhara.core import Connection
 from dhara.core.persistent import Persistent
-from dhara.storage import FileStorage, SqliteStorage
+from dhara.storage import SqliteStorage
 from dhara.storage.base import MemoryStorage
 
 
@@ -38,12 +38,6 @@ def memory_storage():
 
 
 @pytest.fixture
-def file_storage(temp_file):
-    """Create a file storage."""
-    return FileStorage(temp_file)
-
-
-@pytest.fixture
 def sqlite_storage(temp_sqlite_file):
     """Create a SQLite storage."""
     return SqliteStorage(temp_sqlite_file)
@@ -53,12 +47,6 @@ def sqlite_storage(temp_sqlite_file):
 def memory_connection(memory_storage):
     """Create a connection with memory storage."""
     return Connection(memory_storage, cache_size=1000)
-
-
-@pytest.fixture
-def file_connection(file_storage):
-    """Create a connection with file storage."""
-    return Connection(file_storage, cache_size=1000)
 
 
 @pytest.fixture

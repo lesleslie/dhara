@@ -4,16 +4,16 @@ Compares msgspec, pickle, and FallbackSerializer performance across
 various data types and operations.
 """
 
+import asyncio
 import time
 import pytest
 
-from dhara import Connection
+from dhara.core.connection import AsyncConnection
 from dhara.serialize import (
     FallbackSerializer,
     MsgspecSerializer,
     PickleSerializer,
 )
-from dhara.storage import FileStorage
 
 
 class TestMsgspecPerformance:
@@ -254,24 +254,30 @@ class TestStorageBenchmarks:
             temp_file = f.name
 
         try:
-            storage = FileStorage(temp_file)
-            connection = Connection(storage)
+            # AsyncFileStorage replaces the deleted FileStorage; bridge to
+            # it via ``AsyncConnection.new(path)`` (the canonical async
+            # path factory completed in commit e86802e).
+            async def _bench() -> None:
+                connection = await AsyncConnection.new(temp_file)
+                try:
+                    root = await connection.get_root()
 
-            root = connection.get_root()
+                    iterations = 100
+                    start = time.time()
 
-            # Benchmark write operations
-            iterations = 100
-            start = time.time()
+                    for i in range(iterations):
+                        root[f"item_{i}"] = {"index": i, "data": f"value_{i}"}
+                        await connection.commit()
 
-            for i in range(iterations):
-                root[f"item_{i}"] = {"index": i, "data": f"value_{i}"}
-                connection.commit()
+                    elapsed = time.time() - start
+                    avg_ms = (elapsed / iterations) * 1000
 
-            elapsed = time.time() - start
-            avg_ms = (elapsed / iterations) * 1000
+                    print(f"\nStorage write performance:")
+                    print(f"  {iterations} commits in {elapsed*1000:.1f}ms")
+                finally:
+                    await (await connection.get_storage()).close()
 
-            print(f"\nStorage write performance:")
-            print(f"  {iterations} commits in {elapsed*1000:.1f}ms")
+            asyncio.run(_bench())
             print(f"  Average: {avg_ms:.3f}ms per commit")
 
             # Should be reasonably fast
@@ -290,23 +296,27 @@ class TestStorageBenchmarks:
             temp_file = f.name
 
         try:
-            storage = FileStorage(temp_file)
-            connection = Connection(storage)
+            async def _bench() -> None:
+                connection = await AsyncConnection.new(temp_file)
+                try:
+                    root = await connection.get_root()
 
-            root = connection.get_root()
+                    # Pre-populate data
+                    for i in range(100):
+                        root[f"item_{i}"] = {"data": f"value_{i}"}
+                    await connection.commit()
 
-            # Pre-populate data
-            for i in range(100):
-                root[f"item_{i}"] = {"data": f"value_{i}"}
-            connection.commit()
+                    # Benchmark read operations
+                    iterations = 1000
+                    start = time.time()
 
-            # Benchmark read operations
-            iterations = 1000
-            start = time.time()
+                    for _ in range(iterations):
+                        for i in range(100):
+                            _ = root[f"item_{i}"]
+                finally:
+                    await (await connection.get_storage()).close()
 
-            for _ in range(iterations):
-                for i in range(100):
-                    _ = root[f"item_{i}"]
+            asyncio.run(_bench())
 
             elapsed = time.time() - start
             total_reads = iterations * 100
