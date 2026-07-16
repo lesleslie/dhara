@@ -16,7 +16,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 import typer
@@ -148,8 +148,8 @@ class TestValidatePath:
 class TestProbeStorageRuntime:
     """Tests for _probe_storage_runtime(settings).
 
-    FileStorage and Connection are imported inside the function body, so
-    we must patch them at their source modules.
+    AsyncFileStorage and AsyncConnection are imported inside the function
+    body, so we must patch them at their source modules.
     """
 
     def test_accessible_storage(self, tmp_path):
@@ -163,15 +163,22 @@ class TestProbeStorageRuntime:
         mock_root.keys.return_value = ["key1", "key2", "key3"]
 
         mock_connection = MagicMock()
-        mock_connection.get_root.return_value = mock_root
+        mock_connection.get_root = AsyncMock(return_value=mock_root)
 
         mock_storage_instance = MagicMock()
-        mock_storage_instance.__enter__ = MagicMock(return_value=mock_storage_instance)
-        mock_storage_instance.__exit__ = MagicMock(return_value=False)
+        mock_storage_instance.init = AsyncMock()
+        mock_storage_instance.close = AsyncMock()
 
         with (
-            patch("dhara.storage.file.FileStorage", return_value=mock_storage_instance),
-            patch("dhara.core.connection.Connection", return_value=mock_connection),
+            patch(
+                "dhara.storage.async_file.AsyncFileStorage",
+                return_value=mock_storage_instance,
+            ),
+            patch(
+                "dhara.core.connection.AsyncConnection.new",
+                new_callable=AsyncMock,
+                return_value=mock_connection,
+            ),
         ):
             result = _probe_storage_runtime(settings)
 
@@ -187,12 +194,9 @@ class TestProbeStorageRuntime:
         real_file.write_text("dummy")
         settings = _make_mock_settings(**{"storage.path": real_file})
 
-        with (
-            patch(
-                "dhara.storage.file.FileStorage",
-                side_effect=OSError("Permission denied"),
-            ),
-            patch("dhara.core.connection.Connection"),
+        with patch(
+            "dhara.storage.async_file.AsyncFileStorage",
+            side_effect=OSError("Permission denied"),
         ):
             result = _probe_storage_runtime(settings)
 
@@ -207,13 +211,17 @@ class TestProbeStorageRuntime:
         settings = _make_mock_settings()
 
         mock_storage_instance = MagicMock()
-        mock_storage_instance.__enter__ = MagicMock(return_value=mock_storage_instance)
-        mock_storage_instance.__exit__ = MagicMock(return_value=False)
+        mock_storage_instance.init = AsyncMock()
+        mock_storage_instance.close = AsyncMock()
 
         with (
-            patch("dhara.storage.file.FileStorage", return_value=mock_storage_instance),
             patch(
-                "dhara.core.connection.Connection",
+                "dhara.storage.async_file.AsyncFileStorage",
+                return_value=mock_storage_instance,
+            ),
+            patch(
+                "dhara.core.connection.AsyncConnection.new",
+                new_callable=AsyncMock,
                 side_effect=RuntimeError("Corrupt database"),
             ),
         ):
@@ -230,15 +238,22 @@ class TestProbeStorageRuntime:
         mock_root.keys.return_value = []
 
         mock_connection = MagicMock()
-        mock_connection.get_root.return_value = mock_root
+        mock_connection.get_root = AsyncMock(return_value=mock_root)
 
         mock_storage_instance = MagicMock()
-        mock_storage_instance.__enter__ = MagicMock(return_value=mock_storage_instance)
-        mock_storage_instance.__exit__ = MagicMock(return_value=False)
+        mock_storage_instance.init = AsyncMock()
+        mock_storage_instance.close = AsyncMock()
 
         with (
-            patch("dhara.storage.file.FileStorage", return_value=mock_storage_instance),
-            patch("dhara.core.connection.Connection", return_value=mock_connection),
+            patch(
+                "dhara.storage.async_file.AsyncFileStorage",
+                return_value=mock_storage_instance,
+            ),
+            patch(
+                "dhara.core.connection.AsyncConnection.new",
+                new_callable=AsyncMock,
+                return_value=mock_connection,
+            ),
         ):
             result = _probe_storage_runtime(settings)
 
@@ -267,10 +282,7 @@ class TestProbeBackupRuntime:
             **{"backups.enabled": True, "backups.directory": Path("/tmp/dhara_test_backups_no_cat")}
         )
 
-        with (
-            patch("dhara.storage.file.FileStorage"),
-            patch("dhara.core.connection.Connection"),
-        ):
+        with patch("dhara.storage.async_file.AsyncFileStorage"):
             result = _probe_backup_runtime(settings)
 
         assert result["backup_configured"] is True
@@ -296,15 +308,22 @@ class TestProbeBackupRuntime:
         }
 
         mock_connection = MagicMock()
-        mock_connection.get_root.return_value = mock_root
+        mock_connection.get_root = AsyncMock(return_value=mock_root)
 
         mock_storage_instance = MagicMock()
-        mock_storage_instance.__enter__ = MagicMock(return_value=mock_storage_instance)
-        mock_storage_instance.__exit__ = MagicMock(return_value=False)
+        mock_storage_instance.init = AsyncMock()
+        mock_storage_instance.close = AsyncMock()
 
         with (
-            patch("dhara.storage.file.FileStorage", return_value=mock_storage_instance),
-            patch("dhara.core.connection.Connection", return_value=mock_connection),
+            patch(
+                "dhara.storage.async_file.AsyncFileStorage",
+                return_value=mock_storage_instance,
+            ),
+            patch(
+                "dhara.core.connection.AsyncConnection.new",
+                new_callable=AsyncMock,
+                return_value=mock_connection,
+            ),
         ):
             result = _probe_backup_runtime(settings)
 
@@ -320,8 +339,7 @@ class TestProbeBackupRuntime:
         )
 
         with (
-            patch("dhara.storage.file.FileStorage"),
-            patch("dhara.core.connection.Connection"),
+            patch("dhara.storage.async_file.AsyncFileStorage"),
             patch("pathlib.Path.mkdir", side_effect=OSError("Cannot create dir")),
         ):
             result = _probe_backup_runtime(settings)
@@ -766,13 +784,26 @@ class TestCreateCliRuntime:
         runner = CliRunner()
 
         mock_storage = MagicMock()
-        mock_storage.__enter__ = MagicMock(return_value=mock_storage)
-        mock_storage.__exit__ = MagicMock(return_value=False)
+        mock_storage.init = AsyncMock()
+        mock_storage.close = AsyncMock()
         mock_connection = MagicMock()
         mock_root = MagicMock()
         mock_root.keys.return_value = ["a", "b"]
-        mock_connection.get_root.return_value = mock_root
+        mock_connection.get_root = AsyncMock(return_value=mock_root)
         mock_registry = MagicMock()
+
+        # AsyncAdapterRegistry.list_adapters_async is awaited by the
+        # ``adapters`` command path; sync ``list_adapters`` is used by
+        # the admin shell (which is a known partial port).
+        mock_registry.list_adapters_async = AsyncMock(
+            return_value=[
+                {
+                    "adapter_id": "adapter-1",
+                    "version": "1.0",
+                    "metadata": {"description": "demo"},
+                }
+            ]
+        )
         mock_registry.list_adapters.return_value = [
             {
                 "adapter_id": "adapter-1",
@@ -783,9 +814,21 @@ class TestCreateCliRuntime:
         mock_shell = MagicMock()
 
         with (
-            patch("dhara.storage.file.FileStorage", return_value=mock_storage),
-            patch("dhara.core.connection.Connection", return_value=mock_connection),
-            patch("dhara.mcp.adapter_tools.AdapterRegistry", return_value=mock_registry),
+            patch(
+                "dhara.storage.async_file.AsyncFileStorage", return_value=mock_storage
+            ),
+            patch(
+                "dhara.core.connection.AsyncConnection.new",
+                new_callable=AsyncMock,
+                return_value=mock_connection,
+            ),
+            patch(
+                "dhara.mcp.adapter_tools.AsyncAdapterRegistry",
+                return_value=mock_registry,
+            ),
+            patch(
+                "dhara.mcp.adapter_tools.AdapterRegistry", return_value=mock_registry
+            ),
             patch("dhara.shell.DharaShell", return_value=mock_shell),
         ):
             adapters_result = runner.invoke(app, ["adapters"])
@@ -809,8 +852,10 @@ class TestCreateCliRuntime:
         runner = CliRunner()
 
         with (
-            patch("dhara.storage.file.FileStorage", side_effect=FileNotFoundError),
-            patch("dhara.core.connection.Connection"),
+            patch(
+                "dhara.storage.async_file.AsyncFileStorage",
+                side_effect=FileNotFoundError,
+            ),
             patch("dhara.shell.DharaShell"),
         ):
             result = runner.invoke(app, ["admin", "--confirm"])
@@ -818,8 +863,10 @@ class TestCreateCliRuntime:
         assert result.exit_code == 1
 
         with (
-            patch("dhara.storage.file.FileStorage", side_effect=PermissionError),
-            patch("dhara.core.connection.Connection"),
+            patch(
+                "dhara.storage.async_file.AsyncFileStorage",
+                side_effect=PermissionError,
+            ),
             patch("dhara.shell.DharaShell"),
         ):
             result = runner.invoke(app, ["admin", "--confirm"])

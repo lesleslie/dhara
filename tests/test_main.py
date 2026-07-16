@@ -133,15 +133,15 @@ class TestGetStorageClass:
     """Tests for get_storage_class which detects storage type from magic bytes."""
 
     def test_nonexistent_file_returns_file_storage(self):
-        """A file that does not exist on disk returns FileStorage."""
+        """A file that does not exist on disk returns AsyncFileStorage."""
         from dhara.__main__ import get_storage_class
 
         with patch("dhara.__main__.os.path.exists", return_value=False):
             result = get_storage_class("/nonexistent/path.dhara")
 
-        from dhara.storage.file import FileStorage
+        from dhara.storage.async_file import AsyncFileStorage
 
-        assert result is FileStorage
+        assert result is AsyncFileStorage
 
     def test_dfs20_header_raises_value_error(self):
         """A file starting with b'DFS20' raises ValueError (legacy format refused)."""
@@ -181,17 +181,21 @@ class TestGetStorageClass:
         assert result is mock_sqlite_storage
 
     def test_shelf_header_returns_file_storage(self):
-        """A file starting with b'SHELF-1' returns FileStorage."""
+        """A file starting with b'SHELF-1' returns AsyncFileStorage.
+
+        Production reads magic bytes via ``file.open("rb")`` (a ``pathlib.Path``
+        method), not the ``open`` builtin, so the test patches ``Path.open``.
+        """
         from dhara.__main__ import get_storage_class
 
         mock_file = BytesIO(b"SHELF-1_some_data_padding_xx")
         with patch("dhara.__main__.os.path.exists", return_value=True):
-            with patch("builtins.open", return_value=mock_file):
+            with patch("pathlib.Path.open", return_value=mock_file):
                 result = get_storage_class("test.shelf")
 
-        from dhara.storage.file import FileStorage
+        from dhara.storage.async_file import AsyncFileStorage
 
-        assert result is FileStorage
+        assert result is AsyncFileStorage
 
     def test_unknown_header_raises_value_error(self):
         """An unrecognized magic header raises ValueError."""
@@ -250,10 +254,10 @@ class TestImportClass:
         """Can import a real class from the dhara package."""
         from dhara.__main__ import import_class
 
-        result = import_class("dhara.storage.file.FileStorage")
-        from dhara.storage.file import FileStorage
+        result = import_class("dhara.storage.async_file.AsyncFileStorage")
+        from dhara.storage.async_file import AsyncFileStorage
 
-        assert result is FileStorage
+        assert result is AsyncFileStorage
 
     def test_imports_os_path_join(self):
         """Can import a well-known stdlib function."""
@@ -315,11 +319,13 @@ class TestGetStorage:
         assert result == mock_storage_cls.return_value
 
     def test_with_none_file_and_no_storage_class(self):
-        """file=None with no storage_class creates temporary FileStorage."""
+        """file=None with no storage_class creates temporary AsyncFileStorage."""
         from dhara.__main__ import get_storage
 
         mock_storage = MagicMock()
-        with patch("dhara.storage.file.FileStorage", return_value=mock_storage) as MockFS:
+        with patch(
+            "dhara.storage.async_file.AsyncFileStorage", return_value=mock_storage
+        ) as MockFS:
             result = get_storage(None, storage_class=None)
 
         MockFS.assert_called_once_with(None)
