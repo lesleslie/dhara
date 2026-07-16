@@ -8,7 +8,7 @@ Wire format (unchanged from the Durus 4.x legacy):
 
 This module replaces ``dhara.serialize_legacy`` (the pickle-based original)
 with a safe, msgspec-backed implementation. It is the only place that
-handles the per-record framing; the storage layer (``FileStorage``,
+handles the per-record framing; the storage layer (``AsyncFileStorage``,
 ``SqliteStorage``, etc.) calls into this module.
 
 The data payload is no longer ``pickle(type) + zlib(pickle(state))``;

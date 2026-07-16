@@ -2,9 +2,9 @@
 An sqlite-based storage module.  Uses a sqlite as the on-disc storage of
 persistent data.
 
-SqliteStorage compares favourably with ShelfStorage/FileStorage2 for
-performance, based on limited tests. The main downside is that it does not
-provide point-in-timem recovery, easy backups and asynchronous replication.
+SqliteStorage compares favourably with ShelfStorage for performance,
+based on limited tests. The main downside is that it does not
+provide point-in-time recovery, easy backups and asynchronous replication.
 """
 
 from __future__ import annotations

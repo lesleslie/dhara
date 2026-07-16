@@ -2,10 +2,13 @@
 
 Provides adapter pattern for multiple storage implementations:
 - base: Abstract Storage interface
-- file: FileStorage (default Durus file-based storage)
-- sqlite: SQLite storage backend
+- sqlite: SQLite storage backend (sync and async variants)
 - client: ClientStorage (network client to storage server)
 - memory: MemoryStorage (in-memory for testing)
+
+The legacy ``FileStorage`` (Durus SHELF) backend was removed in the
+async-migration cleanup — use ``AsyncFileStorage`` (a thin
+``AsyncSqliteStorage`` alias) for path-based file storage.
 """
 
 from dhara.storage.base import (
@@ -17,7 +20,6 @@ from dhara.storage.base import (
     get_reference_index,
 )
 from dhara.storage.client import ClientStorage
-from dhara.storage.file import FileStorage
 from dhara.storage.memory import AsyncMemoryStorage
 
 try:
@@ -30,7 +32,6 @@ __all__ = [
     "Storage",
     "MemoryStorage",
     "AsyncStorage",
-    "FileStorage",
     "SqliteStorage",
     "AsyncSqliteStorage",
     "AsyncMemoryStorage",

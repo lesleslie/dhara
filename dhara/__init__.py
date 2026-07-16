@@ -46,7 +46,6 @@ from dhara.storage import (
     AsyncSqliteStorage,
     AsyncStorage,
     ClientStorage,
-    FileStorage,
     SqliteStorage,
     Storage,
 )
@@ -67,7 +66,6 @@ __all__ = [
     "PersistentBase",
     "Storage",
     "AsyncStorage",
-    "FileStorage",
     "SqliteStorage",
     "AsyncSqliteStorage",
     "AsyncMemoryStorage",
