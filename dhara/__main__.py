@@ -209,7 +209,7 @@ def client_main():
         "--storage-class",
         dest="storage",
         default=None,
-        help="Storage class (e.g. dhara.file_storage.FileStorage).",
+        help="Storage class (e.g. dhara.storage.async_file.AsyncFileStorage).",
     )
     parser.add_option(
         "--cache_size",
@@ -337,13 +337,13 @@ def get_storage_class(file):
     """Return the storage class for an existing file.
 
     Raises ``ValueError`` if the file is a DFS20/legacy 4.x format. There is
-    no in-place format migration; use ``FileStorage`` (SHELF-1) for new and
-    migrated databases.
+    no in-place format migration; use ``AsyncFileStorage`` (sqlite+aiosqlite)
+    for new and migrated databases.
     """
     if not Path(file).exists():
-        from dhara.storage.file import FileStorage
+        from dhara.storage.async_file import AsyncFileStorage
 
-        return FileStorage
+        return AsyncFileStorage
     # ``file`` may be a ``str`` or ``pathlib.Path``; the test suite patches
     # ``builtins.open``, so call through the builtin rather than the
     # ``pathlib.Path.open`` method.
@@ -353,17 +353,17 @@ def get_storage_class(file):
         logger.error("Refused DFS20/legacy 4.x file: %s", file)
         raise ValueError(
             "DFS20/legacy 4.x format no longer supported. There is no automatic "
-            "migration path. Use FileStorage (SHELF-1) for new and migrated "
-            "databases."
+            "migration path. Use AsyncFileStorage (sqlite+aiosqlite) for new and "
+            "migrated databases."
         )
     elif d.startswith(b"SQLite format "):
         from dhara.storage.sqlite import SqliteStorage  # type: ignore[no-redef]
 
         return SqliteStorage
     elif d.startswith(b"SHELF-1"):
-        from dhara.storage.file import FileStorage
+        from dhara.storage.async_file import AsyncFileStorage
 
-        return FileStorage
+        return AsyncFileStorage
     else:
         raise ValueError("unknown storage type for file")
 
@@ -379,10 +379,10 @@ def get_storage(file, storage_class=None, **kwargs):
         storage_class = import_class(storage_class)
     else:
         if file is None:
-            from dhara.storage.file import FileStorage
+            from dhara.storage.async_file import AsyncFileStorage
 
             # passing file=None will create temporary storage
-            storage_class = FileStorage
+            storage_class = AsyncFileStorage
         else:
             storage_class = get_storage_class(file)
     return storage_class(file, **kwargs)
@@ -449,7 +449,7 @@ def run_dhara_main():
         "--storage-class",
         dest="storage",
         default=None,
-        help="Storage class (e.g. dhara.file_storage.FileStorage).",
+        help="Storage class (e.g. dhara.storage.async_file.AsyncFileStorage).",
     )
     parser.add_option(
         "--gcbytes",
