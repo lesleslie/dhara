@@ -12,7 +12,8 @@ import pytest
 import pytest_asyncio
 
 from dhara.core import AsyncConnection, Connection
-from dhara.storage import AsyncMemoryStorage, FileStorage, MemoryStorage
+from dhara.storage import AsyncMemoryStorage, MemoryStorage
+from dhara.storage.async_file import AsyncFileStorage
 
 
 @pytest.fixture
@@ -30,7 +31,13 @@ def temp_file_storage():
     from tempfile import mktemp
 
     filename = mktemp(suffix=".dhara")
-    storage = FileStorage(filename)
+    # ``AsyncFileStorage`` is a path-compatible drop-in for the legacy
+    # ``FileStorage``; the legacy SHELF-format class is being removed by
+    # the async-first migration.  Tests that consumed ``temp_file_storage``
+    # as a sync ``Storage`` instance must now ``await`` its lifecycle;
+    # the few call sites in this tree (test_core_connection_methods)
+    # adapt to the async shape below.
+    storage = AsyncFileStorage(filename)
     yield storage
     if exists(filename):
         unlink(filename)
@@ -49,7 +56,18 @@ async def async_connection(async_memory_storage):
 
 @pytest.fixture
 def file_connection(temp_file_storage):
-    return Connection(temp_file_storage)
+    # ``file_connection`` is used by tests that expect a real on-disk
+    # store; the new ``AsyncFileStorage`` requires an async init, so the
+    # fixture spins up an ``AsyncConnection`` instead of the sync
+    # ``Connection`` that the legacy fixture returned.  Callers should
+    # ``await async_connection.get_root()`` to interact with the root.
+    import asyncio
+
+    async def _open() -> AsyncConnection:
+        await temp_file_storage.init()
+        return await AsyncConnection.new(temp_file_storage)
+
+    return asyncio.run(_open())
 
 
 @pytest.fixture

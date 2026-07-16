@@ -10,11 +10,11 @@ from dhara.mcp.server_core import DharaMCPServer
 
 class TestDharaMCPServerBackendSelection:
     def test_default_uses_filestorage(self):
-        """Default storage_backend=file should use FileStorage."""
+        """Default storage_backend=file should use AsyncFileStorage."""
         settings = DharaSettings()
         with patch("pathlib.Path.mkdir"), \
              patch("dhara.mcp.server_core.Connection") as mock_conn, \
-             patch("dhara.mcp.server_core.FileStorage") as mock_fs:
+             patch("dhara.mcp.server_core.AsyncFileStorage") as mock_fs:
             mock_instance = MagicMock()
             mock_instance.new_oid = MagicMock(return_value="test_oid")
             mock_fs.return_value = mock_instance
@@ -42,7 +42,7 @@ class TestDharaMCPServerBackendSelection:
         assert server.storage is mock_adapter
 
     @patch("dhara.storage.redis_cache.RedisCacheAdapter")
-    @patch("dhara.mcp.server_core.FileStorage")
+    @patch("dhara.mcp.server_core.AsyncFileStorage")
     @patch("dhara.mcp.server_core.Connection")
     def test_redis_cache_backend_instantiates_redis_cache(
         self, mock_conn, mock_fs, mock_adapter_class
@@ -67,7 +67,7 @@ class TestDharaMCPServerBackendSelection:
         assert server.cache is mock_adapter
 
     @patch("dhara.storage.redis_cache.RedisCacheAdapter")
-    @patch("dhara.mcp.server_core.FileStorage")
+    @patch("dhara.mcp.server_core.AsyncFileStorage")
     @patch("dhara.mcp.server_core.Connection")
     def test_memory_cache_backend_no_redis(
         self, mock_conn, mock_fs, mock_redis_class
