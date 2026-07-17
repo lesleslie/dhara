@@ -53,6 +53,7 @@ from dhara.storage.async_file import AsyncFileStorage
 
 logger = get_logger(__name__)
 _DEFAULT_RESOLVE_CACHE_ADAPTER = resolve_cache_adapter
+_CACHE_WIRE_LOOP: asyncio.AbstractEventLoop | None = None
 
 
 class _BuiltinCacheRegistry:
@@ -119,6 +120,21 @@ async def _wire_cache(config: Any, core_self: Any) -> Any:
         settings_class=type(cache_settings).__name__,
     )
     return adapter
+
+
+def _run_cache_wire(config: Any, core_self: Any) -> Any:
+    """Run cache wiring without closing the process-wide event loop."""
+    global _CACHE_WIRE_LOOP
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        pass
+    else:
+        raise RuntimeError("cache wiring cannot run inside an active event loop")
+    if _CACHE_WIRE_LOOP is None or _CACHE_WIRE_LOOP.is_closed():
+        _CACHE_WIRE_LOOP = asyncio.new_event_loop()
+    asyncio.set_event_loop(_CACHE_WIRE_LOOP)
+    return _CACHE_WIRE_LOOP.run_until_complete(_wire_cache(config, core_self))
 
 
 class DharaMCPServer:
@@ -277,7 +293,7 @@ class DharaMCPServer:
         # ── Cache backend selection ─────────────────────────────────────────
         self.cache = None
 
-        self.cache = asyncio.run(_wire_cache(config, self))
+        self.cache = _run_cache_wire(config, self)
 
         self.connection = Connection(self.storage)
 
