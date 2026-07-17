@@ -52,6 +52,7 @@ from dhara.mcp.substrate_routes import register_substrate_routes
 from dhara.storage.async_file import AsyncFileStorage
 
 logger = get_logger(__name__)
+_DEFAULT_RESOLVE_CACHE_ADAPTER = resolve_cache_adapter
 
 
 class _BuiltinCacheRegistry:
@@ -100,7 +101,16 @@ async def _wire_cache(config: Any, core_self: Any) -> Any:
         cache_settings = MemoryCacheSettings()
 
     registry = core_self._async_adapter_registry or _BuiltinCacheRegistry()
-    adapter = await resolve_cache_adapter(cache_backend, cache_settings, registry)
+    resolver = resolve_cache_adapter
+    if resolver is _DEFAULT_RESOLVE_CACHE_ADAPTER:
+        from dhara.mcp import adapter_lookup
+
+        resolver = adapter_lookup.resolve_cache_adapter
+    adapter = await resolver(
+        backend=cache_backend,
+        settings=cache_settings,
+        registry=registry,
+    )
     logger_for_core = getattr(core_self, "_logger", logger)
     logger_for_core.info(
         "cache-adapter-resolved",
