@@ -1,7 +1,7 @@
 # Dhara Cache-Adapter Oneiric Consolidation Design
 
 **Date:** 2026-07-15
-**Status:** Revised (post-review)
+**Status:** Shipped (merged to Dhara `main`; see the companion implementation plan for commit range)
 **Author:** Claude (Mahavishnu Orchestrator, brainstorming session)
 **Purpose:** Remove Dhara's parallel `dhara.storage.redis_cache` adapter and
 consolidate on Oneiric's canonical cache adapters. Ship **post-multi-agent
@@ -221,7 +221,7 @@ ______________________________________________________________________
 | File | Change |
 |---|---|
 | `dhara/mcp/adapter_lookup.py` (NEW, ~35 lines) | `async def resolve_cache_adapter(backend: Literal["memory","redis"], settings: RedisCacheSettings | MemoryCacheSettings | None, registry: AsyncAdapterRegistry) -> Any`. Reads `entry["factory_path"]` from the registry dict (D10). Validates backend ∈ `{"memory","redis"}`. |
-| `dhara/mcp/server_core.py` | **Move `self._async_adapter_registry = AsyncAdapterRegistry(async_conn)` ahead of the cache_backend block** (D6 fix). Replace `cache_backend` switch block with a call to `resolve_cache_adapter`. Drop imports from `dhara.storage.redis_cache`. Add structured log `cache-adapter-resolved` with `(backend, provider, settings_class)`. Source settings from `OneiricSettings.load_settings(...).adapters.provider_settings.get("cache.redis", {})` (D3 fix); fall back to `RedisCacheSettings()` or `MemoryCacheSettings()` defaults. |
+| `dhara/mcp/server_core.py` | **Move `self._async_adapter_registry = AsyncAdapterRegistry(async_conn)` ahead of the cache_backend block** (D6 fix). Replace `cache_backend` switch block with a call to `resolve_cache_adapter`. Drop imports from `dhara.storage.redis_cache`. Add structured log `cache-adapter-resolved` with `(backend, provider, settings_class)`. Source settings from the module-level `load_settings(...).adapters.provider_settings.get("cache.redis", {})` (D3 fix; **as shipped**: `oneiric.core.config.load_settings` is a module-level function, NOT `OneiricSettings.load_settings` — the classmethod does not exist); fall back to `RedisCacheSettings()` or `MemoryCacheSettings()` defaults. **As shipped**: when `self._async_adapter_registry` is `None`, `_wire_cache` falls back to a local `_BuiltinCacheRegistry()` so cache resolution works during construction before the async registry exists. |
 | `dhara/core/config.py` | Drop the `cache_redis_url`, `cache_redis_token`, `cache_ttl`, `cache_stampede_jitter_ms`, `cache_key_prefix` fields (the last is fictitious — never existed). Keep `cache_backend: str = Field(default="memory", description="memory or redis")`. Cache settings now live in `OneiricSettings.adapters.provider_settings` (canonical Oneiric path). |
 | `dhara/tests/unit/test_adapter_lookup.py` (NEW) | Tests for `resolve_cache_adapter` covering D10 (registry returns dict, `factory_path` key), backend validation, init() awaited. |
 | `dhara/tests/unit/test_server_core_cache.py` (NEW) | End-to-end through `server_core.py`. Mocks the registry with a real-shaped dict; asserts `cache-adapter-resolved` log fires. |

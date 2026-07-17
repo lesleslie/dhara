@@ -3,7 +3,7 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Date:** 2026-07-15
-**Status:** draft, blocked-on-external
+**Status:** shipped (Phase 1 companion + Phase 2 main merged to Dhara `main`, commits `cd0c69a`…`cd75d03`; Phase 4 version bump `0.13.0` still pending, operator-driven)
 **Owner:** Bodai maintainers
 **Scope:** Dhara-side consolidation of cache-adapter wiring. Replace `dhara.storage.redis_cache` with Oneiric's `RedisCacheAdapter` via a registry-mediated helper; add an unprefixed `dhara/mcp/adapter_lookup.py:resolve_cache_adapter`; move `_async_adapter_registry` initialization above the cache_backend block in `server_core.py`; delete deprecated config fields and the redundant `dhara/storage/redis_cache.py` module. **Does NOT touch `dhara/storage/memory.py` / `AsyncMemoryStorage`** (a generic storage backend unrelated to cache consolidation). Direct merge to `main` per Bodai pre-1.0 policy, no PR. Manual `crackerjack` version bump performed by operator after merge.
 **Purpose:** Eliminate the duplicated cache-adapter code that exists to fill the slot `diskcache` was once considered for, replacing it with Oneiric's already-supported, already-ecosystem-discovered adapters.
@@ -13,6 +13,11 @@
 **Companion plan (executable now, in Oneiric):** `/Users/les/Projects/dhara/docs/superpowers/plans/2026-07-15-oneiric-cache-factory-and-settings-plan.md` (`active, implementation`)
 
 **Architecture:** New `dhara/mcp/adapter_lookup.py:resolve_cache_adapter` reads `entry["factory_path"]` from the registry dict (real shape per `dhara/mcp/adapter_tools.py:894-924`); `server_core.py` rewired with the registry init moved ahead of the cache block; deprecated config fields deleted; `dhara/storage/redis_cache.py` removed. `Connection.Cache` is explicitly out of scope. The plan depends on the companion Oneiric PR being merged first.
+
+**As-shipped notes (added post-merge during review reconciliation):** The implementation diverged from this plan's task text in two ways, both correct:
+
+1. **`load_settings` is a module-level function, not a classmethod.** Task 2.3's pseudocode calls `OneiricSettings.load_settings(project_name="dhara")`, but `oneiric.core.config.load_settings` is a module-level function (`hasattr(OneiricSettings, "load_settings")` is `False`). The shipped `_wire_cache` correctly calls the bare `load_settings(project_name="dhara")`.
+1. **A `_BuiltinCacheRegistry` fallback was added** (`dhara/mcp/server_core.py`), used when `core_self._async_adapter_registry` is `None`: `registry = core_self._async_adapter_registry or _BuiltinCacheRegistry()`. This is new surface area not described in any task; it lets `_wire_cache` resolve adapters during construction before the async registry exists. Follow-up fixes `0623446` (preserve event loop during cache wiring) and `d7439f0` (survive post-async-migration storage) landed on top.
 
 **Tech Stack:** Python 3.13; pytest (asyncio_mode = auto); Pydantic v2; coredis; Oneiric's adapter framework (`oneiric.adapters.cache.*`, `oneiric.core.lifecycle.LifecycleError`, `OneiricSettings.adapters.provider_settings`); Dhara's `AsyncAdapterRegistry`.
 
