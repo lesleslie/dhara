@@ -203,5 +203,6 @@ class DharaConfig:
 def __getattr__(name: str):
     if name == "DruvaConfig":
         from dhara._compat.druva import DruvaConfig
+
         return DruvaConfig
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

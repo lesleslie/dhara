@@ -35,6 +35,7 @@ def _async_get_filename(storage: AsyncFileStorage) -> str:
 
     return asyncio.run(storage.get_filename())
 
+
 logger = logging.getLogger(__name__)
 
 

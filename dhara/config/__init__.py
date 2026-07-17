@@ -9,13 +9,14 @@ MCP server and CLI. This package remains for lightweight dataclass-based
 configuration helpers and compatibility with older Dhara/Druva code.
 """
 
+from dhara._compat.druva import DruvaConfig
+
 from .defaults import (
     CacheConfig,
     ConnectionConfig,
     DharaConfig,
     StorageConfig,
 )
-from dhara._compat.druva import DruvaConfig
 from .loader import (
     load_config,
     load_config_from_env,

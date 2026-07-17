@@ -21,7 +21,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from dhara.core.connection import AsyncConnection, Connection
+from dhara.core.connection import AsyncConnection
 from dhara.storage.async_file import AsyncFileStorage
 
 from .catalog import AsyncBackupCatalog, BackupCatalog

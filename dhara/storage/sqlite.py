@@ -18,14 +18,12 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
-from dhara.storage.base import OID
-
 import aiosqlite
 
 from dhara.core import connection
 from dhara.logger import is_logging, log
 from dhara.serialize.record import pack_record, split_oids, unpack_record
-from dhara.storage.base import Storage
+from dhara.storage.base import OID, Storage
 from dhara.utils import as_bytes, int8_to_str, iteritems, str_to_int8
 
 _DB_SCHEMA = """\
@@ -224,7 +222,9 @@ class SqliteStorage(Storage):
         v = c.fetchone()
         if v is None:
             raise KeyError(oid)
-        return [int8_to_str(ref) for ref in split_oids(v[0])]  # bytes from split_oids, str from int8_to_str
+        return [
+            int8_to_str(ref) for ref in split_oids(v[0])
+        ]  # bytes from split_oids, str from int8_to_str
 
     def _delete(self, oids) -> None:
         def gen_ids() -> Iterator[tuple[bytes]]:

@@ -7,10 +7,12 @@ the factory path, instantiates with caller-supplied settings, awaits
 `init()`, and returns the live adapter. Raises `LifecycleError` for any
 configuration error (unknown backend, missing factory, failed import).
 """
+
 from __future__ import annotations
 
 import importlib
-from typing import Any, Callable, Literal, Union
+from collections.abc import Callable
+from typing import Any, Literal, Union
 
 from oneiric.adapters.cache import (
     MemoryCacheAdapter,
@@ -50,9 +52,7 @@ async def resolve_cache_adapter(
         )
     entry = await registry.get_adapter_async("adapter", "cache", backend)
     if entry is None:
-        raise LifecycleError(
-            f"cache adapter not registered for backend={backend!r}"
-        )
+        raise LifecycleError(f"cache adapter not registered for backend={backend!r}")
     factory_path = (
         entry["factory_path"]
         if isinstance(entry, dict)

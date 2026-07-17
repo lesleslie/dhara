@@ -80,17 +80,11 @@ class BackupRuntimeConfig(BaseModel):
     directory: Path = Field(default=Path("./backups"))
 
 
-def _deep_merge(
-    base: dict[str, Any], override: dict[str, Any]
-) -> dict[str, Any]:
+def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
     """Recursively merge ``override`` into ``base``. ``override`` wins."""
     result = dict(base)
     for key, value in override.items():
-        if (
-            key in result
-            and isinstance(result[key], dict)
-            and isinstance(value, dict)
-        ):
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
             result[key] = _deep_merge(result[key], value)
         else:
             result[key] = value
@@ -268,9 +262,7 @@ class DharaSettings(OneiricMCPConfig):
                 data = yaml.safe_load(project_yaml.read_text()) or {}
                 logger.debug(f"Loaded settings from {project_yaml}")
             except Exception as e:
-                logger.warning(
-                    f"Could not load {project_yaml}: {e}, using defaults"
-                )
+                logger.warning(f"Could not load {project_yaml}: {e}, using defaults")
                 data = {}
 
         local_yaml = Path("settings") / "local.yaml"
@@ -280,9 +272,7 @@ class DharaSettings(OneiricMCPConfig):
                 data = _deep_merge(data, local_data)
                 logger.debug(f"Merged local override from {local_yaml}")
             except Exception as e:
-                logger.warning(
-                    f"Could not load {local_yaml}: {e}, skipping override"
-                )
+                logger.warning(f"Could not load {local_yaml}: {e}, skipping override")
 
         # Apply DHARA_ env-var overrides (DHARA_SECTION__FIELD=value syntax).
         env_overrides = _env_overrides("DHARA")
@@ -294,9 +284,7 @@ class DharaSettings(OneiricMCPConfig):
         try:
             settings = cls.model_validate(data)
         except Exception as e:
-            logger.warning(
-                f"Could not validate loaded settings ({e}), using defaults"
-            )
+            logger.warning(f"Could not validate loaded settings ({e}), using defaults")
             settings = cls()
 
         # Override mode from environment if set
@@ -338,5 +326,6 @@ class DharaSettings(OneiricMCPConfig):
 def __getattr__(name: str):
     if name == "DruvaSettings":
         from dhara._compat.druva import DruvaSettings
+
         return DruvaSettings
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
