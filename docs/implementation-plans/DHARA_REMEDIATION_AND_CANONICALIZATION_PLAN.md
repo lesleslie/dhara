@@ -1,3 +1,13 @@
+---
+status: active
+role: umbrella
+date: 2026-07-17
+last_reviewed: 2026-07-17
+superseded_by: null
+blocks_on: []
+topic: convergence-control-plane
+---
+
 # Dhara Remediation And Canonicalization Plan
 
 > **Plan reconciliation 2026-07-15.** Drift-sync audit verified the following phase statuses:

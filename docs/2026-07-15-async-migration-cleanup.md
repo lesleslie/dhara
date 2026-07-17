@@ -1,3 +1,13 @@
+---
+status: active
+role: implementation
+date: 2026-07-17
+last_reviewed: 2026-07-17
+superseded_by: null
+blocks_on: []
+topic: persistence
+---
+
 # Async Migration Cleanup Plan
 
 > **Active plan.** Supersedes the incorrect removal claims in `docs/LEGACY_COMPATIBILITY_AND_REMOVAL_PLAN.md`.

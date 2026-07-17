@@ -1,3 +1,13 @@
+---
+status: active
+role: implementation
+date: 2026-07-17
+last_reviewed: 2026-07-17
+superseded_by: null
+blocks_on: [docs/2026-07-15-async-migration-cleanup.md]
+topic: persistence
+---
+
 # Dhara Async-First Implementation Plan
 
 > **For agentic workers:** Use superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

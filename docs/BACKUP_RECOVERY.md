@@ -1,3 +1,13 @@
+---
+status: active
+role: canonical
+date: 2026-07-17
+last_reviewed: 2026-07-17
+superseded_by: null
+blocks_on: []
+topic: persistence
+---
+
 # Dhara Backup and Recovery Guide
 
 This guide provides comprehensive instructions for backing up and restoring Dhara databases, ensuring data durability and disaster recovery capabilities.

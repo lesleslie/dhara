@@ -1,3 +1,13 @@
+---
+status: complete
+role: historical
+date: 2026-07-17
+last_reviewed: 2026-07-17
+superseded_by: docs/2026-07-15-async-migration-cleanup.md
+blocks_on: []
+topic: persistence
+---
+
 # Legacy Compatibility And Removal Plan (Historical)
 
 > **Reality Check (2026-07-15):** This plan claims the following surfaces were "removed in 0.11.0":
