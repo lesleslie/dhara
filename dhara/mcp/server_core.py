@@ -137,6 +137,141 @@ def _run_cache_wire(config: Any, core_self: Any) -> Any:
     return _CACHE_WIRE_LOOP.run_until_complete(_wire_cache(config, core_self))
 
 
+class _SyncConnectionFacade:
+    """Sync-compatible facade over an ``AsyncConnection``.
+
+    The post-async-migration DharaMCPServer keeps a single sync
+    ``DharaMCPServer.__init__`` while the storage layer is now async-only.
+    Most of the MCP-server machinery (AdapterRegistry, substrate routes,
+    ``_probe_storage``) reads ``connection.get_root()``,
+    ``connection.commit()``, and ``connection.storage`` synchronously.
+    This facade drives each call through the persistent ``_CACHE_WIRE_LOOP``
+    so those sync call sites keep working without rewriting them.
+
+    Safe under nested-event-loop call sites: when invoked from inside an
+    existing loop (FastMCP handlers, ``_probe_storage`` called from
+    async endpoints, etc.), we dispatch via
+    ``asyncio.run_coroutine_threadsafe`` instead of ``run_until_complete``
+    to avoid ``RuntimeError: This loop is already running``.
+
+    Lifecycle: created by ``_run_async_connection_wire`` during ``__init__``.
+    After init, async tool handlers should prefer the original
+    ``AsyncConnection`` (``facade._async``) when calling async APIs.
+    """
+
+    def __init__(
+        self,
+        async_connection: Any,
+        loop: asyncio.AbstractEventLoop,
+    ) -> None:
+        self._async = async_connection
+        self._loop = loop
+        self.storage = async_connection.storage
+
+    def _run(self, coro: Any) -> Any:
+        # Always bridge to the persistent loop via run_coroutine_threadsafe
+        # rather than calling run_until_complete directly: the persistent
+        # loop is driven by a daemon thread, so calling run_until_complete
+        # from the caller's thread would either raise "This event loop is
+        # already running" or block forever waiting for the daemon thread
+        # to deliver the result. ``run_coroutine_threadsafe`` is the only
+        # cross-thread-safe way to schedule and wait for completion.
+        future = asyncio.run_coroutine_threadsafe(coro, self._loop)
+        return future.result(None)
+
+    def get_root(self) -> Any:
+        return self._run(self._async.get_root())
+
+    def commit(self) -> None:
+        self._run(self._async.commit())
+
+    def abort(self) -> None:
+        self._run(self._async.abort())
+
+    @property
+    def cache(self) -> Any:
+        return self._async.cache
+
+
+def _run_async_connection_wire(storage: Any) -> _SyncConnectionFacade:
+    """Build ``AsyncConnection.new(storage)`` synchronously and wrap in a facade.
+
+    Mirrors the cache-wiring pattern: reuses the persistent ``_CACHE_WIRE_LOOP``
+    so we don't create-and-close a fresh loop on each call (which would
+    terminate the process event loop for the rest of the app).
+
+    The ``storage`` arg may be an initialized ``AsyncStorage`` instance or a
+    filesystem path (str). When a pre-built ``AsyncFileStorage`` is supplied,
+    we explicitly run its ``__aenter__`` because ``AsyncConnection.new`` only
+    initializes bare ``str``/``Path`` inputs — passing an un-entered instance
+    back into the factory leaves the storage in an un-initialized state and
+    any later ``load()`` raises ``RuntimeError("Storage not initialized")``.
+    """
+    global _CACHE_WIRE_LOOP
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        pass
+    else:
+        raise RuntimeError(
+            "async-connection wire cannot run inside an active event loop"
+        )
+    if _CACHE_WIRE_LOOP is None or _CACHE_WIRE_LOOP.is_closed():
+        _CACHE_WIRE_LOOP = asyncio.new_event_loop()
+    asyncio.set_event_loop(_CACHE_WIRE_LOOP)
+
+    from dhara.core.connection import AsyncConnection
+
+    # ``AsyncConnection.new`` only enters the storage when given a ``str`` or
+    # ``Path``; passing a pre-built ``AsyncFileStorage`` skips that branch and
+    # leaves the storage uninitialized. Run ``__aenter__`` ourselves when the
+    # storage has not yet acquired its underlying connection (i.e. ``_conn``
+    # is still ``None``).
+    _conn_attr = getattr(storage, "_conn", "absent")
+    if _conn_attr is None:
+        _CACHE_WIRE_LOOP.run_until_complete(storage.__aenter__())
+
+    async_conn = _CACHE_WIRE_LOOP.run_until_complete(
+        AsyncConnection.new(storage)
+    )
+
+    # Spin up a background thread that runs the persistent loop forever so
+    # the sync facade can dispatch subsequent coroutines via
+    # ``run_coroutine_threadsafe`` even after ``run_until_complete`` has
+    # drained the initial tasks. Without this thread the loop idles once
+    # its first batch finishes, ``run_coroutine_threadsafe`` queues work
+    # that never runs, and ``future.result()`` deadlocks.
+    _ensure_loop_background_thread(_CACHE_WIRE_LOOP)
+
+    return _SyncConnectionFacade(async_conn, _CACHE_WIRE_LOOP)
+
+
+def _ensure_loop_background_thread(loop: asyncio.AbstractEventLoop) -> None:
+    """Run ``loop.run_forever()`` in a daemon thread so the loop stays alive.
+
+    Idempotent: at most one daemon thread per loop, identified by storing
+    the thread on the loop itself. ``asyncio`` event loop objects allow
+    arbitrary attribute assignment, so this is safe.
+    """
+    if getattr(loop, "_dhara_wire_thread", None) is not None:
+        return
+    import threading
+
+    def _runner() -> None:
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_forever()
+        except Exception:
+            # Daemon thread should never crash the process; log silently.
+            pass
+
+    thread = threading.Thread(
+        target=_runner, name="dhara-cache-wire-loop", daemon=True
+    )
+    thread.start()
+    loop._dhara_wire_thread = thread  # type: ignore[attr-defined]
+
+
 class DharaMCPServer:
     """Dhara MCP Server with FastMCP framework.
 
@@ -276,11 +411,13 @@ class DharaMCPServer:
         else:
             # Default: AsyncFileStorage (the legacy FileStorage is deleted
             # after sub-task 1i). The mock in test_mcp_server_core.py patches
-            # ``AsyncFileStorage`` at this name.
-            self.storage = AsyncFileStorage(
-                storage_path,
-                readonly=config.storage.read_only,
-            )
+            # ``AsyncFileStorage`` at this name. AsyncSqliteStorage no longer
+            # accepts a ``readonly=`` kwarg post-async-migration; if
+            # ``config.storage.read_only`` is set, callers that need
+            # read-only enforcement must wrap the storage themselves.
+            # ``config.storage.path`` is a pathlib.Path; coerce to str because
+            # the shim's ``_path_to_url`` only handles strings.
+            self.storage = AsyncFileStorage(str(storage_path))
 
         # Async stores (initialized lazily on first async tool call).
         # Declared before the cache_backend block so that the wiring step
@@ -295,7 +432,11 @@ class DharaMCPServer:
 
         self.cache = _run_cache_wire(config, self)
 
-        self.connection = Connection(self.storage)
+        # Build the AsyncConnection during sync __init__ via the persistent
+        # loop, and wrap it in a sync facade so AdapterRegistry and the
+        # substrate routes can keep calling connection.get_root() etc.
+        # without rewriting them.
+        self.connection = _run_async_connection_wire(self.storage)
 
         # Initialize adapter registry
         self.adapter_registry = AdapterRegistry(self.connection)
@@ -1063,7 +1204,7 @@ class DharaMCPServer:
         from dhara.core.connection import AsyncConnection
 
         async def _read() -> dict[str, Any]:
-            storage = AsyncFileStorage(str(catalog_path), readonly=True)
+            storage = AsyncFileStorage(str(catalog_path))
             await storage.init()
             try:
                 connection = await AsyncConnection.new(storage)
