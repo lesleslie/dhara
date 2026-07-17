@@ -185,16 +185,11 @@ class DharaSettings(OneiricMCPConfig):
         default="", description="Postgres DSN for serverless mode"
     )
 
-    # Cache backend config (memory or redis)
+    # Cache backend config (memory or redis).
+    # Redis connection details (URL, AUTH, TTL, jitter) now live in
+    # OneiricSettings.adapters.provider_settings under the redis adapter
+    # entry — see dhara/mcp/adapter_lookup.py for resolution.
     cache_backend: str = Field(default="memory", description="memory or redis")
-    cache_redis_url: str = Field(
-        default="", description="Redis URL for serverless cache"
-    )
-    cache_redis_token: str = Field(default="", description="Redis AUTH token")
-    cache_ttl: int = Field(default=3600, ge=1, description="Cache TTL in seconds")
-    cache_stampede_jitter_ms: int = Field(
-        default=0, ge=0, description="Cold-start stampede jitter in ms"
-    )
 
     # Oneiric integration (optional)
     oneiric_config_path: Path | None = Field(
