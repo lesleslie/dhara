@@ -20,18 +20,19 @@
 ## Global Constraints
 
 1. **Bodai pre-1.0 merge policy** — direct merge to `main` on Oneiric, **no PR**.
-2. **Independent sequencing.** This plan has no Dhara-side preconditions. It does **not** wait for `2026-07-15-async-migration-cleanup.md` to merge, because it does not touch `dhara/mcp/server_core.py`. It can ship now.
-3. **From Oneiric / `CLAUDE.md`** — `from __future__ import annotations` as first non-comment line of every source file; `X | None = None`, never bare `= None`; no `assert` in production code; `logger.exception(...)` not `logger.error(..., exc_info=True)`; per-test timeout 300s ceiling.
-4. **From `docs/plans/TEMPLATE.md`** — every phase deliverable carries an **Integration Contract** block.
-5. **Plan discipline** — every step shows complete code or a complete command. No "fill in details", no "TBD".
+1. **Independent sequencing.** This plan has no Dhara-side preconditions. It does **not** wait for `2026-07-15-async-migration-cleanup.md` to merge, because it does not touch `dhara/mcp/server_core.py`. It can ship now.
+1. **From Oneiric / `CLAUDE.md`** — `from __future__ import annotations` as first non-comment line of every source file; `X | None = None`, never bare `= None`; no `assert` in production code; `logger.exception(...)` not `logger.error(..., exc_info=True)`; per-test timeout 300s ceiling.
+1. **From `docs/plans/TEMPLATE.md`** — every phase deliverable carries an **Integration Contract** block.
+1. **Plan discipline** — every step shows complete code or a complete command. No "fill in details", no "TBD".
 
----
+______________________________________________________________________
 
 ## 1. Outcome
 
 **User-observable change:** After this plan ships, `python -c "from oneiric.adapters.cache import RedisCacheAdapter, MemoryCacheAdapter"` succeeds with `AttributeError` ruled out; `RedisCacheSettings()` exposes `ttl_seconds` (default 3600) and `stampede_jitter_ms` (default 0); `await adapter.set("k", "v")` honors `ttl_seconds` (passed as `px` ms to coredis); `await adapter.get("k")` honors `stampede_jitter_ms` only on cache miss. Per-call `ttl=-1`/`0` still raises `LifecycleError` (existing behavior preserved).
 
 **Success criteria:**
+
 - `pytest tests/adapters/cache/test_redis_mock.py tests/adapters/test_redis_cache.py tests/unit/test_redis_cache_settings.py -v` is green.
 - `python -c "from oneiric.adapters.cache import RedisCacheAdapter, MemoryCacheAdapter"` succeeds.
 - `python -c "from oneiric.adapters.cache import RedisCacheSettings; RedisCacheSettings(ttl_seconds=-1)"` raises `ValidationError`.
@@ -41,19 +42,19 @@
 ## 2. Goals
 
 1. Oneiric PR landed with factory-string fix in `redis.py` and `memory.py`.
-2. Oneiric PR landed with `RedisCacheSettings.ttl_seconds` (default 3600, ge=0) and `RedisCacheSettings.stampede_jitter_ms` (default 0, ge=0).
-3. **D7 explicit doc-comment** added next to existing `enable_client_cache: bool = Field(default=True, ...)` clarifying the default is intentional per spec D7; **do NOT re-declare the field.**
-4. Consumer code in `RedisCacheAdapter.set()` honors `ttl_seconds` (when no per-call kwarg), preserves explicit `LifecycleError` on per-call `ttl <= 0`, and uses `max(1, ms)` sub-ms clamp.
-5. Consumer code in `RedisCacheAdapter.get()` honors `stampede_jitter_ms` only on cache miss (returns `None`), no sleep on cache hit, no sleep when `jitter == 0`.
-6. Companion tests covering the new fields, factory-string leading-space guards, set/get consumer behavior.
-7. Companion Oneiric PR merged direct-to-`main` per Bodai pre-1.0 policy.
+1. Oneiric PR landed with `RedisCacheSettings.ttl_seconds` (default 3600, ge=0) and `RedisCacheSettings.stampede_jitter_ms` (default 0, ge=0).
+1. **D7 explicit doc-comment** added next to existing `enable_client_cache: bool = Field(default=True, ...)` clarifying the default is intentional per spec D7; **do NOT redeclare the field.**
+1. Consumer code in `RedisCacheAdapter.set()` honors `ttl_seconds` (when no per-call kwarg), preserves explicit `LifecycleError` on per-call `ttl <= 0`, and uses `max(1, ms)` sub-ms clamp.
+1. Consumer code in `RedisCacheAdapter.get()` honors `stampede_jitter_ms` only on cache miss (returns `None`), no sleep on cache hit, no sleep when `jitter == 0`.
+1. Companion tests covering the new fields, factory-string leading-space guards, set/get consumer behavior.
+1. Companion Oneiric PR merged direct-to-`main` per Bodai pre-1.0 policy.
 
 ## 3. Non-Goals
 
 1. **`dhara.storage.redis_cache` deletion** — that's the Dhara plan's work, not this one.
-2. **TrackingCache-degrade-graceful behavior** — dropped from scope (earlier drafts built it against fictional coredis APIs).
-3. **MultiTier composition.**
-4. **Hot-reload of cache config.**
+1. **TrackingCache-degrade-graceful behavior** — dropped from scope (earlier drafts built it against fictional coredis APIs).
+1. **MultiTier composition.**
+1. **Hot-reload of cache config.**
 
 ## 4. Current Findings
 
@@ -61,13 +62,13 @@
 |---|---|
 | Oneiric's `AdapterMetadata.factory` strings have a leading space — `getattr(module, " RedisCacheAdapter")` fails. | `/Users/les/Projects/oneiric/oneiric/adapters/cache/redis.py` and `memory.py`. |
 | `RedisCacheSettings` has no TTL / stampede-jitter fields. Dhara's redundant `dhara.storage.redis_cache` had them. | `redis.py:33-90`. |
-| `enable_client_cache` already exists at `redis.py:69-72` with default `True` — per spec D7 the default is intentional; do not re-declare. | Verified by inspection. |
+| `enable_client_cache` already exists at `redis.py:69-72` with default `True` — per spec D7 the default is intentional; do not redeclare. | Verified by inspection. |
 | Existing tests `test_set_negative_ttl_raises` and `test_set_zero_ttl_raises` enforce `LifecycleError("redis-cache-negative-ttl")` on per-call `ttl <= 0`. Consumer code MUST preserve this. | `/Users/les/Projects/oneiric/tests/adapters/test_redis_cache.py:181-195`. |
 | `__future__ annotations` first line + `import asyncio` already at `redis.py:3`. Only `random` needs adding. | `redis.py:1-15`. |
 | Real test file paths: `tests/adapters/test_redis_cache.py`, `tests/adapters/cache/test_redis_mock.py`, `tests/unit/test_redis_cache_settings.py` (NEW). | verified. |
 | `asyncio_mode = "auto"` in pyproject.toml — `@pytest.mark.asyncio` decorators are redundant but harmless. | `/Users/les/Projects/oneiric/pyproject.toml`. |
 
----
+______________________________________________________________________
 
 ## 5. Implementation Phases
 
@@ -96,11 +97,14 @@ This plan has a single phase (Phase 2 of the cross-cutting consolidation, made s
 #### Task 2.0: Strip leading spaces from `AdapterMetadata.factory` strings
 
 **Files:**
+
 - Modify: `/Users/les/Projects/oneiric/oneiric/adapters/cache/redis.py:94`
 - Modify: `/Users/les/Projects/oneiric/oneiric/adapters/cache/memory.py:33`
 
 **Interfaces:**
+
 - Consumes: existing factory strings `"oneiric.adapters.cache.redis: RedisCacheAdapter"` and `"oneiric.adapters.cache.memory: MemoryCacheAdapter"`
+
 - Produces: factory strings with no leading space
 
 - [x] **Step 1: Locate factory strings**
@@ -153,6 +157,7 @@ for mod_name, cls_name in [('oneiric.adapters.cache.redis', 'RedisCacheAdapter')
 ```
 
 Expected:
+
 ```
 oneiric.adapters.cache.redis.RedisCacheAdapter
 oneiric.adapters.cache.memory.MemoryCacheAdapter
@@ -182,10 +187,13 @@ and lands in the same companion PR."
 #### Task 2.1: Add `ttl_seconds` and `stampede_jitter_ms` to `RedisCacheSettings`
 
 **Files:**
+
 - Modify: `/Users/les/Projects/oneiric/oneiric/adapters/cache/redis.py` — `RedisCacheSettings` body
 
 **Interfaces:**
+
 - Consumes: existing `RedisCacheSettings` pydantic model; existing `enable_client_cache` field at lines 69-72
+
 - Produces: `ttl_seconds: int` (default 3600, ge=0); `stampede_jitter_ms: int` (default 0, ge=0); explicit D7 doc-comment near `enable_client_cache`
 
 - [x] **Step 1: Locate the last field and `enable_client_cache`**
@@ -214,7 +222,7 @@ Insert immediately after the line that defines `client_cache_max_idle_seconds` (
     )
     # NOTE: `enable_client_cache: bool = Field(default=True, ...)` already
     # exists above (around line 69). Per spec D7 its default `True` is
-    # intentional; do NOT re-declare this field. Operator-supplied
+    # intentional; do NOT redeclare this field. Operator-supplied
     # RedisCacheSettings override the default.
 ```
 
@@ -260,6 +268,7 @@ except ValidationError: print('stampede_jitter_ms=-1 rejected')
 ```
 
 Expected:
+
 ```
 0 999
 ttl_seconds=-1 rejected
@@ -289,11 +298,15 @@ companion PR (set/get consumer logic)."
 This task follows strict TDD: write the failing test first (Step 1), confirm it fails (Step 2), implement (Step 3), confirm it passes (Step 4), commit (Step 5).
 
 **Files:**
+
 - Modify: `/Users/les/Projects/oneiric/oneiric/adapters/cache/redis.py` — `RedisCacheAdapter.set()` and `get()` bodies
 
 **Interfaces:**
+
 - Consumes: existing `set(key, value, *, ttl=None)` and `get(key)` method bodies; `self._settings.ttl_seconds`, `self._settings.stampede_jitter_ms`
+
 - Produces:
+
   - `set()`: applies `self._settings.ttl_seconds` (with `max(1, ms)` sub-ms clamp) when no per-call `ttl` is supplied AND that value is `> 0`; preserves the existing `LifecycleError("redis-cache-negative-ttl")` for per-call `ttl <= 0`.
   - `get()`: sleeps `random.uniform(0, ms) / 1000` when `client.get(...)` returns `None` AND `self._settings.stampede_jitter_ms > 0`; no sleep on hit; no sleep when `jitter == 0`; just `return value` (no fabricated deserialization).
 
@@ -522,7 +535,9 @@ Find `async def set(self, key, value, *, ttl=None):` and the existing kwargs con
 ```
 
 Notes:
+
 - The explicit `if ttl is not None and ttl <= 0: raise` MUST come before `effective_ttl` is computed; this preserves the existing `LifecycleError("redis-cache-negative-ttl")` for explicit per-call values while allowing `settings.ttl_seconds=0` (a legitimate "no TTL" choice) to silently disable the `px` kwarg.
+
 - `max(1, int(effective_ttl * 1000))` keeps the sub-ms clamp from the existing code (no `px=0` shipments to coredis).
 
 - [x] **Step 4: Run the new tests and confirm all 7 pass**
@@ -575,12 +590,15 @@ windows."
 #### Task 2.3: Companion settings tests
 
 **Files:**
+
 - Create: `/Users/les/Projects/oneiric/tests/unit/test_redis_cache_settings.py`
 
 (Yes — this lives at `tests/unit/`, not next to the existing `tests/adapters/...` redis tests. Pydantic-settings unit tests co-locate with `tests/unit/test_adapter_metadata.py` and similar; adapter-interaction tests live next to the adapter. The Two directories serve different concerns.)
 
 **Interfaces:**
+
 - Consumes: `from oneiric.adapters.cache.redis import RedisCacheSettings`; `import_module` for the factory-string guards
+
 - Produces: 8 tests covering the two new fields plus factory-string leading-space guards
 
 - [x] **Step 1: Create the settings test file**
@@ -713,7 +731,7 @@ Expected: push succeeds. Per Bodai pre-1.0 policy, no PR review.
 
 > **Note on the project "branch-then-ff" recipe:** `/.claude/decisions/` references a `branch + squash/ff-merge into main` flow. The user's project policy is direct merge to `main` with no PR. The pre-1.0 carve-out applies here; if a future maintainer prefers branching, the four commits can be cherry-picked onto a `feature/oneiric-cache-factory-and-settings` branch first and then ff-merged with no functional difference.
 
----
+______________________________________________________________________
 
 ## 6. Required Code Changes
 
@@ -736,7 +754,7 @@ All in `oneiric/`:
 - `oneiric/core/config.py`, `oneiric/core/resolution.py`, `oneiric/core/client_mixins.py` — touched only by the Dhara plan, not this one.
 - Anything under `/Users/les/Projects/dhara/` — separate repo; out of scope here.
 
----
+______________________________________________________________________
 
 ## 7. Validation Matrix
 
@@ -749,7 +767,7 @@ All in `oneiric/`:
 | `cd /Users/les/Projects/oneiric && pytest tests/ -q` | All green |
 | `git -C /Users/les/Projects/oneiric log --oneline main -5 \| head -5` | Last 4 commits: factory fix, settings fields, set/get consumer, tests |
 
----
+______________________________________________________________________
 
 ## 8. Risks
 
@@ -760,19 +778,20 @@ All in `oneiric/`:
 | Test file path `tests/unit/test_redis_cache_settings.py` collides with hidden tests already there | Very Low | Listing `tests/unit/` shows no `test_redis_cache*` file other than this one. If a collision exists, the new file's 8 tests will surface a `collection error` immediately. |
 | Factory-string fix is breaking in some other consumers I missed (e.g. a CLI that does a manual lookup) | Low | `grep -rn 'oneiric.adapters.cache' /Users/les/Projects/oneiric/ --include='*.py'` shows no manual factory-string lookup besides the registry-mediated path. No other consumer. |
 
----
+______________________________________________________________________
 
 ## 9. Decision Rule
 
 Done when Phase 2 commits (Tasks 2.0 / 2.1 / 2.2 / 2.3) are on `main` of `/Users/les/Projects/oneiric`, the four Validation-Matrix smoke checks at the bottom pass, and `pytest tests/adapters/cache/test_redis_mock.py` is green including the existing `test_set_negative_ttl_raises` and `test_set_zero_ttl_raises` regression guards.
 
 **Cut order** (when scope pressure forces a cut — not expected here):
-1. **Last to cut:** Task 2.1 settings-field additions — they are the *contract surface*. Removing them invalidates Task 2.2 consumer code and breaks Dhara's downstream migration.
-2. **Cut second:** Task 2.0 factory-string fix — deferable to a follow-up companion-PR since it doesn't block Dhara-side correctness (only registry-mediated lookup paths). However, dropping it means Dhara's `resolve_cache_adapter` will hard-crash via `AttributeError` at first run, so leaving it in is strongly preferred.
-3. **Cut third:** Task 2.2 `get()` stampede-jitter consumer code — Dhara loses stampede-herd protection on cache misses but the rest still works.
-4. **Cut first:** Task 2.2 `set()` ttl_seconds consumer code — the regression guard `test_set_per_call_ttl_negative_raises_lifecycle_error` exercises the existing branch, so behaviour remains correct at per-call time.
 
----
+1. **Last to cut:** Task 2.1 settings-field additions — they are the *contract surface*. Removing them invalidates Task 2.2 consumer code and breaks Dhara's downstream migration.
+1. **Cut second:** Task 2.0 factory-string fix — deferable to a follow-up companion-PR since it doesn't block Dhara-side correctness (only registry-mediated lookup paths). However, dropping it means Dhara's `resolve_cache_adapter` will hard-crash via `AttributeError` at first run, so leaving it in is strongly preferred.
+1. **Cut third:** Task 2.2 `get()` stampede-jitter consumer code — Dhara loses stampede-herd protection on cache misses but the rest still works.
+1. **Cut first:** Task 2.2 `set()` ttl_seconds consumer code — the regression guard `test_set_per_call_ttl_negative_raises_lifecycle_error` exercises the existing branch, so behaviour remains correct at per-call time.
+
+______________________________________________________________________
 
 ## References
 

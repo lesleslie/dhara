@@ -21,24 +21,25 @@
 Project-wide rules; every task inherits them.
 
 1. **Bodai pre-1.0 merge policy** — direct merge to `main`, **no PR**. Each phase ends in a direct `git push` to `main`.
-2. **Sequencing** — Phase 1 (companion verification) must pass before Phase 2 (main Dhara PR) begins. The companion plan must be merged to Oneiric's `main` first. The in-flight Dhara async-migration must be merged to Dhara's `main` first. Phase 2 references undefined `ttl_seconds` / `stampede_jitter_ms` and a moved registry-init if the companion isn't in place.
-3. **Start-gate** — `docs/2026-07-15-async-migration-cleanup.md` must already have landed on Dhara's `main` before Phase 0 begins.
-4. **No back-compat aliases** — `cache_redis_url`, `cache_redis_token`, `cache_ttl`, `cache_stampede_jitter_ms` are *deleted* from `dhara/core/config.py`, not deprecated. (Note: `cache_key_prefix` was never a real field; an earlier draft hallucinated it.)
-5. **`dhara/storage/memory.py` is OUT OF SCOPE.** It defines `AsyncMemoryStorage` (a generic in-memory **storage** backend used by `tests/test_async_connection.py`, `tests/test_async_kv_timeseries.py`, and 6+ other tests). It is NOT a cache adapter and must not be deleted.
-6. **`Connection.Cache` is OUT OF SCOPE.** `dhara/core/connection.py:841 class Cache` is a domain-specific Persistent-object LRU. Do NOT edit it. Tests `test_connection_cache_injection.py`, `test_connection_abort.py`, and the full `tests/test_connection.py` suite are regression guards — run unchanged.
-7. **Manual `crackerjack` version bump** — `dhara` goes from 0.12.1 → 0.13.0 after Phase 2 merges, performed outside this plan (operator-driven per Bodai pre-1.0 manual-publish workflow).
-8. **From `docs/plans/TEMPLATE.md`** — every phase deliverable carries an **Integration Contract** block.
-9. **From `dhara/CLAUDE.md` + `mahavishnu/CLAUDE.md`** — `from __future__ import annotations` as first non-comment line of every source file; `X | None = None`, never bare `= None`; no `assert` in production code; `logger.exception(...)` not `logger.error(..., exc_info=True)`; typed protocols over `Any` in production signatures; per-test timeout 300s ceiling.
-10. **Plan discipline** — every step shows complete code or a complete command. No "fill in details", no "TBD".
-11. **No `scripts/audit_orphans.py` in Dhara or Oneiric.** That script exists only in `mahavishnu/scripts/`. Phase 2's "exit criteria" do not require it.
+1. **Sequencing** — Phase 1 (companion verification) must pass before Phase 2 (main Dhara PR) begins. The companion plan must be merged to Oneiric's `main` first. The in-flight Dhara async-migration must be merged to Dhara's `main` first. Phase 2 references undefined `ttl_seconds` / `stampede_jitter_ms` and a moved registry-init if the companion isn't in place.
+1. **Start-gate** — `docs/2026-07-15-async-migration-cleanup.md` must already have landed on Dhara's `main` before Phase 0 begins.
+1. **No back-compat aliases** — `cache_redis_url`, `cache_redis_token`, `cache_ttl`, `cache_stampede_jitter_ms` are *deleted* from `dhara/core/config.py`, not deprecated. (Note: `cache_key_prefix` was never a real field; an earlier draft hallucinated it.)
+1. **`dhara/storage/memory.py` is OUT OF SCOPE.** It defines `AsyncMemoryStorage` (a generic in-memory **storage** backend used by `tests/test_async_connection.py`, `tests/test_async_kv_timeseries.py`, and 6+ other tests). It is NOT a cache adapter and must not be deleted.
+1. **`Connection.Cache` is OUT OF SCOPE.** `dhara/core/connection.py:841 class Cache` is a domain-specific Persistent-object LRU. Do NOT edit it. Tests `test_connection_cache_injection.py`, `test_connection_abort.py`, and the full `tests/test_connection.py` suite are regression guards — run unchanged.
+1. **Manual `crackerjack` version bump** — `dhara` goes from 0.12.1 → 0.13.0 after Phase 2 merges, performed outside this plan (operator-driven per Bodai pre-1.0 manual-publish workflow).
+1. **From `docs/plans/TEMPLATE.md`** — every phase deliverable carries an **Integration Contract** block.
+1. **From `dhara/CLAUDE.md` + `mahavishnu/CLAUDE.md`** — `from __future__ import annotations` as first non-comment line of every source file; `X | None = None`, never bare `= None`; no `assert` in production code; `logger.exception(...)` not `logger.error(..., exc_info=True)`; typed protocols over `Any` in production signatures; per-test timeout 300s ceiling.
+1. **Plan discipline** — every step shows complete code or a complete command. No "fill in details", no "TBD".
+1. **No `scripts/audit_orphans.py` in Dhara or Oneiric.** That script exists only in `mahavishnu/scripts/`. Phase 2's "exit criteria" do not require it.
 
----
+______________________________________________________________________
 
 ## 1. Outcome
 
 **User-observable change:** After this plan ships, Dhara's MCP server uses Oneiric's `RedisCacheAdapter` and `MemoryCacheAdapter` exclusively; the duplicated `dhara/storage/redis_cache.py` module no longer exists; `dhara/storage/memory.py` is left untouched; operators configure cache via the canonical `OneiricSettings.adapters.provider_settings["cache.redis"]` path; the new `ttl_seconds` and `stampede_jitter_ms` knobs work end-to-end (verified by the companion plan's tests).
 
 **Success criteria:**
+
 - `pytest dhara/tests/` is green (with no edits to out-of-scope regression-guard tests).
 - `pytest oneiric/tests/` is green (verified by Phase 1 / Task 1.0; ensure the companion plan has already executed and shipped).
 - `benchmarks/test_cache.py` perf result is within 2× the Phase 0 baseline. Note: actual file path is `dhara/benchmarks/test_cache.py`, NOT `tests/benchmarks/`.
@@ -47,19 +48,19 @@ Project-wide rules; every task inherits them.
 ## 2. Goals
 
 1. Confirm the companion Oneiric PR has landed (Phase 1 verification).
-2. Main Dhara PR merged with: new `dhara/mcp/adapter_lookup.py` helper, `_async_adapter_registry` init moved ahead of the cache block in `server_core.py`, deprecated config fields deleted, `dhara/storage/redis_cache.py` removed.
-3. Tests green in both repos; regression guards for `Connection.Cache` unchanged and within 2×.
-4. Manual `crackerjack` version bump (`dhara` 0.12.1 → 0.13.0) performed by operator post-merge.
+1. Main Dhara PR merged with: new `dhara/mcp/adapter_lookup.py` helper, `_async_adapter_registry` init moved ahead of the cache block in `server_core.py`, deprecated config fields deleted, `dhara/storage/redis_cache.py` removed.
+1. Tests green in both repos; regression guards for `Connection.Cache` unchanged and within 2×.
+1. Manual `crackerjack` version bump (`dhara` 0.12.1 → 0.13.0) performed by operator post-merge.
 
 ## 3. Non-Goals
 
 1. **`dhara/core/connection.py:841 class Cache` consolidation.** Deferred.
-2. **`dhara/storage/memory.py` deletion.** It's `AsyncMemoryStorage`, not a cache adapter. Out of scope entirely.
-3. **A Dhara-native cache adapter backed by Dhara's own SQLite storage.** Deferred.
-4. **TrackingCache-degrade-graceful behavior.** Earlier drafts proposed this against fictional coredis APIs. Deferred.
-5. **MultiTier composition (`memory` L1 + `redis` L2).**
-6. **Hot-reload of cache config.**
-7. **Automated publish.** Operator performs the `crackerjack` ceremony.
+1. **`dhara/storage/memory.py` deletion.** It's `AsyncMemoryStorage`, not a cache adapter. Out of scope entirely.
+1. **A Dhara-native cache adapter backed by Dhara's own SQLite storage.** Deferred.
+1. **TrackingCache-degrade-graceful behavior.** Earlier drafts proposed this against fictional coredis APIs. Deferred.
+1. **MultiTier composition (`memory` L1 + `redis` L2).**
+1. **Hot-reload of cache config.**
+1. **Automated publish.** Operator performs the `crackerjack` ceremony.
 
 ## 4. Current Findings
 
@@ -76,7 +77,7 @@ Project-wide rules; every task inherits them.
 | Active async migration plan; verify before Phase 0 | `/Users/les/Projects/dhara/docs/2026-07-15-async-migration-cleanup.md` |
 | Benchmark file path: `dhara/benchmarks/test_cache.py` (NOT `tests/benchmarks/`) | (filesystem fact) |
 
----
+______________________________________________________________________
 
 ## 5. Implementation Phases
 
@@ -93,10 +94,13 @@ This phase produces no functional deliverable; per `docs/plans/TEMPLATE.md`, no 
 #### Task 0.1: Record `Connection.Cache` benchmark baseline
 
 **Files:**
+
 - Create: `/Users/les/Projects/dhara/benchmarks-baseline.txt` (executor scratch; NEVER committed)
 
 **Interfaces:**
+
 - Consumes: existing benchmark `dhara/benchmarks/test_cache.py` (no edits)
+
 - Produces: baseline numbers; executor holds this file until Phase 2, Task 2.7
 
 - [ ] **Step 1: Verify async-migration-cleanup plan has landed**
@@ -136,7 +140,7 @@ Expected: file exists; `wc -l` ≥ 5.
 
 - [ ] **Step 5: Do NOT commit `benchmarks-baseline.txt`** — this is executor scratch.
 
----
+______________________________________________________________________
 
 ### Phase 1: Confirm Companion Plan Has Shipped
 
@@ -155,9 +159,13 @@ git -C /Users/les/Projects/oneiric log --oneline main -10 | head -10
 ```
 
 Expected: at least these four subjects appear:
+
 - `fix(oneiric): strip leading space from AdapterMetadata.factory strings`
+
 - `feat(oneiric): extend RedisCacheSettings with ttl_seconds and stampede_jitter_ms`
+
 - `feat(oneiric): consume ttl_seconds and stampede_jitter_ms in set/get`
+
 - `test(oneiric): cover new fields + factory-string + set/get consumer code`
 
 - [ ] **Step 2: Confirm settings import works end-to-end**
@@ -171,7 +179,7 @@ Expected: `120 10`. If `AttributeError` or unexpected shape, the companion plan 
 
 - [ ] **Step 3: STOP. Phase 2 cannot start until steps 1 and 2 pass.**
 
----
+______________________________________________________________________
 
 ### Phase 2: Main Dhara PR
 
@@ -190,10 +198,13 @@ Expected: `120 10`. If `AttributeError` or unexpected shape, the companion plan 
 #### Task 2.0: Failing tests for `dhara/mcp/adapter_lookup.py:resolve_cache_adapter`
 
 **Files:**
+
 - Create: `/Users/les/Projects/dhara/tests/unit/test_adapter_lookup.py`
 
 **Interfaces:**
+
 - Consumes: `dhara.mcp.adapter_lookup.resolve_cache_adapter` (will exist after Task 2.1); Dhara's `AsyncAdapterRegistry` whose `get_adapter_async(...)` returns `dict[str, Any] | None` with key `factory_path` (NOT `.factory`) per `dhara/mcp/adapter_tools.py:894-924`
+
 - Produces: Test module fails with `ImportError` until the helper lands
 
 - [ ] **Step 1: Write the test file (real-shape registry mock)**
@@ -349,10 +360,13 @@ cd /Users/les/Projects/dhara && \
 #### Task 2.1: Implement `dhara/mcp/adapter_lookup.py`
 
 **Files:**
+
 - Create: `/Users/les/Projects/dhara/dhara/mcp/adapter_lookup.py`
 
 **Interfaces:**
+
 - Consumes: existing Dhara `AsyncAdapterRegistry` whose `get_adapter_async(domain, key, provider)` returns a `dict | None` with key `factory_path` (verified at `dhara/mcp/adapter_tools.py:894-924`)
+
 - Produces: `async resolve_cache_adapter(backend, settings, registry, import_fn=_default_import) -> CacheAdapter`
 
 - [ ] **Step 1: Write the helper**
@@ -458,10 +472,13 @@ awaits init(), returns. Backend validation prevents typos."
 #### Task 2.2: Move `_async_adapter_registry` init ahead of the cache block
 
 **Files:**
+
 - Modify: `/Users/les/Projects/dhara/dhara/mcp/server_core.py:__init__`
 
 **Interfaces:**
+
 - Consumes: existing `DharaMCPServer.__init__` flow. Currently `self._async_adapter_registry = AsyncAdapterRegistry(async_conn)` is at line ~224, but the cache_backend block is at line ~199 — so any code in the cache path sees `None`.
+
 - Produces: registry initialization moves ahead of the cache_backend block.
 
 - [ ] **Step 1: Locate the existing init order**
@@ -491,6 +508,7 @@ cd /Users/les/Projects/dhara && \
 #### Task 2.3: Wire `server_core.py` to call `resolve_cache_adapter` via a `_wire_cache` helper
 
 **Files:**
+
 - Modify: `/Users/les/Projects/dhara/dhara/mcp/server_core.py` — replace the inline cache_backend switch with a call to a new module-private `_wire_cache`
 
 - [ ] **Step 1: Read the current cache_backend block**
@@ -574,6 +592,7 @@ cd /Users/les/Projects/dhara && \
 #### Task 2.4: Failing tests for the new wiring path
 
 **Files:**
+
 - Create: `/Users/les/Projects/dhara/tests/unit/test_server_core_cache.py`
 
 - [ ] **Step 1: Write the test file**
@@ -703,7 +722,9 @@ cd /Users/les/Projects/dhara && \
 #### Task 2.5: Drop deprecated Dhara config fields
 
 **Files:**
+
 - Modify: `/Users/les/Projects/dhara/dhara/core/config.py`
+
 - Modify: `/Users/les/Projects/dhara/tests/unit/test_dhara_settings.py`
 
 - [ ] **Step 1: Read the current config section**
@@ -746,6 +767,7 @@ cd /Users/les/Projects/dhara && \
 #### Task 2.6: Rebase `tests/unit/test_server_core.py` patch targets
 
 **Files:**
+
 - Modify: `/Users/les/Projects/dhara/tests/unit/test_server_core.py`
 
 - [ ] **Step 1: Locate patches and field references**
@@ -758,10 +780,13 @@ grep -n 'patch\|dhara.storage.redis_cache\|cache_redis_url\|cache_redis_token\|c
 - [ ] **Step 2: Rewrite `DharaSettings(...)` constructor calls**
 
 Replace constructions like:
+
 ```python
 DharaSettings(cache_backend="redis", cache_redis_url=..., cache_redis_token=..., cache_ttl=..., cache_stampede_jitter_ms=...)
 ```
+
 with:
+
 ```python
 DharaSettings(cache_backend="redis")
 ```
@@ -795,7 +820,9 @@ cd /Users/les/Projects/dhara && \
 #### Task 2.7: Delete the duplicated Dhara module + verify
 
 **Files:**
+
 - Delete: `/Users/les/Projects/dhara/dhara/storage/redis_cache.py`
+
 - Delete: `/Users/les/Projects/dhara/tests/unit/test_redis_cache.py`
 
 - [ ] **Step 1: Delete the production module**
@@ -878,7 +905,7 @@ cd /Users/les/Projects/dhara && git push origin main
 
 Expected: push succeeds.
 
----
+______________________________________________________________________
 
 ## 6. Required Code Changes
 
@@ -912,7 +939,7 @@ This plan does NOT modify Oneiric. See `/Users/les/Projects/dhara/docs/superpowe
 - `dhara/storage/postgres.py`, `dhara/storage/sqlite.py` — storage adapters
 - `scripts/audit_orphans.py` (anywhere in Dhara) — does not exist
 
----
+______________________________________________________________________
 
 ## 7. Validation Matrix
 
@@ -927,7 +954,7 @@ This plan does NOT modify Oneiric. See `/Users/les/Projects/dhara/docs/superpowe
 | Manual smoke: `dhara -s --file /tmp/smoke.dhara` | Server starts; `cache-adapter-resolved` log fires | Dhara log |
 | `python -c "from dhara.mcp.adapter_lookup import resolve_cache_adapter"` | No `ImportError` | Shell stdout |
 
----
+______________________________________________________________________
 
 ## 8. Risks
 
@@ -939,18 +966,19 @@ This plan does NOT modify Oneiric. See `/Users/les/Projects/dhara/docs/superpowe
 | `benchmarks/test_cache.py` regresses >2× | Low | `Connection.Cache` untouched; rollback signal applies if regression appears. |
 | `OneiricSettings` import path or class name differs | Medium-High | Task 2.3 Step 4 grep + executor verification. |
 
----
+______________________________________________________________________
 
 ## 9. Decision Rule
 
 This plan is **"done enough"** when Phase 2 main Dhara PR has merged to `main`, `pytest dhara/tests/` is green, `benchmarks/test_cache.py` is within 2× of the Phase 0 baseline, and the regression-guard `Connection.Cache` tests pass.
 
 **Cut order** (when scope pressure forces a cut):
-1. Phase 2 Task 2.4 server-core wiring test — non-critical if manual smoke covers it.
-2. Phase 2 Task 2.0 adapter_lookup helper tests — non-critical if manual smoke covers it.
-3. **Phase 2 Tasks 2.5–2.7** (config cleanup, deletion, full-suite validation) — **never cut**.
 
----
+1. Phase 2 Task 2.4 server-core wiring test — non-critical if manual smoke covers it.
+1. Phase 2 Task 2.0 adapter_lookup helper tests — non-critical if manual smoke covers it.
+1. **Phase 2 Tasks 2.5–2.7** (config cleanup, deletion, full-suite validation) — **never cut**.
+
+______________________________________________________________________
 
 ## References
 

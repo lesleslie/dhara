@@ -8,11 +8,11 @@
 Close the remaining gaps in the async-first migration so that:
 
 1. `FileStorage` is genuinely deleted (not just claimed).
-2. The CLI / `__main__.py` actually run async.
-3. The legacy `bin/db_renumber.py` (and friends) stop using `dhara.connection.Connection`.
-4. The deprecated `event_loop` fixture leaves the test suite.
-5. Druva compatibility aliases stop appearing in core modules.
-6. Tests targeting the new async surface exist and pass.
+1. The CLI / `__main__.py` actually run async.
+1. The legacy `bin/db_renumber.py` (and friends) stop using `dhara.connection.Connection`.
+1. The deprecated `event_loop` fixture leaves the test suite.
+1. Druva compatibility aliases stop appearing in core modules.
+1. Tests targeting the new async surface exist and pass.
 
 This plan is the single source of truth for the actual remaining cleanup; the historical
 `docs/LEGACY_COMPATIBILITY_AND_REMOVAL_PLAN.md` is now marked "do not cite for current state."
@@ -188,7 +188,7 @@ Port to async backend. Re-run benchmarks; record baseline metrics before/after.
 - Benchmarks re-baselined.
 - Examples and orphan scripts removed.
 
----
+______________________________________________________________________
 
 ### Task 2: Async CLI entry point
 
@@ -203,10 +203,10 @@ through `asyncio.run(...)` at the CLI boundary.
 **Steps:**
 
 1. Confirm Task 1g is merged.
-2. Inventory every sync `Connection(...)` usage in `dhara/cli.py`.
-3. Replace with `await AsyncConnection.new(...)` from `dhara.core.connection`.
-4. Wrap `cli()` in `asyncio.run(cli_async())`.
-5. Update CLI smoke tests if any.
+1. Inventory every sync `Connection(...)` usage in `dhara/cli.py`.
+1. Replace with `await AsyncConnection.new(...)` from `dhara.core.connection`.
+1. Wrap `cli()` in `asyncio.run(cli_async())`.
+1. Update CLI smoke tests if any.
 
 **Acceptance criteria:**
 
@@ -214,7 +214,7 @@ through `asyncio.run(...)` at the CLI boundary.
 - All CLI subcommands reach storage via `await`.
 - No sync `Connection` import remains in `dhara/cli.py`.
 
----
+______________________________________________________________________
 
 ### Task 3: Async `__main__.py`
 
@@ -226,7 +226,7 @@ After Task 1h lands, convert `python -m dhara` to an async entry point. Same
 shape as Task 2. Verify the `--storage-class` help text (line 212) is updated
 to point at the async backend.
 
----
+______________________________________________________________________
 
 ### Task 4: Convert `bin/db_renumber.py`
 
@@ -243,15 +243,15 @@ pre-existing bug as a side effect.
 **Steps:**
 
 1. Replace line 13 with `from dhara.core.connection import AsyncConnection`.
-2. Add `await` to every `Connection` call.
-3. Wrap the body in `async def main()` and invoke via `asyncio.run(main())`.
+1. Add `await` to every `Connection` call.
+1. Wrap the body in `async def main()` and invoke via `asyncio.run(main())`.
 
 **Acceptance criteria:**
 
 - `python bin/db_renumber.py --help` runs without `ModuleNotFoundError`.
 - All storage operations are awaited.
 
----
+______________________________________________________________________
 
 ### Task 5: Move Druva aliases out of core
 
@@ -285,7 +285,7 @@ inline aliases in core modules with imports from the compat module.
 - `DruvaKeyError` remains canonical in `dhara/error.py` and is imported by all
   consumers unchanged.
 
----
+______________________________________________________________________
 
 ### Task 6: Remove deprecated `event_loop` fixture
 
@@ -297,18 +297,18 @@ inline aliases in core modules with imports from the compat module.
 pytest-asyncio 0.21. Replace with `asyncio_mode = "auto"` in `pyproject.toml`
 if not already set, and remove the function.
 
----
+______________________________________________________________________
 
 ## Dependency Order (recommended execution sequence)
 
 After scope-audit correction, the recommended execution order is:
 
 1. **Task 6 (event_loop fixture)** — independent, safe; enables async-mode test infrastructure used by later tasks.
-2. **Task 5 (Druva aliases)** — independent, small; reduces noise in subsequent diffs.
-3. **Task 4 (db_renumber.py)** — small, standalone, also fixes a pre-existing `ModuleNotFoundError` bug.
-4. **Task 1 (FileStorage port)** — bulk of the work, 12 sub-tasks (1a → 1l). Sequence the sub-tasks in numerical order; 1a must complete before 1b–1l begin.
-5. **Task 2 (async CLI)** — depends on Task 1 sub-task 1g (storage layer in `dhara/cli.py`).
-6. **Task 3 (async `__main__`)** — depends on Task 1 sub-task 1h (storage layer in `dhara/__main__.py`) and Task 2 (CLI patterns).
+1. **Task 5 (Druva aliases)** — independent, small; reduces noise in subsequent diffs.
+1. **Task 4 (db_renumber.py)** — small, standalone, also fixes a pre-existing `ModuleNotFoundError` bug.
+1. **Task 1 (FileStorage port)** — bulk of the work, 12 sub-tasks (1a → 1l). Sequence the sub-tasks in numerical order; 1a must complete before 1b–1l begin.
+1. **Task 2 (async CLI)** — depends on Task 1 sub-task 1g (storage layer in `dhara/cli.py`).
+1. **Task 3 (async `__main__`)** — depends on Task 1 sub-task 1h (storage layer in `dhara/__main__.py`) and Task 2 (CLI patterns).
 
 Dependency graph (textual):
 
@@ -352,8 +352,9 @@ Task 3 (async __main__)        ── depends on Task 1.1h and Task 2
 ## Plan Amendment (2026-07-15)
 
 Three corrections were applied based on a scope audit:
+
 1. Task 1 expanded from a single-file delete into a 12-sub-task port
-2. Task 5 (db_to_py3k.py) deleted (file doesn't exist)
-3. Task 7 (Druva aliases) reduced scope: DruvaKeyError is canonical, not an alias
+1. Task 5 (db_to_py3k.py) deleted (file doesn't exist)
+1. Task 7 (Druva aliases) reduced scope: DruvaKeyError is canonical, not an alias
 
 Original scope audit: see [audit transcript in this session's conversation log]

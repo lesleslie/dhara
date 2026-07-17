@@ -37,11 +37,11 @@ Today the duplication costs:
 Multi-agent review found the following earlier-draft errors, all corrected here:
 
 1. The earlier draft claimed `dhara/storage/memory.py` was a parallel cache adapter. **It is not.**
-2. The earlier draft proposed a TrackingCache degrade-graceful feature that wrapped `self._client.tracking_get(...)` etc. **coredis has no such methods** — `TrackingCache` is a client-side LRU passed at `Redis(..., cache=TrackingCache(...))` construction; the proposed wrap targets a fictional API. The TrackingCache-degrade-graceful feature has been **dropped from scope**.
-3. The earlier draft sourced cache settings from `OneiricMCPConfig().adapters.cache.redis.settings`. **That path does not exist** — `OneiricMCPConfig` has no `adapters` field. The corrected path is `OneiricSettings.load_settings(...).adapters.provider_settings.get("cache.redis", {})`.
-4. The earlier draft's `resolve_cache_adapter` helper read `getattr(entry, "factory", None)` from a `dict`. **Real `AsyncAdapterRegistry.get_adapter_async` returns a `dict` with key `factory_path`**, not an object with `.factory`.
-5. Oneiric's existing adapter `factory` strings have a **leading space** (`"…: RedisCacheAdapter"`) which would defeat any attempt to import them via `import_string`. A prerequisite Task 2.0 fixes this in Oneiric.
-6. The earlier draft's `_wire_cache` reads `self._async_adapter_registry`, but the registry is initialized after the cache_backend block in `DharaMCPServer.__init__`. **The registry initialization must move ahead of the cache block.**
+1. The earlier draft proposed a TrackingCache degrade-graceful feature that wrapped `self._client.tracking_get(...)` etc. **coredis has no such methods** — `TrackingCache` is a client-side LRU passed at `Redis(..., cache=TrackingCache(...))` construction; the proposed wrap targets a fictional API. The TrackingCache-degrade-graceful feature has been **dropped from scope**.
+1. The earlier draft sourced cache settings from `OneiricMCPConfig().adapters.cache.redis.settings`. **That path does not exist** — `OneiricMCPConfig` has no `adapters` field. The corrected path is `OneiricSettings.load_settings(...).adapters.provider_settings.get("cache.redis", {})`.
+1. The earlier draft's `resolve_cache_adapter` helper read `getattr(entry, "factory", None)` from a `dict`. **Real `AsyncAdapterRegistry.get_adapter_async` returns a `dict` with key `factory_path`**, not an object with `.factory`.
+1. Oneiric's existing adapter `factory` strings have a **leading space** (`"…: RedisCacheAdapter"`) which would defeat any attempt to import them via `import_string`. A prerequisite Task 2.0 fixes this in Oneiric.
+1. The earlier draft's `_wire_cache` reads `self._async_adapter_registry`, but the registry is initialized after the cache_backend block in `DharaMCPServer.__init__`. **The registry initialization must move ahead of the cache block.**
 
 The Bodai ecosystem already has the discovery/push infrastructure needed for canonical-cache-adapter adoption: `oneiric.adapters.dhara_pusher` writes Oneiric adapters into Dhara via MCP, and Mahavishnu's `AdapterDiscovery` reads them back through `enable_dhara_registry`. The infrastructure is in place; the consolidation just has to use it correctly.
 
@@ -351,10 +351,10 @@ ______________________________________________________________________
 ### Smoke test checklist (run before merge)
 
 1. `dhara -s --file /tmp/smoke.dhara` with no Redis available → `cache_backend=memory` default → server starts, `/health` reports `cache=memory`, healthy. `cache-adapter-resolved` log fires.
-2. With Redis available and `cache_backend=redis` → server starts, `/health` reports `cache=redis`. `cache-adapter-resolved` log fires with `settings_class="RedisCacheSettings"`.
-3. Interactive `dhara -c --file /tmp/smoke.dhara` performs a get/set that touches cache; structured logs include `cache-adapter-resolved`, `adapter-init`, `adapter-cleanup-complete`.
-4. `pytest dhara/tests/ -v` is green.
-5. `pytest dhara/benchmarks/test_cache.py` is within 2× of the Phase-1 baseline.
+1. With Redis available and `cache_backend=redis` → server starts, `/health` reports `cache=redis`. `cache-adapter-resolved` log fires with `settings_class="RedisCacheSettings"`.
+1. Interactive `dhara -c --file /tmp/smoke.dhara` performs a get/set that touches cache; structured logs include `cache-adapter-resolved`, `adapter-init`, `adapter-cleanup-complete`.
+1. `pytest dhara/tests/ -v` is green.
+1. `pytest dhara/benchmarks/test_cache.py` is within 2× of the Phase-1 baseline.
 
 ### Orphan audit
 
@@ -425,12 +425,12 @@ Per decisions **D1** and **D13**:
 
 1. `docs/2026-07-15-async-migration-cleanup.md` must be merged to `main`
    before any of our code lands. Verify via `git -C /Users/les/Projects/dhara log --oneline main | grep -i async-migration-cleanup`.
-2. The companion Oneiric PR (single PR covering the factory-string-space fix,
+1. The companion Oneiric PR (single PR covering the factory-string-space fix,
    the three new fields, and the consumer code for TTL/jitter) must be
    merged to `main` *before* the main Dhara PR.
-3. The main Dhara PR opens only after both (1) and (2) are merged, and
+1. The main Dhara PR opens only after both (1) and (2) are merged, and
    merges direct to `main` per **D3** (no PR).
-4. Version bump `dhara` 0.12.1 → 0.13.0 is performed manually via
+1. Version bump `dhara` 0.12.1 → 0.13.0 is performed manually via
    `crackerjack` after merge, per **D4**.
 
 ______________________________________________________________________

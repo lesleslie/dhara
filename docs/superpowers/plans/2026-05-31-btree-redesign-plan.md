@@ -10,7 +10,7 @@
 > **Do not execute this plan.** Active BTree work, if any, must start from a new plan.
 > This document is preserved for historical reference.
 
----
+______________________________________________________________________
 
 # BTree Redesign Implementation Plan
 
