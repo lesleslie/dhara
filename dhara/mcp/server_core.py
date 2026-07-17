@@ -15,6 +15,7 @@ Migration Notes:
 
 from __future__ import annotations
 
+import asyncio
 import time
 from typing import TYPE_CHECKING, Any
 
@@ -27,10 +28,13 @@ from mcp_common.health import (
     DependencyConfig,
     register_health_tools,
 )
+from oneiric.adapters.cache import MemoryCacheSettings, RedisCacheSettings
+from oneiric.core.config import load_settings
 from oneiric.core.logging import get_logger
 
 from dhara.core.config import DharaSettings
 from dhara.core.connection import Connection
+from dhara.mcp.adapter_lookup import resolve_cache_adapter
 from dhara.mcp.adapter_tools import (
     AdapterRegistry,
     AsyncAdapterRegistry,
@@ -48,6 +52,63 @@ from dhara.mcp.substrate_routes import register_substrate_routes
 from dhara.storage.async_file import AsyncFileStorage
 
 logger = get_logger(__name__)
+
+
+class _BuiltinCacheRegistry:
+    """Registry fallback used before the async Dhara stores are initialized.
+
+    ``DharaMCPServer`` has a synchronous constructor while the persistent
+    ``AsyncAdapterRegistry`` is created by ``_init_async_stores``.  Cache
+    wiring still goes through ``resolve_cache_adapter`` during construction;
+    this small registry exposes the canonical Oneiric factory paths until the
+    persistent registry is available.
+    """
+
+    _FACTORIES = {
+        ("adapter", "cache", "memory"): (
+            "oneiric.adapters.cache.memory:MemoryCacheAdapter"
+        ),
+        ("adapter", "cache", "redis"): (
+            "oneiric.adapters.cache.redis:RedisCacheAdapter"
+        ),
+    }
+
+    async def get_adapter_async(
+        self, domain: str, key: str, provider: str
+    ) -> dict[str, str] | None:
+        factory_path = self._FACTORIES.get((domain, key, provider))
+        return {"factory_path": factory_path} if factory_path else None
+
+
+async def _wire_cache(config: Any, core_self: Any) -> Any:
+    """Resolve and instantiate the cache adapter via the registry helper.
+
+    Settings come from OneiricSettings.adapters.provider_settings (the
+    canonical Oneiric path) so Dhara owns no cache-specific config fields.
+    """
+    cache_backend = getattr(config, "cache_backend", "memory")
+    if cache_backend == "redis":
+        provider_settings = load_settings(
+            project_name="dhara"
+        ).adapters.provider_settings.get("cache.redis", {})
+        cache_settings = (
+            RedisCacheSettings(**provider_settings)
+            if provider_settings
+            else RedisCacheSettings()
+        )
+    else:
+        cache_settings = MemoryCacheSettings()
+
+    registry = core_self._async_adapter_registry or _BuiltinCacheRegistry()
+    adapter = await resolve_cache_adapter(cache_backend, cache_settings, registry)
+    logger_for_core = getattr(core_self, "_logger", logger)
+    logger_for_core.info(
+        "cache-adapter-resolved",
+        backend=cache_backend,
+        provider=cache_backend,
+        settings_class=type(cache_settings).__name__,
+    )
+    return adapter
 
 
 class DharaMCPServer:
@@ -204,22 +265,9 @@ class DharaMCPServer:
         self._async_adapter_registry: AsyncAdapterRegistry | None = None
 
         # ── Cache backend selection ─────────────────────────────────────────
-        cache_backend = getattr(config, "cache_backend", "memory")
         self.cache = None
 
-        if cache_backend == "redis":
-            from dhara.storage.redis_cache import (
-                RedisCacheAdapter,
-                RedisCacheSettings,
-            )
-
-            redis_settings = RedisCacheSettings(
-                redis_url=config.cache_redis_url or "redis://localhost:6379",
-                redis_token=config.cache_redis_token or None,
-                ttl=config.cache_ttl or 3600,
-                stampede_jitter_ms=getattr(config, "cache_stampede_jitter_ms", 0),
-            )
-            self.cache = RedisCacheAdapter(redis_settings)
+        self.cache = asyncio.run(_wire_cache(config, self))
 
         self.connection = Connection(self.storage)
 
