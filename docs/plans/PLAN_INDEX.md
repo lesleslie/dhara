@@ -1,13 +1,16 @@
----
+______________________________________________________________________
+
 status: active
 role: canonical
 date: 2026-07-16
 last_reviewed: 2026-07-16
 superseded_by: null
 blocks_on:
-  - docs/schemas/document-frontmatter-v1.md
-topic: convergence-control-plane
----
+
+- docs/schemas/document-frontmatter-v1.md
+  topic: convergence-control-plane
+
+______________________________________________________________________
 
 # Plan Index
 
@@ -93,16 +96,16 @@ One table per store. Entries are sorted by `date` DESC, with ties broken by path
 
 | Path | Date | Status | Role | Topic | Title |
 |---|---|---|---|---|---|
-| [`docs/superpowers/specs/2026-07-15-dhara-cache-adapter-oneiric-consolidation-design.md`](../docs/superpowers/specs/2026-07-15-dhara-cache-adapter-oneiric-consolidation-design.md) | 2026-07-17 | `shipped` | `canonical` | `adapter-architecture` | Dhara Cache-Adapter Oneiric Consolidation Design |
+| [`docs/superpowers/specs/2026-07-15-dhara-cache-adapter-oneiric-consolidation-design.md`](../superpowers/specs/2026-07-15-dhara-cache-adapter-oneiric-consolidation-design.md) | 2026-07-17 | `shipped` | `canonical` | `adapter-architecture` | Dhara Cache-Adapter Oneiric Consolidation Design |
 
 ### Superpowers Plans (`docs/superpowers/plans/`)
 
 | Path | Date | Status | Role | Topic | Title |
 |---|---|---|---|---|---|
-| [`docs/superpowers/plans/2026-05-31-btree-redesign-plan.md`](../docs/superpowers/plans/2026-05-31-btree-redesign-plan.md) | 2026-07-17 | `complete` | `historical` | `persistence` | BTree Redesign Implementation Plan |
-| [`docs/superpowers/plans/2026-05-31-dhara-async-first-plan.md`](../docs/superpowers/plans/2026-05-31-dhara-async-first-plan.md) | 2026-07-17 | `active` | `implementation` | `persistence` | Dhara Async-First Implementation Plan |
-| [`docs/superpowers/plans/2026-07-15-dhara-cache-adapter-oneiric-consolidation-plan.md`](../docs/superpowers/plans/2026-07-15-dhara-cache-adapter-oneiric-consolidation-plan.md) | 2026-07-17 | `shipped` | `implementation` | `adapter-architecture` | Dhara Cache-Adapter Oneiric Consolidation Implementation Plan |
-| [`docs/superpowers/plans/2026-07-15-oneiric-cache-factory-and-settings-plan.md`](../docs/superpowers/plans/2026-07-15-oneiric-cache-factory-and-settings-plan.md) | 2026-07-17 | `active` | `implementation` | `adapter-architecture` | Oneiric Cache-Adapter Factory-String Fix and Settings Fields |
+| [`docs/superpowers/plans/2026-05-31-btree-redesign-plan.md`](../superpowers/plans/2026-05-31-btree-redesign-plan.md) | 2026-07-17 | `complete` | `historical` | `persistence` | BTree Redesign Implementation Plan |
+| [`docs/superpowers/plans/2026-05-31-dhara-async-first-plan.md`](../superpowers/plans/2026-05-31-dhara-async-first-plan.md) | 2026-07-17 | `active` | `implementation` | `persistence` | Dhara Async-First Implementation Plan |
+| [`docs/superpowers/plans/2026-07-15-dhara-cache-adapter-oneiric-consolidation-plan.md`](../superpowers/plans/2026-07-15-dhara-cache-adapter-oneiric-consolidation-plan.md) | 2026-07-17 | `shipped` | `implementation` | `adapter-architecture` | Dhara Cache-Adapter Oneiric Consolidation Implementation Plan |
+| [`docs/superpowers/plans/2026-07-15-oneiric-cache-factory-and-settings-plan.md`](../superpowers/plans/2026-07-15-oneiric-cache-factory-and-settings-plan.md) | 2026-07-17 | `active` | `implementation` | `adapter-architecture` | Oneiric Cache-Adapter Factory-String Fix and Settings Fields |
 
 ### Repo-local Decisions (`.claude/decisions/`)
 

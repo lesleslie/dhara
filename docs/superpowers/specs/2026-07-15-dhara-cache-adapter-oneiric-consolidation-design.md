@@ -1,17 +1,11 @@
----
-status: shipped
-role: canonical
-date: 2026-07-17
-last_reviewed: 2026-07-17
-superseded_by: null
-blocks_on: []
-topic: adapter-architecture
----
+______________________________________________________________________
+
+## status: shipped role: canonical date: 2026-07-17 last_reviewed: 2026-07-17 superseded_by: null blocks_on: [] topic: adapter-architecture
 
 # Dhara Cache-Adapter Oneiric Consolidation Design
 
 **Date:** 2026-07-15
-**Status:** Shipped (merged to Dhara `main`; see the companion implementation plan for commit range)  <!-- legacy status — see YAML frontmatter -->
+**Status:** Shipped (merged to Dhara `main`; see the companion implementation plan for commit range) <!-- legacy status — see YAML frontmatter -->
 **Author:** Claude (Mahavishnu Orchestrator, brainstorming session)
 **Purpose:** Remove Dhara's parallel `dhara.storage.redis_cache` adapter and
 consolidate on Oneiric's canonical cache adapters. Ship **post-multi-agent

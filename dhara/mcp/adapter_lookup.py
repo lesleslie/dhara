@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import importlib
 from collections.abc import Callable
-from typing import Any, Literal, Union
+from typing import Any, Literal
 
 from oneiric.adapters.cache import (
     MemoryCacheAdapter,
@@ -24,7 +24,7 @@ from oneiric.core.lifecycle import LifecycleError
 
 Backend = Literal["memory", "redis"]
 
-CacheAdapter = Union[RedisCacheAdapter, MemoryCacheAdapter]
+CacheAdapter = RedisCacheAdapter | MemoryCacheAdapter
 
 ImportFn = Callable[[str], Any]
 

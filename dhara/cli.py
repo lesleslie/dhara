@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import typer
 from mcp_common.cli import (
@@ -401,7 +401,7 @@ def _create_adapters_command(app: typer.Typer, settings: DharaSettings) -> None:
         from dhara.mcp.adapter_tools import AsyncAdapterRegistry
         from dhara.storage.async_file import AsyncFileStorage
 
-        async def _list_adapters() -> list[dict[str, object]]:
+        async def _list_adapters() -> list[dict[str, Any]]:
             storage = AsyncFileStorage(str(settings.storage.path))
             await storage.init()
             try:

@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - dhara: Remove FileStorage from re-exports and remaining docstrings
 - dhara: Ruff format + F401/isort sweep
 - dhara: Wire MCP-server cache through registry helper
-- Extract Druva aliases to dhara._compat.druva
+- Extract Druva aliases to dhara.\_compat.druva
 
 ### Fixed
 
@@ -60,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Testing
 
 - dhara: Add failing tests for cache-adapter lookup helper
-- dhara: Cover _wire_cache wiring through server_core
+- dhara: Cover \_wire_cache wiring through server_core
 - dhara: Drop FileStorage test suite (sub-task 1j, group 1/5)
 - dhara: Migrate backup test suite to AsyncFileStorage (sub-task 1j, group 2/5)
 - dhara: Migrate cli and main tests to AsyncFileStorage (sub-task 1j, group 4/5)

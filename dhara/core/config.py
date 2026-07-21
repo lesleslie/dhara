@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import ClassVar, Self
+from typing import Any, ClassVar, Self
 
 from oneiric.core.config import OneiricMCPConfig
 from pydantic import BaseModel, Field
@@ -82,7 +82,7 @@ class BackupRuntimeConfig(BaseModel):
 
 def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
     """Recursively merge ``override`` into ``base``. ``override`` wins."""
-    result = dict(base)
+    result = base.copy()
     for key, value in override.items():
         if key in result and isinstance(result[key], dict) and isinstance(value, dict):
             result[key] = _deep_merge(result[key], value)
@@ -315,17 +315,3 @@ class DharaSettings(OneiricMCPConfig):
         """
         snapshot_name = f"{self.mode}_dhara_health.json"
         return self.cache_root.expanduser() / snapshot_name
-
-
-# Backward-compatible aliases for the in-progress dhara rename.
-# DruvaSettings is provided lazily via PEP 562 __getattr__ so that
-# downstream `from dhara.core.config import DruvaSettings` keeps working
-# without introducing a circular import through dhara._compat.druva.
-
-
-def __getattr__(name: str):
-    if name == "DruvaSettings":
-        from dhara._compat.druva import DruvaSettings
-
-        return DruvaSettings
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -23,7 +23,7 @@ class StorageConfig:
         read_only: Whether storage is opened in read-only mode
     """
 
-    backend: Literal["file", "sqlite", "client", "memory"] = "memory"
+    backend: Literal["file", "sqlite", "client", "memory", "postgres"] = "memory"
     path: Path | None = None
     host: str = "localhost"
     port: int = 2972
@@ -192,17 +192,3 @@ class DharaConfig:
             connection=ConnectionConfig(**data.get("connection", {})),
             debug_mode=data.get("debug_mode", False),
         )
-
-
-# Legacy compatibility alias
-# DruvaConfig is provided lazily via PEP 562 __getattr__ so that
-# downstream `from dhara.config.defaults import DruvaConfig` keeps working
-# without introducing a circular import through dhara._compat.druva.
-
-
-def __getattr__(name: str):
-    if name == "DruvaConfig":
-        from dhara._compat.druva import DruvaConfig
-
-        return DruvaConfig
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

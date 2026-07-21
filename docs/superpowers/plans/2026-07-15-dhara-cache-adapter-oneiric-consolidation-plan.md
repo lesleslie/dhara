@@ -1,19 +1,13 @@
----
-status: shipped
-role: implementation
-date: 2026-07-17
-last_reviewed: 2026-07-17
-superseded_by: null
-blocks_on: []
-topic: adapter-architecture
----
+______________________________________________________________________
+
+## status: shipped role: implementation date: 2026-07-17 last_reviewed: 2026-07-17 superseded_by: null blocks_on: [] topic: adapter-architecture
 
 # Dhara Cache-Adapter Oneiric Consolidation Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Date:** 2026-07-15
-**Status:** shipped (Phase 1 companion + Phase 2 main merged to Dhara `main`, commits `cd0c69a`…`cd75d03`; Phase 4 version bump `0.13.0` still pending, operator-driven)  <!-- legacy status — see YAML frontmatter -->
+**Status:** shipped (Phase 1 companion + Phase 2 main merged to Dhara `main`, commits `cd0c69a`…`cd75d03`; Phase 4 version bump `0.13.0` still pending, operator-driven) <!-- legacy status — see YAML frontmatter -->
 **Owner:** Bodai maintainers
 **Scope:** Dhara-side consolidation of cache-adapter wiring. Replace `dhara.storage.redis_cache` with Oneiric's `RedisCacheAdapter` via a registry-mediated helper; add an unprefixed `dhara/mcp/adapter_lookup.py:resolve_cache_adapter`; move `_async_adapter_registry` initialization above the cache_backend block in `server_core.py`; delete deprecated config fields and the redundant `dhara/storage/redis_cache.py` module. **Does NOT touch `dhara/storage/memory.py` / `AsyncMemoryStorage`** (a generic storage backend unrelated to cache consolidation). Direct merge to `main` per Bodai pre-1.0 policy, no PR. Manual `crackerjack` version bump performed by operator after merge.
 **Purpose:** Eliminate the duplicated cache-adapter code that exists to fill the slot `diskcache` was once considered for, replacing it with Oneiric's already-supported, already-ecosystem-discovered adapters.

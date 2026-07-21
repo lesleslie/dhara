@@ -1,1 +1,6 @@
-{"dhara": {"type": "http", "url": "http://localhost:8683/mcp"}}
+{
+  "dhara": {
+    "type": "http",
+    "url": "http://localhost:8683/mcp"
+  }
+}

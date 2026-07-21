@@ -257,11 +257,6 @@ class TestDharaConfig:
         assert cfg.cache.size == 500
         assert cfg.connection.timeout == 12.5
 
-    def test_legacy_alias(self):
-        from dhara.config.defaults import DruvaConfig
-
-        assert DruvaConfig is DharaConfig
-
     def test_roundtrip_to_dict_from_dict(self, tmp_path):
         original = DharaConfig(
             storage=StorageConfig(backend="file", path=tmp_path / "test.dhara"),

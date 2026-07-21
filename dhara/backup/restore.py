@@ -163,7 +163,7 @@ class RestoreManager:
                 # error.
                 return
             connection = await AsyncConnection.new(storage)
-            try:
+            with suppress(Exception):
                 root = await connection.get_root()
                 data = root.data
                 if (
@@ -176,10 +176,6 @@ class RestoreManager:
                     # so ``in``/``[]`` lookups hit the real keys.
                     root.data = data["__state__"]["data"]
                     await connection.commit()
-            except Exception:
-                # ``get_root`` on a non-root file raises; the caller
-                # (or its own assertion) decides how to surface that.
-                pass
             with suppress(Exception):
                 await storage.close()
 
@@ -374,10 +370,8 @@ class RestoreManager:
                         except Exception:
                             return
                         connection = await AsyncConnection.new(storage)
-                        try:
+                        with suppress(Exception):
                             await connection.get_root()
-                        except Exception:
-                            pass
                         with suppress(Exception):
                             await storage.close()
 

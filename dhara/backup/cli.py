@@ -12,6 +12,7 @@ This CLI provides easy-to-use commands for:
 """
 
 import argparse
+import asyncio
 import logging
 import os
 import sys
@@ -26,6 +27,7 @@ from dhara.backup.restore import AsyncRestoreManager, RestoreManager
 from dhara.backup.scheduler import AsyncBackupScheduler
 from dhara.backup.verification import AsyncBackupVerification, BackupVerification
 from dhara.storage.async_file import AsyncFileStorage
+from dhara.storage.base import Storage
 
 # Configure logging
 logging.basicConfig(
@@ -279,7 +281,7 @@ def cmd_backup(args):
     storage = AsyncFileStorage(args.source)
     try:
         backup_manager = BackupManager(
-            storage=storage,
+            storage=cast("Storage", storage),  # BackupManager is sync but wraps async storage; full async migration tracked separately
             backup_dir=args.backup_dir,
             compression_level=args.compression_level,
             encryption_key=encryption_key,
@@ -310,7 +312,7 @@ def cmd_backup(args):
         logger.error(f"Backup failed: {e}")
         return 1
     finally:
-        storage.close()
+        asyncio.run(storage.close())
 
 
 def cmd_restore(args):

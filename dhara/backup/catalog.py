@@ -110,12 +110,10 @@ class BackupCatalog:
 
         async def _do_save() -> None:
             storage = AsyncFileStorage(str(self.catalog_path))
-            try:
-                await storage.init()
-            except Exception:
+            with suppress(Exception):
                 # Already-initialized files raise on init; ignore and
                 # rely on AsyncConnection to open.
-                pass
+                await storage.init()
             connection = await AsyncConnection.new(storage)
             root = await connection.get_root()
             # Re-attach the connection so the assignment below is

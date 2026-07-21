@@ -169,11 +169,6 @@ class TestDharaSettings:
         path = s.get_mode_config_path()
         assert path.name == "dhara.yaml"
 
-    def test_legacy_alias(self):
-        from dhara.core.config import DruvaSettings
-
-        assert DruvaSettings is not None
-
 
 class TestLegacyEnvAliases:
     """Tests for _apply_legacy_env_aliases."""

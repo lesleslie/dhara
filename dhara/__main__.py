@@ -340,7 +340,7 @@ def get_storage_class(file):
     no in-place format migration; use ``AsyncFileStorage`` (sqlite+aiosqlite)
     for new and migrated databases.
     """
-    if not os.path.exists(file):
+    if not Path(file).exists():
         from dhara.storage.async_file import AsyncFileStorage
 
         return AsyncFileStorage

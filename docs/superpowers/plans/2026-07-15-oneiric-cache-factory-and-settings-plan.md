@@ -1,19 +1,13 @@
----
-status: active
-role: implementation
-date: 2026-07-17
-last_reviewed: 2026-07-17
-superseded_by: null
-blocks_on: []
-topic: adapter-architecture
----
+______________________________________________________________________
+
+## status: active role: implementation date: 2026-07-17 last_reviewed: 2026-07-17 superseded_by: null blocks_on: [] topic: adapter-architecture
 
 # Oneiric Cache-Adapter Factory-String Fix and Settings Fields
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Date:** 2026-07-15
-**Status:** active, implementation  <!-- legacy status — see YAML frontmatter -->
+**Status:** active, implementation <!-- legacy status — see YAML frontmatter -->
 **Owner:** Bodai maintainers
 **Scope:** Two additive changes in Oneiric's `cache` adapter module:
 (1) strip the leading space from `AdapterMetadata.factory` strings in `redis.py` and `memory.py`; (2) add two new fields to `RedisCacheSettings` (`ttl_seconds`, `stampede_jitter_ms`) and add consumer code in `RedisCacheAdapter.set()` and `get()` so Dhara's TTL / stampede-jitter semantics flow through after it migrates to Oneiric's adapters.

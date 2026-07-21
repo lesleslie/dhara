@@ -169,7 +169,7 @@ def _validate_storage_backend(prefixes: tuple[str, ...], config: DharaConfig) ->
                 f"Must be one of: {', '.join(sorted(VALID_STORAGE_BACKENDS))}"
             )
         config.storage.backend = cast(
-            Literal["sqlite", "client", "memory", "postgres"], backend
+            Literal["file", "sqlite", "client", "memory", "postgres"], backend
         )
 
 

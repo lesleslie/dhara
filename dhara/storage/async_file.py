@@ -31,7 +31,7 @@ def _path_to_url(path: str) -> str:
     """
     if path == ":memory:":
         return ":memory:"
-    if path.startswith("sqlite+aiosqlite://") or path.startswith("sqlite://"):
+    if path.startswith(("sqlite+aiosqlite://", "sqlite://")):
         return path
     return f"sqlite+aiosqlite://{path}"
 

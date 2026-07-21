@@ -17,10 +17,11 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import TYPE_CHECKING, Any
+from contextlib import suppress
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
-    pass
+    from dhara.core.connection import Connection
 
 from fastmcp.server.auth.authorization import require_scopes
 from mcp_common.fastmcp import FastMCP
@@ -33,7 +34,6 @@ from oneiric.core.config import load_settings
 from oneiric.core.logging import get_logger
 
 from dhara.core.config import DharaSettings
-from dhara.core.connection import Connection
 from dhara.mcp.adapter_lookup import resolve_cache_adapter
 from dhara.mcp.adapter_tools import (
     AdapterRegistry,
@@ -176,8 +176,7 @@ class _SyncConnectionFacade:
         # already running" or block forever waiting for the daemon thread
         # to deliver the result. ``run_coroutine_threadsafe`` is the only
         # cross-thread-safe way to schedule and wait for completion.
-        future = asyncio.run_coroutine_threadsafe(coro, self._loop)
-        return future.result(None)
+        return asyncio.run_coroutine_threadsafe(coro, self._loop).result(None)
 
     def get_root(self) -> Any:
         return self._run(self._async.get_root())
@@ -231,9 +230,7 @@ def _run_async_connection_wire(storage: Any) -> _SyncConnectionFacade:
     if _conn_attr is None:
         _CACHE_WIRE_LOOP.run_until_complete(storage.__aenter__())
 
-    async_conn = _CACHE_WIRE_LOOP.run_until_complete(
-        AsyncConnection.new(storage)
-    )
+    async_conn = _CACHE_WIRE_LOOP.run_until_complete(AsyncConnection.new(storage))
 
     # Spin up a background thread that runs the persistent loop forever so
     # the sync facade can dispatch subsequent coroutines via
@@ -259,17 +256,13 @@ def _ensure_loop_background_thread(loop: asyncio.AbstractEventLoop) -> None:
 
     def _runner() -> None:
         asyncio.set_event_loop(loop)
-        try:
-            loop.run_forever()
-        except Exception:
+        with suppress(Exception):
             # Daemon thread should never crash the process; log silently.
-            pass
+            loop.run_forever()
 
-    thread = threading.Thread(
-        target=_runner, name="dhara-cache-wire-loop", daemon=True
-    )
+    thread = threading.Thread(target=_runner, name="dhara-cache-wire-loop", daemon=True)
     thread.start()
-    loop._dhara_wire_thread = thread  # type: ignore[attr-defined]
+    loop._dhara_wire_thread = thread  # ty: ignore[unresolved-attribute]
 
 
 class DharaMCPServer:
@@ -439,7 +432,9 @@ class DharaMCPServer:
         self.connection = _run_async_connection_wire(self.storage)
 
         # Initialize adapter registry
-        self.adapter_registry = AdapterRegistry(self.connection)
+        self.adapter_registry = AdapterRegistry(
+            cast("Connection", self.connection)
+        )  # _SyncConnectionFacade wraps an async Connection; satisfying the Connection protocol is the async-migration follow-up
 
         # Register tools using FastMCP decorators
         self._register_tools()
@@ -1319,5 +1314,5 @@ class DharaMCPServer:
     def close(self) -> None:
         """Close the server and cleanup resources."""
         if getattr(self, "storage", None) is not None:
-            self.storage.close()
+            asyncio.run(self.storage.close())  # close() runs in the persistent event-loop thread; full async close path is the migration follow-up
         logger.info("Dhara MCP Server closed")

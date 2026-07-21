@@ -1,6 +1,6 @@
----
-description: Store a value in Dhara under a key, optionally with TTL.
----
+______________________________________________________________________
+
+## description: Store a value in Dhara under a key, optionally with TTL.
 
 # /dhara:put
 
@@ -15,12 +15,13 @@ Persist a JSON-serializable value to Dhara state under a specified key.
 ## What This Command Does
 
 1. **Collects the key and value** — identifies the target key path and the payload to store.
-2. **Persists to Dhara** — writes the value via the Dhara state MCP server.
-3. **Confirms the write** — returns the key and a confirmation of the stored payload.
+1. **Persists to Dhara** — writes the value via the Dhara state MCP server.
+1. **Confirms the write** — returns the key and a confirmation of the stored payload.
 
 ## Technical Implementation
 
 This command uses the `mcp__dhara__put` MCP tool which:
+
 - accepts a key path and a JSON-serializable value
 - optionally honors a TTL for time-bounded state
 
