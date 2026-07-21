@@ -1,0 +1,17 @@
+dhara
+Copyright (c) 2026 Les Leslie <les@wedgwoodwebworks.com>
+
+This product includes software developed at the Corporation for National
+Research Initiatives (CNRI, https://www.cnri.reston.va.us/). CNRI is
+acknowledged as the originating institution for the Durus object database
+(https://www.durus.org/), on which dhara's persistence model is based.
+
+CNRI's contribution is recorded here for historical attribution. CNRI is
+not a current maintainer of dhara and should not be contacted about
+present-day bugs or feature requests. Use the email listed in the authors
+field of pyproject.toml for current maintenance inquiries.
+
+dhara has been re-licensed under BSD-3-Clause. The Durus originals at CNRI
+were distributed under the Zope Public License; dhara does not redistribute
+Durus source code. Attribution is preserved per the BSD-3-Clause "no
+endorsement" clause and out of respect for the original work.

@@ -5,6 +5,79 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2026-07-21
+
+### Added
+
+- dhara: Add AsyncFileStorage shim (drop-in for FileStorage path-arg pattern)
+- dhara: Add registry-mediated cache-adapter lookup helper
+- Initial dhara plugin manifest + starter commands
+
+### Changed
+
+- Delete dhara.storage.redis_cache (now unused)
+- Delete dhara/storage/file.py (sub-task 1i completion)
+- dhara: Add async Connection factory alongside sync (sub-task 1d)
+- dhara: Drop deleted cache config fields, source from OneiricSettings
+- dhara: Initialize async_adapter_registry before cache_backend block
+- dhara: Port __main__.py FileStorage to AsyncFileStorage (sub-task 1h, partial)
+- dhara: Port backup/ to AsyncFileStorage (sub-task 1b)
+- dhara: Port benchmarks to AsyncConnection (sub-task 1l)
+- dhara: Port cli.py FileStorage to AsyncFileStorage (sub-task 1g, partial)
+- dhara: Port mcp/server_core.py to AsyncFileStorage (sub-task 1c)
+- dhara: Remove FileStorage from re-exports and remaining docstrings
+- dhara: Ruff format + F401/isort sweep
+- dhara: Wire MCP-server cache through registry helper
+- Extract Druva aliases to dhara._compat.druva
+
+### Fixed
+
+- dhara: Connection(path) raises TypeError; add AsyncConnection.new path coercion
+- dhara: Preserve event loop during cache wiring
+- dhara: Repair broken bin/db_renumber.py (async migration + ModuleNotFoundError fix)
+- dhara: Repair iter() sentinel bug in backup/manager.py (1b completion)
+- dhara: Update storage_backend default 'file' -> 'sqlite'
+- dhara: Use builtin open() in __main__.py to fix 7 pre-existing test failures
+- Make DharaMCPServer.__init__ survive post-async-migration storage
+- Self-contained YAML loader in DharaSettings.load()
+
+### Documentation
+
+- Add cache-adapter consolidation spec (Dhara -> Oneiric)
+- dhara: Add cache-adapter consolidation implementation plan
+- dhara: Add Oneiric-side plan (factory-string fix, settings, consumer code)
+- dhara: Align cache-adapter plan with post-review spec + split into companion Oneiric plan
+- dhara: Apply plan-lifecycle-unification playbook (P7.B)
+- dhara: Correct spec after multi-agent review
+- dhara: Mark cache-adapter consolidation shipped; record as-built divergences
+- dhara: Update FileStorage references in signing.py and shell docstrings
+- Normalize markdown list numbering (mdformat)
+- plans: Amend 2026-07-15-async-migration-cleanup plan with scope-audit corrections
+- plans: Tick shipped checkboxes in oneiric cache-factory-and-settings
+- Reconcile async-first and remediation plans
+- Reconcile async-first and remediation plans
+
+### Testing
+
+- dhara: Add failing tests for cache-adapter lookup helper
+- dhara: Cover _wire_cache wiring through server_core
+- dhara: Drop FileStorage test suite (sub-task 1j, group 1/5)
+- dhara: Migrate backup test suite to AsyncFileStorage (sub-task 1j, group 2/5)
+- dhara: Migrate cli and main tests to AsyncFileStorage (sub-task 1j, group 4/5)
+- dhara: Migrate connection + conftest tests to AsyncFileStorage (sub-task 1j, group 5/5)
+- dhara: Migrate MCP server tests to AsyncFileStorage (sub-task 1j, group 3/5)
+- dhara: Remove deprecated event_loop fixture (asyncio_mode=auto covers it)
+- dhara: Repoint server_core patches from local adapter to registry helper
+- dhara: Skip test_resolves_redis_backend on coredis>=6
+- dhara: Update test_modes.py to expect 'sqlite' default
+
+### Internal
+
+- dhara: Delete broken examples/backup_example.py and setup_backup_system.py
+- dhara: Remove LICENSE (consolidated to root-level LICENSE)
+- dhara: Remove orphaned files (test for deleted btree_node module, unused deployment script, btree redesign spec)
+- dhara: Sync uv.lock to 0.12.1, gitignore benchmark scratch
+
 ## [0.12.1] - 2026-07-14
 
 ### Changed

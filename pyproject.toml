@@ -29,22 +29,26 @@ cloud = [
 
 [project]
 name = "dhara"
-version = "0.12.1"
+version = "0.13.0"
 description = "A Python Persistent Object Database with ACID Transactions"
 readme = "README.md"
 requires-python = ">=3.13"
-license = {text = "MIT"}
+license = {text = "BSD-3-CLAUSE"}
+# dhara is a fork of Durus (https://www.durus.org/), originally developed at
+# CNRI under the Zope Public License. dhara has been re-licensed under BSD-3
+# and re-implemented for the Bodai ecosystem; CNRI's contribution is recorded
+# in NOTICE for historical attribution only.
 authors = [
-    {name = "CNRI and others", email = "nas-dhara@arctrix.com"},
+    {name = "Les Leslie", email = "les@wedgwoodwebworks.com"},
 ]
 maintainers = [
-    {name = "dhara Development Team", email = "nas-dhara@arctrix.com"},
+    {name = "Les Leslie", email = "les@wedgwoodwebworks.com"},
 ]
 keywords = ["database", "persistence", "object-database", "storage", "nosql"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: BSD License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.13",
     "Topic :: Database",
