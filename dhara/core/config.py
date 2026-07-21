@@ -315,3 +315,19 @@ class DharaSettings(OneiricMCPConfig):
         """
         snapshot_name = f"{self.mode}_dhara_health.json"
         return self.cache_root.expanduser() / snapshot_name
+
+    def pid_path(self) -> Path:
+        """Get path to PID file for this server.
+
+        Mirrors the contract expected by mcp_common.cli.MCPServerCLIFactory,
+        which calls ``self.settings.pid_path()`` to locate the PID file
+        during ``_validate_cache_and_check_process``. Without this method
+        the factory raises ``AttributeError`` on every ``mcp start`` because
+        ``DharaSettings`` inherits from ``OneiricMCPConfig`` (which exposes
+        only ``cache_dir: str``), not from ``MCPServerSettings``.
+
+        Returns:
+            Path to PID file inside the cache root
+            (``<cache_root>/<server_name>.pid``).
+        """
+        return self.cache_root.expanduser() / f"{self.server_name}.pid"
