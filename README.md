@@ -16,6 +16,12 @@ work loads and aggressively caches persistent objects in memory.
 For many applications, this design enables good performance with minimal
 effort from application programmers.
 
+## Bodai Ecosystem Role
+
+Dhara is the **curator** of the [Bodai ecosystem](https://github.com/lesleslie/bodai) — the persistent object storage backend for adapter configs, service lifecycle state, and ecosystem events consumed by Mahavishnu, Akosha, Session-Buddy, Crackerjack, and Oneiric.
+
+Standalone, Dhara is a modern continuation of **Durus** — a Python persistent object system with ACID properties. See [bodai/docs](https://github.com/lesleslie/bodai) for how Dhara fits into the broader ecosystem.
+
 ## Origin
 
 dhara was originally written by the MEMS Exchange software development
