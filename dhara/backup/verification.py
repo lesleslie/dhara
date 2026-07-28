@@ -12,19 +12,29 @@ This module provides:
 - AsyncBackupVerification for async tool dispatch
 """
 
+import asyncio
 import hashlib
 import logging
 import shutil
 import time
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Self, cast
 
 from .catalog import AsyncBackupCatalog, BackupCatalog
 from .manager import BackupMetadata, BackupType
 from .restore import AsyncRestoreManager, RestoreManager
 
 logger = logging.getLogger(__name__)
+
+
+def _sha256_file(path: Path) -> str:
+    """Compute SHA-256 hex digest of *path* (sync; offload via ``asyncio.to_thread``)."""
+    sha256_hash = hashlib.sha256()
+    with path.open("rb") as f:
+        for byte_block in iter(lambda: f.read(4096), b""):
+            sha256_hash.update(byte_block)
+    return sha256_hash.hexdigest()
 
 
 class CheckResult:
@@ -99,13 +109,8 @@ class BackupVerification:
                     },
                 )
 
-            # Calculate checksum
-            sha256_hash = hashlib.sha256()
-            with backup_path.open("rb") as f:
-                for byte_block in iter(lambda: f.read(4096), b""):
-                    sha256_hash.update(byte_block)
-
-            actual_checksum = sha256_hash.hexdigest()
+            # Calculate checksum (sync helper; safe in non-async context).
+            actual_checksum = _sha256_file(backup_path)
             if actual_checksum != backup_metadata.checksum:
                 return CheckResult(
                     "integrity_check",
@@ -128,7 +133,7 @@ class BackupVerification:
                 },
             )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # integrity-check boundary: any failure maps to a CheckResult("failed")
             duration = time.time() - start_time
             return CheckResult(
                 "integrity_check",
@@ -164,7 +169,7 @@ class BackupVerification:
                 {"compression_ratio": compression_ratio, "duration_seconds": duration},
             )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # compression-check boundary: any failure maps to a CheckResult("failed")
             duration = time.time() - start_time
             return CheckResult(
                 "compression_check",
@@ -233,7 +238,7 @@ class BackupVerification:
                     {"duration_seconds": duration},
                 )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # test-restore boundary: any failure cleans up and maps to CheckResult("failed")
             # Cleanup on error
             restore_path = (
                 self.test_restore_dir / f"test_restore_{backup_metadata.backup_id}"
@@ -255,10 +260,13 @@ class BackupVerification:
         start_time = time.time()
 
         try:
-            current_time = datetime.now()
-            retention_date = backup_metadata.timestamp + timedelta(
-                days=backup_metadata.retention_days
+            current_time = datetime.now(UTC)
+            ts = (
+                backup_metadata.timestamp
+                if backup_metadata.timestamp.tzinfo is not None
+                else backup_metadata.timestamp.replace(tzinfo=UTC)
             )
+            retention_date = ts + timedelta(days=backup_metadata.retention_days)
 
             if current_time > retention_date:
                 status = "warning"
@@ -281,7 +289,7 @@ class BackupVerification:
                 },
             )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # retention-check boundary: any failure maps to CheckResult("failed")
             duration = time.time() - start_time
             return CheckResult(
                 "retention_check",
@@ -339,7 +347,7 @@ class BackupVerification:
                 {"duration_seconds": duration},
             )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # chain-check boundary: any failure maps to CheckResult("failed")
             duration = time.time() - start_time
             return CheckResult(
                 "chain_check",
@@ -413,7 +421,7 @@ class BackupVerification:
                 "backup_id": backup_metadata.backup_id,
                 "overall_status": overall_status,
                 "checks": results,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
         else:
             # Multi-backup report
@@ -442,7 +450,7 @@ class BackupVerification:
                 "overall_stats": overall_stats,
                 "total_backups": sum(overall_stats.values()),
                 "backup_reports": backup_reports,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
 
     def cleanup_test_restores(self) -> int:
@@ -450,11 +458,14 @@ class BackupVerification:
         removed_count = 0
 
         for item in self.test_restore_dir.iterdir():
-            if item.is_dir() and item.name.startswith("test_restore_"):
-                # Check if directory is older than 24 hours
-                if time.time() - item.stat().st_mtime > 86400:
-                    shutil.rmtree(item)
-                    removed_count += 1
+            # Combined check: is a "test_restore_*" directory older than 24 hours.
+            if (
+                item.is_dir()
+                and item.name.startswith("test_restore_")
+                and time.time() - item.stat().st_mtime > 86400
+            ):
+                shutil.rmtree(item)
+                removed_count += 1
 
         return removed_count
 
@@ -511,12 +522,9 @@ class AsyncBackupVerification:
                     },
                 )
 
-            sha256_hash = hashlib.sha256()
-            with backup_path.open("rb") as f:
-                for byte_block in iter(lambda: f.read(4096), b""):
-                    sha256_hash.update(byte_block)
-
-            actual_checksum = sha256_hash.hexdigest()
+            # Offload blocking file I/O + SHA-256 loop to a worker thread
+            # so the event loop is not blocked on large backups.
+            actual_checksum = await asyncio.to_thread(_sha256_file, backup_path)
             if actual_checksum != backup_metadata.checksum:
                 return CheckResult(
                     "integrity_check",
@@ -539,7 +547,7 @@ class AsyncBackupVerification:
                 },
             )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # integrity-check boundary: any failure maps to a CheckResult("failed")
             duration = time.time() - start_time
             return CheckResult(
                 "integrity_check",
@@ -598,7 +606,7 @@ class AsyncBackupVerification:
                 {"duration_seconds": duration},
             )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # chain-check boundary: any failure maps to CheckResult("failed")
             duration = time.time() - start_time
             return CheckResult(
                 "chain_check",
@@ -662,7 +670,7 @@ class AsyncBackupVerification:
                     {"duration_seconds": duration},
                 )
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # async-test-restore boundary: cleans up and maps to CheckResult("failed")
             restore_path = (
                 self.test_restore_dir / f"test_restore_{backup_metadata.backup_id}"
             )
@@ -718,10 +726,13 @@ class AsyncBackupVerification:
         """Check if backup complies with retention policy."""
         start_time = time.time()
         try:
-            current_time = datetime.now()
-            retention_date = backup_metadata.timestamp + timedelta(
-                days=backup_metadata.retention_days
+            current_time = datetime.now(UTC)
+            ts = (
+                backup_metadata.timestamp
+                if backup_metadata.timestamp.tzinfo is not None
+                else backup_metadata.timestamp.replace(tzinfo=UTC)
             )
+            retention_date = ts + timedelta(days=backup_metadata.retention_days)
             if current_time > retention_date:
                 status = "warning"
                 days_overdue = (current_time - retention_date).days
@@ -743,7 +754,7 @@ class AsyncBackupVerification:
                     "duration_seconds": duration,
                 },
             )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # retention-check boundary: any failure maps to CheckResult("failed")
             duration = time.time() - start_time
             return CheckResult(
                 "retention_check",
@@ -759,14 +770,14 @@ class AsyncBackupVerification:
             self._catalog.close()
             self._catalog = None
 
-    def __enter__(self) -> AsyncBackupVerification:
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, *args: Any) -> None:
+    def __exit__(self, *args: object) -> None:
         self.close()
 
-    async def __aenter__(self) -> AsyncBackupVerification:
+    async def __aenter__(self) -> Self:
         return self
 
-    async def __aexit__(self, *args: Any) -> None:
+    async def __aexit__(self, *args: object) -> None:
         self.close()

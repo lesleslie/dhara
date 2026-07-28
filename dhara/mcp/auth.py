@@ -288,8 +288,8 @@ class TokenAuth:
                     metadata=token_data.get("metadata", {}),
                 )
             logger.info(f"Loaded {len(self.tokens)} tokens from {filepath}")
-        except Exception as e:
-            logger.error(f"Failed to load tokens from {filepath}: {e}")
+        except Exception:
+            logger.exception("Failed to load tokens from %s", filepath)
             raise
 
     def save_tokens(self, filepath: str | None = None) -> None:
@@ -320,8 +320,8 @@ class TokenAuth:
                 json.dump(data, f, indent=2)
 
             logger.info(f"Saved {len(self.tokens)} tokens to {filepath}")
-        except Exception as e:
-            logger.error(f"Failed to save tokens to {filepath}: {e}")
+        except Exception:
+            logger.exception("Failed to save tokens to %s", filepath)
             raise
 
     def add_token(
@@ -458,8 +458,8 @@ class HMACAuth:
                 self.secrets[client_id] = secret_hash
 
             logger.info(f"Loaded {len(self.secrets)} secrets from {filepath}")
-        except Exception as e:
-            logger.error(f"Failed to load secrets from {filepath}: {e}")
+        except Exception:
+            logger.exception("Failed to load secrets from %s", filepath)
             raise
 
     def _hash_secret(self, secret: str) -> str:
@@ -705,22 +705,22 @@ def generate_api_token(token_id: str, role: str = "readonly") -> tuple[str, str]
 
 
 __all__ = [
-    # New API
-    "DharaPermission",
-    "require_dhara_auth",
-    # Legacy utility functions
-    "_utcnow",
-    "_as_utc",
     # Legacy API (backward compatibility)
     "AuthContext",
-    "AuthResult",
-    "Role",
-    "Permission",
-    "TokenAuth",
-    "HMACAuth",
-    "EnvironmentAuth",
     "AuthMiddleware",
+    "AuthResult",
+    # New API
+    "DharaPermission",
+    "EnvironmentAuth",
+    "HMACAuth",
+    "Permission",
+    "Role",
+    "TokenAuth",
     "TokenInfo",
-    "generate_token",
+    "_as_utc",
+    # Legacy utility functions
+    "_utcnow",
     "generate_api_token",
+    "generate_token",
+    "require_dhara_auth",
 ]

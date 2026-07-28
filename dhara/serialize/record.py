@@ -160,7 +160,7 @@ def _resolve_class(class_name: str, allowed_modules: set[str] | None = None) -> 
     mod = importlib.import_module(module)
     klass = getattr(mod, classname)
     if not isinstance(klass, type):
-        raise ValueError(f"{class_name!r} is not a class")
+        raise TypeError(f"{class_name!r} is not a class")
     return klass
 
 
@@ -305,7 +305,7 @@ def persistent_load(connection: Any, cache_objects: Any, oid_class: tuple) -> An
     oid, klass = oid_class
     try:
         cache = cache_objects.get(oid)
-    except Exception:
+    except Exception:  # noqa: BLE001  # setattr cache fallback → None on AttributeError
         cache = None
     if cache is not None:
         return cache
@@ -331,14 +331,14 @@ def persistent_load(connection: Any, cache_objects: Any, oid_class: tuple) -> An
 
 __all__ = [
     "NEWLINE",
-    "pack_record",
-    "unpack_record",
-    "split_oids",
-    "extract_class_name",
-    "serialize_state",
-    "deserialize_state",
-    "_resolve_class",
     "ObjectReader",
     "ObjectWriter",
+    "_resolve_class",
+    "deserialize_state",
+    "extract_class_name",
+    "pack_record",
     "persistent_load",
+    "serialize_state",
+    "split_oids",
+    "unpack_record",
 ]

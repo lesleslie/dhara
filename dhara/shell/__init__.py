@@ -132,7 +132,7 @@ class DharaShell(AdminShell):
             import importlib.metadata as importlib_metadata
 
             return importlib_metadata.version("dhara")
-        except Exception:
+        except Exception:  # noqa: BLE001  # version probe fallback → "unknown"
             return "unknown"
 
     def _get_adapters_info(self) -> list[str]:
@@ -241,7 +241,7 @@ Type 'help()' for Python help or %help_shell for shell commands
         except ImportError:
             console.print("[red]✗ Oneiric adapter pusher not found[/red]")
             console.print("  Install oneiric to use this feature")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # shell push-adapters UI fallback
             console.print(f"[red]✗ Failed to push adapters: {e}[/red]")
 
     async def _show_storage_info(self) -> None:
@@ -307,7 +307,7 @@ Type 'help()' for Python help or %help_shell for shell commands
 
             console.print(table)
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # shell adapter-summary UI fallback
             console.print(f"[red]✗ Failed to get adapter summary: {e}[/red]")
 
     async def _emit_session_start(self) -> None:
@@ -334,7 +334,7 @@ Type 'help()' for Python help or %help_shell for shell commands
                 logger.debug(
                     "Session tracking unavailable (Session-Buddy MCP not reachable)"
                 )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # session-start tracking fallback
             logger.debug(f"Failed to emit session start: {e}")
 
     async def _emit_session_end(self) -> None:
@@ -350,7 +350,7 @@ Type 'help()' for Python help or %help_shell for shell commands
                 },
             )
             logger.info(f"Dhara shell session ended: {self._session_id}")
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # session-end tracking fallback
             logger.debug(f"Failed to emit session end: {e}")
         finally:
             self._session_id = None

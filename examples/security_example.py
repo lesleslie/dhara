@@ -66,8 +66,8 @@ def main():
                         f"   ✓ Wrong message verification {i}: {'Valid' if is_valid_wrong else 'Invalid'}"
                     )
 
-                except Exception as e:
-                    print(f"   ✗ Error with message {i}: {str(e)}")
+                except (OSError, ValueError) as e:
+                    print(f"   ✗ Error with message {i}: {e!s}")
 
             # Test different algorithms
             print("\n4. Testing different algorithms...")
@@ -81,8 +81,8 @@ def main():
                         message, signature, algorithm
                     )
                     print(f"   ✓ {algorithm}: {'Valid' if is_valid else 'Invalid'}")
-                except Exception as e:
-                    print(f"   ✗ {algorithm}: Error - {str(e)}")
+                except (OSError, ValueError) as e:
+                    print(f"   ✗ {algorithm}: Error - {e!s}")
 
             # Test key management
             print("\n5. Testing key management...")
@@ -90,15 +90,15 @@ def main():
                 # Create backup key
                 backup_key_id = security_config.create_backup_key()
                 print(f"   ✓ Created backup key: {backup_key_id}")
-            except Exception as e:
-                print(f"   ✗ Failed to create backup key: {str(e)}")
+            except (OSError, ValueError) as e:
+                print(f"   ✗ Failed to create backup key: {e!s}")
 
             try:
                 # Clean up expired keys
                 cleaned_count = security_config.cleanup_expired_keys()
                 print(f"   ✓ Cleaned up {cleaned_count} expired keys")
-            except Exception as e:
-                print(f"   ✗ Failed to cleanup keys: {str(e)}")
+            except (OSError, ValueError) as e:
+                print(f"   ✗ Failed to cleanup keys: {e!s}")
 
             # Show final status
             print("\n6. Final security status:")
@@ -113,8 +113,8 @@ def main():
                     print(f"   Expires: {signing_key['expires_at']}")
                     print(f"   Active: {signing_key['is_active']}")
 
-    except Exception as e:
-        print(f"✗ Error: {str(e)}")
+    except (OSError, ValueError) as e:
+        print(f"✗ Error: {e!s}")
         sys.exit(1)
 
     print("\n=== Example completed successfully! ===")

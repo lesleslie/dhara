@@ -152,7 +152,7 @@ def load_config(
 
     # Ensure we got a dictionary
     if not isinstance(data, dict):
-        raise ValueError(
+        raise TypeError(
             f"Configuration file must contain a dictionary, got {type(data).__name__}"
         )
 

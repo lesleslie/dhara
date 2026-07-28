@@ -8,8 +8,9 @@ without awaiting anything.
 
 from __future__ import annotations
 
+import types
 from collections.abc import AsyncIterator
-from typing import Any
+from typing import Any, Self
 
 from dhara.storage.base import OID
 from dhara.utils import int8_to_str
@@ -34,7 +35,6 @@ class AsyncMemoryStorage:
 
     async def init(self) -> None:
         """No-op for memory storage (nothing to initialize)."""
-        pass
 
     async def load(self, oid: OID) -> bytes:
         """Return the record for oid. Raises KeyError if missing."""
@@ -81,7 +81,6 @@ class AsyncMemoryStorage:
 
     async def pack(self) -> None:
         """No-op for memory storage (no packing needed)."""
-        pass
 
     async def health(self) -> bool:
         """Return True (memory storage is always healthy)."""
@@ -89,21 +88,24 @@ class AsyncMemoryStorage:
 
     async def cleanup(self) -> None:
         """No-op (nothing to clean up)."""
-        pass
 
     async def close(self) -> None:
         """No-op (nothing to close)."""
-        pass
 
     def get_packer(self) -> Any | None:
         """Return None (memory storage does not support incremental packing)."""
         return None
 
-    async def __aenter__(self) -> AsyncMemoryStorage:
+    async def __aenter__(self) -> Self:
         """Async context manager entry."""
         await self.init()
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
         """Async context manager exit."""
         await self.close()

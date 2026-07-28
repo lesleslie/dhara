@@ -79,8 +79,8 @@ def log_operation(operation: str, **context: Any) -> Iterator[None]:
     try:
         yield
         log.debug("Completed %s", operation)
-    except Exception as e:
-        log.exception("Failed %s: %s", operation, e)
+    except Exception:
+        log.exception("Failed %s", operation)
         raise
 
 
@@ -154,8 +154,8 @@ def log_operation_decorator(operation: str | None = None) -> Any:
                 result = func(*args, **kwargs)
                 log.debug("Completed %s", op_name)
                 return result
-            except Exception as e:
-                log.exception("Failed %s: %s", op_name, e)
+            except Exception:
+                log.exception("Failed %s", op_name)
                 raise
 
         return wrapper

@@ -9,7 +9,7 @@ from typing import Any, Protocol, runtime_checkable
 
 DEFAULT_MAX_SIZE = 100 * 1024 * 1024  # 100MB
 
-__all__ = ["Serializer", "SerializerProtocol", "DEFAULT_MAX_SIZE"]
+__all__ = ["DEFAULT_MAX_SIZE", "Serializer", "SerializerProtocol"]
 
 
 class Serializer(ABC):
@@ -31,7 +31,6 @@ class Serializer(ABC):
         Returns:
             Serialized bytes
         """
-        pass
 
     @abstractmethod
     def deserialize(self, data: bytes, max_size: int = DEFAULT_MAX_SIZE) -> Any:
@@ -47,7 +46,6 @@ class Serializer(ABC):
         Raises:
             ValueError: If data exceeds max_size
         """
-        pass
 
     @abstractmethod
     def get_state(self, obj: Any) -> dict:
@@ -59,7 +57,6 @@ class Serializer(ABC):
         Returns:
             Dictionary representing object state
         """
-        pass
 
 
 @runtime_checkable

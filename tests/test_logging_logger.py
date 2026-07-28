@@ -93,9 +93,9 @@ def test_log_operation_logs_success_and_failure(logger_mod, monkeypatch):
             raise ValueError("boom")
 
     func_logger.exception.assert_called_once()
-    assert func_logger.exception.call_args.args[0] == "Failed %s: %s"
+    assert func_logger.exception.call_args.args[0] == "Failed %s"
     assert func_logger.exception.call_args.args[1] == "load"
-    assert isinstance(func_logger.exception.call_args.args[2], ValueError)
+    assert len(func_logger.exception.call_args.args) == 2
 
 
 def test_log_operation_decorator_logs_success_and_failure(logger_mod, monkeypatch):
@@ -120,7 +120,9 @@ def test_log_operation_decorator_logs_success_and_failure(logger_mod, monkeypatc
         explode()
 
     func_logger.exception.assert_called_once()
-    assert func_logger.exception.call_args.args[0] == "Failed %s: %s"
+    assert func_logger.exception.call_args.args[0] == "Failed %s"
+    assert func_logger.exception.call_args.args[1] == "explode"
+    assert len(func_logger.exception.call_args.args) == 2
 
 
 def test_log_context_returns_bound_logger(logger_mod, monkeypatch):

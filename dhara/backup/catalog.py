@@ -14,9 +14,9 @@ This module provides:
 import json
 import logging
 from contextlib import suppress
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
 from dhara.collections.dict import PersistentDict
 from dhara.core.connection import AsyncConnection
@@ -74,14 +74,14 @@ class BackupCatalog:
                 }
                 await storage.close()
                 return result
-            except Exception:
+            except Exception:  # cleanup boundary; re-raises after closing storage
                 with suppress(Exception):
                     await storage.close()
                 raise
 
         try:
             return asyncio.run(_do_load())
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # outer fail-soft: log and return empty catalog
             logger.error(f"Failed to load catalog: {e}")
             return {}
 
@@ -148,7 +148,7 @@ class BackupCatalog:
                 last_err = e
                 # Lock not yet released — back off briefly and retry
                 time.sleep(0.005 * (2**attempt))
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001  # save boundary: any non-IO error is logged and swallowed
                 logger.error(f"Failed to save catalog: {e}")
                 return
         logger.error(f"Failed to save catalog after retries: {last_err}")
@@ -286,10 +286,15 @@ class BackupCatalog:
             by_type[btype] = by_type.get(btype, 0) + 1
 
         # Check retention compliance
-        current_time = datetime.now()
+        current_time = datetime.now(UTC)
         compliant_backups = 0
         for b in backups:
-            retention_date = b.timestamp + timedelta(days=b.retention_days)
+            ts = (
+                b.timestamp
+                if b.timestamp.tzinfo is not None
+                else b.timestamp.replace(tzinfo=UTC)
+            )
+            retention_date = ts + timedelta(days=b.retention_days)
             if current_time <= retention_date:
                 compliant_backups += 1
 
@@ -309,11 +314,16 @@ class BackupCatalog:
 
     def cleanup_expired_backups(self) -> int:
         """Remove expired backups from catalog and filesystem."""
-        current_time = datetime.now()
+        current_time = datetime.now(UTC)
         removed_count = 0
 
         for backup in self.get_all_backups():
-            retention_date = backup.timestamp + timedelta(days=backup.retention_days)
+            ts = (
+                backup.timestamp
+                if backup.timestamp.tzinfo is not None
+                else backup.timestamp.replace(tzinfo=UTC)
+            )
+            retention_date = ts + timedelta(days=backup.retention_days)
 
             if current_time > retention_date:
                 # Remove from filesystem
@@ -334,7 +344,7 @@ class BackupCatalog:
     def export_catalog(self, export_path: str) -> None:
         """Export catalog to JSON file."""
         export_data = {
-            "export_timestamp": datetime.now().isoformat(),
+            "export_timestamp": datetime.now(UTC).isoformat(),
             "backups": [b.to_dict() for b in self.get_all_backups()],
             "statistics": self.get_backup_statistics(),
         }
@@ -510,14 +520,14 @@ class AsyncBackupCatalog:
             self._connection = None
         # If _provided_connection was set, caller owns it
 
-    def __enter__(self) -> AsyncBackupCatalog:
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, *args: Any) -> None:
+    def __exit__(self, *args: object) -> None:
         self.close()
 
-    async def __aenter__(self) -> AsyncBackupCatalog:
+    async def __aenter__(self) -> Self:
         return self
 
-    async def __aexit__(self, *args: Any) -> None:
+    async def __aexit__(self, *args: object) -> None:
         self.close()

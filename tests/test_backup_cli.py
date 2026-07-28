@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, mock_open, patch
 
@@ -336,7 +336,7 @@ def test_cmd_restore_timestamp_branch(tmp_path):
         with patch("dhara.backup.cli.RestoreManager", return_value=restore_manager):
             assert cmd_restore(args) == 0
 
-    restore_manager.restore_point_in_time.assert_called_once_with(datetime(2024, 1, 1, 12, 30, 0))
+    restore_manager.restore_point_in_time.assert_called_once_with(datetime(2024, 1, 1, 12, 30, 0, tzinfo=UTC))
 
 
 def test_cmd_restore_backup_id_and_key_file(tmp_path):

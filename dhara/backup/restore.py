@@ -19,7 +19,7 @@ import tempfile
 from contextlib import suppress
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
 from dhara.core.connection import AsyncConnection
 from dhara.storage.async_file import AsyncFileStorage
@@ -157,7 +157,7 @@ class RestoreManager:
             storage = AsyncFileStorage(str(target))
             try:
                 await storage.init()
-            except Exception:
+            except Exception:  # noqa: BLE001  # not-a-Dhara-file probe: any init failure means caller validates
                 # Not a Dhara-format file — leave it alone, the
                 # caller's own validation will surface the underlying
                 # error.
@@ -181,7 +181,7 @@ class RestoreManager:
 
         try:
             asyncio.run(_do_rehydrate())
-        except Exception:
+        except Exception:  # noqa: BLE001  # defensive boundary: rehydrate failures never crash the surrounding restore
             # Defensive: never let the rehydrate pass crash the
             # surrounding restore; callers handle a partially-rehydrated
             # file via their own verification path.
@@ -367,7 +367,7 @@ class RestoreManager:
                         storage = AsyncFileStorage(str(self.target_path))
                         try:
                             await storage.init()
-                        except Exception:
+                        except Exception:  # noqa: BLE001  # file-not-Dhara probe: any init error leaves verification to caller
                             return
                         connection = await AsyncConnection.new(storage)
                         with suppress(Exception):
@@ -377,13 +377,13 @@ class RestoreManager:
 
                     asyncio.run(_do_verify())
                     return True
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001  # verify-open boundary: any storage error logs and reports failure
                     self.logger.error(f"Failed to open restored storage: {e}")
                     return False
 
             return True
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # outer verify boundary: any failure logs and reports failure
             self.logger.error(f"Restore verification failed: {e}")
             return False
 
@@ -606,23 +606,23 @@ class AsyncRestoreManager:
                     storage = AsyncFileStorage(str(self.target_path))
                     try:
                         await storage.init()
-                    except Exception:
+                    except Exception:  # noqa: BLE001  # not-Dhara probe: any init error means verification cannot proceed
                         return False
                     conn = await AsyncConnection.new(storage)
                     try:
                         await conn.get_root()
-                    except Exception:
+                    except Exception:  # noqa: BLE001  # root-read probe: any error means restored file is unreadable
                         with suppress(Exception):
                             await storage.close()
                         return False
                     with suppress(Exception):
                         await storage.close()
                     return True
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001  # verify-open boundary: any storage error logs and reports failure
                     self.logger.error(f"Failed to open restored storage: {e}")
                     return False
             return True
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # outer async-verify boundary: any failure logs and reports failure
             self.logger.error(f"Restore verification failed: {e}")
             return False
 
@@ -655,14 +655,14 @@ class AsyncRestoreManager:
             self._catalog.close()
             self._catalog = None
 
-    def __enter__(self) -> AsyncRestoreManager:
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, *args: Any) -> None:
+    def __exit__(self, *args: object) -> None:
         self.close()
 
-    async def __aenter__(self) -> AsyncRestoreManager:
+    async def __aenter__(self) -> Self:
         return self
 
-    async def __aexit__(self, *args: Any) -> None:
+    async def __aexit__(self, *args: object) -> None:
         self.close()

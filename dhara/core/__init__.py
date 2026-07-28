@@ -17,11 +17,11 @@ from dhara.core.connection import (
 from dhara.core.persistent import Persistent, PersistentBase
 
 __all__ = [
+    "ROOT_OID",
     "AsyncConnection",
     "Connection",
+    "ObjectDictionary",
     "Persistent",
     "PersistentBase",
-    "ROOT_OID",
-    "ObjectDictionary",
     "touch_every_reference",
 ]

@@ -17,7 +17,7 @@ import os
 import shutil
 import tempfile
 import time
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -226,7 +226,7 @@ class BackupManager:
         return BackupMetadata(
             backup_id=backup_id,
             backup_type=backup_type,
-            timestamp=datetime.now(),
+            timestamp=datetime.now(UTC),
             source_path=source_path,
             size_bytes=size_bytes,
             checksum=checksum,
@@ -454,7 +454,7 @@ class BackupManager:
             )
             return True
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # cloud-upload boundary: any provider-specific error logs and returns False
             self.logger.error(f"Failed to upload backup: {e}")
             return False
 
@@ -464,12 +464,17 @@ class BackupManager:
 
         catalog = BackupCatalog(self.backup_dir)
 
-        current_time = datetime.now()
+        current_time = datetime.now(UTC)
         removed_count = 0
 
         for backup in catalog.get_all_backups():
             # Check if backup should be retained
-            retention_date = backup.timestamp + timedelta(days=backup.retention_days)
+            ts = (
+                backup.timestamp
+                if backup.timestamp.tzinfo is not None
+                else backup.timestamp.replace(tzinfo=UTC)
+            )
+            retention_date = ts + timedelta(days=backup.retention_days)
 
             if current_time > retention_date:
                 # Remove backup file

@@ -177,7 +177,7 @@ class Connection(ConnectionBase):
             invalid_oids = self.storage.sync()
             self._handle_invalidations(invalid_oids, read_oid=oid)
             record = self.storage.load(oid)
-        oid2, data, refdata = unpack_record(record)
+        oid2, data, _refdata = unpack_record(record)
         assert as_bytes(oid) == oid2, (oid, oid2)
         return data
 
@@ -225,7 +225,7 @@ class Connection(ConnectionBase):
             if obj is not None and not obj._p_is_ghost():
                 yield obj
             else:
-                record_oid, data, refdata = unpack_record(record)
+                _record_oid, data, _refdata = unpack_record(record)
                 if obj is None:
                     class_name, _ = deserialize_state(data)
                     klass = _resolve_class(class_name, self._allowed_modules)
@@ -548,12 +548,9 @@ class AsyncConnection(ConnectionBase):
     async def get_stored_pickle(self, oid):
         """Retrieve pickle from storage. Raises KeyError if oid not found."""
         assert oid not in self.invalid_oids, "still conflicted: missing abort()"
-        try:
-            record = await self.storage.load(oid)
-        except KeyError:
-            # OID not found in storage — let caller handle it
-            raise
-        oid2, data, refdata = unpack_record(record)
+        # Letting KeyError propagate naturally if the oid is missing in storage.
+        record = await self.storage.load(oid)
+        oid2, data, _refdata = unpack_record(record)
         assert as_bytes(oid) == oid2, (oid, oid2)
         return data
 
@@ -598,7 +595,7 @@ class AsyncConnection(ConnectionBase):
             if obj is not None and not obj._p_is_ghost():
                 yield obj
             else:
-                record_oid, data, refdata = unpack_record(record)
+                _record_oid, data, _refdata = unpack_record(record)
                 if obj is None:
                     class_name, _ = deserialize_state(data)
                     klass = _resolve_class(class_name, self._allowed_modules)
@@ -800,8 +797,13 @@ class ObjectDictionary:
     def __init__(self):
         self.mapping = {}
         self.dead = set()
+        # Compute the per-instance selfref once and let the callback close
+        # over it. Storing the weakref in a closure cell keeps the cycle
+        # (callback -> weakref -> instance) breakable because the weakref
+        # itself does not contribute to the instance's refcount.
+        selfref = ref(self)
 
-        def callback(keyed_ref, selfref=ref(self)):
+        def callback(keyed_ref):
             self = selfref()
             if self is not None:
                 self.dead.add(keyed_ref.key)
@@ -990,7 +992,7 @@ def touch_every_reference(connection, *words):
     reader = ObjectReader(connection, allowed_modules=connection._allowed_modules)
     words = [as_bytes(w) for w in words]
     for oid, record in connection.get_storage().gen_oid_record():
-        record_oid, data, refs = unpack_record(record)
+        _record_oid, data, _refs = unpack_record(record)
         state = reader.get_state_pickle(data)
         for word in words:
             if word in data or word in state:
@@ -1002,7 +1004,7 @@ def gen_every_instance(connection, *classes):
     Generate all PersistentObject instances that are instances of any of the
     given classes."""
     for oid, record in connection.get_storage().gen_oid_record():
-        record_oid, state, refs = unpack_record(record)
+        _record_oid, state, _refs = unpack_record(record)
         class_name, _ = deserialize_state(state)
         record_class = _resolve_class(class_name, connection._allowed_modules)
         if issubclass(record_class, classes):

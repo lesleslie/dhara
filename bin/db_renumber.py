@@ -14,14 +14,14 @@ from tempfile import TemporaryFile
 from dhara.core.connection import AsyncConnection
 from dhara.storage.sqlite import AsyncSqliteStorage
 
-if sys.version < "3":
+if sys.version_info < (3, 0):
     from cPickle import dump, load
 else:
     from pickle import dump, load
 
 
 def usage():
-    print("%s <old-file-storage> <new-file-storage>" % sys.argv[0])
+    print(f"{sys.argv[0]} <old-file-storage> <new-file-storage>")
     print(__doc__)
     raise SystemExit
 
@@ -35,7 +35,9 @@ async def main(old_file, new_file):
     old_storage = AsyncSqliteStorage(old_file)
     await old_storage.init()
     connection = await AsyncConnection.new(old_storage)
-    tmpfile = TemporaryFile()
+    # Long-lived handle: tmpfile is seeked and read again after the
+    # pickle round-trip; `with` would close it before the second use.
+    tmpfile = TemporaryFile()  # noqa: SIM115
     print("pickling from " + old_file)
     dump((await connection.get_root()).__getstate__(), tmpfile, 2)
     await connection.pack()

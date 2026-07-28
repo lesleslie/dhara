@@ -33,20 +33,20 @@ _STORAGE_EXPORTS = {
 }
 
 __all__ = [
-    "BackupManager",
-    "RestoreManager",
-    "BackupCatalog",
-    "BackupScheduler",
-    "StorageAdapter",
-    "S3Storage",
-    "S3StorageAdapter",
-    "GCSStorage",
-    "GCSStorageAdapter",
     "AzureBlobStorage",
     "AzureBlobStorageAdapter",
-    "LocalStorageAdapter",
-    "StorageAdapterFactory",
+    "BackupCatalog",
+    "BackupManager",
+    "BackupScheduler",
     "BackupVerification",
+    "GCSStorage",
+    "GCSStorageAdapter",
+    "LocalStorageAdapter",
+    "RestoreManager",
+    "S3Storage",
+    "S3StorageAdapter",
+    "StorageAdapter",
+    "StorageAdapterFactory",
 ]
 
 

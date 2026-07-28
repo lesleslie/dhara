@@ -30,7 +30,7 @@ def _parse_iso(ts: str) -> datetime | None:
         if dt.tzinfo is None:
             return dt.replace(tzinfo=UTC)
         return dt.astimezone(UTC)
-    except Exception:
+    except Exception:  # noqa: BLE001  # deliberate None coercion for bad input
         return None
 
 

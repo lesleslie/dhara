@@ -40,15 +40,15 @@ from dhara.modes.lite import LiteMode
 from dhara.modes.standard import StandardMode
 
 __all__ = [
+    # Mode implementations
+    "LiteMode",
+    "ModeConfigurationError",
+    "ModeValidationError",
     # Base classes and functions
     "OperationalMode",
     "OperationalModeError",
-    "ModeValidationError",
-    "ModeConfigurationError",
+    "StandardMode",
     "create_mode",
     "get_mode",
     "list_modes",
-    # Mode implementations
-    "LiteMode",
-    "StandardMode",
 ]

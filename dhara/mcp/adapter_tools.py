@@ -11,7 +11,7 @@ as persistent Python objects in Dhara with version history and health monitoring
 
 import importlib
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from dhara.collections.dict import PersistentDict
@@ -84,8 +84,8 @@ class Adapter(Persistent):
 
         # Version history for rollback support
         self.version_history: list[dict[str, Any]] = []
-        self.created_at: datetime = datetime.now()
-        self.updated_at: datetime = datetime.now()
+        self.created_at: datetime = datetime.now(UTC)
+        self.updated_at: datetime = datetime.now(UTC)
 
         # Health monitoring
         self.health_status: str = "unknown"  # healthy, unhealthy, unknown
@@ -98,7 +98,7 @@ class Adapter(Persistent):
         key: str,
         provider: str,
         **kwargs: Any,
-    ) -> Adapter:  # noqa: UP037
+    ) -> Adapter:
         """Build an Adapter whose ``env`` is sourced from ``MAHAVISHNU_ENV``.
 
         If ``env`` is passed in ``kwargs`` it wins; otherwise we read
@@ -108,7 +108,7 @@ class Adapter(Persistent):
             kwargs["env"] = os.environ.get("MAHAVISHNU_ENV")
         return cls(domain=domain, key=key, provider=provider, **kwargs)
 
-    def with_env(self, value: str | None) -> Adapter:  # noqa: UP037
+    def with_env(self, value: str | None) -> Adapter:
         """Return a new Adapter with ``env`` overridden (immutable copy).
 
         The receiver is not mutated; callers can chain this in pipelines
@@ -165,7 +165,7 @@ class Adapter(Persistent):
             if hasattr(self, key):
                 setattr(self, key, value)
 
-        self.updated_at = datetime.now()
+        self.updated_at = datetime.now(UTC)
 
     def rollback_to_version(self, version: str) -> bool:
         """Rollback adapter to previous version.
@@ -183,7 +183,7 @@ class Adapter(Persistent):
                 self.config = entry["state"]["config"]
                 self.capabilities = entry["state"]["capabilities"]
                 self.dependencies = entry["state"]["dependencies"]
-                self.updated_at = datetime.now()
+                self.updated_at = datetime.now(UTC)
                 return True
 
         return False
@@ -240,7 +240,7 @@ class AdapterRegistry:
             # Try to access storage to check if it's readonly
             storage = self.connection.storage
             is_readonly = hasattr(storage, "shelf") and storage.shelf.file.is_readonly()
-        except Exception:
+        except AttributeError:
             is_readonly = False
 
         if not is_readonly:
@@ -352,7 +352,7 @@ class AdapterRegistry:
         # Find all providers for this key
         matches = [
             adapters[aid].to_dict()
-            for aid in adapters.keys()
+            for aid in adapters
             if aid.startswith(f"{domain}:{key}:")
         ]
 
@@ -500,7 +500,7 @@ class AdapterRegistry:
             errors.append(f"Factory path not importable: {e}")
         except AttributeError as e:
             errors.append(f"Factory class not found: {e}")
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             errors.append(f"Factory validation error: {e}")
 
         # Validate dependencies
@@ -555,7 +555,7 @@ class AdapterRegistry:
         adapter = adapters[adapter_id]
 
         # Update last health check timestamp
-        adapter.last_health_check = datetime.now()
+        adapter.last_health_check = datetime.now(UTC)
 
         # Perform actual health check (try to import factory)
         try:
@@ -567,7 +567,7 @@ class AdapterRegistry:
 
             # Store health check result
             health_checks[adapter_id] = {
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "status": "healthy",
             }
 
@@ -579,12 +579,12 @@ class AdapterRegistry:
                 "status": adapter.health_status,
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # adapter health-check boundary: any failure records an unhealthy status with the error string
             adapter.health_status = "unhealthy"
 
             # Store failed health check
             health_checks[adapter_id] = {
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "status": "unhealthy",
                 "error": str(e),
             }
@@ -646,7 +646,7 @@ async def store_adapter_impl(
         }
 
     except Exception as e:
-        logger.exception(f"Error storing adapter: {e}")
+        logger.exception("Error storing adapter")
         return {
             "success": False,
             "error": str(e),
@@ -681,7 +681,7 @@ async def get_adapter_impl(
         }
 
     except Exception as e:
-        logger.exception(f"Error getting adapter: {e}")
+        logger.exception("Error getting adapter")
         return {
             "success": False,
             "error": str(e),
@@ -711,7 +711,7 @@ async def list_adapters_impl(
         }
 
     except Exception as e:
-        logger.exception(f"Error listing adapters: {e}")
+        logger.exception("Error listing adapters")
         return {
             "success": False,
             "error": str(e),
@@ -740,7 +740,7 @@ async def list_adapter_versions_impl(
         }
 
     except Exception as e:
-        logger.exception(f"Error listing versions: {e}")
+        logger.exception("Error listing versions")
         return {
             "success": False,
             "error": str(e),
@@ -770,7 +770,7 @@ async def validate_adapter_impl(
         }
 
     except Exception as e:
-        logger.exception(f"Error validating adapter: {e}")
+        logger.exception("Error validating adapter")
         return {
             "success": False,
             "error": str(e),
@@ -797,7 +797,7 @@ async def get_adapter_health_impl(
         }
 
     except Exception as e:
-        logger.exception(f"Error checking health: {e}")
+        logger.exception("Error checking health")
         return {
             "success": False,
             "error": str(e),
@@ -822,7 +822,7 @@ class AsyncAdapterRegistry:
             is_readonly = (
                 hasattr(storage, "shelf") and storage.shelf.file.is_readonly()  # type: ignore[union-attr]
             )
-        except Exception:
+        except AttributeError:
             is_readonly = False
 
         if not is_readonly:
@@ -910,7 +910,7 @@ class AsyncAdapterRegistry:
 
         matches = [
             adapters[aid].to_dict()
-            for aid in adapters.keys()
+            for aid in adapters
             if aid.startswith(f"{domain}:{key}:")
         ]
 
@@ -1013,7 +1013,7 @@ class AsyncAdapterRegistry:
             errors.append(f"Factory path not importable: {e}")
         except AttributeError as e:
             errors.append(f"Factory class not found: {e}")
-        except Exception as e:
+        except (OSError, TypeError, ValueError) as e:
             errors.append(f"Factory validation error: {e}")
 
         for dep in adapter["dependencies"]:
@@ -1055,14 +1055,14 @@ class AsyncAdapterRegistry:
             }
 
         adapter = adapters[adapter_id]
-        adapter.last_health_check = datetime.now()
+        adapter.last_health_check = datetime.now(UTC)
 
         try:
             _import_factory(adapter.factory_path)
             adapter.health_status = "healthy"
 
             health_checks[adapter_id] = {
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "status": "healthy",
             }
 
@@ -1074,11 +1074,11 @@ class AsyncAdapterRegistry:
                 "status": adapter.health_status,
             }
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # async adapter health-check boundary: any failure records an unhealthy status with the error string
             adapter.health_status = "unhealthy"
 
             health_checks[adapter_id] = {
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "status": "unhealthy",
                 "error": str(e),
             }
@@ -1136,7 +1136,7 @@ async def store_adapter_async_impl(
         }
 
     except Exception as e:
-        logger.exception(f"Error storing adapter: {e}")
+        logger.exception("Error storing adapter")
         return {
             "success": False,
             "error": str(e),
@@ -1171,7 +1171,7 @@ async def get_adapter_async_impl(
         }
 
     except Exception as e:
-        logger.exception(f"Error getting adapter: {e}")
+        logger.exception("Error getting adapter")
         return {
             "success": False,
             "error": str(e),
@@ -1201,7 +1201,7 @@ async def list_adapters_async_impl(
         }
 
     except Exception as e:
-        logger.exception(f"Error listing adapters: {e}")
+        logger.exception("Error listing adapters")
         return {
             "success": False,
             "error": str(e),
@@ -1230,7 +1230,7 @@ async def list_adapter_versions_async_impl(
         }
 
     except Exception as e:
-        logger.exception(f"Error listing versions: {e}")
+        logger.exception("Error listing versions")
         return {
             "success": False,
             "error": str(e),
@@ -1260,7 +1260,7 @@ async def validate_adapter_async_impl(
         }
 
     except Exception as e:
-        logger.exception(f"Error validating adapter: {e}")
+        logger.exception("Error validating adapter")
         return {
             "success": False,
             "error": str(e),
@@ -1287,7 +1287,7 @@ async def get_adapter_health_async_impl(
         }
 
     except Exception as e:
-        logger.exception(f"Error checking health: {e}")
+        logger.exception("Error checking health")
         return {
             "success": False,
             "error": str(e),

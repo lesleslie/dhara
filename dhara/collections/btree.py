@@ -12,7 +12,7 @@ class _Comparable(Protocol):
     def __gt__(self, other: Any) -> bool: ...
     def __le__(self, other: Any) -> bool: ...
     def __ge__(self, other: Any) -> bool: ...
-    def __eq__(self, other: Any) -> bool: ...
+    def __eq__(self, other: object) -> bool: ...
 
 
 K = TypeVar("K", bound=_Comparable)
@@ -22,25 +22,17 @@ V = TypeVar("V")
 class BTreeError(Exception):
     """Base exception for BTree operations."""
 
-    pass
-
 
 class KeyNotFoundError(BTreeError):
     """Raised when delete/update targets a non-existent key."""
-
-    pass
 
 
 class DuplicateKeyError(BTreeError):
     """Raised when insert finds existing key (if strict mode)."""
 
-    pass
-
 
 class TreeCorruptedError(BTreeError):
     """Raised when B-Tree invariant is violated."""
-
-    pass
 
 
 class _NullCount:
@@ -688,15 +680,14 @@ class BTree[K, V]:
             self._root = new_root
             self.root = new_root
             self._insert_nonfull(self._root, key, value)
-            if existing is MISSING:
-                # The new key increased the count by 1.
-                if not isinstance(new_root._count, _NullCount):
-                    new_root._change_count(1)
+            # The new key increased the count by 1 (only when the new
+            # root actually tracks counts).
+            if existing is MISSING and not isinstance(new_root._count, _NullCount):
+                new_root._change_count(1)
         else:
             self._insert_nonfull(root, key, value)
-            if existing is MISSING:
-                if not isinstance(root._count, _NullCount):
-                    self.root._change_count(1)
+            if existing is MISSING and not isinstance(root._count, _NullCount):
+                self.root._change_count(1)
 
     def set(self, key: K, value: V) -> None:
         """Insert or update key-value pair. Delegates to _set_impl."""
@@ -1143,8 +1134,7 @@ class BTree[K, V]:
 
     def __iter__(self) -> Iterator[K]:
         """Iterate keys in sorted (ascending) order."""
-        for k, _v in self.items():
-            yield k
+        yield from self.keys()
 
     def __reversed__(self) -> Iterator[K]:
         """Iterate keys in descending order."""

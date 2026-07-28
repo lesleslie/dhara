@@ -51,7 +51,7 @@ class MetricsHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json")
                 self.end_headers()
                 self.wfile.write(json.dumps(metrics).encode("utf-8"))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # HTTP serve handler
             self.send_error(500, f"Failed to generate metrics: {e}")
 
     def _serve_health(self):
@@ -65,7 +65,7 @@ class MetricsHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps(health).encode("utf-8"))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # HTTP serve handler
             self.send_error(500, f"Failed to generate health status: {e}")
 
     def _serve_ready(self):
@@ -85,12 +85,11 @@ class MetricsHandler(BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps(health).encode("utf-8"))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # HTTP serve handler
             self.send_error(500, f"Failed to check readiness: {e}")
 
     def log_message(self, format: str, *args):
         """Log an arbitrary message (disabled by default)."""
-        pass
 
 
 def find_available_port(start_port: int = 9090, max_port: int = 9999) -> int:

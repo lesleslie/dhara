@@ -82,7 +82,7 @@ def _probe_storage_runtime(settings: DharaSettings) -> dict[str, object]:
 
     try:
         return asyncio.run(_probe())
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001  # CLI storage-probe boundary: any failure maps to a typed error dict
         return {
             "storage_exists": storage_path.exists(),
             "storage_readable": False,
@@ -146,7 +146,7 @@ def _probe_backup_runtime(settings: DharaSettings) -> dict[str, object]:
             "latest_backup_id": latest_backup_id,
             "latest_backup_at": latest_backup_at,
         }
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001  # CLI backup-probe boundary: any failure maps to a typed error dict
         return {
             "backup_configured": True,
             "backup_directory": str(backup_dir),
@@ -174,7 +174,7 @@ def start_handler() -> None:
     # Load settings with error handling
     try:
         settings = DharaSettings.load("dhara")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001  # CLI config-load boundary: any failure prints and exits with status 1
         typer.echo(f"Error loading configuration: {e}", err=True)
         raise typer.Exit(1)
 

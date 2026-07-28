@@ -13,9 +13,9 @@ from dhara.collections.list import PersistentList
 from dhara.collections.set import PersistentSet
 
 __all__ = [
+    "BNode",
+    "BTree",
     "PersistentDict",
     "PersistentList",
     "PersistentSet",
-    "BTree",
-    "BNode",
 ]

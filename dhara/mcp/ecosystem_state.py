@@ -56,11 +56,7 @@ def _prune_events(events: PersistentList, retention: EventRetention) -> None:
         event = _normalize_event_record(dict(item))
         ts = event.get("timestamp")
         try:
-            event_dt = (
-                datetime.fromisoformat(ts.replace("Z", "+00:00"))
-                if isinstance(ts, str)
-                else None
-            )
+            event_dt = datetime.fromisoformat(ts) if isinstance(ts, str) else None
         except ValueError:
             event_dt = None
         if event_dt is not None and event_dt.tzinfo is None:
@@ -212,11 +208,7 @@ class AsyncEcosystemStateStore:
             event = _normalize_event_record(dict(item))
             ts = event.get("timestamp")
             try:
-                event_dt = (
-                    datetime.fromisoformat(ts.replace("Z", "+00:00"))
-                    if isinstance(ts, str)
-                    else None
-                )
+                event_dt = datetime.fromisoformat(ts) if isinstance(ts, str) else None
             except ValueError:
                 event_dt = None
             if event_dt is not None and event_dt.tzinfo is None:

@@ -22,7 +22,7 @@ import threading
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from time import sleep
 from typing import Any
@@ -71,7 +71,7 @@ def _get_cpu_count() -> int:
     """Get CPU count with fallback."""
     try:
         return os.cpu_count() or 4
-    except Exception:
+    except Exception:  # noqa: BLE001  # CPU count utility fallback → sentinel
         return 4
 
 
@@ -229,11 +229,18 @@ class UnixDomainSocketAddress(UnixAbstractAddress):
         return result
 
     def _cleanup_existing_socket(self, s: socket.socket, filename: str) -> None:
-        """Handle EADDRINUSE cleanup for socket binding."""
+        """Handle EADDRINUSE cleanup for socket binding.
+
+        Raises OSError(EADDRINUSE) again if a live peer actually holds the
+        socket (so the caller's bind retry surfaces a real conflict);
+        otherwise unlinks the stale socket file and re-binds.
+        """
         connected = self.get_connected_socket()
         if connected:
             connected.close()
-            raise
+            # Surface the persistent EADDRINUSE explicitly; bare `raise`
+            # cannot re-raise across a function call boundary.
+            raise OSError(errno.EADDRINUSE, "address already in use")
         Path(filename).unlink()
         s.bind(self.filename)
 
@@ -292,7 +299,7 @@ class InheritedSocket(SocketAddress):
             path_bytes = name.replace(b"\0", b"@")
             try:
                 path = path_bytes.decode(sys.getfilesystemencoding())
-            except Exception:
+            except Exception:  # noqa: BLE001  # path-bytes decode fallback → sentinel
                 path = path_bytes.decode("utf-8", errors="replace")
             return path
         elif isinstance(name, str):
@@ -383,17 +390,16 @@ class StorageServer:
         self.tls_enabled = tls_enabled and tls_config is not None
 
         # Validate TLS configuration for server
-        if self.tls_enabled:
-            if (
-                not self.tls_config
-                or not self.tls_config.certfile
-                or not self.tls_config.keyfile
-            ):
-                raise ValueError(
-                    "Server TLS requires both certfile and keyfile in tls_config. "
-                    "Set DHARA_TLS_CERTFILE and DHARA_TLS_KEYFILE environment variables, "
-                    "or provide a TLSConfig with certfile and keyfile."
-                )
+        if self.tls_enabled and (
+            not self.tls_config
+            or not self.tls_config.certfile
+            or not self.tls_config.keyfile
+        ):
+            raise ValueError(
+                "Server TLS requires both certfile and keyfile in tls_config. "
+                "Set DHARA_TLS_CERTFILE and DHARA_TLS_KEYFILE environment variables, "
+                "or provide a TLSConfig with certfile and keyfile."
+            )
 
     def serve(self) -> None:
         sock = get_systemd_socket()
@@ -409,7 +415,7 @@ class StorageServer:
                     timeout = 0.0
                 else:
                     timeout = None
-                r, w, e = select.select(self.sockets, [], [], timeout)
+                r, _w, e = select.select(self.sockets, [], [], timeout)
                 for s in r:
                     if s is sock:
                         # new connection
@@ -419,7 +425,7 @@ class StorageServer:
                         if self.tls_enabled and self.tls_config:
                             try:
                                 conn = wrap_server_socket(conn, self.tls_config)
-                            except Exception as e:
+                            except Exception as e:  # noqa: BLE001  # TLS handshake health fallback
                                 log(20, "TLS handshake failed for %s: %s", addr, e)
                                 conn.close()
                                 continue
@@ -439,14 +445,14 @@ class StorageServer:
                 if self.packer is None and 0 < self.gcbytes <= self.bytes_since_pack:
                     self.packer = self.storage.get_packer()
                     if self.packer is not None:
-                        log(20, f"gc started at {datetime.now()}")
+                        log(20, f"gc started at {datetime.now(UTC)}")
                 if not r and self.packer is not None:
                     try:
                         pack_step = next(self.packer)
                         if isinstance(pack_step, str):
                             log(15, "gc " + pack_step)
                     except StopIteration:
-                        log(20, f"gc at {datetime.now()}")
+                        log(20, f"gc at {datetime.now(UTC)}")
                         self.packer = None  # done packing
                         self.bytes_since_pack = 0  # reset
         finally:
@@ -479,7 +485,7 @@ class StorageServer:
             while self._running:
                 # Use select with timeout to allow checking _running flag
                 try:
-                    r, w, e = select.select([sock], [], [], 1.0)
+                    r, _w, e = select.select([sock], [], [], 1.0)
                 except (OSError, ValueError):
                     continue
 
@@ -495,7 +501,7 @@ class StorageServer:
                         if self.tls_enabled and self.tls_config:
                             try:
                                 conn = wrap_server_socket(conn, self.tls_config)
-                            except Exception as e:
+                            except Exception as e:  # noqa: BLE001  # TLS handshake health fallback
                                 log(20, "TLS handshake failed for %s: %s", addr, e)
                                 conn.close()
                                 continue
@@ -682,9 +688,10 @@ class StorageServer:
         assert i == len(tdata)
         oid_set = set(oids)
         for other_client in self.clients:
-            if other_client is not client:
-                if oid_set.intersection(other_client.unused_oids):
-                    raise ClientError(f"invalid oid: {oid!r}")
+            if other_client is not client and oid_set.intersection(
+                other_client.unused_oids
+            ):
+                raise ClientError(f"invalid oid: {oid!r}")
         try:
             self.storage.end(handle_invalidations=self._handle_invalidations)
         except ConflictError:
@@ -697,7 +704,7 @@ class StorageServer:
                 "Committed %3s objects %s bytes at %s",
                 len(oids),
                 len(tdata),
-                datetime.now(),
+                datetime.now(UTC),
             )
             write(s, STATUS_OKAY)
             client.unused_oids -= oid_set
@@ -737,13 +744,13 @@ class StorageServer:
     def handle_P(self, s: socket.socket) -> None:
         # pack
         if self.packer is None:
-            log(20, f"Pack started at {datetime.now()}")
+            log(20, f"Pack started at {datetime.now(UTC)}")
             self.packer = self.storage.get_packer()
             if self.packer is None:
                 self.storage.pack()
-                log(20, f"Pack completed at {datetime.now()}")
+                log(20, f"Pack completed at {datetime.now(UTC)}")
         else:
-            log(20, f"Pack already in progress at {datetime.now()}")
+            log(20, f"Pack already in progress at {datetime.now(UTC)}")
         write(s, STATUS_OKAY)
 
     def handle_B(self, s: socket.socket) -> None:

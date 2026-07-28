@@ -20,8 +20,9 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
+import pydantic
 from oneiric.core.logging import get_logger
 
 from dhara.core.config import DharaSettings, StorageConfig
@@ -75,7 +76,7 @@ class StandardMode(OperationalMode):
     DEFAULT_PORT = 8683
 
     # Supported storage backends
-    SUPPORTED_BACKENDS = ["file", "sqlite", "s3", "gcs", "azure"]
+    SUPPORTED_BACKENDS: ClassVar[list[str]] = ["file", "sqlite", "s3", "gcs", "azure"]
 
     def get_name(self) -> str:
         """Return mode name."""
@@ -114,7 +115,7 @@ class StandardMode(OperationalMode):
         if self.settings is None:
             try:
                 self.settings = DharaSettings.load("dhara")
-            except Exception as e:
+            except (FileNotFoundError, pydantic.ValidationError, OSError) as e:
                 logger.warning(f"Could not load settings for validation: {e}")
                 # Don't fail validation, will use defaults
                 self.settings = DharaSettings()
@@ -368,7 +369,7 @@ class StandardMode(OperationalMode):
             result = sock.connect_ex((host, port))
             sock.close()
             return result != 0
-        except Exception:
+        except OSError:
             return True
 
     # Storage configuration helpers

@@ -5,6 +5,24 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.2] - 2026-07-28
+
+### Fixed
+
+- Add pid_path method to DharaSettings
+
+### Documentation
+
+- readme: Add Bodai Ecosystem Role section
+
+### Internal
+
+- Bump oneiric dep to >=0.16.0
+- deps: Bump crackerjack>=0.70.0; remove duplicated validator script
+- deps: Remove duplicated validate_document_frontmatter.py script
+- dhara: Remove orphaned _compat module
+- Normalize LICENSE attribution to Robert Leslie and Wedgwood Web Works
+
 ## [0.13.0] - 2026-07-21
 
 ### Added

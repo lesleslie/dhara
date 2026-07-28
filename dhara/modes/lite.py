@@ -234,5 +234,5 @@ class LiteMode(OperationalMode):
             result = sock.connect_ex((host, port))
             sock.close()
             return result != 0  # Connection failed = port available
-        except Exception:
+        except OSError:
             return True  # Assume available if check fails

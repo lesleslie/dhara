@@ -13,10 +13,11 @@ import asyncio
 import collections
 import sqlite3
 import struct
+import types
 from collections.abc import AsyncIterator, Iterator
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Self, cast
 
 import aiosqlite
 
@@ -156,7 +157,7 @@ class SqliteStorage(Storage):
     def end(self, handle_invalidations=None) -> None:
         self._store_records(self.pending_records)
         if is_logging(20):
-            log(20, f"Transaction at [{datetime.now()}]")
+            log(20, f"Transaction at [{datetime.now(UTC)}]")
         self.begin()
 
     def sync(self) -> list[OID]:
@@ -200,7 +201,7 @@ class SqliteStorage(Storage):
                     continue
                 seen.add(oid)
                 record = self.load(oid)  # ty: ignore[invalid-argument-type]
-                record_oid, data, refdata = unpack_record(record)
+                record_oid, _data, refdata = unpack_record(record)
                 assert oid == record_oid
                 todo.extend(split_oids(refdata))
                 yield oid, record  # ty: ignore[invalid-yield]  # oid is bytes form (preserves runtime semantics; matches base.py pattern)
@@ -247,7 +248,7 @@ class SqliteStorage(Storage):
         alive = set()  # will contain OIDs of all reachable from root
 
         def packer() -> Iterator[str | None]:
-            yield f"started {datetime.now()}"
+            yield f"started {datetime.now(UTC)}"
             n = 0
             # find all reachable objects.  Note that when we yield, new
             # commits may happen and pack_extra will contain new or modified
@@ -281,7 +282,7 @@ class SqliteStorage(Storage):
             yield None
             self._delete(dead)
             yield "finished %s, %d live objects, %d removed" % (  # noqa: UP031
-                datetime.now(),
+                datetime.now(UTC),
                 len(alive),
                 len(dead),
             )
@@ -550,7 +551,6 @@ class AsyncSqliteStorage:
     async def pack(self) -> None:
         """Pack storage, removing obsolete records."""
         # Placeholder for incremental packer
-        pass
 
     async def health(self) -> bool:
         """Return True if storage is healthy."""
@@ -560,7 +560,7 @@ class AsyncSqliteStorage:
             async with self._conn.execute("SELECT 1") as cursor:
                 await cursor.fetchone()
             return True
-        except Exception:
+        except sqlite3.Error:
             return False
 
     async def cleanup(self) -> None:
@@ -577,11 +577,16 @@ class AsyncSqliteStorage:
         """Return incremental packer generator, or None."""
         return None  # Placeholder for incremental packer
 
-    async def __aenter__(self) -> AsyncSqliteStorage:
+    async def __aenter__(self) -> Self:
         """Async context manager entry."""
         await self.init()
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
         """Async context manager exit."""
         await self.close()

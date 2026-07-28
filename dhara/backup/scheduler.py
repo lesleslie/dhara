@@ -12,9 +12,9 @@ This module provides:
 import asyncio
 import logging
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Self
 
 import schedule
 
@@ -72,7 +72,7 @@ class BackupJob:
         else:
             logger.error(f"Invalid schedule spec: {self.schedule_spec}")
 
-    def run(self) -> dict[str, Any]:  # noqa: C901
+    def run(self) -> dict[str, Any]:
         """Run the backup job."""
         if not self.enabled or not self.backup_manager:
             return {"status": "skipped", "reason": "job disabled or no backup manager"}
@@ -100,7 +100,7 @@ class BackupJob:
                 raise ValueError(f"Unknown backup type: {self.backup_type}")
 
             # Update job status
-            self.last_run = datetime.now()
+            self.last_run = datetime.now(UTC)
             self.last_run_result = "success"
             self.run_count += 1
 
@@ -127,8 +127,8 @@ class BackupJob:
                 "run_count": self.run_count,
             }
 
-        except Exception as e:
-            self.last_run = datetime.now()
+        except Exception as e:  # noqa: BLE001  # job-run boundary: any failure updates run state and invokes the failure callback
+            self.last_run = datetime.now(UTC)
             self.last_run_result = "failed"
             logger.error(f"Backup job {self.name} failed: {e}")
 
@@ -276,7 +276,7 @@ class BackupScheduler:
                 # Sleep for a short interval
                 await asyncio.sleep(60)  # Check every minute
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001  # scheduler daemon loop boundary: any error logs and continues
                 logger.error(f"Scheduler loop error: {e}")
                 await asyncio.sleep(60)
 
@@ -285,7 +285,7 @@ class BackupScheduler:
         while self.running:
             try:
                 # Check if it's time for verification
-                now = datetime.now()
+                now = datetime.now(UTC)
                 if (
                     self.last_verification is None
                     or (now - self.last_verification).seconds >= self.verify_interval
@@ -310,7 +310,7 @@ class BackupScheduler:
                 # Wait before next check
                 await asyncio.sleep(self.verify_interval)
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001  # verification daemon loop boundary: any error logs and continues
                 logger.error(f"Verification loop error: {e}")
                 await asyncio.sleep(60)
 
@@ -445,7 +445,7 @@ class AsyncBackupScheduler:
             else:
                 raise ValueError(f"Unknown backup type: {job.backup_type}")
 
-            job.last_run = datetime.now()
+            job.last_run = datetime.now(UTC)
             job.last_run_result = "success"
             job.run_count += 1
 
@@ -471,8 +471,8 @@ class AsyncBackupScheduler:
                 "run_count": job.run_count,
             }
 
-        except Exception as e:
-            job.last_run = datetime.now()
+        except Exception as e:  # noqa: BLE001  # async-job-run boundary: any failure updates run state and invokes the failure callback
+            job.last_run = datetime.now(UTC)
             job.last_run_result = "failed"
             self.logger.error(f"Async backup job {job.name} failed: {e}")
 
@@ -567,7 +567,7 @@ class AsyncBackupScheduler:
             try:
                 schedule.run_pending()
                 await asyncio.sleep(60)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001  # async scheduler daemon loop boundary: any error logs and continues
                 self.logger.error(f"Async scheduler loop error: {e}")
                 await asyncio.sleep(60)
 
@@ -575,7 +575,7 @@ class AsyncBackupScheduler:
         """Async verification loop for automated backup testing."""
         while self.running:
             try:
-                now = datetime.now()
+                now = datetime.now(UTC)
                 if (
                     self.last_verification is None
                     or (now - self.last_verification).seconds >= self.verify_interval
@@ -599,7 +599,7 @@ class AsyncBackupScheduler:
 
                 await asyncio.sleep(self.verify_interval)
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001  # async verification daemon loop boundary: any error logs and continues
                 self.logger.error(f"Async verification loop error: {e}")
                 await asyncio.sleep(60)
 
@@ -633,14 +633,14 @@ class AsyncBackupScheduler:
             self._verification_engine.close()
             self._verification_engine = None
 
-    def __enter__(self) -> "AsyncBackupScheduler":
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, *args: Any) -> None:
+    def __exit__(self, *args: object) -> None:
         self.close()
 
-    async def __aenter__(self) -> "AsyncBackupScheduler":
+    async def __aenter__(self) -> Self:
         return self
 
-    async def __aexit__(self, *args: Any) -> None:
+    async def __aexit__(self, *args: object) -> None:
         self.close()

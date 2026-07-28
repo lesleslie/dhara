@@ -51,6 +51,11 @@ def as_bytes(s):
 
 empty_byte_string = as_bytes("")
 
+# Module-level constant: as_bytes("\x00") is semantically constant
+# (always returns the single byte b"\x00") so we lift it to avoid
+# repeated function calls in argument defaults.
+_init_byte = as_bytes("\x00")
+
 join_bytes = empty_byte_string.join
 
 
@@ -165,7 +170,7 @@ class ByteArray:
         """
         return self.size
 
-    def gen_set_size(self, size, init_byte=as_bytes("\x00")):
+    def gen_set_size(self, size, init_byte=_init_byte):
         """(size:int)
         Append init_byte bytes to the end of the internal file as
         necessary to expand it so that at least "size" bytes
@@ -193,7 +198,7 @@ class ByteArray:
         self.size = size
         self.file.seek(self.start + self.size)
 
-    def set_size(self, size, init_byte=as_bytes("\x00")):
+    def set_size(self, size, init_byte=_init_byte):
         """(size:int, init_byte:byte_string='\x00')
         Append init_bytes to the end of the internal file as
         necessary to expand it so that at least "size" bytes
@@ -511,7 +516,7 @@ class IntArray:
 
     def iteritems(self):
         for j, word in enumerate(self.word_array):
-            if not word == self.blank:
+            if word != self.blank:
                 yield j, str_to_int8(self.pad + word)
 
     items = iteritems

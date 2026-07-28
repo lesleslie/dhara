@@ -6,14 +6,11 @@ $Id$
 
 import heapq
 from collections.abc import AsyncIterator, Iterator
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import Any, Protocol
 
 from dhara.core import connection
 from dhara.serialize.record import extract_class_name, split_oids, unpack_record
 from dhara.utils import int8_to_str
-
-if TYPE_CHECKING:
-    pass
 
 # Type alias for Object IDs
 OID = str
@@ -126,7 +123,7 @@ class Storage:
                     batch.append(oid)
                     seen.add(oid)
             for record in self.bulk_load(batch):  # ty: ignore[invalid-argument-type]  # bulk_load signature is list[OID], batch is bytes internally
-                oid_bytes, data, refdata = unpack_record(record)
+                oid_bytes, _data, refdata = unpack_record(record)
                 # The contract is to yield decoded str OIDs while keeping
                 # the internal traversal in bytes (records are bytes-keyed).
                 oid_str = (

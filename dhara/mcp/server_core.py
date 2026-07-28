@@ -18,7 +18,7 @@ from __future__ import annotations
 import asyncio
 import time
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 if TYPE_CHECKING:
     from dhara.core.connection import Connection
@@ -66,7 +66,7 @@ class _BuiltinCacheRegistry:
     persistent registry is available.
     """
 
-    _FACTORIES = {
+    _FACTORIES: ClassVar[dict[tuple[str, str, str], str]] = {
         ("adapter", "cache", "memory"): (
             "oneiric.adapters.cache.memory:MemoryCacheAdapter"
         ),
@@ -318,7 +318,7 @@ class DharaMCPServer:
                 return JSONResponse(
                     runtime, status_code=200 if runtime["ready"] else 503
                 )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001  # runtime-status probe returns typed error data
                 # Surface the error so health checks don't silently fail
                 return JSONResponse(
                     {"status": "error", "service": "dhara", "error": str(exc)},
@@ -342,7 +342,7 @@ class DharaMCPServer:
                 return JSONResponse(
                     runtime, status_code=200 if runtime["ready"] else 503
                 )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001  # runtime-status probe returns typed error data
                 return JSONResponse(
                     {"status": "error", "service": "dhara", "error": str(exc)},
                     status_code=503,
@@ -358,7 +358,7 @@ class DharaMCPServer:
                 return JSONResponse(
                     runtime, status_code=200 if runtime["ready"] else 503
                 )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001  # runtime-status probe returns typed error data
                 return JSONResponse(
                     {"status": "error", "service": "dhara", "error": str(exc)},
                     status_code=503,
@@ -709,7 +709,7 @@ class DharaMCPServer:
         @_tool(TOOL_GROUP_KV_TIME_SERIES, auth=auth("write"))
         async def put(
             key: str,
-            value: dict[str, Any] | str | int | float | bool | list[Any] | None,
+            value: dict[str, Any] | str | float | bool | list[Any] | None,
             ttl: int | None = None,
         ) -> dict[str, Any]:
             """Store a key/value record with optional TTL (seconds)."""
@@ -1021,7 +1021,7 @@ class DharaMCPServer:
 
             try:
                 body = await request.json()
-            except Exception:
+            except Exception:  # noqa: BLE001  # REST body parser → HTTP 400
                 return JSONResponse({"error": "Invalid JSON"}, status_code=400)
 
             tool_name = body.get("name")
@@ -1073,7 +1073,7 @@ class DharaMCPServer:
                         "isError": False,
                     }
                 )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001  # REST body parser → HTTP 500
                 return JSONResponse(
                     {
                         "content": [
@@ -1136,7 +1136,7 @@ class DharaMCPServer:
                 "read_only": self.config.storage.read_only,
                 "root_keys": len(list(root.keys())),
             }
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001  # health-endpoint probe
             return {
                 "path": str(storage_path),
                 "exists": storage_path.exists(),
@@ -1173,7 +1173,7 @@ class DharaMCPServer:
                 "latest_backup_at": latest_backup_at,
                 "total_backups": total_backups,
             }
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001  # health-endpoint probe
             return {
                 "configured": True,
                 "directory": str(backup_dir),
@@ -1314,5 +1314,7 @@ class DharaMCPServer:
     def close(self) -> None:
         """Close the server and cleanup resources."""
         if getattr(self, "storage", None) is not None:
-            asyncio.run(self.storage.close())  # close() runs in the persistent event-loop thread; full async close path is the migration follow-up
+            asyncio.run(
+                self.storage.close()
+            )  # close() runs in the persistent event-loop thread; full async close path is the migration follow-up
         logger.info("Dhara MCP Server closed")

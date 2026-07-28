@@ -75,19 +75,19 @@ authentication:
 
 # Register or update a service record
 {
-  "service_id": "mahavishnu",
-  "service_type": "orchestrator",
-  "capabilities": ["workflow", "routing"],
-  "metadata": {"port": 8680},
-  "status": "healthy"
+    "service_id": "mahavishnu",
+    "service_type": "orchestrator",
+    "capabilities": ["workflow", "routing"],
+    "metadata": {"port": 8680},
+    "status": "healthy",
 }
 
 # Record an event
 {
-  "event_type": "workflow_started",
-  "source_service": "mahavishnu",
-  "related_service": "session-buddy",
-  "payload": {"workflow_id": "wf-123"}
+    "event_type": "workflow_started",
+    "source_service": "mahavishnu",
+    "related_service": "session-buddy",
+    "payload": {"workflow_id": "wf-123"},
 }
 ```
 

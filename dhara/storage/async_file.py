@@ -18,7 +18,8 @@ from __future__ import annotations
 
 import os
 import tempfile
-from typing import Any
+import types
+from typing import Self
 
 from dhara.storage.sqlite import AsyncSqliteStorage
 
@@ -56,11 +57,16 @@ class AsyncFileStorage(AsyncSqliteStorage):
         """
         return self._url or ":memory:"
 
-    async def __aenter__(self) -> AsyncFileStorage:
+    async def __aenter__(self) -> Self:
         await self.init()
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
         await self.close()
 
 

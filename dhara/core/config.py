@@ -261,7 +261,7 @@ class DharaSettings(OneiricMCPConfig):
             try:
                 data = yaml.safe_load(project_yaml.read_text()) or {}
                 logger.debug(f"Loaded settings from {project_yaml}")
-            except Exception as e:
+            except (yaml.YAMLError, OSError, UnicodeDecodeError) as e:
                 logger.warning(f"Could not load {project_yaml}: {e}, using defaults")
                 data = {}
 
@@ -271,7 +271,7 @@ class DharaSettings(OneiricMCPConfig):
                 local_data = yaml.safe_load(local_yaml.read_text()) or {}
                 data = _deep_merge(data, local_data)
                 logger.debug(f"Merged local override from {local_yaml}")
-            except Exception as e:
+            except (yaml.YAMLError, OSError, UnicodeDecodeError) as e:
                 logger.warning(f"Could not load {local_yaml}: {e}, skipping override")
 
         # Apply DHARA_ env-var overrides (DHARA_SECTION__FIELD=value syntax).
@@ -283,7 +283,7 @@ class DharaSettings(OneiricMCPConfig):
         # Validate and instantiate DharaSettings.
         try:
             settings = cls.model_validate(data)
-        except Exception as e:
+        except ValueError as e:
             logger.warning(f"Could not validate loaded settings ({e}), using defaults")
             settings = cls()
 

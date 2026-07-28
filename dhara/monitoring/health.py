@@ -6,7 +6,7 @@ Provides health status monitoring and readiness checks for dhara servers.
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -85,7 +85,7 @@ class HealthChecker:
         """
         self.storage = storage
         self.checks: dict[str, Callable[[], HealthCheck]] = {}
-        self._start_time = datetime.now()
+        self._start_time = datetime.now(UTC)
 
         # Register default health checks
         self._register_default_checks()
@@ -112,7 +112,7 @@ class HealthChecker:
                     status=HealthStatus.HEALTHY,
                     message="Storage accessible",
                 )
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001  # per-probe HealthCheck translation
                 return HealthCheck(
                     name="storage",
                     status=HealthStatus.UNHEALTHY,
@@ -157,7 +157,7 @@ class HealthChecker:
                         "cache_hit_rate": hit_rate,
                     },
                 )
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001  # per-probe HealthCheck translation
                 return HealthCheck(
                     name="cache",
                     status=HealthStatus.UNKNOWN,
@@ -208,7 +208,7 @@ class HealthChecker:
                     status=HealthStatus.UNKNOWN,
                     message="psutil not installed, cannot check memory",
                 )
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001  # per-probe HealthCheck translation
                 return HealthCheck(
                     name="memory",
                     status=HealthStatus.UNKNOWN,
@@ -241,7 +241,7 @@ class HealthChecker:
             try:
                 check_result = check_func()
                 checks[name] = check_result
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001  # per-probe HealthCheck translation
                 checks[name] = HealthCheck(
                     name=name,
                     status=HealthStatus.UNKNOWN,
@@ -267,7 +267,7 @@ class HealthChecker:
                 overall_status = HealthStatus.UNKNOWN
 
         # Calculate uptime
-        uptime = (datetime.now() - self._start_time).total_seconds()
+        uptime = (datetime.now(UTC) - self._start_time).total_seconds()
 
         return HealthReport(
             status=overall_status,

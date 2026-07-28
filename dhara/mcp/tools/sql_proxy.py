@@ -129,7 +129,7 @@ async def dhara_sql_query(
 
 
 __all__ = [
+    "DuckDBAdapter",
     "dhara_sql_execute",
     "dhara_sql_query",
-    "DuckDBAdapter",
 ]

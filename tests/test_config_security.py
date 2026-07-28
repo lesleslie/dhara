@@ -156,7 +156,7 @@ class TestSecurityConfigSignature:
     def test_create_signature_non_bytes_rejected(self):
         cfg = SecurityConfig(fallback_enabled=True)
         cfg._initialized = True
-        with pytest.raises(ValueError, match="Message must be bytes"):
+        with pytest.raises(TypeError, match="Message must be bytes"):
             cfg.create_signature("hello")
 
     def test_create_signature_sha384(self):

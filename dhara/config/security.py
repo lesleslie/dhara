@@ -129,7 +129,7 @@ class SecurityConfig:
             self._initialized = True
             self._log_security_event("Security configuration initialized successfully")
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # security-init boundary: any failure is logged and re-raised with chained context
             error_msg = f"Failed to initialize security configuration: {e}"
             if self._logger:
                 self._logger.error(error_msg)  # type: ignore[union-attr]
@@ -181,14 +181,18 @@ class SecurityConfig:
                 )
 
             # Check rotation interval
-            if status["rotation_interval_days"] != self.rotation_interval_days:
-                if self._logger:
-                    self._logger.warning(  # type: ignore[union-attr]
-                        f"Rotation interval mismatch: configured={self.rotation_interval_days}, "
-                        f"actual={status['rotation_interval_days']}"
-                    )
+            if (
+                status["rotation_interval_days"] != self.rotation_interval_days
+                and self._logger
+            ):
+                self._logger.warning(  # type: ignore[union-attr]
+                    f"Rotation interval mismatch: configured={self.rotation_interval_days}, "
+                    f"actual={status['rotation_interval_days']}"
+                )
 
-        except Exception as e:
+        except (
+            Exception
+        ) as e:  # security-validation boundary: logs and re-raises with chained context
             if self._logger:
                 self._logger.error(f"Security validation failed: {e}")  # type: ignore[union-attr]
             raise
@@ -219,7 +223,7 @@ class SecurityConfig:
 
         # Validate message
         if not isinstance(message, bytes):
-            raise ValueError("Message must be bytes")
+            raise TypeError("Message must be bytes")
 
         try:
             if not ONEIRIC_AVAILABLE:
@@ -231,11 +235,11 @@ class SecurityConfig:
                 raise RuntimeError("Oneiric create_hmac_signature not available")
             return create_hmac_signature(message, algorithm)  # type: ignore[return-value]
 
-        except Exception as e:
+        except Exception as e:  # create-signature boundary: any failure logs and raises a chained ValueError
             error_msg = f"Failed to create signature: {e}"
             if self.log_security_events:
                 self._logger.error(error_msg)  # type: ignore
-            raise ValueError(error_msg)
+            raise ValueError(error_msg) from e
 
     def verify_signature(
         self, message: bytes, signature: bytes, algorithm: str = "sha256"
@@ -272,7 +276,7 @@ class SecurityConfig:
                 return False
             return verify_hmac_signature(message, signature, algorithm)  # type: ignore[return-value]
 
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # verify-signature wrapper: any failure (mismatch, malformed HMAC, etc.) returns False
             if self.log_security_events:
                 self._logger.warning(f"Signature verification failed: {e}")  # type: ignore
             return False
@@ -293,7 +297,7 @@ class SecurityConfig:
         try:
             expected_signature = self._create_fallback_signature(message, algorithm)
             return secrets.compare_digest(expected_signature, signature)
-        except Exception:
+        except Exception:  # noqa: BLE001  # verify-fallback-signature: any signature-mismatch / malformed input returns False
             return False
 
     def rotate_keys(self) -> dict[str, str]:
@@ -316,10 +320,10 @@ class SecurityConfig:
             result = self._adapter.rotate_all_keys()  # type: ignore
             self._log_security_event("Manual key rotation completed")
             return result  # type: ignore[no-any-return]
-        except Exception as e:
+        except Exception as e:  # key-rotation boundary: any failure logs and raises a chained RuntimeError
             error_msg = f"Failed to rotate keys: {e}"
             self._logger.error(error_msg)  # type: ignore
-            raise RuntimeError(error_msg)
+            raise RuntimeError(error_msg) from e
 
     def get_security_status(self) -> dict[str, Any]:
         """
@@ -358,7 +362,7 @@ class SecurityConfig:
                         else "N/A"
                     )
 
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001  # status-probe boundary: any failure populates key_status with the error string
                 status["key_status"] = {"error": str(e)}
 
         return status
@@ -380,7 +384,7 @@ class SecurityConfig:
             cleaned_count = self._adapter.cleanup_expired_keys()  # type: ignore
             self._log_security_event(f"Cleaned up {cleaned_count} expired keys")
             return cleaned_count  # type: ignore[no-any-return]
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001  # cleanup-expired-keys boundary: any failure logs and reports zero cleaned
             error_msg = f"Failed to cleanup expired keys: {e}"
             if self._logger:
                 self._logger.error(error_msg)
@@ -406,11 +410,11 @@ class SecurityConfig:
             key_id = self._adapter.create_backup_key()  # type: ignore
             self._log_security_event(f"Created backup key: {key_id}")
             return key_id  # type: ignore[no-any-return]
-        except Exception as e:
+        except Exception as e:  # backup-key-creation boundary: any failure logs and raises a chained RuntimeError
             error_msg = f"Failed to create backup key: {e}"
             if self._logger:
                 self._logger.error(error_msg)
-            raise RuntimeError(error_msg)
+            raise RuntimeError(error_msg) from e
 
     def _log_security_event(self, message: str) -> None:
         """Log security events if enabled."""
@@ -425,7 +429,6 @@ class SecurityConfig:
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """Context manager exit."""
         # Clean up resources if needed
-        pass
 
 
 # Global security configuration instance
@@ -442,8 +445,6 @@ def get_security_config() -> SecurityConfig:
     Raises:
         RuntimeError: If no global configuration has been set
     """
-    global _global_config
-
     if _global_config is None:
         raise RuntimeError("No global security configuration has been set")
 

@@ -12,6 +12,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
+import pydantic
 from oneiric.core.logging import get_logger
 
 from dhara.core.config import DharaSettings, StorageConfig
@@ -77,7 +78,6 @@ class OperationalMode(ABC):
         Returns:
             Mode name (e.g., "Lite", "Standard")
         """
-        pass
 
     @abstractmethod
     def get_description(self) -> str:
@@ -86,7 +86,6 @@ class OperationalMode(ABC):
         Returns:
             Human-readable description of this mode's purpose.
         """
-        pass
 
     @abstractmethod
     def get_config_path(self) -> Path:
@@ -95,7 +94,6 @@ class OperationalMode(ABC):
         Returns:
             Path to default config file (e.g., settings/lite.yaml)
         """
-        pass
 
     @abstractmethod
     def get_default_storage_path(self) -> Path:
@@ -104,7 +102,6 @@ class OperationalMode(ABC):
         Returns:
             Default path for storage file
         """
-        pass
 
     def validate_environment(self) -> bool:
         """Validate environment prerequisites for this mode.
@@ -166,7 +163,6 @@ class OperationalMode(ABC):
         Returns:
             Mode-configured storage settings
         """
-        pass
 
     @abstractmethod
     def get_startup_options(self) -> dict[str, Any]:
@@ -175,7 +171,6 @@ class OperationalMode(ABC):
         Returns:
             Dictionary of default startup options (host, port, etc.)
         """
-        pass
 
     def get_banner(self) -> str:
         """Get startup banner for this mode.
@@ -369,9 +364,8 @@ def get_mode(settings: DharaSettings | None = None) -> OperationalMode:
     if settings is None:
         try:
             settings = DharaSettings.load("dhara")
-        except Exception:
+        except (FileNotFoundError, pydantic.ValidationError, OSError):
             logger.debug("Could not load settings, using default detection")
-            pass
 
     # 3. Auto-detect based on storage configuration
     if settings:

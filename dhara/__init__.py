@@ -8,6 +8,7 @@ Modernized for Python 3.13+ with Oneiric ecosystem integration.
 from __future__ import annotations
 
 import importlib
+from importlib.metadata import PackageNotFoundError as _PackageNotFoundError
 from importlib.metadata import version as _pkg_version
 from typing import Any
 
@@ -16,7 +17,7 @@ try:
     # Falls back to a dev sentinel if the package is imported without being
     # installed (e.g. running tests directly from a source checkout).
     __version__ = _pkg_version("dhara")
-except Exception:  # pragma: no cover - dev/source-checkout path
+except _PackageNotFoundError:  # pragma: no cover - dev/source-checkout path
     __version__ = "0.0.0+unknown"
 
 # Core persistence framework
@@ -60,37 +61,37 @@ from dhara.utils import (
 )
 
 __all__ = [
-    "__version__",
+    "AsyncMemoryStorage",
+    "AsyncSqliteStorage",
+    "AsyncStorage",
+    "BNode",
+    "BTree",
+    "ClientStorage",
+    "ConflictError",
     "Connection",
+    "DruvaKeyError",
+    "MsgpackSerializer",
+    "MsgspecSerializer",
     "Persistent",
     "PersistentBase",
-    "Storage",
-    "AsyncStorage",
-    "SqliteStorage",
-    "AsyncSqliteStorage",
-    "AsyncMemoryStorage",
-    "ClientStorage",
     "PersistentDict",
     "PersistentList",
     "PersistentSet",
-    "BTree",
-    "BNode",
-    "StorageServer",
-    "wait_for_server",
+    "ReadConflictError",
     "Serializer",
     "SerializerProtocol",
-    "MsgspecSerializer",
-    "MsgpackSerializer",
-    "create_serializer",
-    "as_bytes",
-    "int8_to_str",
-    "int4_to_str",
-    "str_to_int8",
-    "str_to_int4",
-    "ConflictError",
-    "ReadConflictError",
+    "SqliteStorage",
+    "Storage",
+    "StorageServer",
     "WriteConflictError",
-    "DruvaKeyError",
+    "__version__",
+    "as_bytes",
+    "create_serializer",
+    "int4_to_str",
+    "int8_to_str",
+    "str_to_int4",
+    "str_to_int8",
+    "wait_for_server",
 ]
 
 

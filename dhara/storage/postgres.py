@@ -12,8 +12,9 @@ Supported config keys:
 
 from __future__ import annotations
 
+import types
 from collections.abc import AsyncIterator
-from typing import Any
+from typing import Any, Self
 
 import asyncpg
 
@@ -82,7 +83,7 @@ class AsyncPostgresStorage:
                     url = url or config.get("url", "postgresql://localhost/dhara")
                     min_size = min_size or config.get("min_size", 2)
                     max_size = max_size or config.get("max_size", 10)
-                except Exception:
+                except ImportError:
                     url = url or "postgresql://localhost/dhara"
                     min_size = min_size or 2
                     max_size = max_size or 10
@@ -214,15 +215,14 @@ class AsyncPostgresStorage:
             raise RuntimeError("Storage not initialized")
 
         if start_oid is None:
-            async with self._pool.acquire() as conn:
-                async with conn.transaction():
-                    async for row in conn.cursor(
-                        "SELECT oid, data, refs FROM dhara_objects ORDER BY oid"
-                    ):
-                        oid_str = int8_to_str(row["oid"])
-                        data = row["data"] or b""
-                        refs = row["refs"] or b""
-                        yield oid_str, pack_record(oid_str, data, refs)
+            async with self._pool.acquire() as conn, conn.transaction():
+                async for row in conn.cursor(
+                    "SELECT oid, data, refs FROM dhara_objects ORDER BY oid"
+                ):
+                    oid_str = int8_to_str(row["oid"])
+                    data = row["data"] or b""
+                    refs = row["refs"] or b""
+                    yield oid_str, pack_record(oid_str, data, refs)
         else:
             # BFS traversal from start_oid
             todo = [start_oid]
@@ -250,7 +250,6 @@ class AsyncPostgresStorage:
     async def pack(self) -> None:
         """Pack storage, removing obsolete records."""
         # Placeholder for incremental packer
-        pass
 
     async def health(self) -> bool:
         """Return True if storage is healthy."""
@@ -260,7 +259,7 @@ class AsyncPostgresStorage:
             async with self._pool.acquire() as conn:
                 await conn.execute("SELECT 1")
             return True
-        except Exception:
+        except (OSError, asyncpg.PostgresError):
             return False
 
     async def cleanup(self) -> None:
@@ -277,12 +276,17 @@ class AsyncPostgresStorage:
         """Return incremental packer generator, or None."""
         return None  # Placeholder for incremental packer
 
-    async def __aenter__(self) -> AsyncPostgresStorage:
+    async def __aenter__(self) -> Self:
         """Async context manager entry."""
         await self.init()
         return self
 
-    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
         """Async context manager exit."""
         await self.close()
 

@@ -131,10 +131,10 @@ class OneiricSecretsAdapter:
                     self._initialized = True
                     self._validate_keys()
 
-                except Exception as e:
+                except Exception as e:  # RuntimeError translation with chaining
                     raise RuntimeError(
                         f"Failed to load oneiric_secrets from Oneiric: {e}"
-                    )
+                    ) from e
 
     def _get_or_create_key(self, key_name: str) -> SecretKey:
         """Get an existing key or create a new one."""
@@ -183,8 +183,8 @@ class OneiricSecretsAdapter:
                 key.expires_at.isoformat() if key.expires_at else "",
             )
 
-        except Exception as e:
-            raise RuntimeError(f"Failed to handle key {key_name}: {e}")
+        except Exception as e:  # RuntimeError translation with chaining
+            raise RuntimeError(f"Failed to handle key {key_name}: {e}") from e
 
         return key
 
@@ -245,7 +245,7 @@ class OneiricSecretsAdapter:
                 try:
                     self._auto_rotate_keys()
                     time.sleep(24 * 3600)  # Check every 24 hours
-                except Exception:
+                except Exception:  # noqa: BLE001  # daemon-thread key-rotation loop
                     # Log error but continue
                     time.sleep(3600)  # Wait 1 hour before retry
 
@@ -435,16 +435,16 @@ def create_hmac_signature(message: bytes, algorithm: str = "sha256") -> bytes:
         ValueError: If algorithm is unsupported or message is invalid
     """
     if not isinstance(message, bytes):
-        raise ValueError("Message must be bytes")
+        raise TypeError("Message must be bytes")
 
     adapter = get_oneiric_secrets_adapter()
-    key_material, key_id = adapter.get_signing_key(algorithm)
+    key_material, _key_id = adapter.get_signing_key(algorithm)
 
     try:
         h = hmac.new(key_material, message, getattr(hashlib, algorithm))
         return h.digest()
-    except Exception as e:
-        raise ValueError(f"Failed to create HMAC signature: {e}")
+    except Exception as e:  # HMAC verify failure wrapper → False
+        raise ValueError(f"Failed to create HMAC signature: {e}") from e
 
 
 def verify_hmac_signature(
@@ -464,7 +464,7 @@ def verify_hmac_signature(
     try:
         expected_signature = create_hmac_signature(message, algorithm)
         return bool(oneiric_secrets.compare_digest(expected_signature, signature))
-    except Exception:
+    except Exception:  # noqa: BLE001  # HMAC verify returns False on any failure
         return False
 
 

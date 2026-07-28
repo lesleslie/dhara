@@ -32,24 +32,24 @@ if TYPE_CHECKING:
     from dhara.serialize.msgspec import MsgspecSerializer
 
 __all__ = [
-    # Interfaces
-    "Serializer",
-    "SerializerProtocol",
+    # Default implementation alias
+    "DEFAULT_SERIALIZER",
+    "MsgpackSerializer",
     # Implementations
     "MsgspecSerializer",
-    "MsgpackSerializer",
-    # Factory
-    "create_serializer",
     # Record format helpers
     "ObjectReader",
     "ObjectWriter",
-    "pack_record",
-    "unpack_record",
-    "split_oids",
-    "persistent_load",
+    # Interfaces
+    "Serializer",
+    "SerializerProtocol",
+    # Factory
+    "create_serializer",
     "extract_class_name",
-    # Default implementation alias
-    "DEFAULT_SERIALIZER",
+    "pack_record",
+    "persistent_load",
+    "split_oids",
+    "unpack_record",
 ]
 
 

@@ -19,8 +19,6 @@ from warnings import warn
 class SecurityWarning(UserWarning):
     """Warning raised for security-sensitive operations."""
 
-    pass
-
 
 from dhara.core import Connection
 from dhara.logger import direct_output, log, logger
@@ -93,7 +91,9 @@ def interactive_client(
 
     # Try to use IPython if available, fall back to InteractiveConsole
     try:
-        from IPython.terminal.embed import InteractiveShellEmbed
+        # Intentional: legacy interactive admin console for the Dhara CLI.
+        # The interactive REPL is the entire purpose of this branch.
+        from IPython.terminal.embed import InteractiveShellEmbed  # noqa: T100
         from IPython.terminal.ipapp import load_default_config  # noqa: F401
 
         use_ipython = True
@@ -146,7 +146,8 @@ def interactive_client(
 
     if use_ipython:
         # Use IPython with enhanced features
-        ipshell = InteractiveShellEmbed(
+        # (Intentional interactive console: see noqa above.)
+        ipshell = InteractiveShellEmbed(  # noqa: T100
             banner1=f"🦀 Druva Admin Shell - {description}\n{help_text}\n",
             exit_msg="Exiting Druva Admin Shell",
             user_ns=namespace,
@@ -293,7 +294,7 @@ def client_main():
             "⚠️ SECURITY WARNING: This is insecure and should only be used for testing."
         ),
     )
-    (options, args) = parser.parse_args()
+    (options, _args) = parser.parse_args()
 
     # Create TLS config if TLS options are provided
     tls_config = None
@@ -389,20 +390,30 @@ def get_storage(file, storage_class=None, **kwargs):
 
 
 def start_dhara(logfile, logginglevel, address, storage, gcbytes, tls_config=None):
+    opened_logfile = None
     if logfile is None:
         logfile = sys.stderr
     else:
         # ``logfile`` may be a ``str`` (typical) or ``pathlib.Path``; use
-        # the builtin ``open`` so either works.
-        logfile = open(logfile, "a+")
-    direct_output(logfile)
-    logger.setLevel(logginglevel)
-    socket_address = SocketAddress.new(address)
-    if hasattr(storage, "get_filename"):
-        log(20, "Storage file=%s address=%s", storage.get_filename(), socket_address)
-    StorageServer(
-        storage, address=socket_address, gcbytes=gcbytes, tls_config=tls_config
-    ).serve()
+        # the builtin ``open`` so either works. The handle is kept open
+        # for the lifetime of the server (long-lived; `with` would close
+        # before the server uses it) and released in `finally` below.
+        opened_logfile = open(logfile, "a+")  # noqa: SIM115
+        logfile = opened_logfile
+    try:
+        direct_output(logfile)
+        logger.setLevel(logginglevel)
+        socket_address = SocketAddress.new(address)
+        if hasattr(storage, "get_filename"):
+            log(
+                20, "Storage file=%s address=%s", storage.get_filename(), socket_address
+            )
+        StorageServer(
+            storage, address=socket_address, gcbytes=gcbytes, tls_config=tls_config
+        ).serve()
+    finally:
+        if opened_logfile is not None:
+            opened_logfile.close()
 
 
 def stop_dhara(address):
@@ -576,7 +587,7 @@ def run_dhara_main():
             "Argument: hostname for certificate (default: localhost)"
         ),
     )
-    (options, args) = parser.parse_args()
+    (options, _args) = parser.parse_args()
 
     # Handle TLS certificate generation
     if options.generate_tls_cert:
@@ -601,7 +612,7 @@ def run_dhara_main():
             log(20, "Error: %s", e)
             log(20, "Install cryptography module: pip install cryptography")
             return
-        except Exception as e:
+        except (OSError, ValueError) as e:
             log(20, "Failed to generate certificate: %s", e)
             return
 
@@ -692,7 +703,7 @@ def pack_storage_main():
         default=None,
         help="Path to client private key for mutual TLS.",
     )
-    (options, args) = parser.parse_args()
+    (options, _args) = parser.parse_args()
 
     # Create TLS config if TLS options provided
     tls_config = None

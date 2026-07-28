@@ -7,12 +7,9 @@ $Id$
 from collections.abc import Iterator
 from contextlib import suppress
 from sys import stderr
-from typing import TYPE_CHECKING, Any
+from typing import Any, Self, cast
 
 from dhara.utils import IS_PYPY, as_bytes, iteritems, str_to_int8
-
-if TYPE_CHECKING:
-    pass
 
 # these must match the constants in _persistent.c
 UNSAVED: int = 1
@@ -34,7 +31,10 @@ try:
         call_if_persistent,
     )
 
-    [ConnectionBase, _hasattribute, call_if_persistent]  # silence import checker
+    # Bind to a name so ruff (B018) does not flag the no-op tuple; the
+    # imported names must remain in scope for downstream callers when the
+    # C extension is available.
+    _ = (ConnectionBase, _hasattribute, call_if_persistent)
 except ImportError:
     stderr.write("Using Python base classes for persistence.\n")
 
@@ -57,10 +57,12 @@ except ImportError:
 
         __slots__ = ["transaction_serial"]
 
-        def __new__(klass: type, *args: Any, **kwargs: Any) -> "ConnectionBase":
+        def __new__(klass: type, *args: Any, **kwargs: Any) -> Self:
             instance: ConnectionBase = object.__new__(klass)
             instance.transaction_serial = 1  # type: ignore
-            return instance
+            # `object.__new__` returns `Unknown`; the runtime instance is
+            # `klass` and matches `Self`, so cast for the declared return.
+            return cast("Self", instance)
 
     _GHOST_SAFE_ATTRIBUTES: dict[str, int] = {
         "__repr__": 1,
@@ -108,15 +110,17 @@ except ImportError:
             The _p_oid is None when this instance has never been stored.
         """
 
-        __slots__ = ["_p_status", "_p_serial", "_p_connection", "_p_oid"]
+        __slots__ = ["_p_connection", "_p_oid", "_p_serial", "_p_status"]
 
-        def __new__(klass: type, *args: Any, **kwargs: Any) -> "PersistentBase":
+        def __new__(klass: type, *args: Any, **kwargs: Any) -> Self:
             instance: PersistentBase = object.__new__(klass)
             _setattribute(instance, "_p_status", UNSAVED)
             _setattribute(instance, "_p_serial", 0)
             _setattribute(instance, "_p_connection", None)
             _setattribute(instance, "_p_oid", None)
-            return instance
+            # `object.__new__` returns `Unknown`; the runtime instance is
+            # `klass` and matches `Self`, so cast for the declared return.
+            return cast("Self", instance)
 
         def __getattribute__(self, name: str) -> Any:
             if name[:3] != "_p_" and name not in _GHOST_SAFE_ATTRIBUTES:

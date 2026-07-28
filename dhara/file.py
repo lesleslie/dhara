@@ -19,17 +19,21 @@ class File:
 
     def __init__(self, name=None, readonly=False, **kwargs):
         if name is None:
-            self.file = NamedTemporaryFile(**kwargs)
+            # Class manages lifetime; `with` would close immediately.
+            self.file = NamedTemporaryFile(**kwargs)  # noqa: SIM115
         else:
             if Path(name).exists():
                 if readonly:
-                    self.file = open(name, "rb")
+                    # Class manages lifetime; `with` would close immediately.
+                    self.file = open(name, "rb")  # noqa: SIM115
                 else:
-                    self.file = open(name, "r+b")
+                    # Class manages lifetime; `with` would close immediately.
+                    self.file = open(name, "r+b")  # noqa: SIM115
             else:
                 if readonly:
                     raise OSError(f'No "{name}" found.')
-                self.file = open(name, "w+b")
+                # Class manages lifetime; `with` would close immediately.
+                self.file = open(name, "w+b")  # noqa: SIM115
         if readonly:
             assert self.is_readonly()
         self.has_lock = False
@@ -76,7 +80,8 @@ class File:
         if Path(name).exists():
             Path(name).unlink()
         os.rename(old_name, name)
-        self.file = open(name, "r+b")
+        # Class manages lifetime; `with` would close immediately.
+        self.file = open(name, "r+b")  # noqa: SIM115
         self.obtain_lock()
 
     def obtain_lock(self):

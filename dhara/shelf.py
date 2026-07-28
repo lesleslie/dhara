@@ -329,11 +329,11 @@ def read_transaction_offsets(file, repair=False):
                 assert e is not None
                 e.args = (
                     repr(
-                        dict(
-                            transaction_start=transaction_start,
-                            transaction_end=transaction_end,
-                            position=position,
-                        )
+                        {
+                            "transaction_start": transaction_start,
+                            "transaction_end": transaction_end,
+                            "position": position,
+                        }
                     ),
                 )
                 raise

@@ -17,7 +17,7 @@ import logging
 import os
 import sys
 from collections.abc import Mapping
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
@@ -272,8 +272,8 @@ def cmd_backup(args):
             else:
                 encryption_key = Fernet.generate_key()
             logger.info("Encryption enabled")
-    except FileNotFoundError as e:
-        logger.error(f"Encryption key not found: {e}")
+    except FileNotFoundError:
+        logger.exception("Encryption key not found")
         return 1
 
     # Create backup manager (storage always opened; closed in finally
@@ -281,7 +281,9 @@ def cmd_backup(args):
     storage = AsyncFileStorage(args.source)
     try:
         backup_manager = BackupManager(
-            storage=cast("Storage", storage),  # BackupManager is sync but wraps async storage; full async migration tracked separately
+            storage=cast(
+                "Storage", storage
+            ),  # BackupManager is sync but wraps async storage; full async migration tracked separately
             backup_dir=args.backup_dir,
             compression_level=args.compression_level,
             encryption_key=encryption_key,
@@ -308,8 +310,8 @@ def cmd_backup(args):
         logger.info(f"Path: {metadata.source_path}")
         return 0
 
-    except Exception as e:
-        logger.error(f"Backup failed: {e}")
+    except Exception:
+        logger.exception("Backup failed")
         return 1
     finally:
         asyncio.run(storage.close())
@@ -345,7 +347,9 @@ def cmd_restore(args):
                 return 1
             restore_manager._restore_from_backup(backup)
         elif args.timestamp:
-            target_time = datetime.strptime(args.timestamp, "%Y-%m-%d %H:%M:%S")
+            target_time = datetime.strptime(
+                args.timestamp, "%Y-%m-%d %H:%M:%S"
+            ).replace(tzinfo=UTC)
             restore_manager.restore_point_in_time(target_time)
         else:
             # Use latest backup
@@ -368,8 +372,8 @@ def cmd_restore(args):
 
         return 0
 
-    except Exception as e:
-        logger.error(f"Restore failed: {e}")
+    except Exception:
+        logger.exception("Restore failed")
         return 1
 
 
@@ -381,7 +385,7 @@ def cmd_list(args):
         # Filter backups
         start_time = None
         if args.since:
-            start_time = datetime.strptime(args.since, "%Y-%m-%d")
+            start_time = datetime.strptime(args.since, "%Y-%m-%d").replace(tzinfo=UTC)
 
         backups = catalog.search_backups(
             start_time=start_time,
@@ -411,8 +415,8 @@ def cmd_list(args):
 
         return 0
 
-    except Exception as e:
-        logger.error(f"List command failed: {e}")
+    except Exception:
+        logger.exception("List command failed")
         return 1
 
 
@@ -493,8 +497,8 @@ def cmd_verify(args):
 
         return 0 if all_passed else 1
 
-    except Exception as e:
-        logger.error(f"Verification failed: {e}")
+    except Exception:
+        logger.exception("Verification failed")
         return 1
 
 
@@ -511,8 +515,8 @@ def cmd_schedule(args):
             print(f"  Retention compliance: {stats['retention_compliance']:.1f}%")
 
             return 0
-        except Exception as e:
-            logger.error(f"Schedule status failed: {e}")
+        except Exception:
+            logger.exception("Schedule status failed")
             return 1
 
     elif args.action in ("start", "stop", "add"):
@@ -567,8 +571,8 @@ def cmd_catalog(args):
 
         return 0
 
-    except Exception as e:
-        logger.error(f"Catalog command failed: {e}")
+    except Exception:
+        logger.exception("Catalog command failed")
         return 1
 
 

@@ -27,21 +27,21 @@ from oneiric.adapters.storage import (
 )
 
 __all__ = [
-    "S3StorageAdapter",
-    "S3StorageSettings",
-    "GCSStorageAdapter",
-    "GCSStorageSettings",
+    "AzureBlobStorage",
     "AzureBlobStorageAdapter",
     "AzureBlobStorageSettings",
+    "GCSStorage",
+    "GCSStorageAdapter",
+    "GCSStorageSettings",
     "LocalStorageAdapter",
     "LocalStorageSettings",
+    "S3Storage",
+    "S3StorageAdapter",
+    "S3StorageSettings",
     "StorageAdapter",
     "StorageAdapterFactory",
     "StorageFactory",
     "create_storage_adapter",
-    "S3Storage",
-    "GCSStorage",
-    "AzureBlobStorage",
 ]
 
 
@@ -204,14 +204,14 @@ class S3StorageAdapter(_DelegatingStorageAdapter):
         try:
             self.client.upload_file(local_path, self.bucket_name, remote_path)
             return True
-        except Exception:
+        except Exception:  # noqa: BLE001  # S3 boundary: any BotoCoreError/ClientError returns False
             return False
 
     def download_file(self, remote_path: str, local_path: str) -> bool:
         try:
             self.client.download_file(self.bucket_name, remote_path, local_path)
             return True
-        except Exception:
+        except Exception:  # noqa: BLE001  # S3 boundary: any BotoCoreError/ClientError returns False
             return False
 
     def upload_json(self, data: Any, remote_path: str) -> bool:
@@ -224,7 +224,7 @@ class S3StorageAdapter(_DelegatingStorageAdapter):
                 ContentType="application/json",
             )
             return True
-        except Exception:
+        except Exception:  # noqa: BLE001  # S3 boundary: any BotoCoreError/ClientError returns False
             return False
 
     def download_json(self, remote_path: str) -> Any:
@@ -235,7 +235,7 @@ class S3StorageAdapter(_DelegatingStorageAdapter):
             if isinstance(raw, bytes):
                 raw = raw.decode("utf-8")
             return json.loads(raw)
-        except Exception:
+        except Exception:  # noqa: BLE001  # S3 boundary: any BotoCoreError/ClientError/JSON error returns None
             return None
 
     def list_files(self, prefix: str = "") -> list[dict[str, Any]]:
@@ -252,14 +252,14 @@ class S3StorageAdapter(_DelegatingStorageAdapter):
                         }
                     )
             return files
-        except Exception:
+        except Exception:  # noqa: BLE001  # S3 boundary: any BotoCoreError/ClientError returns empty list
             return []
 
     def delete_file(self, remote_path: str) -> bool:
         try:
             self.client.delete_object(Bucket=self.bucket_name, Key=remote_path)
             return True
-        except Exception:
+        except Exception:  # noqa: BLE001  # S3 boundary: any BotoCoreError/ClientError returns False
             return False
 
 
@@ -350,7 +350,7 @@ class GCSStorageAdapter(_DelegatingStorageAdapter):
             blob = self.bucket.blob(remote_path)
             blob.upload_from_filename(local_path)
             return True
-        except Exception:
+        except Exception:  # noqa: BLE001  # GCS boundary: any GoogleAPIError returns False
             return False
 
     def download_file(self, remote_path: str, local_path: str) -> bool:
@@ -358,7 +358,7 @@ class GCSStorageAdapter(_DelegatingStorageAdapter):
             blob = self.bucket.blob(remote_path)
             blob.download_to_filename(local_path)
             return True
-        except Exception:
+        except Exception:  # noqa: BLE001  # GCS boundary: any GoogleAPIError returns False
             return False
 
     def upload_json(self, data: Any, remote_path: str) -> bool:
@@ -369,14 +369,14 @@ class GCSStorageAdapter(_DelegatingStorageAdapter):
                 content_type="application/json",
             )
             return True
-        except Exception:
+        except Exception:  # noqa: BLE001  # GCS boundary: any GoogleAPIError returns False
             return False
 
     def download_json(self, remote_path: str) -> Any:
         try:
             blob = self.bucket.blob(remote_path)
             return json.loads(blob.download_as_text())
-        except Exception:
+        except Exception:  # noqa: BLE001  # GCS boundary: any GoogleAPIError/JSON error returns None
             return None
 
     def list_files(self, prefix: str = "") -> list[dict[str, Any]]:
@@ -389,7 +389,7 @@ class GCSStorageAdapter(_DelegatingStorageAdapter):
                 }
                 for blob in self.bucket.list_blobs(prefix=prefix)
             ]
-        except Exception:
+        except Exception:  # noqa: BLE001  # GCS boundary: any GoogleAPIError returns empty list
             return []
 
     def delete_file(self, remote_path: str) -> bool:
@@ -397,7 +397,7 @@ class GCSStorageAdapter(_DelegatingStorageAdapter):
             blob = self.bucket.blob(remote_path)
             blob.delete()
             return True
-        except Exception:
+        except Exception:  # noqa: BLE001  # GCS boundary: any GoogleAPIError returns False
             return False
 
 
@@ -501,7 +501,7 @@ class AzureBlobStorageAdapter(_DelegatingStorageAdapter):
                         account_url=account_url,
                         credential=credential,
                     )
-            except Exception:
+            except Exception:  # noqa: BLE001  # Azure client construction boundary: any AzureError falls back to a stub
                 self.client = _fallback_client()
         self._client = self.client
         self.container_client = self.client.get_container_client(container_name)
@@ -542,9 +542,9 @@ class AzureBlobStorageAdapter(_DelegatingStorageAdapter):
                 with Path(local_path).open("rb") as f:
                     blob_client.upload_blob(f.read(), overwrite=True)
                 return True
-            except Exception:
+            except Exception:  # noqa: BLE001  # Azure boundary: overwrite retry failure returns False
                 return False
-        except Exception:
+        except Exception:  # noqa: BLE001  # Azure boundary: any AzureError returns False
             return False
 
     def download_file(self, remote_path: str, local_path: str) -> bool:
@@ -555,7 +555,7 @@ class AzureBlobStorageAdapter(_DelegatingStorageAdapter):
             with Path(local_path).open("wb") as f:
                 f.write(payload)  # type: ignore[arg-type]
             return True
-        except Exception:
+        except Exception:  # noqa: BLE001  # Azure boundary: any AzureError returns False
             return False
 
     def upload_json(self, data: Any, remote_path: str) -> bool:
@@ -567,7 +567,7 @@ class AzureBlobStorageAdapter(_DelegatingStorageAdapter):
                 content_type="application/json",
             )
             return True
-        except Exception:
+        except Exception:  # noqa: BLE001  # Azure boundary: any AzureError returns False
             return False
 
     def download_json(self, remote_path: str) -> Any:
@@ -576,7 +576,7 @@ class AzureBlobStorageAdapter(_DelegatingStorageAdapter):
             data = blob_client.download_blob().readall()
             text = data.decode("utf-8") if isinstance(data, bytes) else data
             return json.loads(text)
-        except Exception:
+        except Exception:  # noqa: BLE001  # Azure boundary: any AzureError/JSON error returns None
             return None
 
     def list_files(self, prefix: str = "") -> list[dict[str, Any]]:
@@ -589,7 +589,7 @@ class AzureBlobStorageAdapter(_DelegatingStorageAdapter):
                 }
                 for blob in self.container_client.list_blobs(name_starts_with=prefix)
             ]
-        except Exception:
+        except Exception:  # noqa: BLE001  # Azure boundary: any AzureError returns empty list
             return []
 
     def delete_file(self, remote_path: str) -> bool:
@@ -597,7 +597,7 @@ class AzureBlobStorageAdapter(_DelegatingStorageAdapter):
             blob_client = self.container_client.get_blob_client(remote_path)
             blob_client.delete_blob()
             return True
-        except Exception:
+        except Exception:  # noqa: BLE001  # Azure boundary: any AzureError returns False
             return False
 
 

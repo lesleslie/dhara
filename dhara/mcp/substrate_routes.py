@@ -269,7 +269,7 @@ async def _parse_json_body(request: Any, model_cls: type[BaseModel]) -> BaseMode
     """
     try:
         data = await request.json()
-    except Exception:
+    except Exception:  # noqa: BLE001  # REST body parser → HTTP 422
         data = None
     if not isinstance(data, dict):
         return _json(
@@ -281,7 +281,7 @@ async def _parse_json_body(request: Any, model_cls: type[BaseModel]) -> BaseMode
         )
     try:
         return model_cls(**data)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001  # REST body parser → HTTP 422
         return _json(
             {"error": "validation failed", "details": str(exc)}, status_code=422
         )

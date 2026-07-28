@@ -7,7 +7,7 @@ and server health.
 from __future__ import annotations
 
 import time
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Self, cast
 
 if TYPE_CHECKING:
     from prometheus_client import (
@@ -331,7 +331,7 @@ class OperationTimer:
         self.start_time: float | None = None
         self.success = False
 
-    def __enter__(self) -> OperationTimer:
+    def __enter__(self) -> Self:
         self.start_time = time.time()
         return self
 

@@ -92,13 +92,13 @@ class PersistentDict(PersistentObject, collections.abc.MutableMapping):
             elif isinstance(other, dict):
                 self.data.update(other)
             elif hasattr(other, "keys"):
-                for k in other.keys():
+                for k in other:
                     self[k] = other[k]
             else:
                 for k, v in other:
                     self[k] = v
-        for kw in kwargs:
-            self[kw] = kwargs[kw]
+        for kw, value in kwargs.items():
+            self[kw] = value
 
     def get(self, key, failobj=None):
         return self.data.get(key, failobj)
