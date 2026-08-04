@@ -117,8 +117,7 @@ CREATE TABLE IF NOT EXISTS substrate_locks (
     expires_at            TIMESTAMPTZ,                 -- NULL = advisory or permanent lock
     is_permanent          BOOLEAN NOT NULL DEFAULT FALSE,
     original_ttl_seconds  INTEGER,                     -- NULL = no original lease; required for extend_seconds=None semantic
-    metadata              TEXT NOT NULL DEFAULT '{}',  -- JSON blob; empty object default
-    signature             TEXT                         -- optional; computed by caller over canonical-JSON metadata
+    metadata              TEXT NOT NULL DEFAULT '{}'   -- JSON blob; empty object default. Callers (e.g. precommit) embed their own signature inside this JSON.
 );
 
 CREATE INDEX IF NOT EXISTS ix_substrate_locks_expires_at
@@ -192,7 +191,7 @@ not silently succeed on a 0-row delete.
 
 ```sql
 UPDATE substrate_locks
-SET expires_at = CURRENT_TIMESTAMP + (COALESCE(?, original_ttl_seconds) || ' seconds')::INTERVAL
+SET expires_at = ?                                  -- caller-computed (now + extend_seconds)
 WHERE lock_key = ?
   AND owner_token = ?
   AND is_permanent = FALSE                          -- permanent locks cannot be extended
@@ -200,9 +199,9 @@ WHERE lock_key = ?
 RETURNING expires_at;
 ```
 
-The `extend_seconds` parameter is the new TTL; if NULL, the row's
-`original_ttl_seconds` is used (preserving the original lease
-duration). If `rowcount == 0`, raise `LockLost`.
+The caller computes `new_expires_at = datetime.now(UTC) + timedelta(seconds=extend_seconds_or_original)` in Python and passes it as the first parameter. This keeps the SQL portable across DuckDB and Postgres (avoids backend-specific `INTERVAL` syntax and string-concat quirks). `extend_seconds=None` means the caller uses `handle.original_ttl_seconds` instead.
+
+If `rowcount == 0`, raise `LockLost`.
 
 ### `get` / `list_keys` — read-only
 
@@ -364,13 +363,19 @@ file. After this spec:
 - The CLI wraps each entry point in `asyncio.run(...)`.
 - The CLI persists via:
   ```python
-  await dhara_lock.acquire(
+  result = await dhara_lock.try_acquire(
       f"precommit:l:{result.lock_id}",
       owner_token="precommit-cli",
       permanent=True,
       metadata=_encode_lock_result(result),
   )
+  if result is None:
+      raise ValueError(f"duplicate lock_id: {lock_id}")
   ```
+
+  (`try_acquire` is used instead of `acquire` so duplicate-permanent fails
+  immediately rather than blocking — matches the original
+  `JsonFileLockStore.put` ValueError semantics.)
 - `verify_lock(lock_id)` becomes:
   ```python
   handle = await dhara_lock.get(f"precommit:l:{lock_id}")
@@ -408,11 +413,10 @@ events):
 
 | Event | Emitted when | Payload |
 |---|---|---|
-| `audit:lock.acquired` | `try_acquire` returns a handle (success path) | `lock_key`, `owner_token`, `ttl_seconds`, `is_permanent`, `lock_age_s` |
+| `audit:lock.acquired` | `try_acquire` returns a handle (success path; conflict-reclaim path also emits this with `reclaimed_from_previous_owner_token` set) | `lock_key`, `owner_token`, `ttl_seconds`, `is_permanent`, `lock_age_s`, `reclaimed_from_previous_owner_token?` |
 | `audit:lock.released` | `release` succeeds (rowcount = 1) | `lock_key`, `owner_token`, `lock_age_s` |
 | `audit:lock.heartbeat` | `heartbeat` succeeds | `lock_key`, `owner_token`, `extend_seconds`, `lock_age_s` |
 | `audit:lock.lost` | `release`/`heartbeat` 0-rowcount OR owner mismatch | `lock_key`, `expected_owner_token`, `lock_age_s` |
-| `audit:lock.expired` | `try_acquire` finds an expired row and reclaims it (rare; mostly used in observability for the slow path) | `lock_key`, `previous_owner_token`, `lock_age_s` |
 
 Event format follows Dhara's `DomainEvent` schema: `event_type`,
 `event_id`, `occurred_at`, `tenant_id`, `payload`.
