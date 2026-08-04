@@ -143,7 +143,8 @@ class DharaLock(Protocol):
         ttl_seconds: int | None = None,      # None = advisory lock
         permanent: bool = False,             # TRUE = never expires; release/heartbeat rejected
         metadata: dict[str, Any] | None = None,
-    ) -> LockHandle | None: ...
+    ) -> LockHandle | None:
+        """Return handle on success; None if held. Raises ValueError if permanent=True and ttl_seconds is also set (mutually exclusive). Raises ValueError on duplicate key for permanent locks (matches precommit's reject-duplicate semantic)."""
 
     def acquire(
         self,
@@ -154,18 +155,19 @@ class DharaLock(Protocol):
         permanent: bool = False,
         timeout_seconds: float | None = None, # None = wait forever
         metadata: dict[str, Any] | None = None,
-    ) -> LockHandle: ...                     # raises LockTimeout
+    ) -> LockHandle:
+        """Block until acquired or timeout. Raises LockTimeout. Same ValueError rules as try_acquire."""
 
     def release(self, handle: LockHandle) -> None:
-        """Free the lock. Verifies owner_token. Raises LockLost or LockPermanentError."""
+        """Free the lock. Verifies owner_token. Raises LockLost (mismatch) or LockPermanentError (permanent lock)."""
 
     def heartbeat(
         self,
         handle: LockHandle,
         *,
-        extend_seconds: int | None = None,   # default = original ttl_seconds
+        extend_seconds: int | None = None,   # default = original ttl_seconds (only meaningful for leases; raises on advisory/permanent locks)
     ) -> None:
-        """Extend lease. Verifies owner_token + handle still valid. Raises LockLost or LockPermanentError."""
+        """Extend lease. Verifies owner_token + handle still valid. Raises LockLost (mismatch/expired), LockPermanentError (permanent lock), or ValueError (advisory lock has no TTL to extend)."""
 ```
 
 **Implementation note**: `acquire(timeout_seconds=N)` is implemented
@@ -235,6 +237,8 @@ persist step changes.
 | `LockTimeout` | `408 Request Timeout` | `acquire(timeout_seconds=N)` exceeded N |
 | `LockLost` | `409 Conflict` | `owner_token` mismatch on `release`/`heartbeat` |
 | `LockPermanentError` | `409 Conflict` | `release`/`heartbeat` on permanent lock |
+| `ValueError` | `400 Bad Request` | Argument validation: `permanent=True` + `ttl_seconds` both set, or `heartbeat` on advisory lock |
+| `ValueError` (duplicate) | `409 Conflict` | `try_acquire`/`acquire` with `permanent=True` on a key that already exists (replaces `JsonFileLockStore.put`'s reject-duplicate behavior) |
 
 All exceptions carry `lock_key`, `owner_token`, `expires_at`,
 `is_permanent`, `lock_age_s` in context.
