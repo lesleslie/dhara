@@ -8,7 +8,7 @@ from typing import Any
 import duckdb
 import pytest
 
-from dhara.lock import DharaLock, LockHandle
+from dhara.lock import DharaLock, LockHandle, LockPermanentError
 from dhara.lock.sql import SQLBackendLock
 
 _MIGRATION_0003 = (
@@ -89,5 +89,5 @@ def test_heartbeat_on_permanent_raises_lock_permanent_error(lock_store: DharaLoc
 
     handle = lock_store.try_acquire("ledger:hb", owner_token="x", permanent=True)
     assert handle is not None
-    with pytest.raises(__import__("dhara.lock", fromlist=["LockPermanentError"]).LockPermanentError):
+    with pytest.raises(LockPermanentError):
         asyncio.run(lock_store.heartbeat(handle, extend_seconds=10))
