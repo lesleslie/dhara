@@ -11,6 +11,7 @@ from typing import Any, Protocol
 
 import duckdb
 
+from dhara.lock.events import LockEventEmitter
 from dhara.lock.protocol import (
     DharaLock,
     LockHandle,
@@ -76,8 +77,13 @@ RETURNING lock_key, owner_token, acquired_at, expires_at, is_permanent,
 
 
 class SQLBackendLock:
-    def __init__(self, sql_backend: SQLBackend) -> None:
+    def __init__(
+        self,
+        sql_backend: SQLBackend,
+        event_emitter: LockEventEmitter | None = None,
+    ) -> None:
         self._db = sql_backend
+        self._events: LockEventEmitter = event_emitter or LockEventEmitter()
 
     def _row_to_handle(self, row: tuple[Any, ...]) -> LockHandle:
         metadata_text = row[6] if row[6] else "{}"
@@ -123,7 +129,9 @@ class SQLBackendLock:
         rows = result.fetchall()
         if not rows:
             return None
-        return self._row_to_handle(rows[0])
+        handle = self._row_to_handle(rows[0])
+        self._events.acquired(handle)
+        return handle
 
     # Placeholders for subsequent tasks.
     async def acquire(
@@ -191,8 +199,10 @@ class SQLBackendLock:
             raise LockPermanentError(f"cannot release permanent: {handle.lock_key}")
         current = self.get(handle.lock_key)
         if current is None:
+            self._events.lost(handle.lock_key, handle.owner_token, "vanished")
             raise LockLost(f"lock vanished: {handle.lock_key}")
         if current.is_permanent:
+            self._events.lost(handle.lock_key, handle.owner_token, "became_permanent")
             raise LockPermanentError(f"row became permanent: {handle.lock_key}")
         result = _execute_lock_write(
             self._db,
@@ -201,7 +211,9 @@ class SQLBackendLock:
             lock_key=handle.lock_key,
         )
         if not result.fetchall():
+            self._events.lost(handle.lock_key, handle.owner_token, "owner_mismatch")
             raise LockLost(f"owner mismatch or vanished: {handle.lock_key}")
+        self._events.released(handle)
 
     async def try_release(self, handle: LockHandle) -> bool:
         if handle.is_permanent:
@@ -218,6 +230,7 @@ class SQLBackendLock:
         extend_seconds: int | None = None,
     ) -> None:
         if handle.is_permanent:
+            self._events.lost(handle.lock_key, handle.owner_token, "permanent_handle")
             raise LockPermanentError(f"cannot heartbeat permanent: {handle.lock_key}")
         if handle.expires_at is None:
             raise ValueError("cannot heartbeat advisory lock (no TTL)")
@@ -226,8 +239,10 @@ class SQLBackendLock:
             raise ValueError("extend_seconds must be positive")
         current = self.get(handle.lock_key)
         if current is None:
+            self._events.lost(handle.lock_key, handle.owner_token, "vanished")
             raise LockLost(f"lock vanished: {handle.lock_key}")
         if current.is_permanent:
+            self._events.lost(handle.lock_key, handle.owner_token, "became_permanent")
             raise LockPermanentError(f"row became permanent: {handle.lock_key}")
         new_expires = datetime.now(UTC) + timedelta(seconds=extend)
         try:
@@ -240,12 +255,15 @@ class SQLBackendLock:
                 current = self.get(handle.lock_key)
                 if current is not None and current.owner_token == handle.owner_token:
                     return
+                self._events.lost(handle.lock_key, handle.owner_token, "tx_conflict")
                 raise LockLost(
                     f"concurrent transaction conflict: {handle.lock_key}"
                 ) from exc
             raise
         if not result.fetchall():
+            self._events.lost(handle.lock_key, handle.owner_token, "owner_mismatch")
             raise LockLost(f"owner mismatch or expired: {handle.lock_key}")
+        self._events.heartbeat(handle)
 
     _GET_SQL = (
         "SELECT lock_key, owner_token, acquired_at, expires_at, is_permanent, "
