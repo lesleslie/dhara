@@ -143,17 +143,77 @@ class SQLBackendLock:
             jitter = random.uniform(-0.005, 0.005)
             await asyncio.sleep(0.1 + jitter)
 
-    def try_release(self, *args: Any, **kwargs: Any) -> bool:
-        raise NotImplementedError
+    _RELEASE_SQL = (
+        "DELETE FROM substrate_locks "
+        "WHERE lock_key = ? AND owner_token = ? AND is_permanent = FALSE "
+        "RETURNING lock_key"
+    )
 
-    def release(self, *args: Any, **kwargs: Any) -> None:
-        raise NotImplementedError
+    _HEARTBEAT_SQL = (
+        "UPDATE substrate_locks SET expires_at = ? "
+        "WHERE lock_key = ? AND owner_token = ? AND is_permanent = FALSE "
+        "AND (expires_at IS NULL OR expires_at > now()) "
+        "RETURNING expires_at"
+    )
 
-    def heartbeat(self, *args: Any, **kwargs: Any) -> None:
-        raise NotImplementedError
+    async def release(self, handle: LockHandle) -> None:
+        if handle.is_permanent:
+            raise LockPermanentError(f"cannot release permanent: {handle.lock_key}")
+        current = self.get(handle.lock_key)
+        if current is None:
+            raise LockLost(f"lock vanished: {handle.lock_key}")
+        if current.is_permanent:
+            raise LockPermanentError(f"row became permanent: {handle.lock_key}")
+        result = self._db.execute(
+            self._RELEASE_SQL, [handle.lock_key, handle.owner_token]
+        )
+        if not result.fetchall():
+            raise LockLost(f"owner mismatch or vanished: {handle.lock_key}")
 
-    def get(self, *args: Any, **kwargs: Any) -> LockHandle | None:
-        raise NotImplementedError
+    async def try_release(self, handle: LockHandle) -> bool:
+        if handle.is_permanent:
+            return False
+        result = self._db.execute(
+            self._RELEASE_SQL, [handle.lock_key, handle.owner_token]
+        )
+        return bool(result.fetchall())
+
+    async def heartbeat(
+        self,
+        handle: LockHandle,
+        *,
+        extend_seconds: int | None = None,
+    ) -> None:
+        if handle.is_permanent:
+            raise LockPermanentError(f"cannot heartbeat permanent: {handle.lock_key}")
+        if handle.expires_at is None:
+            raise ValueError("cannot heartbeat advisory lock (no TTL)")
+        extend = extend_seconds if extend_seconds is not None else (handle.original_ttl_seconds or 0)
+        if extend <= 0:
+            raise ValueError("extend_seconds must be positive")
+        current = self.get(handle.lock_key)
+        if current is None:
+            raise LockLost(f"lock vanished: {handle.lock_key}")
+        if current.is_permanent:
+            raise LockPermanentError(f"row became permanent: {handle.lock_key}")
+        new_expires = datetime.now(UTC) + timedelta(seconds=extend)
+        result = self._db.execute(
+            self._HEARTBEAT_SQL,
+            [new_expires, handle.lock_key, handle.owner_token],
+        )
+        if not result.fetchall():
+            raise LockLost(f"owner mismatch or expired: {handle.lock_key}")
+
+    _GET_SQL = (
+        "SELECT lock_key, owner_token, acquired_at, expires_at, is_permanent, "
+        "original_ttl_seconds, metadata FROM substrate_locks WHERE lock_key = ?"
+    )
+
+    def get(self, lock_key: str) -> LockHandle | None:
+        rows = self._db.execute(self._GET_SQL, [lock_key]).fetchall()
+        if not rows:
+            return None
+        return self._row_to_handle(rows[0])
 
     def list_keys(self, *args: Any, **kwargs: Any) -> list[LockHandle]:
         raise NotImplementedError
