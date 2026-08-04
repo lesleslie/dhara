@@ -120,9 +120,11 @@ CREATE TABLE IF NOT EXISTS substrate_locks (
     metadata              TEXT NOT NULL DEFAULT '{}'   -- JSON blob; empty object default. Callers (e.g. precommit) embed their own signature inside this JSON.
 );
 
+-- Plain indexes (not partial) for DuckDB compatibility. Partial indexes
+-- (WHERE expires_at IS NOT NULL) are a Postgres-only optimization; deferred
+-- to a follow-up if expiration-row counts warrant the storage savings.
 CREATE INDEX IF NOT EXISTS ix_substrate_locks_expires_at
-    ON substrate_locks (expires_at)
-    WHERE expires_at IS NOT NULL;
+    ON substrate_locks (expires_at);
 
 CREATE INDEX IF NOT EXISTS ix_substrate_locks_is_permanent
     ON substrate_locks (is_permanent);
