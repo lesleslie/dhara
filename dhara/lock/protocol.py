@@ -49,7 +49,7 @@ class DharaLock(Protocol):
         metadata: dict[str, Any] | None = None,
     ) -> LockHandle | None: ...
 
-    def acquire(
+    async def acquire(
         self,
         lock_key: str,
         *,

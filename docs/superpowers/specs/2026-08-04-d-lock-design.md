@@ -271,7 +271,7 @@ class DharaLock(Protocol):
     ) -> LockHandle | None:
         """Return handle on success; None if held. Raises ValueError if permanent=True and ttl_seconds is also set (mutually exclusive). Raises ValueError on duplicate key for permanent locks (matches precommit's reject-duplicate semantic)."""
 
-    def acquire(
+    async def acquire(
         self,
         lock_key: str,
         *,
