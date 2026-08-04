@@ -42,7 +42,12 @@ def test_concurrent_try_acquire_exactly_one_wins(file_db: str) -> None:
         try:
             store = SQLBackendLock(conn)
             barrier.wait()
-            handle = store.try_acquire("race-key", owner_token=f"t{i}", ttl_seconds=30)
+            try:
+                handle = store.try_acquire(
+                    "race-key", owner_token=f"t{i}", ttl_seconds=30
+                )
+            except (LockLost, duckdb.ConstraintException):
+                handle = None
             with results_lock:
                 results.append(handle)
         finally:
@@ -54,6 +59,7 @@ def test_concurrent_try_acquire_exactly_one_wins(file_db: str) -> None:
     for t in threads:
         t.join()
 
+    assert len(results) == 20
     winners = [r for r in results if r is not None]
     assert len(winners) == 1, f"expected exactly 1 winner, got {len(winners)}"
 
@@ -104,8 +110,8 @@ def test_heartbeat_cannot_extend_other_owner(file_db: str) -> None:
         a_conn.close()
 
 
-def test_permanent_lock_not_demoted_by_racing_lease(file_db: str) -> None:
-    """C3 fix: racing non-permanent try_acquire must NOT demote a permanent lock."""
+def test_permanent_lock_not_demoted_by_racing_lease_sequential(file_db: str) -> None:
+    """Verify the SQL guard prevents a sequential lease from demoting a permanent lock."""
     init = duckdb.connect(file_db)
     try:
         store = SQLBackendLock(init)
@@ -160,6 +166,7 @@ def test_concurrent_release_same_owner(file_db: str) -> None:
     for t in threads:
         t.join()
 
+    assert len(results) == 10
     successes = [r for r in results if r]
     assert len(successes) == 1, f"expected exactly 1 successful release, got {len(successes)}"
 
@@ -202,4 +209,5 @@ def test_concurrent_heartbeat_same_owner_idempotent(file_db: str) -> None:
     for t in threads:
         t.join()
 
+    assert len(results) == 10
     assert all(results), f"all heartbeats should succeed; got {results}"
