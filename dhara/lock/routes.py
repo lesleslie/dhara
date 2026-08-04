@@ -104,7 +104,10 @@ def register_lock_routes(server: FastMCP, sql_backend: SQLBackend) -> None:
             return JSONResponse(
                 {"error": "missing X-Owner-Token header"}, status_code=400
             )
-        body = await _safe_json(request) or {}
+        body = await _safe_json(request)
+        if isinstance(body, JSONResponse):
+            return body
+        body = body or {}
         # Reconstruct a handle to pass to heartbeat
         current = store.get(lock_key)
         if current is None:
