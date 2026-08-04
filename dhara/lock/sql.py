@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+import random
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol
@@ -94,8 +96,52 @@ class SQLBackendLock:
         return self._row_to_handle(rows[0])
 
     # Placeholders for subsequent tasks.
-    def acquire(self, *args: Any, **kwargs: Any) -> LockHandle:
-        raise NotImplementedError
+    async def acquire(
+        self,
+        lock_key: str,
+        *,
+        owner_token: str | None = None,
+        ttl_seconds: int | None = None,
+        permanent: bool = False,
+        timeout_seconds: float | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> LockHandle:
+        try_once = self.try_acquire(
+            lock_key,
+            owner_token=owner_token,
+            ttl_seconds=ttl_seconds,
+            permanent=permanent,
+            metadata=metadata,
+        )
+        if try_once is not None:
+            return try_once
+        if timeout_seconds is not None and timeout_seconds <= 0:
+            # try-once path; None return means held
+            raise LockTimeout(f"acquire (try-once) failed: {lock_key}")
+
+        deadline = (
+            None
+            if timeout_seconds is None
+            else asyncio.get_running_loop().time() + timeout_seconds
+        )
+        while True:
+            try:
+                handle = self.try_acquire(
+                    lock_key,
+                    owner_token=owner_token,
+                    ttl_seconds=ttl_seconds,
+                    permanent=permanent,
+                    metadata=metadata,
+                )
+            except ValueError:
+                # Mutual exclusion / permanent-held
+                raise LockTimeout(f"permanent-held: {lock_key}") from None
+            if handle is not None:
+                return handle
+            if deadline is not None and asyncio.get_running_loop().time() >= deadline:
+                raise LockTimeout(f"acquire timed out: {lock_key}")
+            jitter = random.uniform(-0.005, 0.005)
+            await asyncio.sleep(0.1 + jitter)
 
     def try_release(self, *args: Any, **kwargs: Any) -> bool:
         raise NotImplementedError
