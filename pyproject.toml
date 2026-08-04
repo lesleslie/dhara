@@ -11,6 +11,7 @@ dev = [
     "pytest-cov>=7.1.0",
     "pytest-timeout>=2.4.0",
     "session-buddy>=0.19.9",
+    "pytz",  # DuckDB TIMESTAMPTZ; also inherited from runtime deps
 ]
 # Cloud storage backends. None are runtime-required; Dhara falls back
 # to local SQLite/duckdb when these aren't installed. The empty
@@ -71,6 +72,7 @@ dependencies = [
     "schedule>=1.2.2",
     "zstandard>=0.25.0",
     "aiosqlite>=0.22.1",
+    "pytz",  # DuckDB requires pytz for TIMESTAMPTZ handling (used by D-LOCK migration 0003)
 ]
 
 [project.urls]

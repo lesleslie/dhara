@@ -963,7 +963,7 @@ wheels = [
 
 [[package]]
 name = "dhara"
-version = "0.13.1"
+version = "0.13.2"
 source = { editable = "." }
 dependencies = [
     { name = "aiosqlite" },
@@ -973,6 +973,7 @@ dependencies = [
     { name = "mcp-common" },
     { name = "msgspec" },
     { name = "oneiric" },
+    { name = "pytz" },
     { name = "rich" },
     { name = "schedule" },
     { name = "uvicorn" },
@@ -992,6 +993,7 @@ dev = [
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
     { name = "pytest-timeout" },
+    { name = "pytz" },
     { name = "session-buddy" },
 ]
 
@@ -1004,6 +1006,7 @@ requires-dist = [
     { name = "mcp-common", specifier = ">=0.17.0" },
     { name = "msgspec", specifier = ">=0.21.1" },
     { name = "oneiric", specifier = ">=0.16.0" },
+    { name = "pytz" },
     { name = "rich", specifier = ">=15.0.0" },
     { name = "schedule", specifier = ">=1.2.2" },
     { name = "uvicorn", specifier = ">=0.48.0" },
@@ -1023,6 +1026,7 @@ dev = [
     { name = "pytest-asyncio", specifier = ">=1.4.0" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
     { name = "pytest-timeout", specifier = ">=2.4.0" },
+    { name = "pytz" },
     { name = "session-buddy", specifier = ">=0.19.9" },
 ]
 
@@ -3480,6 +3484,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d6/41/65079023c81491a21799c0120bce5925366b6913596bf797806f19973290/python_ulid-4.0.1.tar.gz", hash = "sha256:bbeec02556190bb9dc3401faa7268696acbfbe7b6db9908c155dc3548629f20c", size = 101683, upload-time = "2026-07-20T15:21:41.256Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b4/15/8b39b36f55b6618ec4ca9b55134dcfd9c04cecbc72709f5d8e6bdebed9cd/python_ulid-4.0.1-py3-none-any.whl", hash = "sha256:6f1d69ceb97e99fe542df8476ebcd7a668284bf53ee14b3106bcc6a341a95ed9", size = 14609, upload-time = "2026-07-20T15:21:40.214Z" },
+]
+
+[[package]]
+name = "pytz"
+version = "2026.3.post1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/fb/48/fb042503b6ca6cd271261dc559fd6432f7d8c713153e9ec5c591af4dfc1c/pytz-2026.3.post1.tar.gz", hash = "sha256:2211d3fcf9a797d3405cac96ac7f61d80e6a644f72a3309607282fe8a2010c5d", size = 319745, upload-time = "2026-07-25T15:12:07.385Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0f/7b/39c34ca613b0b198cb866466651b26b045e2009864c5183c979a3b83f383/pytz-2026.3.post1-py2.py3-none-any.whl", hash = "sha256:dd95840dd199baea12d9cc096a1d452caa6596a1c1e4b5f3dbd1541855d5e815", size = 508283, upload-time = "2026-07-25T15:12:05.782Z" },
 ]
 
 [[package]]
