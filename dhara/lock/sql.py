@@ -215,5 +215,15 @@ class SQLBackendLock:
             return None
         return self._row_to_handle(rows[0])
 
-    def list_keys(self, *args: Any, **kwargs: Any) -> list[LockHandle]:
-        raise NotImplementedError
+    def list_keys(self, prefix: str | None = None) -> list[LockHandle]:
+        if prefix is None:
+            sql = self._GET_SQL.replace("WHERE lock_key = ?", "") + " ORDER BY acquired_at"
+            rows = self._db.execute(sql).fetchall()
+        else:
+            sql = (
+                "SELECT lock_key, owner_token, acquired_at, expires_at, is_permanent, "
+                "original_ttl_seconds, metadata FROM substrate_locks "
+                "WHERE lock_key LIKE ? ORDER BY acquired_at"
+            )
+            rows = self._db.execute(sql, [f"{prefix}%"]).fetchall()
+        return [self._row_to_handle(r) for r in rows]

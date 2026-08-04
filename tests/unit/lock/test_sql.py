@@ -223,3 +223,29 @@ async def test_heartbeat_value_error_on_advisory(lock_store: DharaLock) -> None:
     assert handle is not None
     with pytest.raises(ValueError, match="advisory"):
         await lock_store.heartbeat(handle)
+
+
+def test_get_returns_handle_for_existing_key(lock_store: DharaLock) -> None:
+    original = lock_store.try_acquire("k20", owner_token="t20", ttl_seconds=30)
+    assert original is not None
+    fetched = lock_store.get("k20")
+    assert fetched is not None
+    assert fetched.owner_token == "t20"
+
+
+def test_get_returns_none_for_unknown(lock_store: DharaLock) -> None:
+    assert lock_store.get("nonexistent") is None
+
+
+def test_list_keys_returns_all_when_no_prefix(lock_store: DharaLock) -> None:
+    for i in range(3):
+        lock_store.try_acquire(f"k-list-{i}")
+    assert len(lock_store.list_keys()) == 3
+
+
+def test_list_keys_filters_by_prefix(lock_store: DharaLock) -> None:
+    lock_store.try_acquire("mahavishnu:worker:w1")
+    lock_store.try_acquire("mahavishnu:worker:w2")
+    lock_store.try_acquire("crackerjack:async-tasks:t1")
+    worker_keys = lock_store.list_keys(prefix="mahavishnu:worker:")
+    assert {h.lock_key for h in worker_keys} == {"mahavishnu:worker:w1", "mahavishnu:worker:w2"}
