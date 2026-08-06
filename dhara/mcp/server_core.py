@@ -1003,6 +1003,11 @@ class DharaMCPServer:
         # Workstream D will swap to SQL-backed tables.
         register_substrate_routes(self.server, self.connection)
 
+        # D-LOCK: distributed lock + audit ledger primitive
+        from dhara.lock.routes import register_lock_routes
+        if getattr(self, 'sql_backend', None) is not None:
+            register_lock_routes(self.server, self.sql_backend)
+
     def _register_tools_call_route(self) -> None:
         """Register /tools/call REST-style endpoint for Akosha client compatibility."""
 
