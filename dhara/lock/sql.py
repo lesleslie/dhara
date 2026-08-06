@@ -13,7 +13,6 @@ import duckdb
 
 from dhara.lock.events import LockEventEmitter
 from dhara.lock.protocol import (
-    DharaLock,
     LockHandle,
     LockLost,
     LockPermanentError,
@@ -55,6 +54,31 @@ def _is_transaction_exception(exc: Exception) -> bool:
     )
 
 
+def _assert_handle_can_heartbeat(
+    handle: LockHandle, events: LockEventEmitter
+) -> None:
+    """Pre-flight check on the handle: permanent locks and advisory (no-TTL) locks cannot be heartbeated."""
+    if handle.is_permanent:
+        events.lost(handle.lock_key, handle.owner_token, "permanent_handle")
+        raise LockPermanentError(f"cannot heartbeat permanent: {handle.lock_key}")
+    if handle.expires_at is None:
+        raise ValueError("cannot heartbeat advisory lock (no TTL)")
+
+
+def _resolve_heartbeat_extend(
+    handle: LockHandle, extend_seconds: int | None
+) -> int:
+    """Pick the extension to apply: caller value wins, fall back to original TTL."""
+    extend = (
+        extend_seconds
+        if extend_seconds is not None
+        else (handle.original_ttl_seconds or 0)
+    )
+    if extend <= 0:
+        raise ValueError("extend_seconds must be positive")
+    return extend
+
+
 _TRY_ACQUIRE_SQL = """
 INSERT INTO substrate_locks
     (lock_key, owner_token, expires_at, is_permanent, original_ttl_seconds, metadata)
@@ -86,7 +110,7 @@ class SQLBackendLock:
         self._events: LockEventEmitter = event_emitter or LockEventEmitter()
 
     def _row_to_handle(self, row: tuple[Any, ...]) -> LockHandle:
-        metadata_text = row[6] if row[6] else "{}"
+        metadata_text = row[6] or "{}"
         return LockHandle(
             lock_key=row[0],
             owner_token=row[1],
@@ -120,13 +144,12 @@ class SQLBackendLock:
             original_ttl = None
         metadata_text = json.dumps(metadata or {})
         params = [lock_key, token, expires_at, permanent, original_ttl, metadata_text]
-        result = _execute_lock_write(
+        rows = _execute_lock_write(
             self._db,
             _TRY_ACQUIRE_SQL,
             params,
             lock_key=lock_key,
-        )
-        rows = result.fetchall()
+        ).fetchall()
         if not rows:
             return None
         handle = self._row_to_handle(rows[0])
@@ -229,14 +252,15 @@ class SQLBackendLock:
         *,
         extend_seconds: int | None = None,
     ) -> None:
-        if handle.is_permanent:
-            self._events.lost(handle.lock_key, handle.owner_token, "permanent_handle")
-            raise LockPermanentError(f"cannot heartbeat permanent: {handle.lock_key}")
-        if handle.expires_at is None:
-            raise ValueError("cannot heartbeat advisory lock (no TTL)")
-        extend = extend_seconds if extend_seconds is not None else (handle.original_ttl_seconds or 0)
-        if extend <= 0:
-            raise ValueError("extend_seconds must be positive")
+        _assert_handle_can_heartbeat(handle, self._events)
+        extend = _resolve_heartbeat_extend(handle, extend_seconds)
+        self._verify_lock_row_current(handle)
+        new_expires = datetime.now(UTC) + timedelta(seconds=extend)
+        if self._execute_heartbeat_update(handle, new_expires):
+            self._events.heartbeat(handle)
+
+    def _verify_lock_row_current(self, handle: LockHandle) -> None:
+        """Confirm the stored row still matches ``handle``; raise on drift."""
         current = self.get(handle.lock_key)
         if current is None:
             self._events.lost(handle.lock_key, handle.owner_token, "vanished")
@@ -244,26 +268,36 @@ class SQLBackendLock:
         if current.is_permanent:
             self._events.lost(handle.lock_key, handle.owner_token, "became_permanent")
             raise LockPermanentError(f"row became permanent: {handle.lock_key}")
-        new_expires = datetime.now(UTC) + timedelta(seconds=extend)
+
+    def _execute_heartbeat_update(
+        self, handle: LockHandle, new_expires: datetime
+    ) -> bool:
+        """Run the heartbeat UPDATE; recover from DuckDB TransactionException.
+
+        Returns ``True`` for a clean successful update, ``False`` for the
+        tx-conflict recovery path (row still valid, treat as silent success).
+        Raises ``LockLost`` on owner mismatch / vanished / unresolvable conflict.
+        """
         try:
             result = self._db.execute(
                 self._HEARTBEAT_SQL,
                 [new_expires, handle.lock_key, handle.owner_token],
             )
         except Exception as exc:
-            if _is_transaction_exception(exc):
-                current = self.get(handle.lock_key)
-                if current is not None and current.owner_token == handle.owner_token:
-                    return
-                self._events.lost(handle.lock_key, handle.owner_token, "tx_conflict")
-                raise LockLost(
-                    f"concurrent transaction conflict: {handle.lock_key}"
-                ) from exc
-            raise
+            if not _is_transaction_exception(exc):
+                raise
+            current = self.get(handle.lock_key)
+            if current is not None and current.owner_token == handle.owner_token:
+                # Another concurrent holder refreshed the row; caller skips emit.
+                return False
+            self._events.lost(handle.lock_key, handle.owner_token, "tx_conflict")
+            raise LockLost(
+                f"concurrent transaction conflict: {handle.lock_key}"
+            ) from exc
         if not result.fetchall():
             self._events.lost(handle.lock_key, handle.owner_token, "owner_mismatch")
             raise LockLost(f"owner mismatch or expired: {handle.lock_key}")
-        self._events.heartbeat(handle)
+        return True
 
     _GET_SQL = (
         "SELECT lock_key, owner_token, acquired_at, expires_at, is_permanent, "
@@ -278,7 +312,10 @@ class SQLBackendLock:
 
     def list_keys(self, prefix: str | None = None) -> list[LockHandle]:
         if prefix is None:
-            sql = self._GET_SQL.replace("WHERE lock_key = ?", "") + " ORDER BY acquired_at"
+            sql = (
+                self._GET_SQL.replace("WHERE lock_key = ?", "")
+                + " ORDER BY acquired_at"
+            )
             rows = self._db.execute(sql).fetchall()
         else:
             sql = (

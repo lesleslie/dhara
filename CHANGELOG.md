@@ -5,6 +5,43 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] - 2026-08-05
+
+### Added
+
+- Add acquire() with timeout=0 LockTimeout fix + symmetric jitter
+- Add DharaLock Protocol, LockHandle, InMemoryDharaLock
+- Add migration 0003 for substrate_locks table
+- Add migration 0003 substrate_locks table + test
+- Add SQLBackendLock.try_acquire with atomic UPSERT
+- Emit audit:lock.{acquired,released,heartbeat,lost} events
+- lock: Add get() and list_keys() for reapers/dashboards/precommit
+- lock: Add release/try_release/heartbeat with is_permanent guard
+- lock: Add REST routes with full 409 reason taxonomy
+
+### Fixed
+
+- deps: Add pytz for DuckDB TIMESTAMPTZ handling
+- lock: Handle DuckDB transaction conflicts
+- lock: Heartbeat handler returns JSONResponse on body-parse failure
+- Mark DharaLock.acquire as async in Protocol
+- Revert "feat(lock): add migration 0003 substrate_locks table + test"
+- spec: Drop partial-index WHERE clauses for DuckDB compat
+- spec: Fold multi-agent review findings into D-LOCK design
+- spec: Resolve D-LOCK self-review ambiguities
+- spec: Resolve D-LOCK self-review issues (round 2)
+- substrate: Wire Workstream C routes through migration 0001 SQL tables
+
+### Documentation
+
+- spec: Add D-LOCK distributed lock primitive design
+
+### Testing
+
+- Add permanent-mode tests including LockPermanentError path
+- lock: Add concurrency tests with per-thread connections (H3 fix)
+- lock: Replace dynamic import and shorten long line in permanent tests
+
 ## [0.13.2] - 2026-07-28
 
 ### Fixed
@@ -20,7 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bump oneiric dep to >=0.16.0
 - deps: Bump crackerjack>=0.70.0; remove duplicated validator script
 - deps: Remove duplicated validate_document_frontmatter.py script
-- dhara: Remove orphaned _compat module
+- dhara: Remove orphaned \_compat module
 - Normalize LICENSE attribution to Robert Leslie and Wedgwood Web Works
 
 ## [0.13.0] - 2026-07-21

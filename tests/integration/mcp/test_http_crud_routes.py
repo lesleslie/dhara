@@ -18,6 +18,8 @@ The in-process ASGI app is exercised via ``httpx.AsyncClient`` with
 
 from __future__ import annotations
 
+import asyncio
+import threading
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
@@ -29,18 +31,76 @@ import pytest
 # ---------------------------------------------------------------------------
 
 
+class _StubAsyncConnection:
+    """Minimal async Connection backed by an in-memory dict.
+
+    Avoids the on-disk ``AsyncFileStorage`` path used by the real
+    ``AsyncConnection.new()``. ``_root`` is mutated directly by
+    ``register_substrate_routes`` (legacy dict persistence path), so a real
+    Python ``dict`` is required — a ``MagicMock`` would auto-generate child
+    attributes and break the substrate CRUD round-trip semantics.
+    """
+
+    def __init__(self) -> None:
+        self._root: dict[str, Any] = {}
+        self.cache: dict[str, Any] = {}
+
+    async def get_root(self) -> dict[str, Any]:
+        return self._root
+
+    async def commit(self) -> None:
+        return None
+
+    async def abort(self) -> None:
+        return None
+
+    @property
+    def storage(self) -> dict[str, Any]:
+        return self._root
+
+
+def _build_in_memory_facade() -> Any:
+    """Wrap a ``_StubAsyncConnection`` in a real ``_SyncConnectionFacade``.
+
+    The facade's ``_run`` uses ``asyncio.run_coroutine_threadsafe``, which
+    needs a real ``AbstractEventLoop``. Drive that loop from a daemon
+    thread — same shape as the production ``_run_async_connection_wire``
+    path (which calls ``_ensure_loop_background_thread``).
+    """
+    from dhara.mcp.server_core import _SyncConnectionFacade
+
+    loop = asyncio.new_event_loop()
+    thread = threading.Thread(
+        target=loop.run_forever, daemon=True, name="test-substrate-crud-loop"
+    )
+    thread.start()
+    return _SyncConnectionFacade(_StubAsyncConnection(), loop)
+
+
 def _make_app_patches() -> tuple:
     """Return the patches that isolate DharaMCPServer from filesystem deps.
 
     NOTE: We deliberately do NOT mock ``FastMCP`` — tests need a real
     ASGI app from ``server.http_app(transport='http')``. Only the storage
-    I/O and auth verifier are stubbed.
+    I/O, async connection wiring, and auth verifier are stubbed.
+
+    The legacy ``patch("dhara.mcp.server_core.Connection")`` was removed
+    because ``Connection`` now lives only inside a ``TYPE_CHECKING`` block
+    (DharaMCPServer builds an ``AsyncConnection``). The
+    ``_run_async_connection_wire`` patch here replaces the real
+    ``AsyncConnection.new`` + duckdb path with an in-memory stub so the
+    substrate routes can exercise their legacy dict persistence branch
+    without touching disk.
     """
     return (
-        # AsyncFileStorage: never touches disk
+        # AsyncFileStorage: never touches disk (kept for parity with the
+        # original fixture even though _run_async_connection_wire is now patched).
         patch("dhara.mcp.server_core.AsyncFileStorage"),
-        # Connection: open the mock storage root
-        patch("dhara.mcp.server_core.Connection"),
+        # Async connection wire: skip AsyncConnection.new entirely.
+        patch(
+            "dhara.mcp.server_core._run_async_connection_wire",
+            side_effect=lambda storage: _build_in_memory_facade(),
+        ),
         # Auth verifier: disabled for tests
         patch("dhara.mcp.server_core.build_token_verifier", return_value=None),
         # Health tools: not exercised here

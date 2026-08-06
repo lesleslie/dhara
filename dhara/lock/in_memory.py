@@ -39,7 +39,9 @@ class InMemoryDharaLock:
 
         now = datetime.now(UTC)
         token = owner_token or uuid.uuid4().hex
-        expires_at = None if ttl_seconds is None else now + timedelta(seconds=ttl_seconds)
+        expires_at = (
+            None if ttl_seconds is None else now + timedelta(seconds=ttl_seconds)
+        )
         handle = LockHandle(
             lock_key=lock_key,
             owner_token=token,
@@ -80,7 +82,9 @@ class InMemoryDharaLock:
         if timeout_seconds is not None and timeout_seconds <= 0:
             raise LockTimeout(f"acquire timed out: {lock_key}")
 
-        deadline = None if timeout_seconds is None else time.monotonic() + timeout_seconds
+        deadline = (
+            None if timeout_seconds is None else time.monotonic() + timeout_seconds
+        )
         while True:
             await asyncio.sleep(0)
             try:
@@ -129,7 +133,11 @@ class InMemoryDharaLock:
             raise LockPermanentError(f"cannot heartbeat permanent: {handle.lock_key}")
         if handle.expires_at is None:
             raise ValueError("cannot heartbeat advisory lock (no TTL)")
-        extend = extend_seconds if extend_seconds is not None else (handle.original_ttl_seconds or 0)
+        extend = (
+            extend_seconds
+            if extend_seconds is not None
+            else (handle.original_ttl_seconds or 0)
+        )
         if extend <= 0:
             raise ValueError("extend_seconds must be positive")
         existing = self._items.get(handle.lock_key)

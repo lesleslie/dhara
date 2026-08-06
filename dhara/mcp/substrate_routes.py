@@ -199,7 +199,7 @@ def _sql_insert_progress(
             workflow_id,
             tenant_id or "",
             step,
-            float(progress_percent),
+            progress_percent,
         ],
     )
     return snapshot_id
@@ -279,13 +279,18 @@ def _read_settings(
     sql_backend: SQLBackend | None,
     connection: Any,
     adapter_id: str,
-) -> list[dict[str, Any]]:
-    """Read settings records (SQL or legacy)."""
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Read settings records (SQL or legacy). Returns ``(records, current)``.
+
+    ``current`` is the most recent settings dict, or ``{}`` when no records
+    exist — callers can use ``current.get("version")`` directly without a
+    None-guard.
+    """
     if sql_backend is not None:
         records = _sql_fetch_settings(sql_backend, adapter_id)
-        return records, records[0]["settings"] if records else None
+        return records, records[0]["settings"] if records else {}
     records = _read(connection, "active_settings_version", adapter_id)
-    return records, records[-1]["payload"] if records else None
+    return records, records[-1]["payload"] if records else {}
 
 
 def _write_settings(
@@ -403,8 +408,8 @@ def register_substrate_routes(
         records, current = _read_settings(sql_backend, connection, adapter_id)
         body: dict[str, Any] = {
             "adapter_id": adapter_id,
-            "version": (current or {}).get("version"),
-            "settings_version": (current or {}).get("version"),
+            "version": current.get("version"),
+            "settings_version": current.get("version"),
             "history": records,
             "total": len(records),
         }
@@ -466,7 +471,7 @@ def register_substrate_routes(
         workflow_id = request.path_params["workflow_id"]
         records = _read_progress_snapshots(sql_backend, connection, workflow_id)
         snapshots = (
-            list(records)
+            records.copy()
             if sql_backend is not None
             else [r["payload"] for r in records]
         )
