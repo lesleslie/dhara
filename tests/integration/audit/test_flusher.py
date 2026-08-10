@@ -52,11 +52,11 @@ async def test_flusher_inserts_drained_records(conn: duckdb.DuckDBPyConnection) 
         "SELECT entity_type, entity_id, payload FROM audit_log"
     ).fetchall()
     assert len(rows) == 1
-    # NOTE: entity_type/entity_id wiring is refined in Task 5; the Task 3
-    # placeholder returns "unknown" for both until the integration glue
-    # is in place.
-    assert rows[0][0] == "unknown"
-    assert rows[0][1] == "unknown"
+    # entity_type/entity_id flow through the outbox alongside the
+    # validated audit_record (MemoryOutbox stores (entity_type,
+    # entity_id, AuditRecord) tuples).
+    assert rows[0][0] == "foo"
+    assert rows[0][1] == "bar"
 
 
 @pytest.mark.asyncio

@@ -35,23 +35,25 @@ class OutboxFlusher:
         structured fields (count_attempted, exception_type); returns 0 on
         failure so the caller observes a no-op rather than a crash.
         """
-        records = self._outbox.drain()
-        if not records:
+        items = self._outbox.drain()
+        if not items:
             return 0
         rows = [
             (
-                self._entity_type_for(record),
-                self._entity_id_for(record),
+                entity_type,
+                entity_id,
                 json.dumps(
                     {
-                        "actor": record.actor,
+                        "audit_id": record.audit_id,
                         "event_type": record.event_type,
+                        "actor": record.actor,
+                        "at": record.at.isoformat(),
                         "subject": record.subject,
                         "metadata": dict(record.metadata),
                     }
                 ),
             )
-            for record in records
+            for entity_type, entity_id, record in items
         ]
         try:
             self._conn.executemany(
@@ -68,14 +70,3 @@ class OutboxFlusher:
             )
             return 0
         return len(rows)
-
-    @staticmethod
-    def _entity_type_for(record: object) -> str:
-        # Placeholder; entity_type is set by the WriteEvent, not the
-        # audit_record. We use 'unknown' as a placeholder until the
-        # integration glue (Task 5) wires event metadata into flusher.
-        return getattr(record, "entity_type", "unknown") or "unknown"
-
-    @staticmethod
-    def _entity_id_for(record: object) -> str:
-        return getattr(record, "entity_id", "unknown") or "unknown"

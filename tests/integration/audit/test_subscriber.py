@@ -43,7 +43,9 @@ def test_subscriber_enqueues_validated_record(
     subscriber.on_put(write_event)
 
     assert outbox.size == 1
-    record = outbox.peek()
+    entity_type, entity_id, record = outbox.peek()
+    assert entity_type == "test_entity"
+    assert entity_id == "test-id-123"
     assert isinstance(record, AuditRecord)
     assert record.actor == "test-actor"
     assert record.event_type == "test-action"

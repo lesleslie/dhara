@@ -62,13 +62,15 @@ class AuditLogSubscriber:
         """Validate and enqueue audit_record for the given write event.
 
         G6 contract: NEVER raises. On validation failure, logs and returns.
-        The entity_type/entity_id of the underlying write live in the
-        audit_log table (per migration 0004 schema); the audit_record
-        payload itself carries only the validated event fields.
+        The entity_type/entity_id of the underlying write are carried
+        alongside the validated ``AuditRecord`` through the MemoryOutbox
+        so the flusher can populate the audit_log table's entity columns
+        (per migration 0004 schema). The audit_record payload itself
+        carries only the validated event fields.
         """
         try:
             record: AuditRecord = validate("audit_record", event.payload)
-            self._outbox.enqueue(record)
+            self._outbox.enqueue(event.entity_type, event.entity_id, record)
         except Exception as exc:  # noqa: BLE001 — G6 contract: never raise
             _logger.warning(
                 "audit_record_validation_failed",
