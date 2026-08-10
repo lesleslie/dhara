@@ -21,6 +21,8 @@ from contextlib import suppress
 from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 if TYPE_CHECKING:
+    import duckdb
+
     from dhara.core.connection import Connection
 
 from fastmcp.server.auth.authorization import require_scopes
@@ -33,6 +35,8 @@ from oneiric.adapters.cache import MemoryCacheSettings, RedisCacheSettings
 from oneiric.core.config import load_settings
 from oneiric.core.logging import get_logger
 
+from dhara.audit.outbox import MemoryOutbox
+from dhara.audit.subscriber import AuditLogSubscriber
 from dhara.core.config import DharaSettings
 from dhara.mcp.adapter_lookup import resolve_cache_adapter
 from dhara.mcp.adapter_tools import (
@@ -281,12 +285,49 @@ class DharaMCPServer:
     ────────────────────────────────────────────────────────────────────
     """
 
-    def __init__(self, config: DharaSettings) -> None:
+    def __init__(
+        self,
+        config: DharaSettings | None = None,
+        *,
+        storage_conn: duckdb.DuckDBPyConnection | None = None,
+        audit_outbox: MemoryOutbox | None = None,
+    ) -> None:
         """Initialize Dhara MCP server.
 
         Args:
-            config: Validated Dhara settings
+            config: Validated Dhara settings. When ``None``, only the D-AUDIT
+                substrate is wired (lightweight/test path); the FastMCP server,
+                storage backends, adapter registry, and health routes are not
+                constructed. Callers using this mode invoke ``_register_tools``
+                explicitly to wire the audit subscriber + query tool.
+            storage_conn: Optional DuckDB connection forwarded to the
+                :class:`AuditLogQueryTool` so audit reads can hit an existing
+                connection without rebuilding one.
+            audit_outbox: In-memory bounded FIFO used by the audit subscriber.
+                Defaults to a fresh :class:`MemoryOutbox` when not supplied.
+
+        Note: The brief for D-AUDIT Task 5 references ``super().__init__(**kwargs)``,
+        but ``DharaMCPServer`` is the concrete class with no parent. The kwargs
+        signature here preserves that intent (``**kwargs``-like absorption via
+        keyword-only parameters) while staying compatible with the existing
+        ``config: DharaSettings`` construction path used by production callers.
         """
+        # D-AUDIT substrate (Layer 0): always wired, no infrastructure deps.
+        self._storage_conn = storage_conn
+        self._audit_outbox = audit_outbox or MemoryOutbox()
+        self._registered_tools: dict[str, object] = {}
+        self._audit_subscriber: AuditLogSubscriber | None = None
+
+        if config is None:
+            # Lightweight construction mode (audit-only/test path). The
+            # FastMCP server, storage, and adapters are not constructed;
+            # the caller drives ``_register_tools`` explicitly.
+            self.config = None  # type: ignore[assignment]
+            self._start_time = time.time()
+            self.auth_verifier = None
+            self.server = None  # type: ignore[assignment]
+            return
+
         self.config = config
         self._start_time = time.time()
         self.auth_verifier = build_token_verifier(
@@ -459,6 +500,27 @@ class DharaMCPServer:
             STANDARD: Adds adapter registry and ecosystem state
             FULL:     All tools (same as STANDARD for Dhara)
         """
+
+        # D-AUDIT substrate (Layer 0): always wired, no infrastructure deps.
+        # Registers the audit subscriber singleton and exposes the read-back
+        # query tool under ``audit_record_query`` so callers (incl. lightweight
+        # construction) can introspect or invoke the audit pipeline directly.
+        subscriber = AuditLogSubscriber(outbox=self._audit_outbox)
+        subscriber.register()
+        self._audit_subscriber = subscriber
+
+        # The read-back query tool needs a storage handle. Skip it in the
+        # fully lightweight path (no storage_conn provided); callers that want
+        # query back must pass a DuckDB connection in ``__init__``.
+        if self._storage_conn is not None:
+            from dhara.audit.query_tool import AuditLogQueryTool
+
+            query_tool = AuditLogQueryTool(conn=self._storage_conn)
+            self._registered_tools["audit_record_query"] = query_tool.query
+
+        if self.server is None:
+            # Lightweight/test construction mode: no FastMCP server to decorate.
+            return
 
         def auth(*scopes: str) -> Any:
             """Return a FastMCP authorization callable."""
@@ -1005,8 +1067,14 @@ class DharaMCPServer:
 
         # D-LOCK: distributed lock + audit ledger primitive
         from dhara.lock.routes import register_lock_routes
-        if getattr(self, 'sql_backend', None) is not None:
+
+        if getattr(self, "sql_backend", None) is not None:
             register_lock_routes(self.server, self.sql_backend)
+
+        # D-AUDIT: audit substrate (subscriber + query tool) is always wired
+        # in ``_register_tools``; see the early-return at the top of this
+        # method. ``register_audit_routes`` is the public surface for callers
+        # who only need audit wire-up without the rest of the MCP tooling.
 
     def _register_tools_call_route(self) -> None:
         """Register /tools/call REST-style endpoint for Akosha client compatibility."""
@@ -1323,3 +1391,15 @@ class DharaMCPServer:
                 self.storage.close()
             )  # close() runs in the persistent event-loop thread; full async close path is the migration follow-up
         logger.info("Dhara MCP Server closed")
+
+
+def register_audit_routes(server: DharaMCPServer) -> None:
+    """Public registration helper for the D-AUDIT substrate.
+
+    Mirrors the ``register_lock_routes`` pattern from D-LOCK. The audit wire-up
+    (subscriber + query tool) is normally performed as part of
+    ``DharaMCPServer._register_tools``; this module-level helper exposes that
+    capability to callers that construct a ``DharaMCPServer`` in lightweight
+    mode (without ``config``) and only need the audit surface.
+    """
+    server._register_tools()  # mirrors D-LOCK's register_lock_routes pattern
