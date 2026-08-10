@@ -35,6 +35,7 @@ from oneiric.adapters.cache import MemoryCacheSettings, RedisCacheSettings
 from oneiric.core.config import load_settings
 from oneiric.core.logging import get_logger
 
+from dhara.audit.flusher import OutboxFlusher, periodic_flush_loop
 from dhara.audit.outbox import MemoryOutbox
 from dhara.audit.subscriber import AuditLogSubscriber
 from dhara.core.config import DharaSettings
@@ -317,6 +318,7 @@ class DharaMCPServer:
         self._audit_outbox = audit_outbox or MemoryOutbox()
         self._registered_tools: dict[str, object] = {}
         self._audit_subscriber: AuditLogSubscriber | None = None
+        self._audit_flush_task: asyncio.Task[None] | None = None
 
         if config is None:
             # Lightweight construction mode (audit-only/test path). The
@@ -517,6 +519,28 @@ class DharaMCPServer:
 
             query_tool = AuditLogQueryTool(conn=self._storage_conn)
             self._registered_tools["audit_record_query"] = query_tool.query
+
+            # Schedule the periodic flush loop so producer ``on_put`` calls
+            # actually reach the ``audit_log`` table. G6 contract: any error
+            # inside the loop is absorbed by ``periodic_flush_loop`` and
+            # logged; the task handle is retained on ``self`` so a future
+            # shutdown hook can cancel it cleanly. ``asyncio.create_task``
+            # requires a running loop, so we guard against the sync
+            # ``__init__`` path (e.g. ``test_mcp_wiring.py``); production
+            # callers reach this code from inside FastMCP's running loop.
+            try:
+                asyncio.get_running_loop()
+            except RuntimeError:
+                pass
+            else:
+                self._audit_flush_task = asyncio.create_task(
+                    periodic_flush_loop(
+                        OutboxFlusher(
+                            outbox=self._audit_outbox,
+                            conn=self._storage_conn,
+                        )
+                    )
+                )
 
         if self.server is None:
             # Lightweight/test construction mode: no FastMCP server to decorate.

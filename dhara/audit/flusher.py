@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import TYPE_CHECKING
 
@@ -13,6 +14,35 @@ if TYPE_CHECKING:
     from dhara.audit.outbox import MemoryOutbox
 
 logger = get_logger(__name__)
+
+
+async def periodic_flush_loop(
+    flusher: OutboxFlusher,
+    interval_seconds: float = 0.1,
+) -> None:
+    """Continuously drain the outbox into the audit_log table.
+
+    The loop calls :meth:`OutboxFlusher.flush_once` and sleeps for
+    ``interval_seconds`` between ticks. Per the G6 contract, the loop
+    never raises: any exception escaping :meth:`flush_once` is logged via
+    :func:`logger.exception` and the loop continues, so a transient DB
+    failure cannot break the audit substrate or crash the host server.
+
+    Args:
+        flusher: OutboxFlusher wired to a MemoryOutbox and DuckDB
+            connection.
+        interval_seconds: Seconds to sleep between flush ticks. Defaults
+            to 0.1s for snappy test feedback and low production latency.
+    """
+    while True:
+        try:
+            await flusher.flush_once()
+        except Exception as exc:  # G6 contract: never raise
+            logger.exception(
+                "periodic_flush_loop_unhandled_error",
+                extra={"exception_type": type(exc).__name__},
+            )
+        await asyncio.sleep(interval_seconds)
 
 
 class OutboxFlusher:
