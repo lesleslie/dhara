@@ -50,3 +50,5 @@ build/
 
 # Benchmark baseline scratch (executor-only; see cache-adapter consolidation plan Phase 0)
 benchmarks-baseline.txt
+
+.superprofits/
