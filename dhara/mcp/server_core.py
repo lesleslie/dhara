@@ -548,6 +548,7 @@ class DharaMCPServer:
 
         def auth(*scopes: str) -> Any:
             """Return a FastMCP authorization callable."""
+            assert self.config is not None, "config required for auth scopes"
             if not self.config.authentication.enabled:
                 return require_scopes()  # Empty scope check when disabled
             return require_scopes(*scopes)
@@ -578,6 +579,9 @@ class DharaMCPServer:
 
         def _tool(group: str, **kwargs: Any) -> Any:
             """Conditional registration — only registers if group is in active profile."""
+            assert self.server is not None, (
+                "FastMCP server required for tool registration"
+            )
             if group not in active_groups:
                 return lambda fn: fn  # No-op: function defined but not registered
             return self.server.tool(**kwargs)
@@ -630,6 +634,7 @@ class DharaMCPServer:
         @_tool(TOOL_GROUP_ADAPTER_REGISTRY, auth=auth("read"))
         async def get_contract_info() -> dict[str, Any]:
             """Return the supported Dhara MCP contract summary."""
+            assert self.config is not None, "config required for contract info"
             auth_mode = "token" if self.auth_verifier is not None else "none"
             return {
                 "ok": True,
@@ -1092,8 +1097,10 @@ class DharaMCPServer:
         # D-LOCK: distributed lock + audit ledger primitive
         from dhara.lock.routes import register_lock_routes
 
-        if getattr(self, "sql_backend", None) is not None:
-            register_lock_routes(self.server, self.sql_backend)
+        sql_backend = getattr(self, "sql_backend", None)
+        if sql_backend is not None:
+            assert self.server is not None, "FastMCP server required for lock routes"
+            register_lock_routes(self.server, sql_backend)
 
         # D-AUDIT: audit substrate (subscriber + query tool) is always wired
         # in ``_register_tools``; see the early-return at the top of this
@@ -1102,6 +1109,7 @@ class DharaMCPServer:
 
     def _register_tools_call_route(self) -> None:
         """Register /tools/call REST-style endpoint for Akosha client compatibility."""
+        assert self.server is not None, "FastMCP server required for tools/call route"
 
         import asyncio
         import json
@@ -1223,6 +1231,7 @@ class DharaMCPServer:
 
     def _probe_storage(self) -> dict[str, Any]:
         """Probe storage accessibility for readiness and health reporting."""
+        assert self.config is not None, "config required for storage probe"
         storage_path = self.config.storage.path.expanduser()
         try:
             root = self.connection.get_root()
@@ -1244,6 +1253,7 @@ class DharaMCPServer:
 
     def _probe_backups(self) -> dict[str, Any]:
         """Probe backup catalog visibility for recovery awareness."""
+        assert self.config is not None, "config required for backup probe"
         backup_dir = self.config.backups.directory.expanduser()
         if not self.config.backups.enabled:
             return {"configured": False}
@@ -1373,6 +1383,7 @@ class DharaMCPServer:
             host: Host to bind to
             port: Port to bind to
         """
+        assert self.server is not None, "FastMCP server required to run"
         import asyncio
 
         logger.info(f"Starting Dhara MCP server on {host}:{port}")
@@ -1385,6 +1396,8 @@ class DharaMCPServer:
 
     async def _init_async_stores(self) -> None:
         """Initialize async stores from AsyncSqliteStorage for async tool dispatch."""
+        assert self.config is not None, "config required for async stores"
+
         from dhara.core.connection import AsyncConnection
         from dhara.storage.sqlite import AsyncSqliteStorage
 

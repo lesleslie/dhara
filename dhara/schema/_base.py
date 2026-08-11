@@ -7,7 +7,11 @@ from here.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
+
+import msgspec
 
 
 @dataclass(frozen=True)
@@ -21,8 +25,8 @@ class SchemaEntry:
 
     name: str
     version: str
-    struct: type
-    migrations: dict
+    struct: type[msgspec.Struct]
+    migrations: dict[str, Callable[..., Any]]
 
 
 class SchemaValidationError(Exception):

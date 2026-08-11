@@ -1,7 +1,9 @@
 ---
 status: draft
+role: implementation
 date: 2026-08-10
-topic: d-audit
+last_reviewed: 2026-08-10
+topic: audit-substrate
 entity: audit_record (substrate producer)
 owner_repo: dhara
 subscribes_to: dhara.schema.audit_record

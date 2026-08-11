@@ -54,9 +54,7 @@ def _is_transaction_exception(exc: Exception) -> bool:
     )
 
 
-def _assert_handle_can_heartbeat(
-    handle: LockHandle, events: LockEventEmitter
-) -> None:
+def _assert_handle_can_heartbeat(handle: LockHandle, events: LockEventEmitter) -> None:
     """Pre-flight check on the handle: permanent locks and advisory (no-TTL) locks cannot be heartbeated."""
     if handle.is_permanent:
         events.lost(handle.lock_key, handle.owner_token, "permanent_handle")
@@ -65,9 +63,7 @@ def _assert_handle_can_heartbeat(
         raise ValueError("cannot heartbeat advisory lock (no TTL)")
 
 
-def _resolve_heartbeat_extend(
-    handle: LockHandle, extend_seconds: int | None
-) -> int:
+def _resolve_heartbeat_extend(handle: LockHandle, extend_seconds: int | None) -> int:
     """Pick the extension to apply: caller value wins, fall back to original TTL."""
     extend = (
         extend_seconds

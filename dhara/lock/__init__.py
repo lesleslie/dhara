@@ -17,7 +17,7 @@ try:
     from dhara.lock.postgres import PostgresBackendLock
 except ImportError:
     # asyncpg is optional; PostgresBackendLock is unavailable without it.
-    PostgresBackendLock = None  # type: ignore[assignment,misc]
+    PostgresBackendLock = None  # type: ignore[assignment,misc]  # ty: ignore[invalid-assignment]
 
 __all__ = [
     "DharaLock",

@@ -45,6 +45,7 @@ contribution workflow below.
 | `persistence` | State persistence across checkpoints, session restarts, and subagent dispatch windows (covers git stash/rebase cycles, auto-checkpoint hooks, durable storage paths). |
 | `lifecycle` | Wiring lifecycle for components, plans, and followups — drafted/active/partial/shipped/complete transitions, completion reports, plan-to-followup handoffs. |
 | `plugin-standardization` | Claude Code plugin manifest, marketplace layout, slash command namespace, plugin validation scaffold (introduced for Bodai plugin rollout 2026-07-16). |
+| `audit-substrate` | Layer 0 durable audit substrate (AuditLogSubscriber on every ``dhara.put``, ``audit_log`` table via migration 0004, validated ``AuditRecord`` structs, ``MemoryOutbox`` async flush). |
 
 ## Contribution Workflow
 

@@ -54,11 +54,12 @@ tests/unit/schema/
 └── test_cross_system_consistency.py
 ```
 
----
+______________________________________________________________________
 
 ## Task 1: Schema base classes (`dhara/schema/_base.py`)
 
 **Files:**
+
 - Create: `dhara/schema/__init__.py` (empty for now; populated by Task 7)
 - Create: `dhara/schema/_base.py`
 - Test: `tests/unit/schema/__init__.py` (empty)
@@ -167,11 +168,12 @@ git add dhara/schema/__init__.py dhara/schema/_base.py tests/unit/schema/__init_
 git -c user.name="lesleslie" -c user.email="les@wedgwoodwebworks.local" commit -m "feat(schema): add SchemaEntry + SchemaValidationError base classes"
 ```
 
----
+______________________________________________________________________
 
 ## Task 2: Central registry (`dhara/schema/_registry.py`)
 
 **Files:**
+
 - Create: `dhara/schema/_registry.py`
 - Test: `tests/unit/schema/test_registry.py`
 
@@ -329,11 +331,12 @@ git add dhara/schema/_registry.py tests/unit/schema/test_registry.py
 git -c user.name="lesleslie" -c user.email="les@wedgwoodwebworks.local" commit -m "feat(schema): add central registry with validate/from_dict/to_dict"
 ```
 
----
+______________________________________________________________________
 
 ## Task 3: First entity — `audit_record`
 
 **Files:**
+
 - Create: `dhara/schema/audit_record.py`
 - Test: `tests/unit/schema/test_audit_record.py`
 
@@ -504,11 +507,12 @@ git add dhara/schema/audit_record.py tests/unit/schema/test_audit_record.py
 git -c user.name="lesleslie" -c user.email="les@wedgwoodwebworks.local" commit -m "feat(schema): add audit_record entity (D-AUDIT canonical)"
 ```
 
----
+______________________________________________________________________
 
 ## Task 4: `workflow_outcome` entity
 
 **Files:**
+
 - Create: `dhara/schema/workflow_outcome.py`
 - Test: `tests/unit/schema/test_workflow_outcome.py`
 
@@ -638,11 +642,12 @@ git add dhara/schema/workflow_outcome.py tests/unit/schema/test_workflow_outcome
 git -c user.name="lesleslie" -c user.email="les@wedgwoodwebworks.local" commit -m "feat(schema): add workflow_outcome entity (M-INFRA)"
 ```
 
----
+______________________________________________________________________
 
 ## Task 5: `approval_log` entity
 
 **Files:**
+
 - Create: `dhara/schema/approval_log.py`
 - Test: `tests/unit/schema/test_approval_log.py`
 
@@ -767,11 +772,12 @@ git add dhara/schema/approval_log.py tests/unit/schema/test_approval_log.py
 git -c user.name="lesleslie" -c user.email="les@wedgwoodwebworks.local" commit -m "feat(schema): add approval_log entity (M-INFRA)"
 ```
 
----
+______________________________________________________________________
 
 ## Task 6: `channel_session_state` entity
 
 **Files:**
+
 - Create: `dhara/schema/channel_session_state.py`
 - Test: `tests/unit/schema/test_channel_session_state.py`
 
@@ -899,11 +905,12 @@ git add dhara/schema/channel_session_state.py tests/unit/schema/test_channel_ses
 git -c user.name="lesleslie" -c user.email="les@wedgwoodwebworks.local" commit -m "feat(schema): add channel_session_state entity (S-MEM)"
 ```
 
----
+______________________________________________________________________
 
 ## Task 7: `webhook_ingress` entity
 
 **Files:**
+
 - Create: `dhara/schema/webhook_ingress.py`
 - Test: `tests/unit/schema/test_webhook_ingress.py`
 
@@ -1017,11 +1024,12 @@ git add dhara/schema/webhook_ingress.py tests/unit/schema/test_webhook_ingress.p
 git -c user.name="lesleslie" -c user.email="les@wedgwoodwebworks.local" commit -m "feat(schema): add webhook_ingress entity (M-INFRA)"
 ```
 
----
+______________________________________________________________________
 
 ## Task 8: Public API + migration tests + cross-system consistency
 
 **Files:**
+
 - Modify: `dhara/schema/__init__.py`
 - Create: `tests/unit/schema/test_migration.py`
 - Create: `tests/unit/schema/test_cross_system_consistency.py`
@@ -1218,11 +1226,12 @@ git add dhara/schema/__init__.py tests/unit/schema/test_migration.py tests/unit/
 git -c user.name="lesleslie" -c user.email="les@wedgwoodwebworks.local" commit -m "feat(schema): public API + migration + cross-system consistency tests"
 ```
 
----
+______________________________________________________________________
 
 ## Task 9: Final verification — crackerjack + spec coverage
 
 **Files:**
+
 - (no file changes; verification only)
 
 **Step 1: Run the schema test suite**
@@ -1256,7 +1265,7 @@ Expected: `['approval_log', 'audit_record', 'channel_session_state', 'webhook_in
 
 Skip if clean. Apply minimal fix and commit per fix.
 
----
+______________________________________________________________________
 
 ## Spec coverage map
 
@@ -1275,8 +1284,8 @@ Skip if clean. Apply minimal fix and commit per fix.
 ## Self-review
 
 1. **Spec coverage**: Every spec section maps to a task. ✓
-2. **No placeholders**: All code is concrete. ✓
-3. **Type consistency**: `SCHEMA_VERSION` is `str` everywhere; `MIGRATIONS` is `dict[str, callable]`; `STRUCT` is the msgspec.Struct class. ✓
-4. **TDD discipline**: Every task writes the failing test first, then the impl. ✓
-5. **No pre-existing dirty files touched**: All commits are net-new files. ✓
-6. **Substrate pattern**: 5 entity modules + 1 registry + 1 base + 1 `__init__` = 8 source files. Same shape as D-LOCK's `dhara/lock/`. ✓
+1. **No placeholders**: All code is concrete. ✓
+1. **Type consistency**: `SCHEMA_VERSION` is `str` everywhere; `MIGRATIONS` is `dict[str, callable]`; `STRUCT` is the msgspec.Struct class. ✓
+1. **TDD discipline**: Every task writes the failing test first, then the impl. ✓
+1. **No pre-existing dirty files touched**: All commits are net-new files. ✓
+1. **Substrate pattern**: 5 entity modules + 1 registry + 1 base + 1 `__init__` = 8 source files. Same shape as D-LOCK's `dhara/lock/`. ✓

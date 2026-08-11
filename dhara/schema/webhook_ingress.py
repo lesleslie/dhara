@@ -7,6 +7,7 @@ without re-processing.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
@@ -16,7 +17,7 @@ from dhara.schema._base import SchemaEntry
 from dhara.schema._registry import register
 
 SCHEMA_VERSION: str = "1.0.0"
-MIGRATIONS: dict[str, callable] = {}
+MIGRATIONS: dict[str, Callable[..., Any]] = {}
 
 
 class WebhookIngress(msgspec.Struct, frozen=True):

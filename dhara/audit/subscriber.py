@@ -10,7 +10,7 @@ substrate failures from breaking the producer.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from oneiric.core.logging import get_logger
 
@@ -69,7 +69,7 @@ class AuditLogSubscriber:
         carries only the validated event fields.
         """
         try:
-            record: AuditRecord = validate("audit_record", event.payload)
+            record = cast("AuditRecord", validate("audit_record", event.payload))
             self._outbox.enqueue(event.entity_type, event.entity_id, record)
         except Exception as exc:  # noqa: BLE001 — G6 contract: never raise
             _logger.warning(

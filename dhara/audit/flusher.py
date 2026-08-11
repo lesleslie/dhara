@@ -79,7 +79,7 @@ class OutboxFlusher:
                         "actor": record.actor,
                         "at": record.at.isoformat(),
                         "subject": record.subject,
-                        "metadata": dict(record.metadata),
+                        "metadata": record.metadata.copy(),
                     }
                 ),
             )

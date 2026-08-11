@@ -25,20 +25,20 @@ The four contract bugs captured below were the trigger for writing it
 persistent object store, the substrate routes, the REST `/tools/call`
 endpoint, and the tool profile gating line up.
 
----
+______________________________________________________________________
 
 ## Table of Contents
 
 1. [Storage Inventory](#1-storage-inventory)
-2. [MCP Write Surface](#2-mcp-write-surface)
-3. [MCP Read Surface](#3-mcp-read-surface)
-4. [Cross-Component Visibility](#4-cross-component-visibility)
-5. [Integration Contract](#5-integration-contract)
-6. [Sample Queries](#6-sample-queries)
-7. [Diagrams](#7-diagrams)
-8. [Operational Notes](#8-operational-notes)
+1. [MCP Write Surface](#2-mcp-write-surface)
+1. [MCP Read Surface](#3-mcp-read-surface)
+1. [Cross-Component Visibility](#4-cross-component-visibility)
+1. [Integration Contract](#5-integration-contract)
+1. [Sample Queries](#6-sample-queries)
+1. [Diagrams](#7-diagrams)
+1. [Operational Notes](#8-operational-notes)
 
----
+______________________________________________________________________
 
 ## 1. Storage Inventory
 
@@ -276,7 +276,7 @@ Legacy `FileStorage` (Duru SHELF format) was **deleted** in the
 2026-07 async-migration cleanup — `Connection(path)` now raises
 `TypeError` pointing at `AsyncConnection.new(path)`.
 
----
+______________________________________________________________________
 
 ## 2. MCP Write Surface
 
@@ -315,12 +315,12 @@ tools are loaded under the active profile.
 On startup the lifespan in `dhara/mcp/server_core.py` runs:
 
 1. `validate_auth_config()` and the auth verifier build
-2. `AsyncFileStorage(str(config.storage.path))` opens the SQLite-backed store
-3. `AsyncConnection.new(storage)` is built on a **persistent background event loop** (see `_CACHE_WIRE_LOOP` + `_ensure_loop_background_thread`)
-4. `_init_async_stores()` constructs `AsyncKVTimeSeriesStore`, `AsyncEcosystemStateStore`, `AsyncAdapterRegistry` against the same connection
-5. `_register_tools()` decorates the tools above
-6. `_register_health_tools()` registers the mcp-common health endpoints
-7. `register_substrate_routes(server, connection)` attaches the three CRUD HTTP routes
+1. `AsyncFileStorage(str(config.storage.path))` opens the SQLite-backed store
+1. `AsyncConnection.new(storage)` is built on a **persistent background event loop** (see `_CACHE_WIRE_LOOP` + `_ensure_loop_background_thread`)
+1. `_init_async_stores()` constructs `AsyncKVTimeSeriesStore`, `AsyncEcosystemStateStore`, `AsyncAdapterRegistry` against the same connection
+1. `_register_tools()` decorates the tools above
+1. `_register_health_tools()` registers the mcp-common health endpoints
+1. `register_substrate_routes(server, connection)` attaches the three CRUD HTTP routes
 
 ```mermaid
 sequenceDiagram
@@ -361,8 +361,7 @@ sequenceDiagram
     CLI->>CONN: commit
 ```
 
-
----
+______________________________________________________________________
 
 ## 3. MCP Read Surface
 
@@ -442,7 +441,7 @@ them directly. Components that only speak MCP use `upsert_service` /
 | `/tools/call` | POST | REST-style `{name, arguments}` envelope used by Akosha's `DharaServiceRegistryClient`; see Contract 5.2 |
 | `/health`, `/healthz`, `/ready`, `/readyz`, `/metrics` | GET | Probe + Prometheus scrape |
 
----
+______________________________________________________________________
 
 ## 4. Cross-Component Visibility
 
@@ -471,7 +470,7 @@ not** store:
 - **LLM provider configuration / API keys** — Oneiric + env vars.
 - **Backup byte streams** — backups are written by `BackupManager` to the configured `cloud_adapter` (S3 / GCS / Azure / local); only their **metadata** lives in `<backup_dir>/backup_catalog.dhara`.
 
----
+______________________________________________________________________
 
 ## 5. Integration Contract
 
@@ -636,7 +635,7 @@ These six gaps are the minimum bar; new MCP wrappers that add
 write/read pairs should add similar round-trip tests + extend the gap
 table.
 
----
+______________________________________________________________________
 
 ## 6. Sample Queries
 
@@ -741,8 +740,7 @@ mcp__dhara__store_adapter(
 ```
 
 Returns `{"success": True, "adapter_id": "adapter:cache:memory", "version": "1.1.0"}`. The previous
-version's `(factory_path, config, capabilities, env, adapter_id,
-created_at, updated_at)` snapshot is appended to
+version's `(factory_path, config, capabilities, env, adapter_id, created_at, updated_at)` snapshot is appended to
 `adapter.version_history`.
 
 ### Q7 — Enumerate all adapters in the catalog
@@ -769,8 +767,7 @@ mcp__dhara__list_adapter_versions(
 ```
 
 Returns the chronologically-ordered version list (sorted `updated_at` desc), with each
-entry's `version`, `updated_at`, `changelog`. Use `get_adapter(...,
-version="0.9.0")` to materialize the historical state.
+entry's `version`, `updated_at`, `changelog`. Use `get_adapter(..., version="0.9.0")` to materialize the historical state.
 
 ### Q9 — Register / refresh a service record
 
@@ -875,7 +872,7 @@ async with httpx.AsyncClient(base_url="http://localhost:8683") as client:
 Returns the same shape as `list_services`, served via the REST
 back-compat route. Note that only 7 tools are exposed here (Contract 5.2).
 
----
+______________________________________________________________________
 
 ## 7. Diagrams
 
@@ -883,11 +880,11 @@ Two diagrams are embedded above and one more is included here for
 completeness:
 
 1. **Schema map** (Section 1) — `erDiagram` of all 8 buckets of the persistent root plus the four aspirational SQL tables from the migration DDL.
-2. **Lifespan + Phase-0 startup** (Section 2) — `sequenceDiagram` of
+1. **Lifespan + Phase-0 startup** (Section 2) — `sequenceDiagram` of
    the lifespan-initiated wiring of `AsyncFileStorage` → `AsyncConnection`
    on the `_CACHE_WIRE_LOOP` background thread, then the steady-state
    `put` and `record_time_series` calls.
-3. **Snapshot lifecycle / substrate publication chain** (this section) — a
+1. **Snapshot lifecycle / substrate publication chain** (this section) — a
    `sequenceDiagram` showing how a substrate resource moves from
    "client POST" through to "persisted record on disk" and how a
    subsequent GET reads it back via the same connection root.
@@ -928,7 +925,7 @@ constraint — see Known Gaps.
 | `AsyncPostgresStorage` (`storage_backend="postgres"`) | pool 2..10 (configurable) | Production multi-writer; S3/R2/GCS/Azure backup adapters | Tables `dhara_objects(oid BIGINT PK, data BYTEA, refs BYTEA)` + `dhara_dirty_oids` + sequence `dhara_oid_seq` |
 | `AsyncMemoryStorage` | n/a | Unit tests, ephemeral sessions | Process-lifetime only |
 
----
+______________________________________________________________________
 
 ## 8. Operational Notes
 
@@ -1013,7 +1010,7 @@ The backup catalog itself lives at
 - Cross-component migration: `dhara migrate` (uses `dhara/migrations/runner.py`); see `bodai/docs/memory/MIGRATION_GUIDE.md` for the global flow.
 - The `substrate` SQL tables (`adapters_active_settings_version`, etc.) exist in DDL **only**; the inline dict-of-lists is the active runtime. Running the migration now does nothing for the live substrate — see Known Gaps.
 
----
+______________________________________________________________________
 
 ## See Also
 

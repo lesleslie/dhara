@@ -5,6 +5,37 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2026-08-11
+
+### Added
+
+- Add substrate_locks table to pg_schema (v1.1 Postgres translation)
+- Add typed object schema substrate (D-OBJ-SCHEMA)
+- audit: Wire OutboxFlusher periodic flush into DharaMCPServer startup
+- AuditLogQueryTool — read-back via from_dict with schema validation
+- AuditLogSubscriber + MemoryOutbox (asynchronous, G6-safe)
+- Migration 0004 — audit_log table + entity_type index
+- OutboxFlusher drains MemoryOutbox into audit_log table
+- PostgresBackendLock — asyncpg + Postgres-native $N placeholders
+- Wire AuditLogSubscriber + query tool into DharaMCPServer
+- Wire register_lock_routes into DharaMCPServer
+
+### Documentation
+
+- Add D-OBJ-SCHEMA typed object schema primitive implementation plan
+- Completion report + portfolio status update for D-AUDIT
+- contract: Define substrate put/get call-boundary as sync
+- D-AUDIT implementation plan (7 tasks, Layer 0 audit substrate)
+- plan: D-LOCK v1.1 — Postgres translation of substrate_locks
+- Rewrite D-LOCK v1.1 Postgres translation plan
+- spec: Add D-OBJ-SCHEMA typed object schema primitive design
+- spec: D-AUDIT substrate design (Layer 0)
+
+### Testing
+
+- Cross-backend parity + completion report for D-LOCK v1.1
+- Cross-system integration test — dhara.put → audit_record round-trip
+
 ## [0.14.0] - 2026-08-05
 
 ### Added

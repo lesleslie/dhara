@@ -6,6 +6,7 @@ Persisted by Mahavishnu's M-WORKFLOW-OUTCOME consumer to
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime
 from typing import Any, Literal
 
@@ -15,7 +16,7 @@ from dhara.schema._base import SchemaEntry
 from dhara.schema._registry import register
 
 SCHEMA_VERSION: str = "1.0.0"
-MIGRATIONS: dict[str, callable] = {}
+MIGRATIONS: dict[str, Callable[..., Any]] = {}
 
 
 class WorkflowOutcome(msgspec.Struct, frozen=True):

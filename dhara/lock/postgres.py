@@ -25,7 +25,7 @@ from oneiric.core.logging import get_logger
 try:
     import asyncpg
 except ImportError:  # pragma: no cover - asyncpg is optional, gated on `cloud` group
-    asyncpg = None  # type: ignore[assignment]
+    asyncpg = None  # type: ignore[assignment]  # ty: ignore[invalid-assignment]
 
 from dhara.lock.events import LockEventEmitter
 from dhara.lock.protocol import (
@@ -83,12 +83,8 @@ async def _execute_lock_write(
         return await conn.fetch(sql, *params)
     except Exception as exc:
         if _is_postgres_conflict(exc):
-            logger.debug(
-                "postgres conflict on %s: %s", lock_key, type(exc).__name__
-            )
-            raise LockLost(
-                f"concurrent transaction conflict: {lock_key}"
-            ) from exc
+            logger.debug("postgres conflict on %s: %s", lock_key, type(exc).__name__)
+            raise LockLost(f"concurrent transaction conflict: {lock_key}") from exc
         raise
 
 
@@ -375,10 +371,7 @@ class PostgresBackendLock:
 
     async def list_keys(self, prefix: str | None = None) -> list[LockHandle]:
         if prefix is None:
-            sql = (
-                _GET_SQL.replace("WHERE lock_key = $1", "")
-                + " ORDER BY acquired_at"
-            )
+            sql = _GET_SQL.replace("WHERE lock_key = $1", "") + " ORDER BY acquired_at"
             rows = await self._conn.fetch(sql)
         else:
             sql = (
