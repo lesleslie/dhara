@@ -10,6 +10,13 @@ write-context that drives the audit_log table columns lives
 alongside the validated ``AuditRecord`` payload. Keeping these
 in one queue (rather than a sidecar map) preserves ordering and
 sidesteps the need for any keying scheme.
+
+Substrate contract (call boundary): ``dhara.put(...)`` returns synchronously
+once the record is queued here. The async background flush that drains this
+queue to ``audit_log`` is an internal substrate concern — invisible to the
+producer, who sees only the synchronous return. See
+``docs/superpowers/specs/2026-08-10-substrate-call-boundary-contract.md``
+for the cross-portfolio rationale and full implications for callers.
 """
 
 from __future__ import annotations
