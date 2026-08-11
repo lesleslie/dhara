@@ -11,6 +11,13 @@ from dhara.lock.protocol import (
     LockPermanentError,
     LockTimeout,
 )
+from dhara.lock.sql import SQLBackendLock
+
+try:
+    from dhara.lock.postgres import PostgresBackendLock
+except ImportError:
+    # asyncpg is optional; PostgresBackendLock is unavailable without it.
+    PostgresBackendLock = None  # type: ignore[assignment,misc]
 
 __all__ = [
     "DharaLock",
@@ -20,4 +27,6 @@ __all__ = [
     "LockLost",
     "LockPermanentError",
     "LockTimeout",
+    "PostgresBackendLock",
+    "SQLBackendLock",
 ]
