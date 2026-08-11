@@ -18,3 +18,16 @@ CREATE TABLE IF NOT EXISTS dhara_dirty_oids (
 );
 CREATE INDEX IF NOT EXISTS idx_dhara_dirty_oids_marked_at ON dhara_dirty_oids (marked_at);
 CREATE INDEX IF NOT EXISTS idx_dhara_dirty_oids_oid ON dhara_dirty_oids (oid);
+
+-- Locks table (mirrors 0003_locks.sql DuckDB schema, with PG types)
+CREATE TABLE IF NOT EXISTS substrate_locks (
+    lock_key TEXT PRIMARY KEY,
+    owner_token TEXT NOT NULL,
+    acquired_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ,
+    is_permanent BOOLEAN NOT NULL DEFAULT FALSE,
+    original_ttl_seconds INTEGER,
+    metadata TEXT NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_substrate_locks_expires_at ON substrate_locks (expires_at);
+CREATE INDEX IF NOT EXISTS idx_substrate_locks_is_permanent ON substrate_locks (is_permanent);
