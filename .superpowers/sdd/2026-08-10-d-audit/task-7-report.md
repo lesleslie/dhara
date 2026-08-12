@@ -110,7 +110,7 @@ All checks passed!
 After two lint iterations:
 
 1. Removed an unused `# noqa: BLE001` directive in `flusher.py` (ruff RUF100).
-2. Replaced the over-broad `with pytest.raises(BaseException):` in the
+1. Replaced the over-broad `with pytest.raises(BaseException):` in the
    cleanup test with `pytest.raises(asyncio.CancelledError)` (ruff B017 —
    "blind exception assertion").
 

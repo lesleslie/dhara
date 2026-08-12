@@ -5,6 +5,17 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.1] - 2026-08-12
+
+### Added
+
+- Adopt coverage-ratchet at current coverage
+
+### Internal
+
+- dhara: Migrate .superprofits/sdd/ tracked files to .superpowers/sdd/
+- Remove .superprofits/ scratch typo, add to .gitignore
+
 ## [0.15.0] - 2026-08-11
 
 ### Added

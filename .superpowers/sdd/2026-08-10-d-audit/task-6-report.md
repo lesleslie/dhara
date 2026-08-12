@@ -31,6 +31,7 @@ The brief used non-existent `action`/`target` fields and asserted `results[0].ac
 **Symptom**: `audit_log.payload` would have been a JSON dump of an object missing required `audit_id`/`at` fields.
 
 **Fix**: `dhara/audit/flusher.py` now serializes all six `AuditRecord` fields via `json.dumps({...})`:
+
 ```python
 {
     "audit_id": record.audit_id,
@@ -102,13 +103,13 @@ All checks passed!
 `tests/integration/audit/test_cross_system.py::test_dhara_put_emits_queryable_audit_record` exercises the full chain:
 
 1. Build `DharaMCPServer` in lightweight mode (`config=None`) → wires `AuditLogSubscriber` + `MemoryOutbox`.
-2. Apply migration `0004_audit_log.sql` to an in-memory DuckDB.
-3. Set the substrate's `outbox` to a fresh `MemoryOutbox` whose flusher writes to the migrated DB.
-4. Create a `WriteEvent(entity_type="test_entity", entity_id="audit-1", payload={...full AuditRecord fields...})`.
-5. Call `subscriber.on_put(write_event)` (simulating `dhara.put`).
-6. Call `await flusher.flush_once()`.
-7. Verify row exists in `audit_log` with `entity_type='test_entity'`, `entity_id='audit-1'`.
-8. Verify JSON payload contains all six `AuditRecord` fields, with `at` as ISO-8601 string.
+1. Apply migration `0004_audit_log.sql` to an in-memory DuckDB.
+1. Set the substrate's `outbox` to a fresh `MemoryOutbox` whose flusher writes to the migrated DB.
+1. Create a `WriteEvent(entity_type="test_entity", entity_id="audit-1", payload={...full AuditRecord fields...})`.
+1. Call `subscriber.on_put(write_event)` (simulating `dhara.put`).
+1. Call `await flusher.flush_once()`.
+1. Verify row exists in `audit_log` with `entity_type='test_entity'`, `entity_id='audit-1'`.
+1. Verify JSON payload contains all six `AuditRecord` fields, with `at` as ISO-8601 string.
 
 The test uses **real** `AuditRecord` fields (`event_type`, `subject`, `metadata`), not the brief's invented `action`/`target`.
 
@@ -116,13 +117,13 @@ The test uses **real** `AuditRecord` fields (`event_type`, `subject`, `metadata`
 
 1. **`MemoryOutbox` API contract changed.** Any external caller (CLI tools, ad-hoc scripts) that touched the outbox will break. Mitigated by the substrate's internal scope: only `AuditLogSubscriber` and `OutboxFlusher` consume it; both are inside the same audit module. No public API breakage.
 
-2. **Brief-bug pattern is now systemic across 5 tasks.** Recommend that the SDD brief-author template include a step: "Run `msgspec.convert(payload, AuditRecord)` on your example payload to verify field names before shipping the brief."
+1. **Brief-bug pattern is now systemic across 5 tasks.** Recommend that the SDD brief-author template include a step: "Run `msgspec.convert(payload, AuditRecord)` on your example payload to verify field names before shipping the brief."
 
-3. **Drop-on-overflow behavior is silent.** `MemoryOutbox.enqueue()` returns `False` on overflow but the subscriber does not check the return value. Under sustained load above 1000 events/sec, audit records will silently drop. Not a Task 6 concern but should be tracked.
+1. **Drop-on-overflow behavior is silent.** `MemoryOutbox.enqueue()` returns `False` on overflow but the subscriber does not check the return value. Under sustained load above 1000 events/sec, audit records will silently drop. Not a Task 6 concern but should be tracked.
 
-4. **`OutboxFlusher` G6 contract swallows all exceptions.** Per the docstring, "Records drained from the outbox but not successfully inserted are lost on this flush; durable replay is a Task 5/6 concern." Task 5/6 is now done and replay is still not implemented. Out-of-scope for this task; flagged for Task 7+.
+1. **`OutboxFlusher` G6 contract swallows all exceptions.** Per the docstring, "Records drained from the outbox but not successfully inserted are lost on this flush; durable replay is a Task 5/6 concern." Task 5/6 is now done and replay is still not implemented. Out-of-scope for this task; flagged for Task 7+.
 
-5. **No durability test yet.** The cross-system test does not verify what happens if the server crashes between `enqueue` and `flush_once` — the outbox is in-memory only. Tests `MemoryOutbox.deque` survives the process only because the test runs in one process. A persistent outbox (SQLite WAL, file-backed FIFO) is a future concern.
+1. **No durability test yet.** The cross-system test does not verify what happens if the server crashes between `enqueue` and `flush_once` — the outbox is in-memory only. Tests `MemoryOutbox.deque` survives the process only because the test runs in one process. A persistent outbox (SQLite WAL, file-backed FIFO) is a future concern.
 
 ## Status
 

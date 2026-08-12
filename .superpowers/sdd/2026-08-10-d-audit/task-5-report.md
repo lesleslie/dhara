@@ -36,12 +36,14 @@ Full audit suite (Tasks 1–5): **12/12 audit tests passed**, plus the 4 pre-exi
 ## Ruff Output
 
 After edit:
+
 ```
 $ ruff check dhara/mcp/server_core.py tests/integration/audit/test_mcp_wiring.py
 All checks passed!
 ```
 
 Initial ruff pass surfaced 4 issues, all auto-resolved:
+
 - F401 — unused `import pytest` in test (brief had a `@pytest.fixture` style hint that wasn't actually used; bare test function needs no pytest import).
 - RUF100 × 3 — three `# noqa: SLF001` directives on private-attribute access. The project's ruff config does **not** enable SLF001, so the directives were silently dead. Removed them; replaced the helper's `# noqa: SLF001` with a plain `# mirrors D-LOCK's register_lock_routes pattern` comment so the intentional private call still reads as intentional.
 
@@ -56,6 +58,7 @@ All other mypy errors on the file are pre-existing (`DharaSettings | None` and `
 ### Bug 1 — Brief's `__init__` signature is incompatible with the existing class
 
 **Brief's `__init__`** (lines 47–59 of `task-5-brief.md`):
+
 ```python
 def __init__(
     self,
@@ -119,6 +122,7 @@ def _register_tools(self) -> None:
 ### `register_audit_routes` helper shape
 
 The brief's helper:
+
 ```python
 def register_audit_routes(server: DharaMCPServer) -> None:
     """Public registration helper (matches register_lock_routes pattern)."""
@@ -167,10 +171,10 @@ tests/integration/audit/test_mcp_wiring.py | 20 +++++++
 
 1. **Lightweight `__init__` skips a lot of state.** The new branch doesn't initialize `self.sql_backend`, `self.storage`, `self.backups`, `self.time_series`, `self.ecosystem_state`, etc. Those attrs are accessed by full-init methods, so they'll raise `AttributeError` if a caller invokes them after lightweight construction. This is OK for the audit-only path, but it's worth a note in the constructor docstring so future contributors don't assume the lightweight server is fully functional. Not in scope for Task 5.
 
-2. **The `register_audit_routes` helper only triggers the substrate block.** It calls the full `_register_tools()` rather than a focused helper, so it also runs the `if self.server is None: return` path. That's fine for both lightweight and full-init callers, but it means the helper doesn't isolate "audit-only" wiring. If a future caller wants to register audit without triggering other FastMCP wiring, this would need refactoring. Not blocking.
+1. **The `register_audit_routes` helper only triggers the substrate block.** It calls the full `_register_tools()` rather than a focused helper, so it also runs the `if self.server is None: return` path. That's fine for both lightweight and full-init callers, but it means the helper doesn't isolate "audit-only" wiring. If a future caller wants to register audit without triggering other FastMCP wiring, this would need refactoring. Not blocking.
 
-3. **`_audit_subscriber` is stored but never used.** The brief specified it; I added the attribute to track the registered subscriber so it could be unregistered on shutdown. There's no shutdown hook yet, so the attribute is currently write-only. The singleton also has `unregister()`, so a future shutdown wiring could call `self._audit_subscriber.unregister()` if needed.
+1. **`_audit_subscriber` is stored but never used.** The brief specified it; I added the attribute to track the registered subscriber so it could be unregistered on shutdown. There's no shutdown hook yet, so the attribute is currently write-only. The singleton also has `unregister()`, so a future shutdown wiring could call `self._audit_subscriber.unregister()` if needed.
 
-4. **`# type: ignore[assignment]` on `self.config = None`** — the real attribute is typed as `DharaSettings` (non-optional elsewhere in the class). The two `# type: ignore` directives inside the lightweight branch are necessary for mypy. A cleaner future refactor would re-type `self.config` as `DharaSettings | None` and remove the suppression. Out of scope for Task 5.
+1. **`# type: ignore[assignment]` on `self.config = None`** — the real attribute is typed as `DharaSettings` (non-optional elsewhere in the class). The two `# type: ignore` directives inside the lightweight branch are necessary for mypy. A cleaner future refactor would re-type `self.config` as `DharaSettings | None` and remove the suppression. Out of scope for Task 5.
 
-5. **Brief-bugs are now systemic across 4 tasks.** Every task so far has had at least one brief-bug that required minimal fixing. Tasks 6+ should be reviewed against the real code shape (`DharaMCPServer` has no parent, schema field names are `event_type`/`subject` not `action`/`target`, etc.) before implementing.
+1. **Brief-bugs are now systemic across 4 tasks.** Every task so far has had at least one brief-bug that required minimal fixing. Tasks 6+ should be reviewed against the real code shape (`DharaMCPServer` has no parent, schema field names are `event_type`/`subject` not `action`/`target`, etc.) before implementing.
