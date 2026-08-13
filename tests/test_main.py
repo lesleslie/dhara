@@ -699,82 +699,74 @@ class TestStopDhara:
 
 
 class TestMain:
-    """Tests for the main() entry point dispatcher."""
+    """Tests for the main() entry point (Typer delegation).
 
-    def test_no_args_calls_usage(self):
-        """When no arguments are provided, usage() is called."""
-        from dhara.__main__ import main
+    The legacy ``-c/-s/-p`` optparse dispatcher was removed on
+    2026-08-12 as part of the docs audit remediation wave. ``main()``
+    now delegates to ``dhara.cli.main`` (the Typer CLI). The same
+    functionality is available under ``dhara db client/start/pack``.
+    """
 
-        with patch("sys.argv", ["dhara"]):
-            with patch("dhara.__main__.usage") as mock_usage:
-                main()
+    def test_main_delegates_to_cli_main(self):
+        """main() delegates to dhara.cli.main (Typer CLI)."""
+        from dhara import __main__
 
-        mock_usage.assert_called_once()
+        with patch("dhara.cli.main") as mock_cli_main:
+            __main__.main()
 
-    def test_client_flag_calls_client_main(self):
-        """The -c flag dispatches to client_main."""
-        from dhara.__main__ import main
+        mock_cli_main.assert_called_once()
+
+    def test_legacy_client_flag_does_not_dispatch(self):
+        """The legacy -c flag no longer dispatches to client_main."""
+        from dhara import __main__
 
         with patch("sys.argv", ["dhara", "-c"]):
-            with patch("dhara.__main__.client_main") as mock_client:
-                main()
+            with patch("dhara.cli.main") as mock_cli_main, patch(
+                "dhara.__main__.client_main"
+            ) as mock_client:
+                __main__.main()
 
-        mock_client.assert_called_once()
+        mock_cli_main.assert_called_once()
+        mock_client.assert_not_called()
 
-    def test_server_flag_calls_run_dhara_main(self):
-        """The -s flag dispatches to run_dhara_main."""
-        from dhara.__main__ import main
+    def test_legacy_server_flag_does_not_dispatch(self):
+        """The legacy -s flag no longer dispatches to run_dhara_main."""
+        from dhara import __main__
 
         with patch("sys.argv", ["dhara", "-s"]):
-            with patch("dhara.__main__.run_dhara_main") as mock_server:
-                main()
+            with patch("dhara.cli.main") as mock_cli_main, patch(
+                "dhara.__main__.run_dhara_main"
+            ) as mock_server:
+                __main__.main()
 
-        mock_server.assert_called_once()
+        mock_cli_main.assert_called_once()
+        mock_server.assert_not_called()
 
-    def test_pack_flag_calls_pack_storage_main(self):
-        """The -p flag dispatches to pack_storage_main."""
-        from dhara.__main__ import main
+    def test_legacy_pack_flag_does_not_dispatch(self):
+        """The legacy -p flag no longer dispatches to pack_storage_main."""
+        from dhara import __main__
 
         with patch("sys.argv", ["dhara", "-p"]):
-            with patch("dhara.__main__.pack_storage_main") as mock_pack:
-                main()
+            with patch("dhara.cli.main") as mock_cli_main, patch(
+                "dhara.__main__.pack_storage_main"
+            ) as mock_pack:
+                __main__.main()
 
-        mock_pack.assert_called_once()
+        mock_cli_main.assert_called_once()
+        mock_pack.assert_not_called()
 
-    def test_unknown_flag_calls_usage(self):
-        """An unrecognized flag calls usage instead of crashing."""
-        from dhara.__main__ import main
-
-        with patch("sys.argv", ["dhara", "--bogus"]):
-            with patch("dhara.__main__.usage") as mock_usage:
-                main()
-
-        mock_usage.assert_called_once()
-
-    def test_strips_first_arg_before_dispatch(self):
-        """main() removes the mode flag from sys.argv before calling subcommand."""
-        from dhara.__main__ import main
-
-        original_argv = ["dhara", "-s", "--port", "9999"]
-
-        with patch("sys.argv", original_argv):
-            with patch("dhara.__main__.run_dhara_main") as mock_server:
-                # Verify sys.argv was modified before the subcommand runs
-                def check_argv():
-                    assert sys.argv == ["dhara", "--port", "9999"]
-
-                mock_server.side_effect = check_argv
-                main()
-
-    def test_help_flag_calls_usage(self):
-        """The -h flag calls usage (it is not a recognized mode)."""
-        from dhara.__main__ import main
+    def test_legacy_help_flag_does_not_dispatch(self):
+        """The legacy -h flag no longer dispatches to usage()."""
+        from dhara import __main__
 
         with patch("sys.argv", ["dhara", "-h"]):
-            with patch("dhara.__main__.usage") as mock_usage:
-                main()
+            with patch("dhara.cli.main") as mock_cli_main, patch(
+                "dhara.__main__.usage"
+            ) as mock_usage:
+                __main__.main()
 
-        mock_usage.assert_called_once()
+        mock_cli_main.assert_called_once()
+        mock_usage.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

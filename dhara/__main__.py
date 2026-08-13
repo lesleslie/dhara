@@ -740,19 +740,16 @@ def usage():
 
 
 def main():
-    if len(sys.argv) == 1:
-        usage()
-    else:
-        arg = sys.argv[1]
-        sys.argv[1:] = sys.argv[2:]
-        if arg == "-c":
-            client_main()
-        elif arg == "-s":
-            run_dhara_main()
-        elif arg == "-p":
-            pack_storage_main()
-        else:
-            usage()
+    """Entry point for ``python -m dhara``.
+
+    Delegates to the Typer-based CLI in ``dhara.cli``. The legacy
+    ``-c/-s/-p`` optparse dispatcher has been removed; the same
+    functionality is now available under ``dhara db client/start/pack``
+    (see ``dhara/cli.py``).
+    """
+    from dhara.cli import main as cli_main
+
+    cli_main()
 
 
 if __name__ == "__main__":
