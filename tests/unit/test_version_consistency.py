@@ -31,9 +31,12 @@ README_PATH: Path = Path("README.md")
 README_BANNER_PATTERN: str | None = None
 README_BANNER_SEARCH_LINES: int = 50
 
-# Dhara's MCP ``/health`` is not yet wired to report a version; leave the URL
-# ``None`` so the MCP test self-skips until that lands.
-MCP_HEALTH_URL: str | None = None
+# Dhara's MCP ``/health`` endpoint reports its version via the
+# ``register_health_tools`` call in ``dhara/mcp/server_core.py``. The version
+# is wired to ``importlib.metadata.version("dhara")`` with a fallback to
+# ``"0.0.0+unknown"``; the test below asserts that the value passed to
+# ``register_health_tools`` matches ``pyproject.toml``.
+MCP_HEALTH_URL: str | None = "mock://dhara/mcp/health"
 MCP_VERSION_FIELD: str = "version"
 
 CLI_TIMEOUT_SECONDS: float = 30.0
@@ -157,13 +160,34 @@ class TestVersionConsistency:
         if MCP_HEALTH_URL is None:
             pytest.skip("MCP_HEALTH_URL not configured for this component")
         expected = _read_pyproject_version(PYPROJECT_PATH)
-        actual = _probe_mcp_health(
-            MCP_HEALTH_URL,
-            MCP_VERSION_FIELD,
-            HTTP_TIMEOUT_SECONDS,
+        # The MCP /health version is wired via ``register_health_tools``
+        # in ``dhara/mcp/server_core.py``. We assert that the module-level
+        # ``_PACKAGE_VERSION`` constant matches ``pyproject.toml`` and that
+        # the ``_register_health_tools`` source passes it (not a literal) to
+        # ``register_health_tools``.
+        from dhara.mcp import server_core
+
+        try:
+            pkg_version = server_core._PACKAGE_VERSION  # noqa: SLF001
+        except AttributeError:
+            pytest.skip(
+                "server_core._PACKAGE_VERSION missing; version not wired"
+            )
+        assert _normalize_version(pkg_version) == expected, (
+            f"server_core._PACKAGE_VERSION {pkg_version!r} "
+            f"disagrees with pyproject {expected!r}."
         )
-        assert actual == expected, (
-            f"MCP /health version {actual!r} disagrees with pyproject {expected!r}.\n"
-            f"Update the version reported by {MCP_HEALTH_URL} "
-            f"(JSON path: {MCP_VERSION_FIELD!r})."
+        # Source check: the registration call must pass ``_PACKAGE_VERSION``
+        # to the ``version`` kwarg, not a hardcoded string literal.
+        from pathlib import Path
+        src_path = Path(server_core.__file__)
+        source = src_path.read_text(encoding="utf-8")
+        assert "version=_PACKAGE_VERSION" in source, (
+            "dhara/mcp/server_core.py must pass version=_PACKAGE_VERSION "
+            "to register_health_tools (not a literal string)."
+        )
+        assert 'version="0.1.0"' not in source, (
+            "Hardcoded version=\"0.1.0\" was reintroduced in "
+            "dhara/mcp/server_core.py; the version must be sourced from "
+            "_PACKAGE_VERSION (importlib.metadata)."
         )

@@ -18,6 +18,7 @@ from __future__ import annotations
 import asyncio
 import time
 from contextlib import suppress
+from importlib.metadata import PackageNotFoundError, version
 from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 if TYPE_CHECKING:
@@ -59,6 +60,14 @@ from dhara.storage.async_file import AsyncFileStorage
 logger = get_logger(__name__)
 _DEFAULT_RESOLVE_CACHE_ADAPTER = resolve_cache_adapter
 _CACHE_WIRE_LOOP: asyncio.AbstractEventLoop | None = None
+
+# Version is read from installed package metadata so the MCP ``/health``
+# version always matches ``pyproject.toml`` (currently 0.15.1). Matches the
+# pattern already used in ``dhara/cli.py``.
+try:
+    _PACKAGE_VERSION = version("dhara")
+except PackageNotFoundError:
+    _PACKAGE_VERSION = "0.0.0+unknown"
 
 
 class _BuiltinCacheRegistry:
@@ -1222,7 +1231,7 @@ class DharaMCPServer:
         register_health_tools(
             mcp=self.server,
             service_name="dhara",
-            version="0.1.0",
+            version=_PACKAGE_VERSION,
             start_time=self._start_time,
             dependencies=dependencies,
         )
