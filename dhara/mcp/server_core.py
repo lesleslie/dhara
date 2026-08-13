@@ -1373,7 +1373,7 @@ class DharaMCPServer:
         return {
             "status": "ok" if ready else "error",
             "service": "dhara",
-            "version": "0.1.0",
+            "version": _PACKAGE_VERSION,
             "ready": ready,
             "uptime_seconds": time.time() - self._start_time,
             "adapters": self.adapter_registry.count(),
