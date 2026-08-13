@@ -399,9 +399,9 @@ def test_with_file_storage(file_connection):
 ### Available Fixtures
 
 - `memory_storage`: Fresh MemoryStorage instance
-- `temp_file_storage`: Temporary FileStorage (auto-cleanup)
+- `temp_file_storage`: Temporary AsyncFileStorage (auto-cleanup)
 - `connection`: Connection with MemoryStorage
-- `file_connection`: Connection with FileStorage
+- `file_connection`: Connection with AsyncFileStorage
 
 ### Test Markers
 

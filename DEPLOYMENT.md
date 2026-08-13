@@ -77,10 +77,10 @@ Start the dhara server:
 ./deployment/scripts/deploy.sh run
 
 # Or directly
-python -m dhara.cli.server --host=127.0.0.1 --port=2972
+python -m dhara.cli db start --host=127.0.0.1 --port=2972
 
 # With custom configuration
-python -m dhara.cli.server --config=deployment/config/production.yaml
+python -m dhara.cli db start --file=deployment/config/production.yaml
 ```
 
 ### Development Server
@@ -91,7 +91,7 @@ Run with auto-reload for development:
 ./deployment/scripts/deploy.sh dev
 
 # Or manually
-python -m dhara.cli.server --reload --config=deployment/config/development.yaml
+python -m dhara.cli db start --file=deployment/config/development.yaml
 ```
 
 ## Buildpack Deployment
@@ -526,7 +526,7 @@ Enable debug logging:
 
 ```bash
 export DHARA_LOG_LEVEL=DEBUG
-python -m dhara.cli.server --reload
+python -m dhara.cli db start
 ```
 
 ### Health Check Failures
@@ -554,7 +554,7 @@ kubectl logs deployment/dhara-server -n dhara --tail=100
 git clone https://github.com/lesleslie/dhara.git
 cd dhara
 pip install -e .
-python -m dhara.cli.server
+python -m dhara.cli db start
 
 # Buildpack deployment
 ./deployment/scripts/deploy.sh buildpack

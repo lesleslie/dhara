@@ -454,12 +454,12 @@ Dhara supports various backup strategies:
 cp data.dhara data.dhara.backup
 
 # Pack before backup (removes garbage)
-dhara -p --file data.dhara
+dhara db pack --file data.dhara
 ```
 
 ### Point-in-Time Recovery
 
-FileStorage supports point-in-time recovery (until pack):
+AsyncFileStorage supports point-in-time recovery (until pack):
 
 ```bash
 # Recover to specific transaction
