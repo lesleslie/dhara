@@ -3,9 +3,14 @@
 -- Supports both Homebrew local Postgres and Neon cloud Postgres.
 
 -- Objects table
+-- Mirrors dhara/storage/sqlite.py:_ASYNC_DB_SCHEMA (id INTEGER PRIMARY KEY,
+-- data BLOB, refs BLOB) and the _PG_SCHEMA constant in
+-- dhara/storage/postgres.py. The `refs` column is required at runtime for
+-- the load() path; do NOT drop it without also updating postgres.py.
 CREATE TABLE IF NOT EXISTS dhara_objects (
     oid BIGINT PRIMARY KEY,
-    data BYTEA NOT NULL
+    data BYTEA NOT NULL,
+    refs BYTEA
 );
 
 -- Atomic OID generation (no singleton row bottleneck)

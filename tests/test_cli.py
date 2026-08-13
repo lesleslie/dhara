@@ -765,7 +765,15 @@ class TestCreateCliRuntime:
     """Tests for the runtime behavior of the Typer app built by create_cli()."""
 
     def test_version_option_prints_version(self):
-        """The global --version flag should print the CLI version."""
+        """The global --version flag should print the CLI version.
+
+        Source of truth is ``pyproject.toml [project].version`` via
+        ``importlib.metadata.version("dhara")``; the test asserts the
+        prefix and reads the actual version dynamically so the assertion
+        tracks future bumps automatically.
+        """
+        from importlib.metadata import version
+
         settings = _make_mock_settings()
         app = _build_cli_app(settings)
 
@@ -773,7 +781,7 @@ class TestCreateCliRuntime:
             with pytest.raises(typer.Exit):
                 app.registered_callback.callback(version=True)
 
-        mock_echo.assert_called_once_with("dhara version 0.6.1")
+        mock_echo.assert_called_once_with(f"dhara version {version('dhara')}")
 
     def test_adapters_storage_and_admin_commands(self, tmp_path):
         """Root-level custom commands should execute through the Typer app."""

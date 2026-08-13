@@ -22,7 +22,12 @@ from dhara.serialize.record import pack_record, unpack_record
 from dhara.storage.base import OID
 from dhara.utils import int8_to_str, str_to_int8
 
-# Schema for PostgreSQL storage
+# Schema for PostgreSQL storage.
+#
+# NOTE: This constant must stay aligned with dhara/storage/pg_schema.sql,
+# which is the bootstrap script operators run against Homebrew/Neon/etc.
+# If you change one, change the other. See the sync test
+# tests/unit/test_storage_pg_schema_sync.py.
 _PG_SCHEMA = """
 CREATE TABLE IF NOT EXISTS dhara_objects (
     oid BIGINT PRIMARY KEY,

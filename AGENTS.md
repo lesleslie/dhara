@@ -13,8 +13,8 @@
 - `pytest` runs the full test suite; use `pytest -m unit`, `pytest -m integration`, or `pytest -m "not slow"` for narrower loops.
 - `pytest --cov=dhara --cov-report=html` generates local coverage output in `htmlcov/`.
 - `python -m crackerjack check`, `python -m crackerjack lint`, `python -m crackerjack format`, `python -m crackerjack typecheck`, and `python -m crackerjack security` cover the main quality workflows.
-- `dhara -s`, `dhara -c`, and `dhara -p --file <path>` are the primary local smoke-test commands for server, client, and packing flows.
-- `python setup.py build_ext --inplace` rebuilds the optional C extension when you touch `_persistent.c` or related extension wiring.
+- `dhara db start`, `dhara db client`, and `dhara db pack --file <path>` are the primary local smoke-test commands for server, client, and packing flows.
+- `uv pip install -e .` rebuilds the optional C extension (via the build-system in `pyproject.toml`) when you touch `_persistent.c` or related extension wiring.
 
 ## Coding Style & Naming Conventions
 

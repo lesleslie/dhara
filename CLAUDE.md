@@ -12,7 +12,7 @@ dhara is a modern persistent object system for Python - essentially a noSQL data
 
 - Complete architectural refactoring with layered package structure
 - Modern Python 3.13+ type hints throughout
-- Multiple serialization backends (msgspec, pickle, dill)
+- Multiple serialization backends (msgspec)
 - Oneiric integration for configuration management, logging, secrets, and adapter resolution
 - MCP server for modern AI/agent workflows
 - Enhanced security with proper secret management
@@ -65,11 +65,12 @@ python -m crackerjack run-tests --coverage
 
 ### Building C Extension
 
-The project includes a C extension (`dhara/_persistent.c`) for CPython:
+The project includes a C extension (`dhara/_persistent.c`) for CPython.
+`pyproject.toml` is PEP 517 compliant, so reinstalling the package
+rebuilds the extension via the build-system:
 
 ```bash
-# Build the extension
-python setup.py build_ext --inplace
+uv pip install -e .
 ```
 
 On PyPy, the pure Python implementation is used automatically.
@@ -78,28 +79,28 @@ On PyPy, the pure Python implementation is used automatically.
 
 ```bash
 # Start storage server (uses temporary file by default)
-dhara -s
+dhara db start
 
 # Start server with specific file
-dhara -s --file test.dhara
+dhara db start --file test.dhara
 
 # Start server on custom port
-dhara -s --port 2973
+dhara db start --port 2973
 
 # Connect to server (interactive console)
-dhara -c
+dhara db client
 
 # Connect to server with specific port
-dhara -c --port 2973
+dhara db client --port 2973
 
 # Open file directly (no server)
-dhara -c --file test.dhara
+dhara db client --file test.dhara
 
 # Stop server
-dhara -s --stop
+dhara mcp stop
 
 # Pack storage (garbage collection)
-dhara -p --file test.dhara
+dhara db pack --file test.dhara
 ```
 
 ## Architecture
@@ -119,7 +120,7 @@ dhara/
 │
 ├── storage/                      # Storage backends (adapter pattern)
 │   ├── base.py                   # Abstract Storage interface
-│   ├── file.py                   # FileStorage (default)
+│   ├── async_file.py             # AsyncFileStorage (path-style wrapper over AsyncSqliteStorage)
 │   ├── sqlite.py                 # SQLite storage
 │   ├── client.py                 # ClientStorage (network client)
 │   └── memory.py                 # MemoryStorage (testing)
@@ -174,7 +175,7 @@ dhara/
 
 **Storage Backends** (`dhara/storage/`):
 
-- `FileStorage`: Default, append-only journal with on-disk index
+- `AsyncFileStorage`: Default path-style wrapper over `AsyncSqliteStorage`
 - `SqliteStorage`: SQLite-based storage
 - `ClientStorage`: Network client for storage server
 - `MemoryStorage`: In-memory storage for testing
@@ -202,113 +203,13 @@ dhara/
 - systemd socket activation support
 - **TLS/SSL encryption for secure network communication**
 
-### TLS/SSL Security
+### TLS/SSL Status
 
-dhara 5.0+ includes comprehensive TLS/SSL support for securing client-server communication over untrusted networks.
-
-**Features:**
-
-- TLS 1.2 and 1.3 support
-- Certificate validation for server authentication
-- Mutual TLS (client certificates) for enhanced security
-- Configurable cipher suites and verification modes
-- Self-signed certificate generation for testing
-
-**Environment Variable Configuration:**
-
-```bash
-# Server TLS
-export DHARA_TLS_CERTFILE=/path/to/server.crt
-export DHARA_TLS_KEYFILE=/path/to/server.key
-export DHARA_TLS_CAFILE=/path/to/ca.crt  # Optional, for mutual TLS
-
-# Client TLS
-export DHARA_TLS_CAFILE=/path/to/ca.crt  # Required for server verification
-export DHARA_TLS_CLIENT_CERTFILE=/path/to/client.crt  # Optional, mutual TLS
-export DHARA_TLS_CLIENT_KEYFILE=/path/to/client.key    # Required with client cert
-export DHARA_TLS_VERIFY_MODE=required  # none, optional, or required (default)
-export DHARA_TLS_VERSION=1.3  # Minimum TLS version: 1.2 or 1.3 (default)
-```
-
-**Command-Line Usage:**
-
-```bash
-# Generate self-signed certificate for testing
-dhara -s --generate-tls-cert localhost
-
-# Start server with TLS
-dhara -s --tls-certfile server.crt --tls-keyfile server.key
-
-# Connect with TLS (server verification)
-dhara -c --host localhost --tls-cafile server.crt
-
-# Connect with mutual TLS
-dhara -c --host localhost \
-  --tls-cafile server.crt \
-  --tls-certfile client.crt \
-  --tls-keyfile client.key
-
-# Pack storage with TLS
-dhara -p --host localhost --tls-cafile server.crt
-```
-
-**Programmatic Usage:**
-
-```python
-from dhara import Connection
-from dhara.storage import ClientStorage
-from dhara.security.tls import TLSConfig
-
-# Server
-from dhara.server.server import StorageServer
-from dhara.storage import FileStorage
-
-storage = FileStorage("data.dhara")
-tls_config = TLSConfig(
-    certfile="server.crt",
-    keyfile="server.key",
-    cafile="ca.crt",  # Optional, for mutual TLS
-)
-server = StorageServer(storage, tls_config=tls_config)
-server.serve()
-
-# Client
-tls_config = TLSConfig(
-    cafile="server.crt",
-    client_certfile="client.crt",  # Optional
-    client_keyfile="client.key",    # Required with client_certfile
-)
-storage = ClientStorage(host="localhost", port=2972, tls_config=tls_config)
-connection = Connection(storage)
-```
-
-**Security Best Practices:**
-
-1. **Production Deployment:**
-
-   - Use certificates from a trusted CA (Let's Encrypt, commercial CA)
-   - Enable certificate verification (`DHARA_TLS_VERIFY_MODE=required`)
-   - Use TLS 1.3 or higher (`DHARA_TLS_VERSION=1.3`)
-   - Implement mutual TLS for sensitive environments
-
-1. **Testing/Development:**
-
-   - Use `--generate-tls-cert` for quick self-signed certificates
-   - Set `DHARA_TLS_VERIFY_MODE=none` only for testing
-   - Never disable verification in production
-
-1. **Certificate Management:**
-
-   - Keep private keys secure (appropriate file permissions)
-   - Rotate certificates before expiration
-   - Use separate CA certificates for development and production
-
-**Cryptography Dependency:**
-Self-signed certificate generation requires the `cryptography` package:
-
-```bash
-pip install cryptography
-```
+TLS support was removed during the async migration; the `dhara db start`
+/ `dhara db client` handlers register only `--file`, `--host`, `--port`,
+`--readonly`, and `--gcbytes`. Use a reverse proxy (nginx, Caddy, Envoy)
+or a VPN to secure client-server traffic in the interim. Re-enabling
+TLS is tracked in `docs/plans/`.
 
 ### Transaction Model
 
@@ -384,19 +285,29 @@ The `BTree` class (in `dhara/collections/btree.py`) implements a B-tree data str
 ### Creating Persistent Classes
 
 ```python
-from dhara import Persistent, Connection, FileStorage
+import asyncio
+from dhara import Persistent
+from dhara.core.connection import AsyncConnection
+from dhara.storage.async_file import AsyncFileStorage
+
 
 class User(Persistent):
-    def __init__(self, name: str):
+    def __init__(self, name: str) -> None:
         self.name = name
         self.email = None
 
-# Usage
-connection = Connection(FileStorage("users.dhara"))
-root = connection.get_root()
-root["users"] = {}
-root["users"]["john"] = User("John Doe")
-connection.commit()
+
+async def main() -> None:
+    storage = AsyncFileStorage("users.dhara")
+    await storage.init()
+    connection = await AsyncConnection.new(storage)
+    root = connection.get_root()
+    root["users"] = {}
+    root["users"]["john"] = User("John Doe")
+    await connection.commit()
+
+
+asyncio.run(main())
 ```
 
 ### Working with Direct File Access
@@ -412,17 +323,28 @@ root = connection.get_root()
 ### Using Different Storage Backends
 
 ```python
-from dhara import Connection
-from dhara.storage import FileStorage, SqliteStorage, ClientStorage
+import asyncio
+from dhara.core.connection import AsyncConnection
+from dhara.storage import SqliteStorage, ClientStorage
+from dhara.storage.async_file import AsyncFileStorage
 
-# File storage (default)
-connection = Connection(FileStorage("data.dhara"))
 
-# SQLite storage
-connection = Connection(SqliteStorage("data.db"))
+async def main() -> None:
+    # File storage (default, async path-style)
+    storage = AsyncFileStorage("data.dhara")
+    await storage.init()
+    connection = await AsyncConnection.new(storage)
 
-# Network storage
-connection = Connection(ClientStorage(address=("localhost", 2972)))
+    # SQLite storage
+    connection = await AsyncConnection.new(SqliteStorage("data.db"))
+
+    # Network storage
+    connection = await AsyncConnection.new(
+        ClientStorage(address=("localhost", 2972))
+    )
+
+
+asyncio.run(main())
 ```
 
 ### Garbage Collection
@@ -432,7 +354,7 @@ connection = Connection(ClientStorage(address=("localhost", 2972)))
 connection.pack()
 
 # Server-side automatic GC
-dhara -s --gcbytes 1000000  # Pack after 1MB of changes
+dhara db start --gcbytes 1000000  # Pack after 1MB of changes
 ```
 
 ### Using Persistent Collections
@@ -515,7 +437,7 @@ server:
   gcbytes: 1000000
 
 serialization:
-  backend: msgspec  # or pickle, dill
+  backend: msgspec
 
 logging:
   level: INFO
@@ -568,10 +490,10 @@ The MCP server provides:
 
 ### Common Issues
 
-**Import Error**: Ensure you've built the C extension if using CPython:
+**Import Error**: Reinstall the package to rebuild the C extension:
 
 ```bash
-python setup.py build_ext --inplace
+uv pip install -e .
 ```
 
 **Cache Size**: Adjust cache size for large datasets:
@@ -593,8 +515,20 @@ except ConflictError:
 **Performance**: Use msgspec serialization for better performance:
 
 ```python
+import asyncio
+from dhara.core.connection import AsyncConnection
 from dhara.serialize import MsgspecSerializer
-storage = FileStorage("data.dhara", serializer=MsgspecSerializer())
+from dhara.storage.async_file import AsyncFileStorage
+
+
+async def main() -> None:
+    storage = AsyncFileStorage("data.dhara")
+    await storage.init()
+    storage.serializer = MsgspecSerializer()  # type: ignore[attr-defined]
+    connection = await AsyncConnection.new(storage)
+
+
+asyncio.run(main())
 ```
 
 <!-- CRACKERJACK_START -->

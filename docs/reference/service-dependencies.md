@@ -27,14 +27,23 @@ Dhara is a self-contained persistence system that requires no external services 
 Dhara can serve as the persistence layer for Mahavishnu orchestration workflows:
 
 ```python
-# In Mahavishnu configuration
-from dhara.core.connection import Connection
-from dhara.storage.file import FileStorage
+import asyncio
 
-# Dhara provides persistent storage for workflow state
-connection = Connection(FileStorage("mahavishnu_workflows.dhara"))
-root = connection.get_root()
-root["workflows"] = {}
+# In Mahavishnu configuration
+from dhara.core.connection import AsyncConnection
+from dhara.storage.async_file import AsyncFileStorage
+
+
+async def main() -> None:
+    # Dhara provides persistent storage for workflow state
+    storage = AsyncFileStorage("mahavishnu_workflows.dhara")
+    await storage.init()
+    connection = await AsyncConnection.new(storage)
+    root = connection.get_root()
+    root["workflows"] = {}
+
+
+asyncio.run(main())
 ```
 
 **Integration Benefits**:
@@ -247,7 +256,8 @@ complexipy      # Complexity analysis
 
 ```bash
 # Build C extension (optional, for CPython)
-python setup.py build_ext --inplace
+# pyproject.toml drives the build via setuptools + uv; reinstall to rebuild.
+uv pip install -e .
 ```
 
 **Dependencies**:

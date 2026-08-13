@@ -117,8 +117,8 @@ The following files control buildpack behavior:
 - **`project.toml`** - Paketo buildpack configuration
 - **`Procfile`** - Process declaration (Heroku-style)
 - **`buildpacks.yaml`** - Buildpack specification (optional)
-- **`requirements.txt`** - Auto-generated from setup.py
-- **`setup.py`** - Python package metadata
+- **`requirements.txt`** - Auto-generated from pyproject.toml
+- **`pyproject.toml`** - Python package metadata (PEP 621)
 
 ### Running Buildpack Images Locally
 
@@ -380,13 +380,23 @@ cp /data/dhara.dhara /backup/dhara-$(date +%Y%m%d).dhara
 
 # Or using Python
 python -c "
-from dhara.storage.file import FileStorage
+import asyncio
 from shutil import copy2
 import datetime
 
-backup_path = f'/backup/dhara-{datetime.datetime.now():%Y%m%d}.dhara'
-copy2('/data/dhara.dhara', backup_path)
-print(f'Backed up to {backup_path}')
+from dhara.storage.async_file import AsyncFileStorage
+
+
+async def snapshot() -> None:
+    storage = AsyncFileStorage('/data/dhara.dhara')
+    await storage.init()
+    backup_path = f'/backup/dhara-{datetime.datetime.now():%Y%m%d}.dhara'
+    copy2('/data/dhara.dhara', backup_path)
+    print(f'Backed up to {backup_path}')
+    await storage.close()
+
+
+asyncio.run(snapshot())
 "
 ```
 
@@ -475,10 +485,20 @@ python -c "from dhara.config.loader import load_config; print(load_config('deplo
 ```bash
 # Check cache size
 python -c "
-from dhara.connection import Connection
-from dhara.storage.file import FileStorage
-conn = Connection(FileStorage('/data/dhara.dhara'))
-print(f'Cache size: {len(conn.get_cache())}')
+import asyncio
+from dhara.core.connection import AsyncConnection
+from dhara.storage.async_file import AsyncFileStorage
+
+
+async def cache_size() -> None:
+    storage = AsyncFileStorage('/data/dhara.dhara')
+    await storage.init()
+    conn = await AsyncConnection.new(storage)
+    print(f'Cache size: {len(conn.get_cache())}')
+    await storage.close()
+
+
+asyncio.run(cache_size())
 "
 
 # Reduce cache size in config

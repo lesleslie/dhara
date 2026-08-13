@@ -140,20 +140,27 @@ dhara mcp start
 
 # 2. In another terminal, connect with Python
 python << 'EOF'
-from dhara.core import Connection
-from dhara.storage.file import FileStorage
+import asyncio
+from dhara.core.connection import AsyncConnection
+from dhara.storage.async_file import AsyncFileStorage
 
-# Connect to lite mode storage
-storage = FileStorage("~/.local/share/dhara/lite.dhara")
-conn = Connection(storage)
 
-# Use Dhara
-root = conn.get_root()
-root["test"] = "Hello from lite mode!"
-conn.commit()
+async def main() -> None:
+    # Connect to lite mode storage
+    storage = AsyncFileStorage("~/.local/share/dhara/lite.dhara")
+    await storage.init()
+    conn = await AsyncConnection.new(storage)
 
-print("Data stored successfully!")
-conn.close()
+    # Use Dhara
+    root = conn.get_root()
+    root["test"] = "Hello from lite mode!"
+    await conn.commit()
+
+    print("Data stored successfully!")
+    await storage.close()
+
+
+asyncio.run(main())
 EOF
 ```
 
@@ -404,24 +411,32 @@ When moving from development (lite) to production (standard):
 #### Step 1: Export Data from Lite Mode
 
 ```python
-from dhara.core import Connection
-from dhara.storage.file import FileStorage
+import asyncio
 import json
 
-# Connect to lite mode storage
-storage = FileStorage("~/.local/share/dhara/lite.dhara")
-conn = Connection(storage)
+from dhara.core.connection import AsyncConnection
+from dhara.storage.async_file import AsyncFileStorage
 
-# Export root data
-root = conn.get_root()
-data = dict(root)
 
-# Save to JSON
-with open("/tmp/dhara-lite-export.json", "w") as f:
-    json.dump(data, f, indent=2)
+async def main() -> None:
+    # Connect to lite mode storage
+    storage = AsyncFileStorage("~/.local/share/dhara/lite.dhara")
+    await storage.init()
+    conn = await AsyncConnection.new(storage)
 
-conn.close()
-print("Export complete: /tmp/dhara-lite-export.json")
+    # Export root data
+    root = conn.get_root()
+    data = dict(root)
+
+    # Save to JSON
+    with open("/tmp/dhara-lite-export.json", "w") as f:
+        json.dump(data, f, indent=2)
+
+    await storage.close()
+    print("Export complete: /tmp/dhara-lite-export.json")
+
+
+asyncio.run(main())
 ```
 
 #### Step 2: Configure Standard Mode

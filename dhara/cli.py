@@ -12,9 +12,9 @@ Usage:
     dhara mcp stop
 
     # Database commands (legacy-compatible)
+    dhara db start  [--file PATH] [--host HOST] [--port PORT]
     dhara db client [--file PATH] [--host HOST] [--port PORT]
-    dhara db server [--file PATH] [--host HOST] [--port PORT]
-    dhara db pack [--file PATH]
+    dhara db pack   [--file PATH]
 
     # Custom Dhara commands
     dhara adapters [--domain DOMAIN] [--category CATEGORY]
@@ -32,6 +32,7 @@ Usage:
 from __future__ import annotations
 
 import time
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any, cast
 
@@ -49,8 +50,15 @@ from dhara.mcp.server_core import DharaMCPServer
 
 logger = get_logger(__name__)
 
-# Version (sync with pyproject.toml)
-__version__ = "0.6.1"
+# Version is read from the installed package metadata so ``dhara --version``
+# always matches ``pyproject.toml`` (currently 0.15.1). ``importlib.metadata``
+# is the canonical way to introspect installed distributions without
+# importing the package; this avoids the constant-drift trap when the
+# version is bumped via ``crackerjack run -p minor``.
+try:
+    __version__ = version("dhara")
+except PackageNotFoundError:
+    __version__ = "0.0.0+unknown"
 
 # Global server instance (for stop handler)
 _server_instance: DharaMCPServer | None = None
@@ -535,7 +543,7 @@ def _create_db_commands(app: typer.Typer) -> None:
     ★ Insight: Legacy CLI Restructure ─────────────────────────────────
     1. Historical database flags restructured into subcommands
     2. `dhara db client` replaces `dhara -c`
-    3. `dhara db server` replaces `dhara -s`
+    3. `dhara db start` replaces `dhara -s` (alias: `dhara db server`)
     4. `dhara db pack` replaces `dhara -p`
     5. Full TLS support preserved with modern option names
     ────────────────────────────────────────────────────────────────────
@@ -582,7 +590,8 @@ def _create_db_commands(app: typer.Typer) -> None:
             tls_config=None,
         )
 
-    @db_app.command("start")
+    @db_app.command("start", hidden=False)
+    @db_app.command("server", hidden=True, help="Deprecated alias for 'start'.")
     def db_start(
         file: str | None = typer.Option(
             None, "--file", "-f", help="Database file path"

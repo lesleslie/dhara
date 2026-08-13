@@ -19,9 +19,9 @@ Use these paths for new code:
 
 ```python
 from dhara.core.config import DharaSettings
-from dhara.core.connection import Connection
+from dhara.core.connection import AsyncConnection
 from dhara.core.persistent import Persistent
-from dhara.storage.file import FileStorage
+from dhara.storage.async_file import AsyncFileStorage
 from dhara.storage.client import ClientStorage
 from dhara.collections.dict import PersistentDict
 from dhara.collections.list import PersistentList
@@ -39,7 +39,8 @@ The following paths are removed or retained only in archived history and should 
 - `dhara.persistent_list` has been removed
 
 DFS20/Durus 4.x format support is removed as of 0.11.0. Use
-`dhara.storage.file.FileStorage` (SHELF-1). There is no in-place format
+`dhara.storage.async_file.AsyncFileStorage` (the canonical async file-backed
+store, mapping to `AsyncSqliteStorage`). There is no in-place format
 migration.
 
 ## Configuration Migration
@@ -92,7 +93,7 @@ Do not use these in new docs or scripts:
 - `dhara-mcp ...`
 - `dhara -s`
 - `dhara -c`
-- `dhara db server`
+- `dhara db server`  # alias for `dhara db start`, retained for one release
 
 ## MCP Migration
 

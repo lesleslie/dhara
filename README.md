@@ -159,19 +159,25 @@ All commands accept `--help` for more options.
 
 To use dhara, a Python program needs to make a Storage instance and a
 Connection instance. For the Storage instance, you have two choices:
-FileStorage or ClientStorage. If your program is to be one of several
+AsyncFileStorage or ClientStorage. If your program is to be one of several
 processes accessing a shared collection of objects, then you want
 ClientStorage. If your program has no competition, then choose
-FileStorage. There is only one Connection class, and the constructor
+AsyncFileStorage. There is only one Connection class, and the constructor
 takes a storage instance as an argument.
 
-Example using FileStorage to open a Connection to a file:
+Example using AsyncFileStorage to open an async Connection to a file:
 
 ```py
-from dhara.core.connection import Connection
-from dhara.storage.file import FileStorage
+import asyncio
+from dhara.core.connection import AsyncConnection
+from dhara.storage.async_file import AsyncFileStorage
 
-connection = Connection(FileStorage("test.dhara"))
+async def main() -> None:
+    storage = AsyncFileStorage("test.dhara")
+    await storage.init()
+    connection = await AsyncConnection.new(storage)
+
+asyncio.run(main())
 ```
 
 Example using ClientStorage to open a Connection to a dhara server:
@@ -252,12 +258,14 @@ add calls to `self._p_note_change()` in every method that makes changes.
 ## Storage back-ends
 
 This version of dhara includes a number of back-end storage
-implementations that may be used. The default is `FileStorage`, an
-append-only journal that includes an on-disk index of object record
-offsets. This module has the advantage of fast startup time with
-slightly slower read performance (two disk seeks per object load).
+implementations that may be used. The default is `AsyncFileStorage`,
+a thin wrapper over `AsyncSqliteStorage` that maps a filesystem path to
+a `sqlite+aiosqlite://` URL. It accepts the path-style constructor that
+callers expect from the legacy `FileStorage` API while delegating to the
+canonical async SQLite backend.
 
-Removed in 0.11.0; use `FileStorage` (SHELF-1) for all new and migrated databases.
+Note: SHELF-1 is removed in 0.11.0. New and migrated databases should use
+`AsyncFileStorage` (path-style) or `AsyncSqliteStorage` (URL-style) directly.
 
 Finally, there is an experimental Sqlite storage module,
 `SqliteStorage`. The module uses a SQLite3 database to persist object
@@ -277,7 +285,7 @@ by the original Durus developers.
 This modern version (dhara) includes:
 
 - Modern Python 3.13+ type hints
-- Enhanced serialization options (msgspec, dill)
+- Enhanced serialization options (msgspec)
 - Oneiric configuration and logging integration
 - MCP server for modern AI/agent workflows
 - Comprehensive security and performance improvements
