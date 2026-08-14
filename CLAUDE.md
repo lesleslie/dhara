@@ -85,13 +85,13 @@ dhara db start
 dhara db start --file test.dhara
 
 # Start server on custom port
-dhara db start --port 2973
+dhara db start --port 2972
 
 # Connect to server (interactive console)
 dhara db client
 
 # Connect to server with specific port
-dhara db client --port 2973
+dhara db client --port 2972
 
 # Open file directly (no server)
 dhara db client --file test.dhara
