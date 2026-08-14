@@ -191,3 +191,33 @@ class TestVersionConsistency:
             "dhara/mcp/server_core.py; the version must be sourced from "
             "_PACKAGE_VERSION (importlib.metadata)."
         )
+
+    def test_mcp_package_version_matches(self) -> None:
+        """Assert ``dhara.mcp.__version__`` is sourced from importlib.metadata.
+
+        Guards against the drift pattern where ``dhara/mcp/__init__.py`` had a
+        hardcoded ``__version__ = "5.0.0"`` literal that diverged from
+        ``pyproject.toml [project].version`` (currently 0.15.1).
+        """
+        expected = _read_pyproject_version(PYPROJECT_PATH)
+        from dhara.mcp import __version__ as pkg_version
+
+        assert _normalize_version(pkg_version) == expected, (
+            f"dhara.mcp.__version__ {pkg_version!r} disagrees with "
+            f"pyproject {expected!r}. Update dhara/mcp/__init__.py to source "
+            f"__version__ from importlib.metadata.version('dhara')."
+        )
+        # Source check: dhara/mcp/__init__.py must not contain a hardcoded
+        # version literal like ``__version__ = "5.0.0"`` — only the
+        # importlib.metadata fallback ``"0.0.0+unknown"`` is allowed.
+        from pathlib import Path
+        init_path = Path("dhara/mcp/__init__.py")
+        init_source = init_path.read_text(encoding="utf-8")
+        assert "__version__ = " in init_source, (
+            "dhara/mcp/__init__.py is missing a __version__ assignment."
+        )
+        # Reject the historical drift literals (5.0.0 was the stale value).
+        assert '"5.0.0"' not in init_source, (
+            'Hardcoded __version__ = "5.0.0" was reintroduced in '
+            "dhara/mcp/__init__.py; use importlib.metadata.version('dhara')."
+        )
