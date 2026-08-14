@@ -50,9 +50,15 @@ mode, required scopes, and token-file path.
 
 - `put`
 - `get`
+- `list_prefix`
 - `record_time_series`
 - `query_time_series`
 - `aggregate_patterns`
+
+#### SQL Proxy
+
+- `dhara_sql_execute`
+- `dhara_sql_query`
 
 #### Ecosystem State
 
