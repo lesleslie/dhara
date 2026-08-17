@@ -62,3 +62,9 @@ benchmarks-baseline.txt
 # only the resolved artifacts are excluded.
 node_modules/
 !node_modules/.gitkeep
+
+
+# Archived test artifacts - emit to /tmp instead of git
+docs/archive/test-artifacts/
+# Belt-and-suspenders: any coverage*.json dump regardless of location
+coverage*.json
