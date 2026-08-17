@@ -327,7 +327,7 @@ sequenceDiagram
     autonumber
     participant CLI as dhara mcp start (port 8683)
     participant INIT as DharaMCPServer.__init__
-    participant LOOP as _CACHE_WIRE_LOOP (background thread)
+    participant WIRE as _CACHE_WIRE_LOOP (background thread)
     participant ST as AsyncFileStorage (sqlite+aiosqlite)
     participant CONN as AsyncConnection
     participant KV as AsyncKVTimeSeriesStore
@@ -340,10 +340,10 @@ sequenceDiagram
     CLI->>INIT: DharaMCPServer(DharaSettings)
     INIT->>INIT: build_token_verifier()
     INIT->>ST: AsyncFileStorage(str(path))
-    INIT->>LOOP: run _run_async_connection_wire
-    LOOP->>ST: __aenter__ if _conn is None
-    LOOP->>CONN: AsyncConnection.new(storage)
-    LOOP->>LOOP: spawn daemon thread; loop.run_forever()
+    INIT->>WIRE: run _run_async_connection_wire
+    WIRE->>ST: __aenter__ if _conn is None
+    WIRE->>CONN: AsyncConnection.new(storage)
+    WIRE->>WIRE: spawn daemon thread — evt_loop.run_forever()
     INIT->>AR: AdapterRegistry(sync-facade-Connection)
     INIT->>INIT: _register_tools()
     INIT->>INIT: _register_health_tools()

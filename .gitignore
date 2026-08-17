@@ -52,3 +52,12 @@ build/
 benchmarks-baseline.txt
 
 .superprofits/
+
+# ============================================================================
+# Node.js - Wave-11 mermaid CI guard
+# ============================================================================
+# jsdom is the dev dep for the wave-11 mermaid CI guard (mirrored from
+# crackerjack wave-9). The package.json + package-lock.json ARE committed;
+# only the resolved artifacts are excluded.
+node_modules/
+!node_modules/.gitkeep
