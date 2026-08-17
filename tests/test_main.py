@@ -728,5 +728,3 @@ class TestMain:
 
         mock_cli_main.assert_called_once()
         mock_usage.assert_not_called()
-
-

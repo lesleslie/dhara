@@ -7,6 +7,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from rich.console import Console
 
@@ -110,9 +111,7 @@ DEFAULT_MERMAID_PREFIXES: tuple[str, ...] = (
 # imported and executed as code. We trust only the locally-vendored
 # `node_modules/jsdom/` installed in the dhara repo by `npm install`
 # (which pins the version in package.json). The path is `<repo>/node_modules/`.
-DEFAULT_JSDOM_LOCATIONS: tuple[str, ...] = (
-    "node_modules/jsdom/lib/api.js",
-)
+DEFAULT_JSDOM_LOCATIONS: tuple[str, ...] = ("node_modules/jsdom/lib/api.js",)
 
 
 def _locate_mermaid_core() -> Path | None:
@@ -201,24 +200,11 @@ def _locate_jsdom() -> Path | None:
 def _is_trusted_mermaid_path(path: Path) -> bool:
     """Allow-list check: `path` must live under a known-good mermaid prefix."""
     resolved = str(path.resolve())
-    return any(
-        resolved.startswith(prefix) for prefix in DEFAULT_MERMAID_PREFIXES
-    )
+    return any(resolved.startswith(prefix) for prefix in DEFAULT_MERMAID_PREFIXES)
 
 
-def validate_mermaid_blocks(
-    blocks: list[MermaidBlock],
-    timeout: float = 30.0,
-) -> list[MermaidValidationError]:
-    """Run mermaid.parse() on each block via Node.js subprocess.
-
-    Returns a list of MermaidValidationError. Empty list means every block
-    passed. The Node.js runner is `dhara/tools/mermaid_validator/validate_mermaid.mjs`,
-    which uses `mermaid.parse()` (lexer-only, no chrome needed).
-    """
-    if not blocks:
-        return []
-
+def _resolve_validator_runtime() -> tuple[Path, Path, Path]:
+    """Preflight: locate runner, mermaid-core, jsdom. Returns paths or raises."""
     runner = Path(__file__).parent / "validate_mermaid.mjs"
     if not runner.exists():
         raise FileNotFoundError(f"validate_mermaid.mjs not found at {runner}")
@@ -239,15 +225,19 @@ def validate_mermaid_blocks(
             "wave-11 dev dep, or set DHARA_JSDOM to its absolute path"
         )
 
-    payload = json.dumps(
-        [
-            {"file": str(b.file), "line": b.line, "code": b.code}
-            for b in blocks
-        ]
-    )
+    return runner, mermaid_core, jsdom
 
+
+def _run_validator_subprocess(
+    payload: str,
+    runner: Path,
+    mermaid_core: Path,
+    jsdom: Path,
+    timeout: float,
+) -> subprocess.CompletedProcess:
+    """Invoke the Node.js validator; surface actionable errors for missing node / timeouts."""
     try:
-        completed = subprocess.run(
+        return subprocess.run(
             ["node", str(runner), str(mermaid_core), str(jsdom)],
             input=payload,
             capture_output=True,
@@ -261,9 +251,39 @@ def validate_mermaid_blocks(
         ) from e
     except subprocess.TimeoutExpired as e:
         raise RuntimeError(
-            f"validate_mermaid.mjs timed out after {timeout}s on {len(blocks)} "
-            f"blocks"
+            f"validate_mermaid.mjs timed out after {timeout}s on {len(payload)} bytes"
         ) from e
+
+
+def _parse_validator_results(stdout: str) -> list[Any]:
+    """Parse validator JSON; surface the raw first-200-bytes for debugging bad output."""
+    try:
+        return json.loads(stdout)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(
+            f"validate_mermaid.mjs returned invalid JSON: {e}; "
+            f"stdout={stdout[:200]!r}"
+        ) from e
+
+
+def validate_mermaid_blocks(
+    blocks: list[MermaidBlock],
+    timeout: float = 30.0,
+) -> list[MermaidValidationError]:
+    """Run mermaid.parse() on each block via Node.js subprocess.
+
+    Returns a list of MermaidValidationError. Empty list means every block
+    passed. The Node.js runner is `dhara/tools/mermaid_validator/validate_mermaid.mjs`,
+    which uses `mermaid.parse()` (lexer-only, no chrome needed).
+    """
+    if not blocks:
+        return []
+
+    runner, mermaid_core, jsdom = _resolve_validator_runtime()
+    payload = json.dumps(
+        [{"file": str(b.file), "line": b.line, "code": b.code} for b in blocks]
+    )
+    completed = _run_validator_subprocess(payload, runner, mermaid_core, jsdom, timeout)
 
     if completed.returncode != 0:
         raise RuntimeError(
@@ -271,25 +291,16 @@ def validate_mermaid_blocks(
             f"{completed.stderr.strip()[:500]}"
         )
 
-    try:
-        results = json.loads(completed.stdout)
-    except json.JSONDecodeError as e:
-        raise RuntimeError(
-            f"validate_mermaid.mjs returned invalid JSON: {e}; "
-            f"stdout={completed.stdout[:200]!r}"
-        ) from e
-
-    errors: list[MermaidValidationError] = []
-    for entry in results:
-        if entry.get("status") == "error":
-            errors.append(
-                MermaidValidationError(
-                    file=Path(entry["file"]),
-                    line=entry["line"],
-                    error=entry.get("error", "<unknown error>"),
-                )
-            )
-    return errors
+    results = _parse_validator_results(completed.stdout)
+    return [
+        MermaidValidationError(
+            file=Path(entry["file"]),
+            line=entry["line"],
+            error=entry.get("error", "<unknown error>"),
+        )
+        for entry in results
+        if entry.get("status") == "error"
+    ]
 
 
 def find_broken_mermaid_blocks(

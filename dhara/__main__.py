@@ -6,7 +6,6 @@ $Id$
 """
 
 import os
-import socket
 import sys
 from pathlib import Path
 from pprint import pprint
@@ -21,14 +20,7 @@ class SecurityWarning(UserWarning):
 
 from dhara.core import Connection
 from dhara.logger import direct_output, log, logger
-from dhara.security.tls import (
-    TLSConfig,
-    generate_self_signed_cert,
-)
 from dhara.server.server import (
-    DEFAULT_GCBYTES,
-    DEFAULT_HOST,
-    DEFAULT_PORT,
     SocketAddress,
     StorageServer,
     wait_for_server,
@@ -169,6 +161,7 @@ def interactive_client(
             )
             console.runsource(f'execfile("{os.path.expanduser(startup)}")')
         console.interact(f"Druva {description}\n{help_text}")
+
 
 def get_storage_class(file):
     """Return the storage class for an existing file.

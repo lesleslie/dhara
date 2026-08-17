@@ -5,6 +5,36 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.2] - 2026-08-17
+
+### Added
+
+- dhara: Mirror wave-11 mermaid CI guard from crackerjack
+
+### Changed
+
+- dhara: __main__.py delegates to Typer CLI
+- dhara: Remove dead optparse helpers from __main__.py
+
+### Fixed
+
+- dhara: Correct db port typo 2973 -> 2972 in CLAUDE.md
+- dhara: Document list_prefix and SQL Proxy tools in mcp README
+- dhara: Source mcp __version__ from importlib.metadata
+- dhara: Wire /health response version to _PACKAGE_VERSION
+- dhara: Wire MCP /health version to importlib.metadata
+- Drop fictional dhara_* tool namespace from mcp README
+
+### Documentation
+
+- audit: Apply 2026-08-12 drift fixes
+- dhara: Fix 7 missed drift items from wave-1 verifier
+
+### Internal
+
+- gitignore: Add .coverage* + untrack .coverage-ratchet.json (bodai 2026-08-17)
+- gitignore: Ignore docs/archive/test-artifacts/, untrack coverage dumps
+
 ## [0.15.1] - 2026-08-12
 
 ### Added
