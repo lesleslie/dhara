@@ -50,13 +50,13 @@ FIXTURES = Path("tests/fixtures")
 def test_server_core_calls_apply_tool_profile() -> None:
     """server_core must invoke ``_apply_tool_profile`` (async entry).
 
-    Accepts either ``_apply_tool_profile`` (preferred per W1.2 lesson) or
-    ``apply_tool_profile`` (sync wrapper fallback). The async entry is
-    the canonical path — the sync wrapper raises inside a running loop.
+    Per the brief: use ``_apply_tool_profile`` (the async helper), NOT
+    ``apply_tool_profile`` (sync wrapper, raises in async context). The
+    sync wrapper would also work for ``DharaMCPServer.__init__`` (sync
+    context, no event loop) but the brief is firm on the async entry.
     """
     tree = ast.parse(SERVER_CORE.read_text())
     found_async = False
-    found_sync = False
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
@@ -65,10 +65,9 @@ def test_server_core_calls_apply_tool_profile() -> None:
             continue
         if func.id == "_apply_tool_profile":
             found_async = True
-        elif func.id == "apply_tool_profile":
-            found_sync = True
-    assert found_async or found_sync, (
-        "server_core.py must call _apply_tool_profile() or apply_tool_profile()"
+    assert found_async, (
+        "server_core.py must use the async _apply_tool_profile helper "
+        "(not the sync apply_tool_profile wrapper)"
     )
 
 
@@ -276,34 +275,213 @@ class TestBehavioralParity:
         register_health_tools_group(mock_server, instance)
         instance._register_health_tools.assert_called_once()
 
-    def test_kv_wrapper_uses_async_kv_store(self) -> None:
-        """The KV wrapper references ``instance._async_kv_store`` as the backend.
+    def _build_mock_fastmcp(self) -> tuple[MagicMock, dict[str, Any]]:
+        """Return (mock_server, captured_tool_functions) for behavioral tests.
 
-        Behavioral parity: ``put`` / ``get`` / ``list_prefix`` etc. must
-        continue to dispatch through the async KV store, not bypass it
-        with a fresh connection. Asserts the attribute is referenced in
-        the wrapper source (catches the W1.3 shape where the wrapper
-        re-built its own backend and bypassed the central registry).
+        The captured dict maps tool name → the function that
+        ``@server.tool(...)`` decorated. Behavioral tests invoke the
+        function (with realistic args) and assert the right async
+        store method was called on the instance.
         """
-        import inspect
+        captured: dict[str, Any] = {}
 
-        source = inspect.getsource(register_kv_timeseries_group)
-        assert "_async_kv_store" in source
+        mock_server = MagicMock(name="FastMCP")
+
+        def fake_tool(**_kw: Any) -> Any:
+            def decorator(fn: Any) -> Any:
+                captured[fn.__name__] = fn
+                return fn
+            return decorator
+
+        mock_server.tool = fake_tool
+        return mock_server, captured
+
+    def _build_mock_instance(self) -> MagicMock:
+        """Return a mock ``DharaMCPServer``-like instance for behavioral tests.
+
+        The per-group wrappers access ``instance.config``,
+        ``instance.auth_verifier``, ``instance._async_kv_store``, etc.
+        We provide ``AsyncMock`` for the store attributes so the
+        wrappers' ``await instance._async_kv_store.put_async(...)`` calls
+        await correctly. The auth helpers gate on
+        ``instance.config.authentication.enabled`` — we set that
+        explicitly to False so auth scope checks are no-ops.
+        """
+        instance = MagicMock()
+        instance.config.authentication.enabled = False
+        instance.config.authentication.required_scopes = []
+        instance.config.authentication.token.tokens_file = None
+        instance.auth_verifier = None
+        # Async stores: AsyncMock so awaits return coroutines.
+        from unittest.mock import AsyncMock as _AsyncMock
+
+        instance._async_kv_store = MagicMock()
+        instance._async_kv_store.put_async = _AsyncMock(return_value={"ok": True})
+        instance._async_kv_store.get_async = _AsyncMock(return_value={"ok": True, "value": None})
+        instance._async_kv_store.list_prefix_async = _AsyncMock(return_value=[])
+        instance._async_kv_store.record_time_series_async = _AsyncMock(
+            return_value={"ok": True}
+        )
+        instance._async_kv_store.query_time_series_async = _AsyncMock(return_value=[])
+        instance._async_kv_store.aggregate_patterns_async = _AsyncMock(return_value=[])
+        instance._async_ecosystem_state = MagicMock()
+        instance._async_ecosystem_state.upsert_service_async = _AsyncMock(
+            return_value={"ok": True}
+        )
+        instance._async_ecosystem_state.get_service_async = _AsyncMock(
+            return_value={"ok": True}
+        )
+        instance._async_ecosystem_state.list_services_async = _AsyncMock(return_value=[])
+        instance._async_ecosystem_state.record_event_async = _AsyncMock(
+            return_value={"ok": True}
+        )
+        instance._async_ecosystem_state.list_events_async = _AsyncMock(return_value=[])
+        instance._async_adapter_registry = MagicMock()
+        return instance
+
+    def test_kv_wrapper_uses_async_kv_store(self) -> None:
+        """KV tool ``put`` dispatches through ``instance._async_kv_store.put_async``.
+
+        Behavioral parity (W1.3 lesson): the wrapper must continue to
+        dispatch through the central async store, not bypass it with
+        a fresh connection or substitute a different attribute. We
+        invoke the captured ``put`` tool function and assert the
+        expected AsyncMock on the instance was called exactly once
+        with the right kwargs.
+        """
+        import asyncio
+
+        server, captured = self._build_mock_fastmcp()
+        instance = self._build_mock_instance()
+        register_kv_timeseries_group(server, instance)
+
+        assert "put" in captured, "kv wrapper should register a 'put' tool"
+        asyncio.run(captured["put"](key="k", value={"hello": "world"}))
+
+        instance._async_kv_store.put_async.assert_called_once_with(
+            key="k", value={"hello": "world"}, ttl=None
+        )
+
+    def test_kv_wrapper_get_dispatches_through_kv_store(self) -> None:
+        """KV tool ``get`` dispatches through ``instance._async_kv_store.get_async``."""
+        import asyncio
+
+        server, captured = self._build_mock_fastmcp()
+        instance = self._build_mock_instance()
+        register_kv_timeseries_group(server, instance)
+
+        assert "get" in captured
+        asyncio.run(captured["get"](key="k"))
+
+        instance._async_kv_store.get_async.assert_called_once_with(key="k")
 
     def test_ecosystem_wrapper_uses_async_ecosystem_state(self) -> None:
-        """The ecosystem-state wrapper references ``instance._async_ecosystem_state``.
+        """Ecosystem tool ``upsert_service`` dispatches through ``instance._async_ecosystem_state.upsert_service_async``."""
+        import asyncio
 
-        Mirrors the KV check: behavioral parity means the wrapper must
-        keep using the central async store rather than re-creating one.
-        """
-        import inspect
+        server, captured = self._build_mock_fastmcp()
+        instance = self._build_mock_instance()
+        register_ecosystem_state_group(server, instance)
 
-        source = inspect.getsource(register_ecosystem_state_group)
-        assert "_async_ecosystem_state" in source
+        assert "upsert_service" in captured
+        asyncio.run(
+            captured["upsert_service"](
+                service_id="svc-1",
+                service_type="test",
+            )
+        )
+
+        instance._async_ecosystem_state.upsert_service_async.assert_called_once()
+        # Kwargs sanity: at least the service_id passed through.
+        call_kwargs = (
+            instance._async_ecosystem_state.upsert_service_async.call_args.kwargs
+        )
+        assert call_kwargs["service_id"] == "svc-1"
+        assert call_kwargs["service_type"] == "test"
+
+    def test_ecosystem_wrapper_list_events_dispatches_through_ecosystem_state(
+        self,
+    ) -> None:
+        """Ecosystem tool ``list_events`` dispatches through ``instance._async_ecosystem_state.list_events_async``."""
+        import asyncio
+
+        server, captured = self._build_mock_fastmcp()
+        instance = self._build_mock_instance()
+        register_ecosystem_state_group(server, instance)
+
+        assert "list_events" in captured
+        asyncio.run(captured["list_events"](limit=10))
+
+        instance._async_ecosystem_state.list_events_async.assert_called_once_with(
+            event_type=None,
+            source_service=None,
+            related_service=None,
+            limit=10,
+        )
 
     def test_adapter_wrapper_uses_async_adapter_registry(self) -> None:
-        """The adapter-registry wrapper references ``instance._async_adapter_registry``."""
-        import inspect
+        """Adapter tool ``store_adapter`` dispatches through ``store_adapter_async_impl``.
 
-        source = inspect.getsource(register_adapter_registry_group)
-        assert "_async_adapter_registry" in source
+        The wrapper delegates to the async adapter_tools module rather
+        than re-implementing registration logic; we patch the impl at
+        its source module and assert the captured ``store_adapter``
+        tool invoked it exactly once with the right kwargs.
+        """
+        import asyncio
+        from unittest.mock import AsyncMock as _AsyncMock, patch as _patch
+
+        server, captured = self._build_mock_fastmcp()
+        instance = self._build_mock_instance()
+
+        # The wrapper imports ``store_adapter_async_impl`` from
+        # ``dhara.mcp.adapter_tools`` (function-local import). Patch
+        # at the source so the function-local import binds the mock.
+        mock_store = _AsyncMock(return_value={"ok": True, "adapter_id": "a1"})
+
+        with _patch("dhara.mcp.adapter_tools.store_adapter_async_impl", mock_store):
+            register_adapter_registry_group(server, instance)
+
+        assert "store_adapter" in captured, (
+            "adapter wrapper should register a 'store_adapter' tool"
+        )
+        asyncio.run(
+            captured["store_adapter"](
+                domain="adapter",
+                key="cache",
+                provider="memory",
+                version="1.0.0",
+                factory_path="oneiric.adapters.cache.memory:MemoryCacheAdapter",
+            )
+        )
+
+        mock_store.assert_called_once()
+        call_kwargs = mock_store.call_args.kwargs
+        assert call_kwargs["domain"] == "adapter"
+        assert call_kwargs["key"] == "cache"
+        assert call_kwargs["provider"] == "memory"
+        assert call_kwargs["version"] == "1.0.0"
+
+    def test_sql_proxy_wrapper_uses_sql_proxy_impl(self) -> None:
+        """SQL tool ``dhara_sql_query`` dispatches through ``dhara.mcp.tools.sql_proxy`` impl."""
+        import asyncio
+        from unittest.mock import AsyncMock as _AsyncMock, patch as _patch
+
+        server, captured = self._build_mock_fastmcp()
+        instance = self._build_mock_instance()
+
+        mock_query = _AsyncMock(return_value=[{"col": "value"}])
+
+        # Patch the impl at its source module — the SQL proxy wrapper
+        # imports it at module-load time (top of group_registers), so
+        # patching at the source is the right target.
+        with _patch(
+            "dhara.mcp.tools.sql_proxy.dhara_sql_query", mock_query
+        ):
+            register_sql_proxy_group(server, instance)
+
+        assert "dhara_sql_query" in captured, (
+            "sql_proxy wrapper should register a 'dhara_sql_query' tool"
+        )
+        asyncio.run(captured["dhara_sql_query"](sql="SELECT 1"))
+
+        mock_query.assert_called_once_with(sql="SELECT 1", params=None)

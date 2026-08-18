@@ -59,16 +59,29 @@ PATCHES = (
     patch("dhara.mcp.server_core.build_token_verifier", return_value=None),
     # Health tools registration
     patch("dhara.mcp.server_core.register_health_tools"),
-    # Adapter tool impls (imported into server_core namespace).
-    # ``server_core`` exposes the *async variants (``*_async_impl``); the
-    # bare names without ``_async`` no longer exist after the
-    # sync→async migration of ``dhara.mcp.adapter_tools``.
-    patch("dhara.mcp.server_core.get_adapter_health_async_impl"),
-    patch("dhara.mcp.server_core.get_adapter_async_impl"),
-    patch("dhara.mcp.server_core.list_adapter_versions_async_impl"),
-    patch("dhara.mcp.server_core.list_adapters_async_impl"),
-    patch("dhara.mcp.server_core.store_adapter_async_impl"),
-    patch("dhara.mcp.server_core.validate_adapter_async_impl"),
+    # Adapter tool impls. After W1.4, the *async variants are imported
+    # inside ``register_adapter_registry_group`` (function-local import
+    # in ``dhara.mcp.tools.group_registers``). The symbols don't exist
+    # at module level on ``dhara.mcp.tools.group_registers`` until that
+    # function runs, so patching it would require ``create=True``.
+    # Patching the source module ``dhara.mcp.adapter_tools`` directly is
+    # more robust: every code path that imports the impl (legacy
+    # ``server_core`` namespace + W0 group_registers) sees the mock.
+    patch("dhara.mcp.adapter_tools.get_adapter_health_async_impl"),
+    patch("dhara.mcp.adapter_tools.get_adapter_async_impl"),
+    patch("dhara.mcp.adapter_tools.list_adapter_versions_async_impl"),
+    patch("dhara.mcp.adapter_tools.list_adapters_async_impl"),
+    patch("dhara.mcp.adapter_tools.store_adapter_async_impl"),
+    patch("dhara.mcp.adapter_tools.validate_adapter_async_impl"),
+    # W1.4: stub the W0 dispatch itself. The mock FastMCP's
+    # ``list_tools()`` returns a MagicMock (not a coroutine), and the
+    # W0 helper awaits it — so without this stub, ``DharaMCPServer.__init__``
+    # raises ``TypeError: object MagicMock can't be used in 'await'``.
+    # Stubbing the W0 helper bypasses the per-group registration path;
+    # tests that exercise specific tool registration use the wiring
+    # tests in ``tests/unit/test_wiring.py`` instead (with proper
+    # async-aware mocks).
+    patch("mcp_common.tools.dispatch._apply_tool_profile"),
 )
 
 
@@ -608,12 +621,25 @@ class TestProbeBackups:
             patch("dhara.mcp.server_core.FastMCP"),
             patch("dhara.mcp.server_core.build_token_verifier", return_value=None),
             patch("dhara.mcp.server_core.register_health_tools"),
-            patch("dhara.mcp.server_core.get_adapter_health_async_impl"),
-            patch("dhara.mcp.server_core.get_adapter_async_impl"),
-            patch("dhara.mcp.server_core.list_adapter_versions_async_impl"),
-            patch("dhara.mcp.server_core.list_adapters_async_impl"),
-            patch("dhara.mcp.server_core.store_adapter_async_impl"),
-            patch("dhara.mcp.server_core.validate_adapter_async_impl"),
+            # W1.4: adapter impls are imported inside
+            # ``register_adapter_registry_group`` (function-local import
+            # in ``dhara.mcp.tools.group_registers``). Patching the
+            # source module ``dhara.mcp.adapter_tools`` ensures both the
+            # legacy ``server_core`` namespace and the W0 dispatch path
+            # see the mock — patching ``group_registers`` directly would
+            # miss the function-local import and require ``create=True``.
+            patch("dhara.mcp.adapter_tools.get_adapter_health_async_impl"),
+            patch("dhara.mcp.adapter_tools.get_adapter_async_impl"),
+            patch("dhara.mcp.adapter_tools.list_adapter_versions_async_impl"),
+            patch("dhara.mcp.adapter_tools.list_adapters_async_impl"),
+            patch("dhara.mcp.adapter_tools.store_adapter_async_impl"),
+            patch("dhara.mcp.adapter_tools.validate_adapter_async_impl"),
+            # W1.4: stub the W0 dispatch itself. The mock FastMCP's
+            # ``list_tools()`` returns a MagicMock (not a coroutine),
+            # and the W0 helper awaits it. Without this stub the
+            # DharaMCPServer ``__init__`` path raises
+            # ``TypeError: object MagicMock can't be used in 'await'``.
+            patch("mcp_common.tools.dispatch._apply_tool_profile"),
         ]
         started = [p.start() for p in patches_for_init]
         try:
