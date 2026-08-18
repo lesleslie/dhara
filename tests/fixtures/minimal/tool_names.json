@@ -1,0 +1,9 @@
+[
+  "aggregate_patterns",
+  "discover_tools",
+  "get",
+  "list_prefix",
+  "put",
+  "query_time_series",
+  "record_time_series"
+]

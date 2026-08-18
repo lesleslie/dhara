@@ -58,7 +58,7 @@ classifiers = [
 dependencies = [
     # MCP server framework (ecosystem standard)
     "fastmcp>=3.4.0,<4",
-    "mcp-common>=0.17.0",
+    "mcp-common>=0.18.0",
     # Configuration and logging (ecosystem standard)
     "oneiric>=0.16.0",
     # ASGI server for FastMCP

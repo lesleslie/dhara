@@ -1,0 +1,23 @@
+[
+  "aggregate_patterns",
+  "dhara_sql_execute",
+  "dhara_sql_query",
+  "discover_tools",
+  "get",
+  "get_adapter",
+  "get_adapter_health",
+  "get_contract_info",
+  "get_service",
+  "list_adapter_versions",
+  "list_adapters",
+  "list_events",
+  "list_prefix",
+  "list_services",
+  "put",
+  "query_time_series",
+  "record_event",
+  "record_time_series",
+  "store_adapter",
+  "upsert_service",
+  "validate_adapter"
+]

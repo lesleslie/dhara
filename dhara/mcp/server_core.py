@@ -488,28 +488,32 @@ class DharaMCPServer:
             cast("Connection", self.connection)
         )  # _SyncConnectionFacade wraps an async Connection; satisfying the Connection protocol is the async-migration follow-up
 
-        # Register tools using FastMCP decorators
+        # Register tools via the W0 ``_apply_tool_profile`` dispatch.
+        # _register_tools() also runs the always-on ``register_health_tools``
+        # group as part of ``DHARA_MANDATORY_GROUPS`` — no separate call here.
         self._register_tools()
-
-        # Register health check tools from mcp-common
-        self._register_health_tools()
 
         logger.info(
             f"Dhara MCP Server initialized: {config.server_name} "
             f"(storage={config.storage.path}, adapters={self.adapter_registry.count()})"
         )
 
-    def _register_tools(self) -> None:  # noqa: C901
-        """Register MCP tools based on active profile.
+    def _register_tools(self) -> None:
+        """Register MCP tools via the W0 ``_apply_tool_profile`` dispatch.
 
-        Tools are grouped and gated by the DHARA_TOOL_PROFILE env var.
-        Uses a conditional decorator _tool() that only registers tools
-        belonging to groups in the active profile.
+        Tool groups are routed through :mod:`dhara.mcp.tools.profiles`'s
+        ``PROFILE_REGISTRATIONS`` + ``REGISTRATION_MAP``. Per-group wrappers
+        in :mod:`dhara.mcp.tools.group_registers` carry the inline tool
+        definitions; the W0 helper filters by profile + runs mandatory
+        groups (health) at every profile tier. The legacy inline
+        ``@_tool(GROUP)`` conditional-decorator pattern was removed; the
+        W0 path is the single source of truth for which tools get
+        registered at each profile.
 
         Profile tiers:
-            MINIMAL:  KV/time-series storage only
-            STANDARD: Adds adapter registry and ecosystem state
-            FULL:     All tools (same as STANDARD for Dhara)
+            MINIMAL:  KV/time-series storage + always-on health/discover
+            STANDARD: Adds adapter registry + ecosystem state
+            FULL:     Adds sql_proxy
         """
 
         # D-AUDIT substrate (Layer 0): always wired, no infrastructure deps.
@@ -555,543 +559,13 @@ class DharaMCPServer:
             # Lightweight/test construction mode: no FastMCP server to decorate.
             return
 
-        def auth(*scopes: str) -> Any:
-            """Return a FastMCP authorization callable."""
-            assert self.config is not None, "config required for auth scopes"
-            if not self.config.authentication.enabled:
-                return require_scopes()  # Empty scope check when disabled
-            return require_scopes(*scopes)
+        # W0 dispatch: profile-gated tool registration + discover_tools +
+        # mandatory_groups (health). asyncio.run() drives the async helper
+        # from this sync ``__init__`` call site; the helper raises if called
+        # from within an active loop, so we explicitly use the async entry.
+        asyncio.run(self._apply_w0_profile())
 
-        from dhara.mcp.profiles import (
-            TOOL_GROUP_ADAPTER_REGISTRY,
-            TOOL_GROUP_DESCRIPTIONS,
-            TOOL_GROUP_ECOSYSTEM_STATE,
-            TOOL_GROUP_KV_TIME_SERIES,
-            TOOL_GROUP_SQL_PROXY,
-            TOOL_GROUP_TOOLS,
-            TOOL_GROUPS_BY_PROFILE,
-            get_active_profile,
-        )
-        from dhara.mcp.tools.sql_proxy import (
-            dhara_sql_execute as _dhara_sql_execute_impl,
-        )
-        from dhara.mcp.tools.sql_proxy import (
-            dhara_sql_query as _dhara_sql_query_impl,
-        )
-
-        profile = get_active_profile()
-        active_groups = set(TOOL_GROUPS_BY_PROFILE[profile])
-
-        logger.info(
-            "Dhara tool profile=%s groups=%s", profile.value, sorted(active_groups)
-        )
-
-        def _tool(group: str, **kwargs: Any) -> Any:
-            """Conditional registration — only registers if group is in active profile."""
-            assert self.server is not None, (
-                "FastMCP server required for tool registration"
-            )
-            if group not in active_groups:
-                return lambda fn: fn  # No-op: function defined but not registered
-            return self.server.tool(**kwargs)
-
-        # --- Adapter Registry tools (STANDARD+) ---
-        @_tool(TOOL_GROUP_ADAPTER_REGISTRY, auth=auth("write"))
-        async def store_adapter(
-            domain: str,
-            key: str,
-            provider: str,
-            version: str,
-            factory_path: str,
-            config: dict[str, Any] | None = None,
-            dependencies: list[str] | None = None,
-            capabilities: list[str] | None = None,
-            metadata: dict[str, Any] | None = None,
-        ) -> dict[str, Any]:
-            """Store a Oneiric adapter in the registry.
-
-            Args:
-                domain: Adapter domain (adapter, service, task)
-                key: Adapter key (cache, storage, redis)
-                provider: Provider name (redis, s3, memory)
-                version: Semantic version (e.g., "1.0.0")
-                factory_path: Python import path for adapter factory
-                config: Adapter configuration dictionary
-                dependencies: List of required adapter keys
-                capabilities: List of capability strings
-                metadata: Additional metadata (category, description, etc.)
-
-            Returns:
-                Result dict with adapter_id and version
-            """
-            assert self._async_adapter_registry is not None, (
-                "Async store not initialized"
-            )
-            return await store_adapter_async_impl(  # type: ignore[no-any-return]
-                registry=self._async_adapter_registry,
-                domain=domain,
-                key=key,
-                provider=provider,
-                version=version,
-                factory_path=factory_path,
-                config=config or {},
-                dependencies=dependencies or [],
-                capabilities=capabilities or [],
-                metadata=metadata or {},
-            )
-
-        @_tool(TOOL_GROUP_ADAPTER_REGISTRY, auth=auth("read"))
-        async def get_contract_info() -> dict[str, Any]:
-            """Return the supported Dhara MCP contract summary."""
-            assert self.config is not None, "config required for contract info"
-            auth_mode = "token" if self.auth_verifier is not None else "none"
-            return {
-                "ok": True,
-                "server": {
-                    "name": self.config.server_name,
-                    "transport": "FastMCP HTTP",
-                    "http_endpoints": [
-                        "/health",
-                        "/healthz",
-                        "/ready",
-                        "/readyz",
-                        "/metrics",
-                    ],
-                },
-                "tool_groups": {
-                    "adapter_registry": [
-                        "store_adapter",
-                        "get_adapter",
-                        "list_adapters",
-                        "list_adapter_versions",
-                        "validate_adapter",
-                        "get_adapter_health",
-                    ],
-                    "kv_time_series": [
-                        "put",
-                        "get",
-                        "record_time_series",
-                        "query_time_series",
-                        "aggregate_patterns",
-                    ],
-                    "ecosystem_state": [
-                        "upsert_service",
-                        "get_service",
-                        "list_services",
-                        "record_event",
-                        "list_events",
-                    ],
-                    "health": ["mcp-common health tools"],
-                },
-                "schema_versions": {
-                    "adapter_registry": 1,
-                    "ecosystem_service": 1,
-                    "ecosystem_event": 1,
-                },
-                "authentication": {
-                    "runtime_mode": auth_mode,
-                    "canonical_fastmcp_wired": self.auth_verifier is not None,
-                    "available_library_surfaces": [
-                        "TokenAuth",
-                        "HMACAuth",
-                        "EnvironmentAuth",
-                        "AuthMiddleware",
-                    ],
-                    "required_scopes": self.config.authentication.required_scopes.copy(),
-                    "token_file": (
-                        str(self.config.authentication.token.tokens_file.expanduser())
-                        if self.config.authentication.token.tokens_file is not None
-                        else None
-                    ),
-                    "notes": (
-                        "Canonical FastMCP auth uses bearer tokens backed by the "
-                        "Dhara token store when enabled."
-                    )
-                    if self.auth_verifier is not None
-                    else (
-                        "The canonical FastMCP server does not currently enforce "
-                        "auth in the runtime path."
-                    ),
-                },
-            }
-
-        # --- Ecosystem State tools (STANDARD+) ---
-        @_tool(TOOL_GROUP_ECOSYSTEM_STATE, auth=auth("write"))
-        async def upsert_service(
-            service_id: str,
-            service_type: str,
-            capabilities: list[str] | None = None,
-            metadata: dict[str, Any] | None = None,
-            status: str = "unknown",
-            lease_expires_at: str | None = None,
-            heartbeat_at: str | None = None,
-        ) -> dict[str, Any]:
-            """Create or update a durable ecosystem service record."""
-            assert self._async_ecosystem_state is not None, (
-                "Async store not initialized"
-            )
-            return await self._async_ecosystem_state.upsert_service_async(  # type: ignore[no-any-return]
-                service_id=service_id,
-                service_type=service_type,
-                capabilities=capabilities,
-                metadata=metadata,
-                status=status,
-                lease_expires_at=lease_expires_at,
-                heartbeat_at=heartbeat_at,
-            )
-
-        @_tool(TOOL_GROUP_ECOSYSTEM_STATE, auth=auth("read"))
-        async def get_service(service_id: str) -> dict[str, Any]:
-            """Fetch a durable ecosystem service record."""
-            assert self._async_ecosystem_state is not None, (
-                "Async store not initialized"
-            )
-            service = await self._async_ecosystem_state.get_service_async(service_id)
-            return {"ok": True, "service": service}
-
-        @_tool(TOOL_GROUP_ECOSYSTEM_STATE, auth=auth("list"))
-        async def list_services(
-            service_type: str | None = None,
-            capability: str | None = None,
-            status: str | None = None,
-        ) -> dict[str, Any]:
-            """List durable ecosystem service records."""
-            assert self._async_ecosystem_state is not None, (
-                "Async store not initialized"
-            )
-            services = await self._async_ecosystem_state.list_services_async(
-                service_type=service_type,
-                capability=capability,
-                status=status,
-            )
-            return {"ok": True, "count": len(services), "services": services}
-
-        @_tool(TOOL_GROUP_ECOSYSTEM_STATE, auth=auth("write"))
-        async def record_event(
-            event_type: str,
-            source_service: str,
-            payload: dict[str, Any] | None = None,
-            related_service: str | None = None,
-            timestamp: str | None = None,
-        ) -> dict[str, Any]:
-            """Append a durable ecosystem event."""
-            assert self._async_ecosystem_state is not None, (
-                "Async store not initialized"
-            )
-            return await self._async_ecosystem_state.record_event_async(  # type: ignore[no-any-return]
-                event_type=event_type,
-                source_service=source_service,
-                payload=payload,
-                related_service=related_service,
-                timestamp=timestamp,
-            )
-
-        @_tool(TOOL_GROUP_ECOSYSTEM_STATE, auth=auth("list"))
-        async def list_events(
-            event_type: str | None = None,
-            source_service: str | None = None,
-            related_service: str | None = None,
-            limit: int | None = 100,
-        ) -> dict[str, Any]:
-            """List durable ecosystem events."""
-            assert self._async_ecosystem_state is not None, (
-                "Async store not initialized"
-            )
-            events = await self._async_ecosystem_state.list_events_async(
-                event_type=event_type,
-                source_service=source_service,
-                related_service=related_service,
-                limit=limit,
-            )
-            return {"ok": True, "count": len(events), "events": events}
-
-        # --- KV/Time Series tools (MINIMAL) ---
-        @_tool(TOOL_GROUP_KV_TIME_SERIES, auth=auth("write"))
-        async def put(
-            key: str,
-            value: dict[str, Any] | str | float | bool | list[Any] | None,
-            ttl: int | None = None,
-        ) -> dict[str, Any]:
-            """Store a key/value record with optional TTL (seconds)."""
-            assert self._async_kv_store is not None, "Async store not initialized"
-            return await self._async_kv_store.put_async(key=key, value=value, ttl=ttl)  # type: ignore[no-any-return]
-
-        @_tool(TOOL_GROUP_KV_TIME_SERIES, auth=auth("read"))
-        async def get(
-            key: str,
-        ) -> dict[str, Any]:
-            """Get a key/value record."""
-            assert self._async_kv_store is not None, "Async store not initialized"
-            return await self._async_kv_store.get_async(key=key)  # type: ignore[no-any-return]
-
-        @_tool(TOOL_GROUP_KV_TIME_SERIES, auth=auth("read"))
-        async def list_prefix(
-            prefix: str,
-        ) -> dict[str, Any]:
-            """List all key/value records under a key prefix.
-
-            Used by Akosha FitnessAnalyzer to discover component endpoints
-            registered under 'component_endpoint/' prefix.
-            """
-            assert self._async_kv_store is not None, "Async store not initialized"
-            results = await self._async_kv_store.list_prefix_async(prefix)
-            return {"ok": True, "count": len(results), "items": results}
-
-        @_tool(TOOL_GROUP_KV_TIME_SERIES, auth=auth("write"))
-        async def record_time_series(
-            metric_type: str,
-            entity_id: str,
-            record: dict[str, Any],
-            timestamp: str | None = None,
-        ) -> dict[str, Any]:
-            """Append a time-series record."""
-            assert self._async_kv_store is not None, "Async store not initialized"
-            return await self._async_kv_store.record_time_series_async(  # type: ignore[no-any-return]
-                metric_type=metric_type,
-                entity_id=entity_id,
-                record=record,
-                timestamp=timestamp,
-            )
-
-        @_tool(TOOL_GROUP_KV_TIME_SERIES, auth=auth("read"))
-        async def query_time_series(
-            metric_type: str,
-            entity_id: str,
-            start_date: str | None = None,
-            limit: int | None = None,
-        ) -> list[dict[str, Any]]:
-            """Query time-series records."""
-            assert self._async_kv_store is not None, "Async store not initialized"
-            return await self._async_kv_store.query_time_series_async(  # type: ignore[no-any-return]
-                metric_type=metric_type,
-                entity_id=entity_id,
-                start_date=start_date,
-                limit=limit,
-            )
-
-        @_tool(TOOL_GROUP_KV_TIME_SERIES, auth=auth("read"))
-        async def aggregate_patterns(
-            start_date: str,
-            min_occurrences: int = 2,
-        ) -> list[dict[str, Any]]:
-            """Aggregate patterns across time-series records."""
-            assert self._async_kv_store is not None, "Async store not initialized"
-            return await self._async_kv_store.aggregate_patterns_async(  # type: ignore[no-any-return]
-                start_date=start_date,
-                min_occurrences=min_occurrences,
-            )
-
-        # --- Remaining Adapter Registry tools (STANDARD+) ---
-        @_tool(TOOL_GROUP_ADAPTER_REGISTRY, auth=auth("read"))
-        async def get_adapter(
-            domain: str,
-            key: str,
-            provider: str | None = None,
-            version: str | None = None,
-        ) -> dict[str, Any]:
-            """Retrieve an adapter from the registry.
-
-            Args:
-                domain: Adapter domain
-                key: Adapter key
-                provider: Optional provider (defaults to first match)
-                version: Optional version (defaults to latest)
-
-            Returns:
-                Adapter dict with full configuration
-            """
-            assert self._async_adapter_registry is not None, (
-                "Async store not initialized"
-            )
-            return await get_adapter_async_impl(  # type: ignore[no-any-return]
-                registry=self._async_adapter_registry,
-                domain=domain,
-                key=key,
-                provider=provider,
-                version=version,
-            )
-
-        @_tool(TOOL_GROUP_ADAPTER_REGISTRY, auth=auth("list"))
-        async def list_adapters(
-            domain: str | None = None,
-            category: str | None = None,
-        ) -> dict[str, Any]:
-            """List adapters with optional filtering.
-
-            Args:
-                domain: Optional filter by domain (adapter, service, task)
-                category: Optional filter by category (storage, cache, database)
-
-            Returns:
-                Dict with count, filters, and adapters list
-            """
-            assert self._async_adapter_registry is not None, (
-                "Async store not initialized"
-            )
-            return await list_adapters_async_impl(  # type: ignore[no-any-return]
-                registry=self._async_adapter_registry,
-                domain=domain,
-                category=category,
-            )
-
-        @_tool(TOOL_GROUP_ADAPTER_REGISTRY, auth=auth("list"))
-        async def list_adapter_versions(
-            domain: str,
-            key: str,
-            provider: str,
-        ) -> dict[str, Any]:
-            """List all versions of an adapter.
-
-            Shows version history with timestamps and changelogs,
-            useful for understanding adapter evolution and rollback options.
-
-            Args:
-                domain: Adapter domain
-                key: Adapter key
-                provider: Provider name
-
-            Returns:
-                Dict with version history (timestamp, version, changelog)
-            """
-            assert self._async_adapter_registry is not None, (
-                "Async store not initialized"
-            )
-            return await list_adapter_versions_async_impl(  # type: ignore[no-any-return]
-                registry=self._async_adapter_registry,
-                domain=domain,
-                key=key,
-                provider=provider,
-            )
-
-        @_tool(TOOL_GROUP_ADAPTER_REGISTRY, auth=auth("read"))
-        async def validate_adapter(
-            domain: str,
-            key: str,
-            provider: str,
-            version: str | None = None,
-        ) -> dict[str, Any]:
-            """Validate an adapter configuration.
-
-            Checks:
-            - Factory path is importable
-            - Dependencies are available
-            - Configuration schema is valid
-            - Capabilities are declared
-
-            Args:
-                domain: Adapter domain
-                key: Adapter key
-                provider: Provider name
-                version: Optional version to validate
-
-            Returns:
-                Validation result with errors/warnings
-            """
-            assert self._async_adapter_registry is not None, (
-                "Async store not initialized"
-            )
-            return await validate_adapter_async_impl(  # type: ignore[no-any-return]
-                registry=self._async_adapter_registry,
-                domain=domain,
-                key=key,
-                provider=provider,
-                version=version,
-            )
-
-        @_tool(TOOL_GROUP_ADAPTER_REGISTRY, auth=auth("read"))
-        async def get_adapter_health(
-            domain: str,
-            key: str,
-            provider: str,
-        ) -> dict[str, Any]:
-            """Check health status of an adapter.
-
-            Performs health check by attempting to import the adapter's
-            factory class. Returns healthy status if import succeeds.
-
-            Args:
-                domain: Adapter domain
-                key: Adapter key
-                provider: Provider name
-
-            Returns:
-                Health check result with status and last check timestamp
-            """
-            assert self._async_adapter_registry is not None, (
-                "Async store not initialized"
-            )
-            return await get_adapter_health_async_impl(  # type: ignore[no-any-return]
-                registry=self._async_adapter_registry,
-                domain=domain,
-                key=key,
-                provider=provider,
-            )
-
-        # --- SQL Proxy tools (FULL profile only) ---
-        @_tool(TOOL_GROUP_SQL_PROXY, auth=auth("write"))
-        async def dhara_sql_execute(
-            sql: str,
-            params: list[Any] | None = None,
-        ) -> dict[str, Any]:
-            """Execute a DDL/DML statement through the SQL proxy backend.
-
-            Backend is selected via ``DHARA_SQL_BACKEND`` (default
-            ``"duckdb"``); DuckDB is used in dev/test and asyncpg in
-            production. Returns ``rows_affected``, ``last_row_id`` and
-            ``status``. Refuses DROP DATABASE / DROP SCHEMA.
-            """
-            return await _dhara_sql_execute_impl(sql=sql, params=params)  # type: ignore[no-any-return]
-
-        @_tool(TOOL_GROUP_SQL_PROXY, auth=auth("read"))
-        async def dhara_sql_query(
-            sql: str,
-            params: list[Any] | None = None,
-        ) -> list[dict[str, Any]]:
-            """Execute a read-only SELECT/WITH query through the SQL proxy.
-
-            Returns a ``list[dict]`` (one entry per row, keyed by SELECT
-            projection). Refuses non-SELECT statements.
-            """
-            return await _dhara_sql_query_impl(sql=sql, params=params)  # type: ignore[no-any-return]
-
-        # --- Discovery meta-tool (always registered) ---
-        all_tools: dict[str, str] = {}
-        for group_name, tools in TOOL_GROUP_TOOLS.items():
-            desc = TOOL_GROUP_DESCRIPTIONS.get(group_name, "")
-            for tool_name in tools:
-                all_tools[tool_name] = desc
-
-        @self.server.tool()
-        async def discover_tools(query: str | None = None) -> dict[str, Any]:
-            """Search for available Dhara tools by name or capability."""
-            filtered = all_tools
-            if query:
-                q = query.lower()
-                filtered = {
-                    n: d
-                    for n, d in all_tools.items()
-                    if q in n.lower() or q in d.lower()
-                }
-
-            profile_group_tools: set[str] = set()
-            for gn in TOOL_GROUPS_BY_PROFILE.get(profile, [TOOL_GROUP_KV_TIME_SERIES]):
-                profile_group_tools.update(TOOL_GROUP_TOOLS.get(gn, []))
-
-            loaded = sorted(set(filtered.keys()) & profile_group_tools)
-            not_loaded = sorted(set(filtered.keys()) - profile_group_tools)
-
-            return {
-                "status": "success",
-                "profile": profile.value,
-                "query": query,
-                "loaded_tools": loaded,
-                "loaded_count": len(loaded),
-                "not_loaded_tools": not_loaded,
-                "not_loaded_count": len(not_loaded),
-                "hint": "Set DHARA_TOOL_PROFILE=full to enable all tools.",
-            }
-
-        logger.info("Dhara MCP tools registration complete (profile=%s)", profile.value)
+        logger.info("Dhara MCP tools registration complete (via W0 dispatch)")
 
         # Register REST-style /tools/call endpoint for Akosha client compatibility.
         # Akosha's DharaServiceRegistryClient calls /tools/call (not /mcp) with
@@ -1111,10 +585,46 @@ class DharaMCPServer:
             assert self.server is not None, "FastMCP server required for lock routes"
             register_lock_routes(self.server, sql_backend)
 
-        # D-AUDIT: audit substrate (subscriber + query tool) is always wired
-        # in ``_register_tools``; see the early-return at the top of this
-        # method. ``register_audit_routes`` is the public surface for callers
-        # who only need audit wire-up without the rest of the MCP tooling.
+    async def _apply_w0_profile(self) -> None:
+        """Call :func:`mcp_common.tools.dispatch._apply_tool_profile` for this server.
+
+        Per-instance ``registration_map`` captures ``self`` so the per-group
+        wrappers in :mod:`dhara.mcp.tools.group_registers` can access
+        ``self._async_kv_store``, ``self.config``, etc. The W0 helper
+        itself is async — ``_register_tools`` drives it via ``asyncio.run``
+        from the sync ``__init__`` call site.
+        """
+        from mcp_common.tools.dispatch import _apply_tool_profile
+
+        from dhara.mcp.tools.group_registers import (
+            register_adapter_registry_group,
+            register_ecosystem_state_group,
+            register_health_tools_group,
+            register_kv_timeseries_group,
+            register_sql_proxy_group,
+        )
+        from dhara.mcp.profiles import (
+            DHARA_MANDATORY_GROUPS,
+            PROFILE_REGISTRATIONS,
+        )
+
+        registration_map = {
+            "kv_time_series": lambda app: register_kv_timeseries_group(app, self),
+            "adapter_registry": lambda app: register_adapter_registry_group(app, self),
+            "ecosystem_state": lambda app: register_ecosystem_state_group(app, self),
+            "sql_proxy": lambda app: register_sql_proxy_group(app, self),
+            "register_health_tools": lambda app: register_health_tools_group(
+                app, self
+            ),
+        }
+
+        await _apply_tool_profile(
+            server=self.server,
+            profile_env_var="DHARA_TOOL_PROFILE",
+            registrations=PROFILE_REGISTRATIONS,
+            registration_map=registration_map,
+            mandatory_groups=DHARA_MANDATORY_GROUPS,
+        )
 
     def _register_tools_call_route(self) -> None:
         """Register /tools/call REST-style endpoint for Akosha client compatibility."""
