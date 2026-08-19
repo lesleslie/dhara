@@ -296,6 +296,14 @@ def _make_capturing_fastmcp(
 
     if impl_mock is not None:
         async def _dispatch_wrapper(**kwargs: Any) -> Any:
+            # Mirror the canonical ``register_*_group`` helpers: fill the
+            # ``config`` / ``dependencies`` / ``capabilities`` /
+            # ``metadata`` defaults so tests that omit them still observe
+            # the production contract on the impl mock.
+            kwargs.setdefault("config", {})
+            kwargs.setdefault("dependencies", [])
+            kwargs.setdefault("capabilities", [])
+            kwargs.setdefault("metadata", {})
             return await impl_mock(**kwargs)
 
         captured[target_name] = _dispatch_wrapper
@@ -365,12 +373,18 @@ def _register_dispatching_tool(
 
     The W0 dispatch registers tools but is mocked out in ``_apply_patches``,
     so the test fixture never captures a tool function. This helper installs
-    a thin async wrapper that mirrors the production behavior of calling the
-    ``*_async_impl`` function and returning its result. Tests that exercise
-    the tool-function-dispatch contract can call this once before invoking
-    the captured function.
+    a thin async wrapper that mirrors the production behavior: the wrapper
+    fills the same default values that the canonical
+    ``register_*_group`` helpers do (``config={}``,
+    ``dependencies=[]``, ``capabilities=[]``, ``metadata={}``) so callers
+    can omit them and still observe the production contract on the
+    impl mock.
     """
     async def tool_wrapper(**kwargs: Any) -> Any:
+        kwargs.setdefault("config", {})
+        kwargs.setdefault("dependencies", [])
+        kwargs.setdefault("capabilities", [])
+        kwargs.setdefault("metadata", {})
         return await impl_mock(**kwargs)
 
     captured[tool_name] = tool_wrapper
@@ -421,12 +435,18 @@ def _register_dispatching_tool(
 
     The W0 dispatch registers tools but is mocked out in ``_apply_patches``,
     so the test fixture never captures a tool function. This helper installs
-    a thin async wrapper that mirrors the production behavior of calling the
-    ``*_async_impl`` function and returning its result. Tests that exercise
-    the tool-function-dispatch contract can call this once before invoking
-    the captured function.
+    a thin async wrapper that mirrors the production behavior: the wrapper
+    fills the same default values that the canonical
+    ``register_*_group`` helpers do (``config={}``,
+    ``dependencies=[]``, ``capabilities=[]``, ``metadata={}``) so callers
+    can omit them and still observe the production contract on the
+    impl mock.
     """
     async def tool_wrapper(**kwargs: Any) -> Any:
+        kwargs.setdefault("config", {})
+        kwargs.setdefault("dependencies", [])
+        kwargs.setdefault("capabilities", [])
+        kwargs.setdefault("metadata", {})
         return await impl_mock(**kwargs)
 
     captured[tool_name] = tool_wrapper
