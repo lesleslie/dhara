@@ -219,16 +219,12 @@ class PersistentObject(PersistentBase):
             conn = getattr(self, "_p_connection", None)
             if conn is None:
                 return
-            result = conn.note_change(self)
-            # If result is a coroutine (async connection), schedule it without blocking
-            if hasattr(result, "__await__") or hasattr(result, "send"):
-                import asyncio
-
-                # We're in an async context but can't await here
-                # Create a task to run the coroutine
-                with suppress(RuntimeError):
-                    asyncio.get_running_loop()
-                    asyncio.create_task(result)
+            # ``note_change`` is now synchronous on both ``Connection``
+            # and ``AsyncConnection`` (it's just a dict assignment), so
+            # we can call it directly without ``asyncio.create_task``.
+            # Previously this scheduled a background task which could
+            # race ``commit()`` and silently drop changes.
+            conn.note_change(self)
 
     def _p_format_oid(self) -> str:
         oid = self._p_oid

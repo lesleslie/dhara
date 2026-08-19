@@ -641,11 +641,18 @@ class AsyncConnection(ConnectionBase):
         self.cache._lru[obj._p_oid] = None
         self.cache._lru.move_to_end(obj._p_oid)
 
-    async def note_change(self, obj):
+    def note_change(self, obj):
         """(obj:PersistentObject)
         This is done when any persistent object is changed.  Changed objects
         will be stored when the transaction is committed or rolled back, i.e.
         made into ghosts, on abort.
+
+        Synchronous (no ``async``): the bookkeeping is just a dict
+        assignment. Declaring this ``async`` previously forced callers
+        like ``PersistentObject._p_note_change`` to schedule a task via
+        ``asyncio.create_task`` so the call wouldn't block the event
+        loop — but the resulting task raced ``commit()`` and dropped
+        changes that happened immediately before the commit.
         """
         # assert obj._p_connection is self
         self.changed[obj._p_oid] = obj

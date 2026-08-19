@@ -28,6 +28,13 @@ from typing import Any, Final, cast
 from dhara.serialize.msgspec import MsgspecSerializer
 from dhara.utils import int4_to_str, join_bytes, str_to_int4
 
+# Local mirror of the PersistentBase status constants so this module
+# (which is imported during initialisation before persistent.py is
+# fully resolved) does not create a circular import.
+GHOST: int = -1
+SAVED: int = 0
+UNSAVED: int = 1
+
 NEWLINE: Final[bytes] = b"\n"
 # Internal record-layer serializer. Uses the default whitelist
 # (``DEFAULT_ALLOWED_MODULES``); we never call ``deserialize`` on
@@ -307,7 +314,7 @@ def persistent_load(connection: Any, cache_objects: Any, oid_class: tuple) -> An
         cache = cache_objects.get(oid)
     except Exception:  # noqa: BLE001  # setattr cache fallback → None on AttributeError
         cache = None
-    if cache is not None:
+    if cache is not None and cache.__class__ is klass:
         return cache
     try:
         # Use the class's own __new__ (not object.__new__) so that
@@ -319,11 +326,21 @@ def persistent_load(connection: Any, cache_objects: Any, oid_class: tuple) -> An
         instance = klass.__new__(klass)  # type: ignore[misc,call-arg]
     except TypeError:
         return None
+    # PersistentBase.__new__ already initialises _p_status=UNSAVED,
+    # _p_serial=0, _p_connection=None, _p_oid=None. We MUST overwrite
+    # _p_connection here so subsequent _p_note_change() calls reach the
+    # owning connection; without this, root mutations silently skip the
+    # connection.changed bookkeeping and never get committed (see
+    # ``docs/decisions/2026-08-19-persistent-load-connection-bug.md``).
     with suppress(Exception):
         if _setattribute is not None:
             _setattribute(instance, "_p_oid", oid)
+            _setattribute(instance, "_p_connection", connection)
+            _setattribute(instance, "_p_status", GHOST)
         else:
             object.__setattr__(instance, "_p_oid", oid)
+            object.__setattr__(instance, "_p_connection", connection)
+            object.__setattr__(instance, "_p_status", GHOST)
     with suppress(Exception):
         cache_objects[oid] = instance
     return instance

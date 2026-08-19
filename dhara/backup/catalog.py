@@ -136,7 +136,7 @@ class BackupCatalog:
             # the root before commit walks it.
             with suppress(AttributeError):
                 root._p_connection = connection
-            await connection.note_change(root)
+            connection.note_change(root)
             await connection.commit()
             await storage.close()
 
