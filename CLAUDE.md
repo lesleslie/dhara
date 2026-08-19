@@ -486,6 +486,19 @@ The MCP server provides:
 - Schema inspection
 - Authentication and authorization
 
+### Tool Profile System
+
+Tools are gated by the `DHARA_TOOL_PROFILE` environment variable:
+
+- `full` (default): All 4 groups (`kv_time_series`, `adapter_registry`, `ecosystem_state`, `sql_proxy`) — STANDARD = FULL
+- `standard`: All 4 groups (alias for full)
+- `minimal`: `kv_time_series` only
+
+Health tools are always-on at every profile via `DHARA_MANDATORY_GROUPS`.
+For detailed rationale (group choices, lazy registration map, W0.5 fix-loop
+history): see
+[docs/architecture/tool-profile-rationale.md](docs/architecture/tool-profile-rationale.md).
+
 ## Troubleshooting
 
 ### Common Issues
