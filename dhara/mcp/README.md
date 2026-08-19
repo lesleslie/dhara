@@ -125,7 +125,7 @@ server = DharaMCPServer(settings)
 ## Migration Notes
 
 - Prefer `dhara.mcp` or `dhara.mcp.server_core` in active code.
-- Treat `dhara.mcp.server` as deprecated.
+- `dhara.mcp.server` is a removed compatibility shim that raises `ImportError` on import; it is not deprecated — it is deleted. Do not import it.
 
 ## Related Docs
 

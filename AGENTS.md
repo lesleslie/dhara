@@ -4,12 +4,12 @@
 
 - `dhara/` contains the package: core persistence logic in `core/`, storage backends in `storage/`, serialization in `serialize/`, persistent data structures in `collections/`, server code in `server/`, MCP integration in `mcp/`, and configuration or security helpers in `config/` and `security/`.
 - Keep backend, serialization, and transport concerns separate; avoid coupling file storage, network client behavior, and MCP-facing features in the same modules.
-- Tests live under `test/`; mirror package areas when adding new coverage and keep local build artifacts, compiled extension outputs, and coverage reports out of review.
+- Tests live under `tests/`; mirror package areas when adding new coverage and keep local build artifacts, compiled extension outputs, and coverage reports out of review.
 - Use repo docs and focused design notes when behavior changes affect persistence guarantees, wire protocols, or TLS expectations.
 
 ## Build, Test, and Development Commands
 
-- `pip install -e .` or `pip install -e ".[dev]"` installs the package for local development.
+- `pip install -e .` or `uv sync --group dev` installs the package for local development.
 - `pytest` runs the full test suite; use `pytest -m unit`, `pytest -m integration`, or `pytest -m "not slow"` for narrower loops.
 - `pytest --cov=dhara --cov-report=html` generates local coverage output in `htmlcov/`.
 - `python -m crackerjack check`, `python -m crackerjack lint`, `python -m crackerjack format`, `python -m crackerjack typecheck`, and `python -m crackerjack security` cover the main quality workflows.

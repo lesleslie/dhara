@@ -39,9 +39,11 @@ The FastMCP server currently exposes these supported tool groups:
 - Contract introspection: `get_contract_info`
 - Standardized health tools from `mcp-common`
 
-MCP tool names use the canonical `dhara_*` prefix (e.g., `dhara_get`,
-`dhara_set`, `dhara_list`, `dhara_checkpoint`). No legacy aliases are
-supported.
+MCP tool names use the canonical bare form (e.g., `put`, `get`,
+`list_prefix`, `store_adapter`). The only exceptions are the SQL proxy
+tools `dhara_sql_execute` and `dhara_sql_query`, which carry the
+`dhara_` prefix to avoid colliding with reserved names. No legacy
+aliases are supported.
 
 ## 3a. Authentication Status
 

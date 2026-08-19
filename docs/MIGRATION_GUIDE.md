@@ -93,7 +93,7 @@ Do not use these in new docs or scripts:
 - `dhara-mcp ...`
 - `dhara -s`
 - `dhara -c`
-- `dhara db server` # alias for `dhara db start`, retained for one release
+- `dhara db server` # alias for `dhara db start`, scheduled for removal in 0.16.0
 
 ## MCP Migration
 

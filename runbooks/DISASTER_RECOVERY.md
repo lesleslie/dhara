@@ -265,7 +265,7 @@ python -m dhara.backup.restore \
 systemctl start dhara-server --recovered
 
 # Verify recovery
-python -m dhara.backup.verify --connection "localhost:2972" --health-check
+python -m dhara.backup.cli verify --backup-dir ./backups --all --verbose
 ```
 
 #### Performance Tuning
@@ -337,7 +337,7 @@ python -m dhara.backup.restore \
   --time "2024-01-01 12:00:00"
 
 # Verify
-python -m dhara.backup.verify --integrity --performance
+python -m dhara.backup.cli verify --backup-dir ./backups --all
 ```
 
 ### Hardware Failure

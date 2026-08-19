@@ -7,7 +7,7 @@
 ```bash
 # Zero configuration startup
 export DHARA_MODE=lite
-dhara-mcp start
+dhara mcp start
 
 # Or use the startup script
 ./scripts/dev-start.sh lite
@@ -18,13 +18,13 @@ dhara-mcp start
 ```bash
 # Production startup
 export DHARA_MODE=standard
-dhara-mcp start
+dhara mcp start
 
 # With S3 storage
 export DHARA_MODE=standard
 export DHARA_STORAGE_BACKEND=s3
 export DHARA_S3_BUCKET=my-bucket
-dhara-mcp start
+dhara mcp start
 ```
 
 ## Command Reference
@@ -49,16 +49,16 @@ mode.initialize()
 
 ```bash
 # Start server
-dhara-mcp start
+dhara mcp start
 
 # Check status
-dhara-mcp status
+dhara mcp status
 
 # Health check
-dhara-mcp health --probe
+dhara mcp health --probe
 
 # Stop server
-dhara-mcp stop
+dhara mcp stop
 ```
 
 ## Configuration Locations
@@ -225,7 +225,7 @@ export DHARA_S3_BUCKET=my-bucket
 # (See documentation for import script)
 
 # 4. Start in standard mode
-dhara-mcp start
+dhara mcp start
 ```
 
 ## File Locations
@@ -253,16 +253,16 @@ dhara/
 
 ```bash
 # Start lite mode
-export DHARA_MODE=lite && dhara-mcp start
+export DHARA_MODE=lite && dhara mcp start
 
 # Start standard mode with S3
 export DHARA_MODE=standard && \
 export DHARA_STORAGE_BACKEND=s3 && \
 export DHARA_S3_BUCKET=my-bucket && \
-dhara-mcp start
+dhara mcp start
 
 # Check health
-dhara-mcp health --probe
+dhara mcp health --probe
 
 # Show mode info (Python)
 python -c "from dhara.modes import get_mode; print(get_mode().get_info())"
@@ -283,7 +283,7 @@ python -c "from dhara.modes import list_modes; import pprint; pprint.pprint(list
 # ... work ...
 
 # 3. Stop when done
-dhara-mcp stop
+dhara mcp stop
 ```
 
 ### Production Deployment
@@ -295,10 +295,10 @@ export DHARA_STORAGE_BACKEND=s3
 export DHARA_S3_BUCKET=prod-bucket
 
 # 2. Start server
-dhara-mcp start
+dhara mcp start
 
 # 3. Monitor health
-watch -n 5 'dhara-mcp health --probe'
+watch -n 5 'dhara mcp health --probe'
 ```
 
 ## Summary

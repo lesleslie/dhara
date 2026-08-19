@@ -53,7 +53,7 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 ./deployment/scripts/deploy.sh install
 
 # Or manually:
-pip install -e ".[dev]"
+uv sync --group dev
 ```
 
 ### Production Installation

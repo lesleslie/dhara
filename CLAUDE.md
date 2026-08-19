@@ -26,7 +26,7 @@ dhara is a modern persistent object system for Python - essentially a noSQL data
 pip install -e .
 
 # Install with dev dependencies
-pip install -e ".[dev]"
+uv sync --group dev
 ```
 
 ### Running Tests
@@ -41,7 +41,7 @@ python -m crackerjack qa-health
 python -m crackerjack run-tests
 
 # Run specific test file
-pytest test/test_connection.py
+pytest tests/test_connection.py
 
 # Run with coverage
 pytest --cov=dhara --cov-report=html
@@ -52,7 +52,7 @@ pytest -m "not slow"        # Exclude slow tests
 pytest -m integration       # Integration tests only
 
 # Run specific test
-pytest test/test_connection.py::test_connection_basic
+pytest tests/test_connection.py::test_connection_basic
 ```
 
 ### Quality Checks
@@ -143,7 +143,8 @@ dhara/
 │   └── socket.py                 # Socket management
 │
 ├── mcp/                          # MCP server integration
-│   ├── server.py                 # MCP server
+│   ├── server_core.py            # DharaMCPServer (FastMCP app + lifecycle)
+│   ├── server.py                 # legacy module — raises ImportError, retained for stale imports
 │   └── auth.py                   # Authentication
 │
 ├── config/                       # Configuration management
@@ -377,7 +378,7 @@ connection.commit()
 
 ## Testing
 
-Tests use pytest with shared fixtures from `test/conftest.py`:
+Tests use pytest with shared fixtures from `tests/conftest.py`:
 
 ```python
 import pytest
@@ -473,9 +474,11 @@ When using ClientStorage:
 dhara includes an MCP (Model Context Protocol) server for AI/agent workflows:
 
 ```python
-from dhara.mcp import create_server
+from dhara.core.config import DharaSettings
+from dhara.mcp import DharaMCPServer
 
-server = create_server(config="dhara.yaml")
+settings = DharaSettings.load("dhara")
+server = DharaMCPServer(settings)
 server.run()
 ```
 
@@ -490,8 +493,8 @@ The MCP server provides:
 
 Tools are gated by the `DHARA_TOOL_PROFILE` environment variable:
 
-- `full` (default): All 4 groups (`kv_time_series`, `adapter_registry`, `ecosystem_state`, `sql_proxy`) — STANDARD = FULL
-- `standard`: All 4 groups (alias for full)
+- `full` (default): All 4 groups (`kv_time_series`, `adapter_registry`, `ecosystem_state`, `sql_proxy`) — FULL is an alias for STANDARD (identical group list)
+- `standard`: All 4 groups (same group list as `full`)
 - `minimal`: `kv_time_series` only
 
 Health tools are always-on at every profile via `DHARA_MANDATORY_GROUPS`.
