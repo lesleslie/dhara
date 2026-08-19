@@ -60,8 +60,11 @@ async def test_async_connection_abort():
         conn = await AsyncConnection.new(storage)
         root = await conn.get_root()
 
-        # Manually record a change (since sync __setitem__ can't await async note_change)
-        await conn.note_change(root)
+        # Manually record a change. ``note_change`` is synchronous (just
+        # a dict assignment); it was previously async which forced the
+        # sync ``__setitem__`` path to schedule a background task that
+        # could race ``commit``.
+        conn.note_change(root)
         assert root._p_oid in conn.changed
 
         # Abort should clear changes
@@ -84,8 +87,9 @@ async def test_async_connection_get_crawler():
         conn = await AsyncConnection.new(storage)
         root = await conn.get_root()
 
-        # Manually record the change since sync __setitem__ can't await async note_change
-        await conn.note_change(root)
+        # Manually record the change. ``note_change`` is synchronous
+        # (just a dict assignment).
+        conn.note_change(root)
         await conn.commit()
 
         # Crawl and verify we get at least the root object
@@ -223,8 +227,8 @@ async def test_async_connection_note_access_and_change():
         conn = await AsyncConnection.new(storage)
         root = await conn.get_root()
 
-        # note_change should add to changed dict
-        await conn.note_change(root)
+        # note_change should add to changed dict (synchronous assignment)
+        conn.note_change(root)
         assert root._p_oid in conn.changed
 
         # After commit, changed should be cleared
