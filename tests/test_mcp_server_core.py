@@ -167,33 +167,44 @@ def _isolate_env(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.fixture(autouse=True)
 def _reset_cache_wire_loop() -> None:
-    """Stop and reset ``_CACHE_WIRE_LOOP`` between tests.
+    """Stop and reset ``_CACHE_WIRE_LOOP`` before AND after each test.
 
     The wiring helper creates a persistent event loop and spins a daemon
     thread that calls ``loop.run_forever()``. Without resetting the loop
     between tests, subsequent ``DharaMCPServer(...)`` constructions call
     ``run_until_complete`` on a loop that is already running, raising
     ``RuntimeError: This event loop is already running``.
-    """
-    yield
-    try:
-        from dhara.mcp.server_core import _CACHE_WIRE_LOOP
-    except ImportError:
-        return
-    loop = _CACHE_WIRE_LOOP
-    if loop is None:
-        return
-    with suppress(Exception):
-        loop.call_soon_threadsafe(loop.stop)
-    # Detach the daemon thread so the loop can be closed.
-    if hasattr(loop, "_dhara_wire_thread"):
-        loop._dhara_wire_thread = None  # ty: ignore[unresolved-attribute]
-    with suppress(Exception):
-        if not loop.is_closed():
-            loop.close()
-    import dhara.mcp.server_core as _core
 
-    _core._CACHE_WIRE_LOOP = None
+    Pre-test reset is necessary when this file runs after integration
+    tests: integration tests construct ``DharaMCPServer`` instances
+    without resetting the loop, leaving it in a state where the wire
+    step silently skips ``AsyncConnection.new(storage)`` (the wire-loop
+    helper is still the previous run's loop, and ``run_until_complete``
+    queues to a stopped loop). The setup hook below resets it before
+    each test so order dependencies don't bleed across test files.
+    """
+    def _reset_loop() -> None:
+        try:
+            from dhara.mcp.server_core import _CACHE_WIRE_LOOP as _loop
+        except ImportError:
+            return
+        if _loop is None:
+            return
+        with suppress(Exception):
+            _loop.call_soon_threadsafe(_loop.stop)
+        # Detach the daemon thread so the loop can be closed.
+        if hasattr(_loop, "_dhara_wire_thread"):
+            _loop._dhara_wire_thread = None  # ty: ignore[unresolved-attribute]
+        with suppress(Exception):
+            if not _loop.is_closed():
+                _loop.close()
+        import dhara.mcp.server_core as _core
+
+        _core._CACHE_WIRE_LOOP = None
+
+    _reset_loop()
+    yield
+    _reset_loop()
 
 
 @pytest.fixture()

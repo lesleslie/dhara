@@ -111,7 +111,15 @@ addopts = [
     "--strict-config",
     "-ra",
     "--tb=short",
-    "--cov-fail-under=80.48780487804878"
+    "--cov-fail-under=80.48780487804878",
+    # Duplicate basenames across the tree (e.g.
+    # ``tests/unit/lock/test_postgres.py`` vs
+    # ``tests/storage/test_postgres.py``) cause pytest to abort
+    # collection with ``import file mismatch``. The canonical copy is
+    # in ``tests/storage/`` / ``tests/integration/audit/``; the stale
+    # skeletons are excluded here so the rest of the suite collects.
+    "--ignore=tests/unit/lock/test_postgres.py",
+    "--ignore=tests/unit/schema/test_migration.py",
 ]
 markers = [
     "unit: Unit tests",
