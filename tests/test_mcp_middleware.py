@@ -131,7 +131,7 @@ class TestProcessRequest:
     def test_no_auth_middleware(self):
         mw = MCPMiddleware(auth_middleware=None)
         req = MCPRequest(method="test", params={})
-        result_req, result_auth = asyncio.get_event_loop().run_until_complete(
+        result_req, result_auth = asyncio.new_event_loop().run_until_complete(
             mw.process_request(req)
         )
         assert result_req is req
@@ -150,7 +150,7 @@ class TestProcessRequest:
 
         mw = MCPMiddleware(auth_middleware=auth)
         req = MCPRequest(method="test", params={})
-        result_req, result_auth = asyncio.get_event_loop().run_until_complete(
+        result_req, result_auth = asyncio.new_event_loop().run_until_complete(
             mw.process_request(req)
         )
         assert result_auth.success
@@ -166,7 +166,7 @@ class TestProcessRequest:
 
         mw = MCPMiddleware(auth_middleware=auth)
         req = MCPRequest(method="test", params={})
-        result_req, result_auth = asyncio.get_event_loop().run_until_complete(
+        result_req, result_auth = asyncio.new_event_loop().run_until_complete(
             mw.process_request(req)
         )
         assert not result_auth.success
@@ -201,7 +201,7 @@ class TestProcessRequest:
 
         mw = MCPMiddleware(auth_middleware=auth)
         req = MCPRequest(method="test", params={})
-        result_req, result_auth = asyncio.get_event_loop().run_until_complete(
+        result_req, result_auth = asyncio.new_event_loop().run_until_complete(
             mw.process_request(req)
         )
         assert result_auth.success

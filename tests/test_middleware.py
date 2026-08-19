@@ -71,7 +71,7 @@ class TestMCPMiddleware:
     def test_process_request_no_auth(self):
         mw = MCPMiddleware(enable_logging=False)
         req = MCPRequest(method="put", params={"key": "k"})
-        processed_req, auth_result = asyncio.get_event_loop().run_until_complete(
+        processed_req, auth_result = asyncio.new_event_loop().run_until_complete(
             mw.process_request(req)
         )
         assert processed_req.method == "put"
@@ -88,8 +88,8 @@ class TestMCPMiddleware:
         mw = MCPMiddleware(enable_logging=False, enable_metrics=True)
         req = MCPRequest(method="get", params={})
         # process_request increments request_count
-        asyncio.get_event_loop().run_until_complete(mw.process_request(req))
-        asyncio.get_event_loop().run_until_complete(mw.process_request(req))
+        asyncio.new_event_loop().run_until_complete(mw.process_request(req))
+        asyncio.new_event_loop().run_until_complete(mw.process_request(req))
         resp_err = MCPResponse(success=False, error="e")
         mw.process_response(req, resp_err)
         metrics = mw.get_metrics()
@@ -141,7 +141,7 @@ class TestMCPMiddleware:
         auth_mw = AuthMiddleware(require_auth=True)
         mw = MCPMiddleware(auth_middleware=auth_mw, enable_logging=False)
         req = MCPRequest(method="get", params={})
-        processed_req, auth_result = asyncio.get_event_loop().run_until_complete(
+        processed_req, auth_result = asyncio.new_event_loop().run_until_complete(
             mw.process_request(req)
         )
         assert auth_result is not None
@@ -151,7 +151,7 @@ class TestMCPMiddleware:
 class TestRateLimiter:
     def test_initial_acquire(self):
         limiter = RateLimiter(requests_per_second=10, burst_size=5)
-        result = asyncio.get_event_loop().run_until_complete(limiter.acquire("k1"))
+        result = asyncio.new_event_loop().run_until_complete(limiter.acquire("k1"))
         assert result is True
 
     def test_available_tokens_full_bucket(self):

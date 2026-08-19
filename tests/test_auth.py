@@ -168,14 +168,14 @@ class TestTokenAuth:
     def test_rate_limit_check(self):
         ta = TokenAuth(require_auth=True)
         ta.add_token("t1", "v", rate_limit=2)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         assert loop.run_until_complete(ta.check_rate_limit("t1"))
         assert loop.run_until_complete(ta.check_rate_limit("t1"))
         assert not loop.run_until_complete(ta.check_rate_limit("t1"))
 
     def test_unknown_token_no_rate_limit(self):
         ta = TokenAuth()
-        loop = asyncio.get_event_loop()
+        loop = asyncio.new_event_loop()
         assert loop.run_until_complete(ta.check_rate_limit("unknown"))
 
     def test_save_and_load_tokens(self, tmp_path):
