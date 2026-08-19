@@ -9,7 +9,7 @@ __all__ = [
 ]
 
 # Version is read from the installed package metadata so ``dhara.mcp.__version__``
-# always matches ``pyproject.toml`` (currently 0.15.1). ``importlib.metadata``
+# always matches ``pyproject.toml`` (currently 0.15.2). ``importlib.metadata``
 # is the canonical way to introspect installed distributions without
 # importing the package; this avoids the constant-drift trap when the
 # version is bumped via ``crackerjack run -p minor``.

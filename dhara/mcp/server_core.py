@@ -66,7 +66,7 @@ _DEFAULT_RESOLVE_CACHE_ADAPTER = resolve_cache_adapter
 _CACHE_WIRE_LOOP: asyncio.AbstractEventLoop | None = None
 
 # Version is read from installed package metadata so the MCP ``/health``
-# version always matches ``pyproject.toml`` (currently 0.15.1). Matches the
+# version always matches ``pyproject.toml`` (currently 0.15.2). Matches the
 # pattern already used in ``dhara/cli.py``.
 try:
     _PACKAGE_VERSION = version("dhara")

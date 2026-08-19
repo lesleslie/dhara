@@ -51,7 +51,7 @@ from dhara.mcp.server_core import DharaMCPServer
 logger = get_logger(__name__)
 
 # Version is read from the installed package metadata so ``dhara --version``
-# always matches ``pyproject.toml`` (currently 0.15.1). ``importlib.metadata``
+# always matches ``pyproject.toml`` (currently 0.15.2). ``importlib.metadata``
 # is the canonical way to introspect installed distributions without
 # importing the package; this avoids the constant-drift trap when the
 # version is bumped via ``crackerjack run -p minor``.

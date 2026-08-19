@@ -1,6 +1,6 @@
-# dhara 5.0 Deployment Guide
+# dhara 0.15.2 Deployment Guide
 
-This guide covers deploying dhara 5.0 using native Python installation and Cloud Native Buildpacks.
+This guide covers deploying dhara 0.15.2 using native Python installation and Cloud Native Buildpacks.
 
 ## Table of Contents
 
@@ -105,7 +105,7 @@ Cloud Native Buildpacks automatically detect your Python application and create 
 ./deployment/scripts/deploy.sh buildpack
 
 # Or manually with pack
-pack build ghcr.io/lesleslie/dhara:5.0.0 \
+pack build ghcr.io/lesleslie/dhara:0.15.2 \
     --builder paketobuildpacks/builder:base \
     --env BP_PYTHON_VERSION=3.13
 ```
@@ -132,7 +132,7 @@ docker run -d \
     -p 2972:2972 \
     -v dhara-data:/data \
     -e PORT=2972 \
-    ghcr.io/lesleslie/dhara:5.0.0
+    ghcr.io/lesleslie/dhara:0.15.2
 ```
 
 ### Pushing to Registry
@@ -142,7 +142,7 @@ docker run -d \
 ./deployment/scripts/deploy.sh push-buildpack
 
 # Or manually
-docker push ghcr.io/lesleslie/dhara:5.0.0
+docker push ghcr.io/lesleslie/dhara:0.15.2
 ```
 
 ## Cloud Platform Deployment
@@ -186,15 +186,15 @@ kubectl logs -f deployment/dhara-server -n dhara
 
 ```bash
 # Build with Cloud Native Buildpacks
-pack build ghcr.io/lesleslie/dhara:5.0.0 \
+pack build ghcr.io/lesleslie/dhara:0.15.2 \
     --builder=gcr.io/buildpacks/builder:v1
 
 # Push to registry
-docker push ghcr.io/lesleslie/dhara:5.0.0
+docker push ghcr.io/lesleslie/dhara:0.15.2
 
 # Deploy to Cloud Run
 gcloud run deploy dhara-server \
-    --image=ghcr.io/lesleslie/dhara:5.0.0 \
+    --image=ghcr.io/lesleslie/dhara:0.15.2 \
     --platform=managed \
     --region=us-central1 \
     --allow-unauthenticated \
@@ -206,13 +206,13 @@ gcloud run deploy dhara-server \
 
 ```bash
 # Build and push to ECR
-pack build <your-ecr-repo>:5.0.0 \
+pack build <your-ecr-repo>:0.15.2 \
     --builder=paketobuildpacks/builder:base
 
 # Deploy via AWS Console or CLI
 aws apprunner start-deployment \
     --service-arn <your-service-arn> \
-    --image-identifier <your-ecr-repo>:5.0.0
+    --image-identifier <your-ecr-repo>:0.15.2
 ```
 
 ## Configuration
