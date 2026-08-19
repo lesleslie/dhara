@@ -1993,6 +1993,7 @@ class TestToolFunctionDispatch:
         ) = _apply_patches()
         try:
             from dhara.mcp.server_core import DharaMCPServer
+            from dhara.mcp.tools.group_registers import register_kv_timeseries_group
 
             captured_fns: dict[str, Any] = {}
 
@@ -2015,6 +2016,10 @@ class TestToolFunctionDispatch:
             asyncio.set_event_loop(loop)
             loop.run_until_complete(server._init_async_stores())
             server._async_adapter_registry = MagicMock()
+            # W0 dispatch is mocked out by ``_apply_patches``; drive the
+            # kv_timeseries registration directly so the test can capture
+            # ``put`` / ``get`` from the registered functions.
+            register_kv_timeseries_group(mock_server_instance, server)
 
             # Mock kv_store to avoid real storage interactions
             server._async_kv_store.put_async = AsyncMock(return_value={"ok": True, "key": "test"})
@@ -2045,6 +2050,7 @@ class TestToolFunctionDispatch:
         ) = _apply_patches()
         try:
             from dhara.mcp.server_core import DharaMCPServer
+            from dhara.mcp.tools.group_registers import register_kv_timeseries_group
 
             captured_fns: dict[str, Any] = {}
 
@@ -2070,6 +2076,10 @@ class TestToolFunctionDispatch:
             asyncio.set_event_loop(loop)
             loop.run_until_complete(server._init_async_stores())
             server._async_kv_store.put_async = AsyncMock(return_value={"ok": True, "key": "ttl-test"})
+            # W0 dispatch is mocked out by ``_apply_patches``; drive the
+            # kv_timeseries registration directly so the test can capture
+            # ``put`` from the registered functions.
+            register_kv_timeseries_group(mock_server_instance, server)
 
             put_fn = captured_fns["put"]
             result = asyncio.new_event_loop().run_until_complete(
@@ -2089,6 +2099,7 @@ class TestToolFunctionDispatch:
         ) = _apply_patches()
         try:
             from dhara.mcp.server_core import DharaMCPServer
+            from dhara.mcp.tools.group_registers import register_kv_timeseries_group
 
             captured_fns: dict[str, Any] = {}
 
@@ -2122,6 +2133,10 @@ class TestToolFunctionDispatch:
             server._async_kv_store.aggregate_patterns_async = AsyncMock(
                 return_value=[{"pattern": "error", "count": 5}],
             )
+            # W0 dispatch is mocked out by ``_apply_patches``; drive the
+            # kv_timeseries registration directly so the test can capture
+            # ``record_time_series`` etc. from the registered functions.
+            register_kv_timeseries_group(mock_server_instance, server)
 
             record_fn = captured_fns["record_time_series"]
             query_fn = captured_fns["query_time_series"]
@@ -2152,6 +2167,7 @@ class TestToolFunctionDispatch:
         ) = _apply_patches()
         try:
             from dhara.mcp.server_core import DharaMCPServer
+            from dhara.mcp.tools.group_registers import register_ecosystem_state_group
 
             captured_fns: dict[str, Any] = {}
 
@@ -2192,6 +2208,10 @@ class TestToolFunctionDispatch:
             server._async_ecosystem_state.list_events_async = AsyncMock(
                 return_value=[{"event_type": "deploy"}],
             )
+            # W0 dispatch is mocked out by ``_apply_patches``; drive the
+            # ecosystem_state registration directly so the test can capture
+            # ``upsert_service`` etc. from the registered functions.
+            register_ecosystem_state_group(mock_server_instance, server)
 
             upsert_result = asyncio.new_event_loop().run_until_complete(
                 captured_fns["upsert_service"](
@@ -2232,6 +2252,7 @@ class TestToolFunctionDispatch:
         ) = _apply_patches()
         try:
             from dhara.mcp.server_core import DharaMCPServer
+            from dhara.mcp.tools.group_registers import register_ecosystem_state_group
 
             captured_fns: dict[str, Any] = {}
 
@@ -2257,6 +2278,10 @@ class TestToolFunctionDispatch:
             server._async_ecosystem_state.upsert_service_async = AsyncMock(
                 return_value={"service_id": "svc-1"},
             )
+            # W0 dispatch is mocked out by ``_apply_patches``; drive the
+            # ecosystem_state registration directly so the test can capture
+            # ``upsert_service`` from the registered functions.
+            register_ecosystem_state_group(mock_server_instance, server)
 
             upsert_fn = captured_fns["upsert_service"]
             asyncio.new_event_loop().run_until_complete(
