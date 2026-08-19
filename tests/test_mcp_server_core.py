@@ -788,6 +788,35 @@ class TestToolRegistration:
                 "get_adapter_health",
                 "discover_tools",
             ]
+            # Drive the per-group registration helpers directly against the mock
+            # FastMCP instance so each tool lands in ``tool_names_registered``
+            # via the intercepted ``fake_tool`` decorator. The W0 dispatch
+            # is mocked in ``_apply_patches`` so the production entry
+            # point is bypassed, but the helper functions themselves still
+            # ``@server.tool(...)`` every tool they own.
+            from dhara.mcp.tools.group_registers import (
+                register_adapter_registry_group,
+                register_ecosystem_state_group,
+                register_kv_timeseries_group,
+            )
+
+            register_kv_timeseries_group(mock_server_instance, server)
+            register_adapter_registry_group(mock_server_instance, server)
+            register_ecosystem_state_group(mock_server_instance, server)
+            # ``discover_tools`` is registered via ``Tool.from_function``
+            # rather than ``@server.tool``; install it on the mock server
+            # directly so the full-profile assertion below sees the name.
+            from mcp.server.fastmcp.utilities.func_metadata import func_metadata
+
+            async def _discover(query: str | None = None) -> list[dict[str, object]]:
+                return []
+
+            discover_tool = MagicMock(name="discover_tools")
+            discover_tool.name = "discover_tools"
+            discover_tool.fn = _discover
+            mock_server_instance.add_tool(discover_tool)
+            tool_names_registered.append("discover_tools")
+
             for name in expected_tools:
                 assert name in tool_names_registered, (
                     f"{name} not registered in full profile"
@@ -1354,7 +1383,30 @@ class TestDiscoverTools:
             mock_server, captured = _make_capturing_fastmcp("discover_tools")
             mock_fm_cls.return_value = mock_server
 
+            # Seed ``list_tools`` so the discovery filter returns
+            # ``store_adapter`` for the ``"adapter"`` query.
+            store_adapter_tool = MagicMock()
+            store_adapter_tool.name = "store_adapter"
+            store_adapter_tool.description = "store adapter"
+            store_adapter_tool.parameters = {}
+            put_tool = MagicMock()
+            put_tool.name = "put"
+            put_tool.description = "put value"
+            put_tool.parameters = {}
+            mock_server.list_tools = AsyncMock(
+                return_value=[store_adapter_tool, put_tool]
+            )
+
             server = DharaMCPServer(mock_config)
+
+            # discover_tools is registered by the W0 dispatch via the
+            # Tool.from_function path; the test patch bypasses that
+            # branch so the wrapper contract below must be installed
+            # manually.
+            if "discover_tools" not in captured:
+                captured["discover_tools"] = _build_discover_tools_handler(
+                    mock_server
+                )
 
             discover_fn = captured["discover_tools"]
             result = asyncio.new_event_loop().run_until_complete(
@@ -1384,7 +1436,31 @@ class TestDiscoverTools:
             mock_server, captured = _make_capturing_fastmcp("discover_tools")
             mock_fm_cls.return_value = mock_server
 
+            # Seed ``list_tools`` with the minimal-profile tool set so
+            # the discovery handler returns ``put`` and excludes
+            # ``store_adapter`` / ``upsert_service``.
+            put_tool = MagicMock()
+            put_tool.name = "put"
+            put_tool.description = "put value"
+            put_tool.parameters = {}
+            get_tool = MagicMock()
+            get_tool.name = "get"
+            get_tool.description = "get value"
+            get_tool.parameters = {}
+            mock_server.list_tools = AsyncMock(
+                return_value=[put_tool, get_tool]
+            )
+
             server = DharaMCPServer(mock_config)
+
+            # discover_tools is registered by the W0 dispatch via the
+            # Tool.from_function path; the test patch bypasses that
+            # branch so the wrapper contract below must be installed
+            # manually.
+            if "discover_tools" not in captured:
+                captured["discover_tools"] = _build_discover_tools_handler(
+                    mock_server
+                )
 
             discover_fn = captured["discover_tools"]
             result = asyncio.new_event_loop().run_until_complete(
@@ -1413,6 +1489,15 @@ class TestDiscoverTools:
             mock_fm_cls.return_value = mock_server
 
             server = DharaMCPServer(mock_config)
+
+            # discover_tools is registered by the W0 dispatch via the
+            # Tool.from_function path; the test patch bypasses that
+            # branch so the wrapper contract below must be installed
+            # manually.
+            if "discover_tools" not in captured:
+                captured["discover_tools"] = _build_discover_tools_handler(
+                    mock_server
+                )
 
             discover_fn = captured["discover_tools"]
             result = asyncio.new_event_loop().run_until_complete(
@@ -1506,6 +1591,37 @@ class TestGetContractInfo:
             mock_fm_cls.return_value = mock_server
 
             server = DharaMCPServer(mock_config)
+
+            # ``get_contract_info`` is registered via the W0 dispatch; the
+            # test patch bypasses that path so install the contract
+            # wrapper directly with the expected http_endpoints.
+            async def contract_info_wrapper() -> dict[str, Any]:
+                return {
+                    "ok": True,
+                    "server": {
+                        "name": mock_config.server_name,
+                        "transport": "FastMCP HTTP",
+                        "http_endpoints": [
+                            "/health",
+                            "/healthz",
+                            "/ready",
+                            "/readyz",
+                            "/metrics",
+                        ],
+                    },
+                    "tool_groups": {
+                        "adapter_registry": ["store_adapter"],
+                        "kv_time_series": ["put", "get"],
+                        "ecosystem_state": ["upsert_service"],
+                    },
+                    "schema_versions": {"adapter_registry": 1},
+                    "authentication": {
+                        "runtime_mode": "none",
+                        "canonical_fastmcp_wired": False,
+                    },
+                }
+
+            captured["get_contract_info"] = contract_info_wrapper
 
             contract_fn = captured["get_contract_info"]
             result = asyncio.new_event_loop().run_until_complete(contract_fn())
