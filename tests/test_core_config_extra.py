@@ -88,10 +88,15 @@ class TestDharaSettingsLoad:
     def test_load_falls_back_to_defaults_on_error(self):
         os.environ.pop("DHARA_MODE", None)
         try:
+            # ``DharaSettings.load`` is self-contained and does not delegate
+            # to ``OneiricMCPConfig.load`` (the parent class has no
+            # ``load`` classmethod). The fallback path is the
+            # ``cls.model_validate`` call, which raises ``ValueError`` when
+            # the loaded YAML cannot be coerced into ``DharaSettings``.
             with patch.object(
-                DharaSettings.__bases__[0],
-                "load",
-                side_effect=FileNotFoundError("no config"),
+                DharaSettings,
+                "model_validate",
+                side_effect=ValueError("bad config"),
             ):
                 settings = DharaSettings.load("nonexistent")
             assert isinstance(settings, DharaSettings)

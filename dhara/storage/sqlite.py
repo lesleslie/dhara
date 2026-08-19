@@ -223,9 +223,11 @@ class SqliteStorage(Storage):
         v = c.fetchone()
         if v is None:
             raise KeyError(oid)
-        return [
-            int8_to_str(ref) for ref in split_oids(v[0])
-        ]  # bytes from split_oids, str from int8_to_str
+        # ``split_oids`` yields 8-byte OID blobs that are already in the
+        # canonical ``bytes`` form expected by the ``OID`` type; pack the
+        # ints back to bytes (the prior ``int8_to_str`` call raised a
+        # ``struct.error`` because each ``ref`` was already bytes).
+        return [bytes(ref) for ref in split_oids(v[0])]
 
     def _delete(self, oids) -> None:
         def gen_ids() -> Iterator[tuple[bytes]]:

@@ -253,7 +253,16 @@ class TestAdapterRegistryInit:
         root = file_connection.get_root()
         root.clear()
 
-        monkeypatch.setattr(file_connection.storage.shelf.file, "is_readonly", lambda: True)
+        # AsyncFileStorage does not expose ``shelf`` (that attribute was
+        # removed when FileStorage was deleted). Inject a minimal
+        # ``shelf.file.is_readonly = True`` shim so the production probe
+        # in ``AdapterRegistry`` treats the storage as readonly.
+        storage = file_connection.storage
+        if not hasattr(storage, "shelf"):
+            shelf = MagicMock()
+            shelf.file = MagicMock()
+            shelf.file.is_readonly = lambda: True
+            storage.shelf = shelf
 
         registry = AdapterRegistry(file_connection)
 
@@ -432,7 +441,15 @@ class TestAdapterRegistryList:
     def test_list_empty_when_readonly_skips_structure(self, file_connection: Any, monkeypatch) -> None:
         root = file_connection.get_root()
         root.clear()
-        monkeypatch.setattr(file_connection.storage.shelf.file, "is_readonly", lambda: True)
+        # AsyncFileStorage does not expose ``shelf``; inject a minimal
+        # shim so the readonly probe in ``AdapterRegistry.list_adapters``
+        # can short-circuit without touching the structure.
+        storage = file_connection.storage
+        if not hasattr(storage, "shelf"):
+            shelf = MagicMock()
+            shelf.file = MagicMock()
+            shelf.file.is_readonly = lambda: True
+            storage.shelf = shelf
 
         registry = AdapterRegistry(file_connection)
 

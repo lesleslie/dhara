@@ -184,7 +184,7 @@ class TestBackupManagerBackups:
         metadata = manager.perform_full_backup()
 
         assert metadata.backup_type == BackupType.FULL
-        assert metadata.source_path.endswith(".dhara.zst")
+        assert str(metadata.source_path).endswith(".dhara.zst")
         assert metadata.encryption_enabled is False
         assert Path(metadata.source_path).exists()
 
@@ -200,7 +200,7 @@ class TestBackupManagerBackups:
         metadata = manager.perform_full_backup()
 
         assert metadata.encryption_enabled is True
-        assert metadata.source_path.endswith(".enc")
+        assert str(metadata.source_path).endswith(".enc")
 
     def test_perform_incremental_backup(self, tmp_path, monkeypatch):
         source = _make_source_file(tmp_path)
@@ -235,7 +235,7 @@ class TestBackupManagerBackups:
         metadata = manager.perform_incremental_backup()
 
         assert metadata.encryption_enabled is True
-        assert metadata.source_path.endswith(".enc")
+        assert str(metadata.source_path).endswith(".enc")
 
     def test_perform_incremental_backup_without_parent_raises(self, tmp_path, monkeypatch):
         source = _make_source_file(tmp_path)
@@ -328,7 +328,7 @@ class TestBackupManagerBackups:
         metadata = manager.perform_differential_backup()
 
         assert metadata.encryption_enabled is True
-        assert metadata.source_path.endswith(".enc")
+        assert str(metadata.source_path).endswith(".enc")
 
 
 class TestBackupManagerCloudAndCleanup:

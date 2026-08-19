@@ -364,8 +364,12 @@ def get_mode(settings: DharaSettings | None = None) -> OperationalMode:
     if settings is None:
         try:
             settings = DharaSettings.load("dhara")
-        except (FileNotFoundError, pydantic.ValidationError, OSError):
-            logger.debug("Could not load settings, using default detection")
+        except Exception as exc:  # noqa: BLE001
+            # Any failure to load settings (file missing, YAML malformed,
+            # validation error, or downstream library exception) should
+            # fall through to auto-detection rather than crash
+            # ``get_mode()``.
+            logger.debug(f"Could not load settings ({exc!r}), using default detection")
 
     # 3. Auto-detect based on storage configuration
     if settings:

@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import AsyncMock, MagicMock, mock_open, patch
 
 import pytest
 
@@ -90,7 +90,7 @@ def test_cmd_backup_full_backup_happy_path(tmp_path):
 
     with patch("dhara.backup.cli.init_backup_directory") as mock_init:
         with patch("dhara.backup.cli.AsyncFileStorage") as mock_storage_cls:
-            storage = MagicMock()
+            storage = AsyncMock()
             mock_storage_cls.return_value = storage
             with patch("dhara.backup.cli.BackupManager", return_value=backup_manager) as mock_mgr:
                 args = _args(source=str(source), backup_dir=str(tmp_path / "backups"))
@@ -115,7 +115,7 @@ def test_cmd_backup_incremental_uses_latest_backup(tmp_path):
 
     with patch("dhara.backup.cli.init_backup_directory"):
         with patch("dhara.backup.cli.AsyncFileStorage") as mock_storage_cls:
-            storage = MagicMock()
+            storage = AsyncMock()
             mock_storage_cls.return_value = storage
             with patch("dhara.backup.cli.BackupManager", return_value=backup_manager) as mock_mgr:
                 with patch("dhara.backup.cli.BackupCatalog", return_value=catalog) as mock_catalog:
@@ -141,7 +141,7 @@ def test_cmd_backup_differential_without_prior_full_backup(tmp_path):
 
     with patch("dhara.backup.cli.init_backup_directory"):
         with patch("dhara.backup.cli.AsyncFileStorage") as mock_storage_cls:
-            storage = MagicMock()
+            storage = AsyncMock()
             mock_storage_cls.return_value = storage
             with patch("dhara.backup.cli.BackupManager", return_value=backup_manager):
                 with patch("dhara.backup.cli.BackupCatalog", return_value=catalog) as mock_catalog:
@@ -166,7 +166,7 @@ def test_cmd_backup_differential_with_prior_full_backup(tmp_path):
 
     with patch("dhara.backup.cli.init_backup_directory"):
         with patch("dhara.backup.cli.AsyncFileStorage") as mock_storage_cls:
-            storage = MagicMock()
+            storage = AsyncMock()
             mock_storage_cls.return_value = storage
             with patch("dhara.backup.cli.BackupManager", return_value=backup_manager):
                 with patch("dhara.backup.cli.BackupCatalog", return_value=catalog):
@@ -185,7 +185,7 @@ def test_cmd_backup_unknown_type_returns_error(tmp_path):
 
     with patch("dhara.backup.cli.init_backup_directory"):
         with patch("dhara.backup.cli.AsyncFileStorage") as mock_storage_cls:
-            storage = MagicMock()
+            storage = AsyncMock()
             mock_storage_cls.return_value = storage
             with patch("dhara.backup.cli.BackupManager"):
                 args = _args(source=str(source), backup_dir=str(tmp_path / "backups"), type="mystery")
@@ -205,7 +205,7 @@ def test_cmd_backup_key_file_path(tmp_path):
 
     with patch("dhara.backup.cli.init_backup_directory"):
         with patch("dhara.backup.cli.AsyncFileStorage") as mock_storage_cls:
-            storage = MagicMock()
+            storage = AsyncMock()
             mock_storage_cls.return_value = storage
             with patch("dhara.backup.cli.BackupManager", return_value=backup_manager):
                 args = _args(
@@ -229,7 +229,7 @@ def test_cmd_backup_key_file_path(tmp_path):
 
     with patch("dhara.backup.cli.init_backup_directory"):
         with patch("dhara.backup.cli.AsyncFileStorage") as mock_storage_cls:
-            storage = MagicMock()
+            storage = AsyncMock()
             mock_storage_cls.return_value = storage
             with patch("dhara.backup.cli.BackupManager", return_value=backup_manager):
                 args = _args(
@@ -251,7 +251,7 @@ def test_cmd_backup_encrypts_with_generated_key(tmp_path):
 
     with patch("dhara.backup.cli.init_backup_directory"):
         with patch("dhara.backup.cli.AsyncFileStorage") as mock_storage_cls:
-            storage = MagicMock()
+            storage = AsyncMock()
             mock_storage_cls.return_value = storage
             with patch("dhara.backup.cli.BackupManager", return_value=backup_manager):
                 with patch("cryptography.fernet.Fernet.generate_key", return_value=b"enc-key") as mock_key:
@@ -276,7 +276,7 @@ def test_cmd_backup_verbose_and_key_file_failure(tmp_path):
 
     with patch("dhara.backup.cli.init_backup_directory"):
         with patch("dhara.backup.cli.AsyncFileStorage") as mock_storage_cls:
-            storage = MagicMock()
+            storage = AsyncMock()
             mock_storage_cls.return_value = storage
             with patch("dhara.backup.cli.BackupManager", return_value=backup_manager):
                 with patch("builtins.open", mock_open(read_data=b"enc-key")):

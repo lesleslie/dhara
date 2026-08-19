@@ -92,7 +92,7 @@ class PersistentDict(PersistentObject, collections.abc.MutableMapping):
             elif isinstance(other, dict):
                 self.data.update(other)
             elif hasattr(other, "keys"):
-                for k in other:
+                for k in other.keys():
                     self[k] = other[k]
             else:
                 for k, v in other:

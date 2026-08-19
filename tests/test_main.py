@@ -148,7 +148,7 @@ class TestGetStorageClass:
         from dhara.__main__ import get_storage_class
 
         mock_file = BytesIO(b"DFS20_some_data_here_extra")
-        with patch("dhara.__main__.os.path.exists", return_value=True):
+        with patch("pathlib.Path.exists", return_value=True):
             with patch("builtins.open", return_value=mock_file):
                 with pytest.raises(ValueError, match="DFS20"):
                     get_storage_class("test.dhara")
@@ -167,7 +167,7 @@ class TestGetStorageClass:
         mock_sqlite_module.SqliteStorage = mock_sqlite_storage
 
         mock_file = BytesIO(b"SQLite format 3\x00extra")
-        with patch("dhara.__main__.os.path.exists", return_value=True):
+        with patch("pathlib.Path.exists", return_value=True):
             with patch("builtins.open", return_value=mock_file):
                 # ``dhara.__main__.get_storage_class`` imports from the
                 # canonical path ``dhara.storage.sqlite`` (the legacy
@@ -189,7 +189,7 @@ class TestGetStorageClass:
         from dhara.__main__ import get_storage_class
 
         mock_file = BytesIO(b"SHELF-1_some_data_padding_xx")
-        with patch("dhara.__main__.os.path.exists", return_value=True):
+        with patch("pathlib.Path.exists", return_value=True):
             with patch("builtins.open", return_value=mock_file):
                 result = get_storage_class("test.shelf")
 
@@ -202,7 +202,7 @@ class TestGetStorageClass:
         from dhara.__main__ import get_storage_class
 
         mock_file = BytesIO(b"UNKNOWN_FORMAT_DATA!!")
-        with patch("dhara.__main__.os.path.exists", return_value=True):
+        with patch("pathlib.Path.exists", return_value=True):
             with patch("builtins.open", return_value=mock_file):
                 with pytest.raises(ValueError, match="unknown storage type"):
                     get_storage_class("test.unknown")
@@ -212,7 +212,7 @@ class TestGetStorageClass:
         from dhara.__main__ import get_storage_class
 
         mock_file = BytesIO(b"")
-        with patch("dhara.__main__.os.path.exists", return_value=True):
+        with patch("pathlib.Path.exists", return_value=True):
             with patch("builtins.open", return_value=mock_file):
                 with pytest.raises(ValueError, match="unknown storage type"):
                     get_storage_class("empty.dhara")
@@ -222,7 +222,7 @@ class TestGetStorageClass:
         from dhara.__main__ import get_storage_class
 
         mock_file = BytesIO(b"SHORT")
-        with patch("dhara.__main__.os.path.exists", return_value=True):
+        with patch("pathlib.Path.exists", return_value=True):
             with patch("builtins.open", return_value=mock_file):
                 with pytest.raises(ValueError, match="unknown storage type"):
                     get_storage_class("short.dhara")
@@ -234,7 +234,7 @@ class TestGetStorageClass:
         # Exactly 20 bytes of legacy DFS20 content.
         content = b"DFS20" + b"\x00" * 15
         mock_file = BytesIO(content)
-        with patch("dhara.__main__.os.path.exists", return_value=True):
+        with patch("pathlib.Path.exists", return_value=True):
             with patch("builtins.open", return_value=mock_file):
                 with pytest.raises(ValueError, match="DFS20") as excinfo:
                     get_storage_class("exact.dhara")

@@ -240,7 +240,10 @@ class AdapterRegistry:
             # Try to access storage to check if it's readonly
             storage = self.connection.storage
             is_readonly = hasattr(storage, "shelf") and storage.shelf.file.is_readonly()
-        except AttributeError:
+        except Exception:  # noqa: BLE001
+            # Probe failures (storage missing, attribute missing, custom
+            # probe raising) should default to writable so callers do
+            # not silently lose data on transient infrastructure errors.
             is_readonly = False
 
         if not is_readonly:
@@ -500,7 +503,7 @@ class AdapterRegistry:
             errors.append(f"Factory path not importable: {e}")
         except AttributeError as e:
             errors.append(f"Factory class not found: {e}")
-        except (OSError, TypeError, ValueError) as e:
+        except (OSError, TypeError, ValueError, RuntimeError) as e:
             errors.append(f"Factory validation error: {e}")
 
         # Validate dependencies

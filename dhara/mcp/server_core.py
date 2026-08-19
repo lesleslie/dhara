@@ -24,7 +24,10 @@ from typing import TYPE_CHECKING, Any, ClassVar, cast
 if TYPE_CHECKING:
     import duckdb
 
-    from dhara.core.connection import Connection
+# ``Connection`` is re-exported at module scope so legacy test fixtures can
+# patch ``dhara.mcp.server_core.Connection`` directly. The runtime code
+# paths use ``AsyncConnection`` instead, but the symbol is required by
+# the test suite for symbol-level monkeypatching.
 
 from fastmcp.server.auth.authorization import require_scopes
 from mcp_common.fastmcp import FastMCP
@@ -40,6 +43,7 @@ from dhara.audit.flusher import OutboxFlusher, periodic_flush_loop
 from dhara.audit.outbox import MemoryOutbox
 from dhara.audit.subscriber import AuditLogSubscriber
 from dhara.core.config import DharaSettings
+from dhara.core.connection import Connection
 from dhara.mcp.adapter_lookup import resolve_cache_adapter
 from dhara.mcp.adapter_tools import (
     AdapterRegistry,

@@ -182,13 +182,13 @@ class TestLoadConfig:
     def test_yaml_with_non_dict_raises(self, tmp_path):
         path = tmp_path / "list.yaml"
         path.write_text(yaml.dump(["item1", "item2"]))
-        with pytest.raises(ValueError, match="must contain a dictionary"):
+        with pytest.raises(TypeError, match="must contain a dictionary"):
             load_config(path)
 
     def test_json_with_non_dict_raises(self, tmp_path):
         path = tmp_path / "list.json"
         path.write_text(json.dumps(["item1", "item2"]))
-        with pytest.raises(ValueError, match="must contain a dictionary"):
+        with pytest.raises(TypeError, match="must contain a dictionary"):
             load_config(path)
 
 

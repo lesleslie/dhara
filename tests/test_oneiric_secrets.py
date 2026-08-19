@@ -765,7 +765,7 @@ class TestCreateHmacSignature:
         assert sig1 != sig2
 
     def test_create_hmac_raises_on_non_bytes_message(self):
-        with pytest.raises(ValueError, match="Message must be bytes"):
+        with pytest.raises(TypeError, match="Message must be bytes"):
             self.mod.create_hmac_signature("not bytes")
 
     def test_create_hmac_empty_message(self):

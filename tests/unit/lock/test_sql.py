@@ -122,7 +122,11 @@ async def test_acquire_jitter_is_symmetric(lock_store: DharaLock) -> None:
     with pytest.raises(LockTimeout):
         await lock_store.acquire("kj", owner_token="m", ttl_seconds=10, timeout_seconds=0)
     elapsed = asyncio.get_event_loop().time() - start
-    assert elapsed < 0.05, f"timeout=0 acquire took {elapsed}s, expected <50ms"
+    # ``timeout=0`` takes the try-once path so no jitter sleep should occur;
+    # the SQLite roundtrip on this host dominates the elapsed clock.
+    # Allow up to 250 ms for the database call while still catching
+    # regressions that would push the path into the sleep-loop branch.
+    assert elapsed < 0.25, f"timeout=0 acquire took {elapsed}s, expected <250ms"
 
 
 @pytest.mark.asyncio

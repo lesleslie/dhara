@@ -58,16 +58,32 @@ async def async_connection(async_memory_storage):
 def file_connection(temp_file_storage):
     # ``file_connection`` is used by tests that expect a real on-disk
     # store; the new ``AsyncFileStorage`` requires an async init, so the
-    # fixture spins up an ``AsyncConnection`` instead of the sync
-    # ``Connection`` that the legacy fixture returned.  Callers should
-    # ``await async_connection.get_root()`` to interact with the root.
+    # fixture spins up an ``AsyncConnection`` and wraps it in the
+    # production ``_SyncConnectionFacade`` so callers can keep using the
+    # sync ``get_root()`` / ``commit()`` / ``abort()`` API. The facade
+    # dispatches via ``asyncio.run_coroutine_threadsafe`` which requires a
+    # live event loop on a background thread.
     import asyncio
+    import threading
+
+    from dhara.mcp.server_core import _SyncConnectionFacade
+
+    loop = asyncio.new_event_loop()
+
+    def _runner() -> None:
+        asyncio.set_event_loop(loop)
+        loop.run_forever()
+
+    thread = threading.Thread(target=_runner, daemon=True)
+    thread.start()
+    loop._dhara_wire_thread = thread  # ty: ignore[unresolved-attribute]
 
     async def _open() -> AsyncConnection:
         await temp_file_storage.init()
         return await AsyncConnection.new(temp_file_storage)
 
-    return asyncio.run(_open())
+    async_conn = asyncio.run_coroutine_threadsafe(_open(), loop).result()
+    return _SyncConnectionFacade(async_conn, loop)
 
 
 @pytest.fixture
@@ -122,3 +138,21 @@ def persistent_class():
             self.value = value
 
     return TestObject
+
+
+def pytest_addoption(parser: pytest.Parser) -> None:
+    """Register the ``--pg-url`` option consumed by Postgres-backed tests.
+
+    Without this hook, ``config.getoption('--pg-url')`` raises
+    ``AttributeError: 'Namespace' object has no attribute '--pg-url'`` and
+    the live Postgres fixtures in
+    ``tests/integration/mcp/test_lock_pg_migration.py`` blow up at fixture
+    setup instead of cleanly skipping when ``DHARA_TEST_PG_URL`` is unset.
+    """
+    parser.addoption(
+        "--pg-url",
+        action="store",
+        default=None,
+        help="Postgres connection URL for live integration tests "
+        "(falls back to DHARA_TEST_PG_URL env var).",
+    )

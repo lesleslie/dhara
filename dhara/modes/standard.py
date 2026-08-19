@@ -115,8 +115,8 @@ class StandardMode(OperationalMode):
         if self.settings is None:
             try:
                 self.settings = DharaSettings.load("dhara")
-            except (FileNotFoundError, pydantic.ValidationError, OSError) as e:
-                logger.warning(f"Could not load settings for validation: {e}")
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(f"Could not load settings for validation: {exc!r}")
                 # Don't fail validation, will use defaults
                 self.settings = DharaSettings()
 

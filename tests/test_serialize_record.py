@@ -498,7 +498,7 @@ class TestResolveClass:
         # ``builtins`` has attributes that are not classes (e.g. ``__name__``).
         # If we ask for ``builtins.__name__``, ``getattr`` returns a string,
         # which is not a type, and the function should raise.
-        with pytest.raises(ValueError, match="is not a class"):
+        with pytest.raises(TypeError, match="is not a class"):
             _resolve_class("builtins.__name__", allowed_modules={"builtins"})
 
     def test_resolve_class_rejects_nonexistent_attribute(self):
@@ -512,7 +512,7 @@ class TestResolveClass:
         # The submodule ``dhara.core.connection`` exists; if we ask for
         # the submodule attribute on its parent package, the result is a
         # module, not a class.
-        with pytest.raises(ValueError, match="is not a class"):
+        with pytest.raises(TypeError, match="is not a class"):
             _resolve_class(
                 "dhara.core.connection",
                 allowed_modules={"dhara.core"},
