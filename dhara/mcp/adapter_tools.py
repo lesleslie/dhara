@@ -605,10 +605,14 @@ class AdapterRegistry:
         """Count total adapters in registry.
 
         Returns:
-            Total number of adapters
+            Total number of adapters (0 when the registry has not been
+            initialized yet — e.g. immediately after construction on a
+            fresh storage root).
         """
         root = self.connection.get_root()
-        adapters: PersistentDict = root["adapters"]  # type: ignore[assignment]
+        adapters = root.get("adapters") if hasattr(root, "get") else None
+        if not adapters:
+            return 0
         return len(adapters)
 
 
