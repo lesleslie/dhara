@@ -124,11 +124,16 @@ def _build_server(tmp_path: Path):
         authentication=AuthenticationConfig(enabled=False),
         backups=BackupRuntimeConfig(enabled=False),
     )
-    mocks = [p.start() for p in _make_app_patches()]
+    started_patches = _make_app_patches()
+    mocks = [p.start() for p in started_patches]
     try:
         server = DharaMCPServer(config)
     finally:
-        for p in _make_app_patches():
+        # Stop the SAME patch objects we started above. Calling
+        # ``_make_app_patches()`` again here would return fresh patches
+        # that have never been started — ``.stop()`` on those is a no-op
+        # and the original patches leak into subsequent tests.
+        for p in started_patches:
             p.stop()
     return server, mocks
 
