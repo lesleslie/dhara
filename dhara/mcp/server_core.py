@@ -11,6 +11,15 @@ Migration Notes:
 - Adds adapter distribution tools via AdapterRegistry
 - Adds ecosystem state tools for service and event persistence
 - Adds health check tools via mcp-common
+
+Baseline tool surface (Bodai standardization):
+- The canonical baseline ``discover_tools``, ``get_liveness``,
+  ``get_readiness``, ``health_check_all`` are registered via the W0
+  ``_apply_tool_profile`` dispatch (``mcp_common.tools.dispatch``) plus
+  ``_register_health_tools`` -> ``mcp_common.health.register_health_tools``.
+  The one-line helper ``mcp_common.bootstrap.bootstrap_baseline_tools``
+  is the standardized entry point for repos that do not already wire
+  these via a profile dispatch; do not double-register here.
 """
 
 from __future__ import annotations
