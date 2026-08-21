@@ -1,0 +1,59 @@
+# Betterleaks configuration for the dhara repo.
+#
+# Auto-loaded by the betterleaks binary when invoked from the git root
+# (crackerjack >= 0.74.2 surfaces this through the BetterleaksAdapter
+# via --config). The allowlists below suppress false-positive findings
+# on intentional test/doc placeholders; they are intentionally narrow
+# so a real leaked credential cannot satisfy any of them.
+#
+# No `targetRules` filter is set: the placeholder regexes are specific
+# enough that an actual leaked secret cannot match them, regardless of
+# which betterleaks rule fires.
+
+title = "Dhara betterleaks config"
+
+# -----------------------------------------------------------------------------
+# Block 1: example/test connection URIs.
+#
+# Matches the literal "user:pass@localhost" placeholder used in
+# docstrings, integration test fixtures, and the postgres.py settings
+# example. A real-world URI like "alice:s3cret@db.example.com" will
+# NOT match (non-localhost host + non-placeholder password).
+# -----------------------------------------------------------------------------
+[[allowlists]]
+description = "PostgreSQL example URIs in docstrings + test fixtures"
+regexes = [
+    '''postgresql://(user|alice|admin|testuser|root):(pass|password|secret|admin123|testpass|anypass|wrongpass)@localhost(:\d+)?/''',
+]
+
+# -----------------------------------------------------------------------------
+# Block 2: mock-authenticator placeholders in security test files.
+#
+# MockAuthenticator and similar fakes use these literal tokens. They
+# have zero entropy and cannot collide with a real secret.
+# -----------------------------------------------------------------------------
+[[allowlists]]
+description = "Mock-authenticator placeholders in security/auth tests"
+regexes = [
+    '''\b(testpass|wrongpass|anypass|admin123|secret123|password456|db_pass|secret_key|your-secret-key|database-password)\b''',
+]
+
+# -----------------------------------------------------------------------------
+# Block 3: docs/reference/service-dependencies.md example env-var
+# block (lines 164-165). Quoted export statements in a how-to section.
+# -----------------------------------------------------------------------------
+[[allowlists]]
+description = "docs/reference example env-var exports"
+regexes = [
+    '''export DHARA_(SECRET_KEY|DB_PASSWORD)="(your-secret-key|database-password)"''',
+]
+
+# -----------------------------------------------------------------------------
+# Block 4: Oneiric cache factory + settings plan docs reference the
+# same dhara placeholder URI pattern for illustrative diagrams.
+# -----------------------------------------------------------------------------
+[[allowlists]]
+description = "Plan-doc illustrative URI examples"
+regexes = [
+    '''(user|alice|admin):(pass|password|secret|testpass)@(localhost|127\.0\.0\.1|example\.com)''',
+]
