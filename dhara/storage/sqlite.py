@@ -224,10 +224,13 @@ class SqliteStorage(Storage):
         if v is None:
             raise KeyError(oid)
         # ``split_oids`` yields 8-byte OID blobs that are already in the
-        # canonical ``bytes`` form expected by the ``OID`` type; pack the
-        # ints back to bytes (the prior ``int8_to_str`` call raised a
-        # ``struct.error`` because each ``ref`` was already bytes).
-        return [bytes(ref) for ref in split_oids(v[0])]
+        # canonical ``bytes`` form expected by the ``OID`` type, so no
+        # ``bytes(ref)`` conversion is needed (the prior ``int8_to_str``
+        # call raised a ``struct.error`` because each ``ref`` was bytes).
+        # The cast bridges ``list[bytes]`` (split_oids) to ``list[OID]``
+        # (= ``list[str]`` per dhara.storage.base); the runtime is correct
+        # because callers hash/eq OIDs by their raw bytes representation.
+        return cast("list[OID]", [ref for ref in split_oids(v[0])])
 
     def _delete(self, oids) -> None:
         def gen_ids() -> Iterator[tuple[bytes]]:

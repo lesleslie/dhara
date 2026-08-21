@@ -31,14 +31,16 @@ from importlib.metadata import PackageNotFoundError, version
 from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
     import duckdb
+    from mcp_common.tools import ALL_TOOLS, ToolProfile
 
 # ``Connection`` is re-exported at module scope so legacy test fixtures can
 # patch ``dhara.mcp.server_core.Connection`` directly. The runtime code
 # paths use ``AsyncConnection`` instead, but the symbol is required by
 # the test suite for symbol-level monkeypatching.
 
-from fastmcp.server.auth.authorization import require_scopes
 from mcp_common.fastmcp import FastMCP
 from mcp_common.health import (
     DependencyConfig,
@@ -57,12 +59,6 @@ from dhara.mcp.adapter_lookup import resolve_cache_adapter
 from dhara.mcp.adapter_tools import (
     AdapterRegistry,
     AsyncAdapterRegistry,
-    get_adapter_async_impl,
-    get_adapter_health_async_impl,
-    list_adapter_versions_async_impl,
-    list_adapters_async_impl,
-    store_adapter_async_impl,
-    validate_adapter_async_impl,
 )
 from dhara.mcp.ecosystem_state import AsyncEcosystemStateStore, EventRetention
 from dhara.mcp.fastmcp_auth import build_token_verifier
@@ -609,6 +605,10 @@ class DharaMCPServer:
         """
         from mcp_common.tools.dispatch import _apply_tool_profile
 
+        from dhara.mcp.profiles import (
+            DHARA_MANDATORY_GROUPS,
+            PROFILE_REGISTRATIONS,
+        )
         from dhara.mcp.tools.group_registers import (
             register_adapter_registry_group,
             register_ecosystem_state_group,
@@ -616,25 +616,27 @@ class DharaMCPServer:
             register_kv_timeseries_group,
             register_sql_proxy_group,
         )
-        from dhara.mcp.profiles import (
-            DHARA_MANDATORY_GROUPS,
-            PROFILE_REGISTRATIONS,
-        )
 
-        registration_map = {
+        registration_map: dict[str, Callable[[FastMCP], Awaitable[None] | None]] = {
             "kv_time_series": lambda app: register_kv_timeseries_group(app, self),
             "adapter_registry": lambda app: register_adapter_registry_group(app, self),
             "ecosystem_state": lambda app: register_ecosystem_state_group(app, self),
             "sql_proxy": lambda app: register_sql_proxy_group(app, self),
-            "register_health_tools": lambda app: register_health_tools_group(
-                app, self
-            ),
+            "register_health_tools": lambda app: register_health_tools_group(app, self),
         }
 
+        assert self.server is not None, "FastMCP server required for tool profile dispatch"
+        # ``PROFILE_REGISTRATIONS`` is invariant in its value type; the W0
+        # helper accepts ``list[str | Callable] | type[ALL_TOOLS]``. We
+        # always pass lists, so widen with an explicit cast rather than
+        # polluting the module-level annotation with ``type[ALL_TOOLS]``.
         await _apply_tool_profile(
             server=self.server,
             profile_env_var="DHARA_TOOL_PROFILE",
-            registrations=PROFILE_REGISTRATIONS,
+            registrations=cast(
+                "dict[ToolProfile, list[str | Callable] | type[ALL_TOOLS]]",
+                PROFILE_REGISTRATIONS,
+            ),
             registration_map=registration_map,
             mandatory_groups=DHARA_MANDATORY_GROUPS,
         )

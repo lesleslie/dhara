@@ -16,9 +16,11 @@ from typing import TYPE_CHECKING
 from mcp_common.tools import ToolProfile
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable
+    from collections.abc import Callable
 
     from fastmcp import FastMCP
+
+    from dhara.mcp.server_core import DharaMCPServer
 
 TOOL_GROUP_ADAPTER_REGISTRY = "adapter_registry"
 TOOL_GROUP_KV_TIME_SERIES = "kv_time_series"
@@ -111,7 +113,7 @@ def get_active_profile(env_var: str = "DHARA_TOOL_PROFILE") -> ToolProfile:
 # initialized.
 # ---------------------------------------------------------------------------
 
-PROFILE_REGISTRATIONS: dict[ToolProfile, list[str]] = {
+PROFILE_REGISTRATIONS: dict[ToolProfile, list[str | Callable]] = {
     ToolProfile.MINIMAL: [TOOL_GROUP_KV_TIME_SERIES],
     ToolProfile.STANDARD: [
         TOOL_GROUP_KV_TIME_SERIES,
@@ -135,7 +137,7 @@ REG_KEY_ECOSYSTEM = TOOL_GROUP_ECOSYSTEM_STATE
 REG_KEY_SQL = TOOL_GROUP_SQL_PROXY
 
 
-def _build_registration_map() -> dict[str, Callable[[FastMCP], Awaitable[None] | None]]:
+def _build_registration_map() -> dict[str, Callable[[FastMCP, DharaMCPServer], None]]:
     """Build the {group_key: register_fn(app)} map.
 
     Local import keeps ``dhara.mcp.tools.profiles`` importable without
@@ -158,7 +160,7 @@ def _build_registration_map() -> dict[str, Callable[[FastMCP], Awaitable[None] |
     }
 
 
-REGISTRATION_MAP: dict[str, Callable[[FastMCP], Awaitable[None] | None]] = (
+REGISTRATION_MAP: dict[str, Callable[[FastMCP, DharaMCPServer], None]] = (
     _build_registration_map()
 )
 
