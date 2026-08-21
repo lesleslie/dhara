@@ -22,7 +22,6 @@ import os
 from pathlib import Path
 from typing import Any, ClassVar
 
-import pydantic
 from oneiric.core.logging import get_logger
 
 from dhara.core.config import DharaSettings, StorageConfig

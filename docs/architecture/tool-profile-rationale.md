@@ -11,7 +11,7 @@ during W2+).
 ## Context
 
 Dhara is the Bodai ecosystem's curator/state store (port 8683). Pre-W1,
-DharaMCPServer._register_tools was a 600+ line inline body that registered
+DharaMCPServer.\_register_tools was a 600+ line inline body that registered
 ~25 tools in five groups unconditionally. W1.4 replaced that body with the
 W0 dispatch surface so the four groups can be gated by operator profile.
 

@@ -41,9 +41,7 @@ def _auth_helper(server_self: DharaMCPServer) -> Any:
     return require_scopes
 
 
-def register_kv_timeseries_group(
-    server: FastMCP, instance: DharaMCPServer
-) -> None:
+def register_kv_timeseries_group(server: FastMCP, instance: DharaMCPServer) -> None:
     """Register KV / time-series storage tools (MINIMAL profile).
 
     Mirrors the legacy inline definitions inside
@@ -127,9 +125,7 @@ def register_kv_timeseries_group(
         )
 
 
-def register_adapter_registry_group(
-    server: FastMCP, instance: DharaMCPServer
-) -> None:
+def register_adapter_registry_group(server: FastMCP, instance: DharaMCPServer) -> None:
     """Register adapter-registry tools (STANDARD+ profile)."""
     require_scopes_fn = _auth_helper(instance)
 
@@ -235,9 +231,7 @@ def register_adapter_registry_group(
                 ],
                 "required_scopes": instance.config.authentication.required_scopes.copy(),
                 "token_file": (
-                    str(
-                        instance.config.authentication.token.tokens_file.expanduser()
-                    )
+                    str(instance.config.authentication.token.tokens_file.expanduser())
                     if instance.config.authentication.token.tokens_file is not None
                     else None
                 ),
@@ -341,9 +335,7 @@ def register_adapter_registry_group(
         )
 
 
-def register_ecosystem_state_group(
-    server: FastMCP, instance: DharaMCPServer
-) -> None:
+def register_ecosystem_state_group(server: FastMCP, instance: DharaMCPServer) -> None:
     """Register ecosystem-state tools (STANDARD+ profile)."""
     require_scopes_fn = _auth_helper(instance)
 
@@ -442,9 +434,7 @@ def register_ecosystem_state_group(
         return {"ok": True, "count": len(events), "events": events}
 
 
-def register_sql_proxy_group(
-    server: FastMCP, instance: DharaMCPServer
-) -> None:
+def register_sql_proxy_group(server: FastMCP, instance: DharaMCPServer) -> None:
     """Register SQL proxy tools (FULL profile only)."""
     require_scopes_fn = _auth_helper(instance)
 
@@ -477,9 +467,7 @@ def register_sql_proxy_group(
         return await _dhara_sql_query_impl(sql=sql, params=params)  # type: ignore[no-any-return]
 
 
-def register_health_tools_group(
-    server: FastMCP, instance: DharaMCPServer
-) -> None:
+def register_health_tools_group(server: FastMCP, instance: DharaMCPServer) -> None:
     """Register health check tools (always-on via DHARA_MANDATORY_GROUPS).
 
     Delegates to the existing ``DharaMCPServer._register_health_tools``

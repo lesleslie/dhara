@@ -12,7 +12,6 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
 
-import pydantic
 from oneiric.core.logging import get_logger
 
 from dhara.core.config import DharaSettings, StorageConfig

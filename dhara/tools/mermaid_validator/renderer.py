@@ -261,8 +261,7 @@ def _parse_validator_results(stdout: str) -> list[Any]:
         return json.loads(stdout)
     except json.JSONDecodeError as e:
         raise RuntimeError(
-            f"validate_mermaid.mjs returned invalid JSON: {e}; "
-            f"stdout={stdout[:200]!r}"
+            f"validate_mermaid.mjs returned invalid JSON: {e}; stdout={stdout[:200]!r}"
         ) from e
 
 

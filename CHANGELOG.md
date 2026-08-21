@@ -5,6 +5,44 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0] - 2026-08-21
+
+### Added
+
+- dhara: Apply ToolProfile dispatch via mcp-common 0.18.0
+- Standardize bootstrap_baseline_tools at dhara/mcp/server_core.py
+
+### Fixed
+
+- collections: Silence SIM118 in PersistentDict.update()
+- dhara: MCP tool dispatch tests + tool-group drift — 7 tests
+- dhara: Order-dependent flake — leaked patches + 2 tests
+- dhara: Persistent root mutations dropped before commit — 4 tests
+- dhara: Restore test_mcp_server_core baseline + strengthen wiring tests
+- dhara: Sync note_change callers in test_async_connection — 3 tests
+- dhara: Sync version stamps (2026-08-19)
+- dhara: Test collection ignores + pre-test wire-loop reset
+- Resolve TestDharaMCPServerBackendSelection mock_outdated (4 tests)
+- typing: Resolve ty + refurb errors in profiles/server_core/sqlite
+- undefined: Complete contract_info and discover_tools test wrappers
+- undefined: Harden adapter_tools.count and close test fixtures
+- undefined: Populate adapter tool kwargs defaults in test wrappers
+- undefined: Resolve pre-existing test failures in dhara
+- undefined: Resolve test isolation event-loop collisions
+
+### Documentation
+
+- dhara: Add tool-profile rationale + CLAUDE.md subsection (W1.4 backfill)
+- dhara: Fix documented-but-not-wired audit findings (2026-08-19)
+
+### Testing
+
+- dhara: Add doc-drift CI guard (2026-08-19)
+
+### Internal
+
+- security: Add .betterleaks.toml to silence placeholder findings
+
 ## [0.15.2] - 2026-08-17
 
 ### Added
@@ -21,9 +59,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - dhara: Correct db port typo 2973 -> 2972 in CLAUDE.md
 - dhara: Document list_prefix and SQL Proxy tools in mcp README
 - dhara: Source mcp __version__ from importlib.metadata
-- dhara: Wire /health response version to _PACKAGE_VERSION
+- dhara: Wire /health response version to \_PACKAGE_VERSION
 - dhara: Wire MCP /health version to importlib.metadata
-- Drop fictional dhara_* tool namespace from mcp README
+- Drop fictional dhara\_\* tool namespace from mcp README
 
 ### Documentation
 
@@ -32,7 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Internal
 
-- gitignore: Add .coverage* + untrack .coverage-ratchet.json (bodai 2026-08-17)
+- gitignore: Add .coverage\* + untrack .coverage-ratchet.json (bodai 2026-08-17)
 - gitignore: Ignore docs/archive/test-artifacts/, untrack coverage dumps
 
 ## [0.15.1] - 2026-08-12
