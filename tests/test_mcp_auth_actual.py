@@ -217,12 +217,24 @@ def test_hmac_auth_file_loading_and_hash_branch(tmp_path):
 
 
 def test_generate_token_helpers(monkeypatch):
-    monkeypatch.setattr(auth_module.secrets, "token_hex", lambda length: "a" * (length * 2))
+    # Wave 3: generate_token no longer calls secrets.token_hex directly;
+    # it routes through SecuritySecureAction (mode='token') which uses
+    # secrets.token_urlsafe. Monkeypatch the action's underlying
+    # token_urlsafe so we can assert deterministic token shapes without
+    # coupling to the exact url-safe length.
+    url_safe_calls: list[int] = []
+
+    def fake_url_safe(n: int) -> str:
+        url_safe_calls.append(n)
+        return "a" * (4 * n // 3)
+
+    monkeypatch.setattr(auth_module.secrets, "token_urlsafe", fake_url_safe)
     token = generate_token(8)
-    assert token == "a" * 16
+    assert token == "a" * 10  # 4 * 8 // 3 == 10
+    assert url_safe_calls == [8]
 
     api_token, token_hash = generate_api_token("token-id", role="admin")
-    assert api_token == "a" * 64
+    assert api_token == "a" * (4 * 32 // 3)  # default generate_token length
     assert token_hash == hashlib.sha256(api_token.encode()).hexdigest()
 
 

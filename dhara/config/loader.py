@@ -5,6 +5,7 @@ This module provides utilities for loading Dhara configuration from
 various sources (files, dictionaries, environment variables).
 """
 
+import asyncio
 import os
 from copy import deepcopy
 from functools import lru_cache
@@ -331,15 +332,35 @@ def load_config_from_env(
 def _serialization_action() -> SerializationAction:
     """Return the process-wide ``SerializationAction`` for config file writes.
 
-    Uses ``sort_keys=False`` to preserve the call-site key order from
-    ``DharaConfig.to_dict()``.
+    Used only for the YAML path; JSON bypasses the kit so ``indent=2`` is
+    preserved (the kit does not honor payload-level ``indent``).
     """
     return SerializationAction(
         settings=SerializationActionSettings(
-            default_format="json",
+            default_format="yaml",
             sort_keys=False,
             ensure_ascii=False,
         )
+    )
+
+
+def _block_on_running_loop() -> None:
+    """Raise if a sync caller invokes this from inside a running event loop.
+
+    ``asyncio.run()`` inside a sync helper fails with ``RuntimeError`` when
+    an outer loop is already running. This guard surfaces the constraint
+    to the caller up front instead of letting ``asyncio.run()`` blow up
+    deeper in the call stack with a less obvious error.
+    """
+    import asyncio
+
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return
+    raise RuntimeError(
+        "save_config cannot be called from inside a running event loop; "
+        "use the async serialization API or call from a thread."
     )
 
 
@@ -369,9 +390,11 @@ def save_config(
     if format == "yaml":
         # Wave 3 (W3): route YAML config writes through the canonical
         # ``serialization.encode`` action so format, key order, and ASCII
-        # behavior match every other Bodai component.
-        import asyncio
-
+        # behavior match every other Bodai component. JSON bypasses the
+        # kit because ``SerializationAction`` does not honor payload-level
+        # ``indent`` (verified at oneiric/actions/serialization.py:91) and
+        # Dhara's existing config files use ``indent=2`` for readability.
+        _block_on_running_loop()
         result = asyncio.run(
             _serialization_action().execute(
                 {"mode": "encode", "format": "yaml", "value": data}
@@ -379,19 +402,12 @@ def save_config(
         )
         content = result["text"]
     elif format == "json":
-        import asyncio
+        import json as _json
 
-        result = asyncio.run(
-            _serialization_action().execute(
-                {
-                    "mode": "encode",
-                    "format": "json",
-                    "value": data,
-                    "indent": 2,
-                }
-            )
-        )
-        content = result["text"]
+        _block_on_running_loop()
+        # Direct json.dumps preserves the legacy ``indent=2`` shape that
+        # all DharaConfig consumers rely on.
+        content = _json.dumps(data, indent=2)
     else:
         raise ValueError(f"Unsupported format: {format}")
 

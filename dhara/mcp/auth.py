@@ -710,17 +710,46 @@ def _secure_token_action() -> SecuritySecureAction:
     )
 
 
+def _block_on_running_loop() -> None:
+    """Raise if ``generate_token`` is called from inside a running event loop.
+
+    ``asyncio.run()`` inside a sync helper fails with ``RuntimeError`` when an
+    outer loop is already running. This guard surfaces the constraint to
+    the caller up front. ``dhara.mcp.server_core`` is async (see
+    server_core.py:152, 202, 234) — any future caller there should switch
+    to ``await _secure_token_action().execute(...)`` directly instead of
+    going through this sync wrapper.
+    """
+    import asyncio
+
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return
+    raise RuntimeError(
+        "generate_token cannot be called from inside a running event loop; "
+        "await oneiric.actions.security.SecuritySecureAction.execute "
+        "directly from async callers."
+    )
+
+
 def generate_token(length: int = 32) -> str:
     """Generate a secure random token.
 
     Wave 3 (W3): routed through ``oneiric.actions.security.SecuritySecureAction``
     so token entropy and format are identical to akosha, mahavishnu, and the
-    *-mcp repos. The ``length`` argument is preserved for backward compatibility
-    but the underlying ``secrets.token_urlsafe`` always emits the configured
-    token_length from the kit settings.
+    *-mcp repos. The ``length`` argument is preserved for backward
+    compatibility; the underlying ``secrets.token_urlsafe`` emits a
+    base64-url-safe string (~22 chars for n=16, ~43 chars for n=32) — this
+    is a documented format change from the legacy ``secrets.token_hex``
+    (which produced 2n hex chars). Cryptographic strength is unchanged;
+    downstream consumers should treat tokens as opaque strings.
+
+    Sync only — calling from inside an event loop raises ``RuntimeError``.
     """
     import asyncio
 
+    _block_on_running_loop()
     result = asyncio.run(
         _secure_token_action().execute({"mode": "token", "length": length})
     )

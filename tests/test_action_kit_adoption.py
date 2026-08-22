@@ -53,7 +53,9 @@ def test_generate_token_is_unique() -> None:
 
 def test_serialization_action_uses_canonical_envelope() -> None:
     action = _serialization_action()
-    assert action._settings.default_format == "json"
+    # default_format is "yaml" because JSON bypasses the kit (it does
+    # not honor payload-level ``indent``); see loader.py:save_config.
+    assert action._settings.default_format == "yaml"
     assert action._settings.sort_keys is False
     assert action.metadata.key == "serialization.encode"
 
