@@ -7,10 +7,15 @@ various sources (files, dictionaries, environment variables).
 
 import os
 from copy import deepcopy
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal, cast
 
 import yaml
+from oneiric.actions.serialization import (
+    SerializationAction,
+    SerializationActionSettings,
+)
 
 from dhara.config.defaults import (
     DharaConfig,
@@ -322,6 +327,22 @@ def load_config_from_env(
     return config
 
 
+@lru_cache(maxsize=1)
+def _serialization_action() -> SerializationAction:
+    """Return the process-wide ``SerializationAction`` for config file writes.
+
+    Uses ``sort_keys=False`` to preserve the call-site key order from
+    ``DharaConfig.to_dict()``.
+    """
+    return SerializationAction(
+        settings=SerializationActionSettings(
+            default_format="json",
+            sort_keys=False,
+            ensure_ascii=False,
+        )
+    )
+
+
 def save_config(
     config: DharaConfig,
     path: str | Path,
@@ -346,11 +367,31 @@ def save_config(
     data = config.to_dict()
 
     if format == "yaml":
-        content = yaml.dump(data, default_flow_style=False, sort_keys=False)
-    elif format == "json":
-        import json
+        # Wave 3 (W3): route YAML config writes through the canonical
+        # ``serialization.encode`` action so format, key order, and ASCII
+        # behavior match every other Bodai component.
+        import asyncio
 
-        content = json.dumps(data, indent=2)
+        result = asyncio.run(
+            _serialization_action().execute(
+                {"mode": "encode", "format": "yaml", "value": data}
+            )
+        )
+        content = result["text"]
+    elif format == "json":
+        import asyncio
+
+        result = asyncio.run(
+            _serialization_action().execute(
+                {
+                    "mode": "encode",
+                    "format": "json",
+                    "value": data,
+                    "indent": 2,
+                }
+            )
+        )
+        content = result["text"]
     else:
         raise ValueError(f"Unsupported format: {format}")
 

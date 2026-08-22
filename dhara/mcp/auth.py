@@ -14,9 +14,14 @@ import logging
 from collections.abc import Callable
 from datetime import UTC, datetime
 from enum import Enum
-from functools import wraps
+from functools import lru_cache, wraps
 from pathlib import Path
 from typing import Any
+
+from oneiric.actions.security import (
+    SecuritySecureAction,
+    SecuritySecureSettings,
+)
 
 from mcp_common.auth.audit import AuditLogger, AuthAuditEvent
 from mcp_common.auth.config import AuthConfig
@@ -691,9 +696,35 @@ class AuthMiddleware:
         self.audit_log.info(f"AUDIT: {json.dumps(log_data)}")
 
 
+@lru_cache(maxsize=1)
+def _secure_token_action() -> SecuritySecureAction:
+    """Return the process-wide ``SecuritySecureAction`` for token issuance.
+
+    Wires token generation through the Oneiric ``security.secure`` action so
+    the entropy source and token format match every other Bodai component
+    (32-byte url-safe by default).
+    """
+
+    return SecuritySecureAction(
+        settings=SecuritySecureSettings(token_length=32),
+    )
+
+
 def generate_token(length: int = 32) -> str:
-    """Generate a secure random token."""
-    return secrets.token_hex(length)
+    """Generate a secure random token.
+
+    Wave 3 (W3): routed through ``oneiric.actions.security.SecuritySecureAction``
+    so token entropy and format are identical to akosha, mahavishnu, and the
+    *-mcp repos. The ``length`` argument is preserved for backward compatibility
+    but the underlying ``secrets.token_urlsafe`` always emits the configured
+    token_length from the kit settings.
+    """
+    import asyncio
+
+    result = asyncio.run(
+        _secure_token_action().execute({"mode": "token", "length": length})
+    )
+    return result["token"]
 
 
 def generate_api_token(token_id: str, role: str = "readonly") -> tuple[str, str]:
