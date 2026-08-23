@@ -1,7 +1,10 @@
 *.so
 *.pyc
 *.dhara
+.venv/
+venv/
 dist
+htmlcov/
 
 # Oneiric runtime cache (should not be tracked)
 .oneiric_cache/
@@ -53,6 +56,7 @@ build/
 benchmarks-baseline.txt
 
 .superprofits/
+.superpowers/
 
 # ============================================================================
 # Node.js - Wave-11 mermaid CI guard
