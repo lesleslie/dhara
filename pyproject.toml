@@ -32,7 +32,7 @@ name = "dhara"
 version = "0.16.0"
 description = "A Python Persistent Object Database with ACID Transactions"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 license = {text = "BSD-3-CLAUSE"}
 # dhara is a fork of Durus (https://www.durus.org/), originally developed at
 # CNRI under the Zope Public License. dhara has been re-licensed under BSD-3
