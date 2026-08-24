@@ -23,13 +23,13 @@ def sd_listen_fds():
     """
     try:
         pid = int(os.environ["LISTEN_PID"])
-    except (ValueError, KeyError):
+    except ValueError, KeyError:
         return 0
     if os.getpid() != pid:
         return 0
     try:
         fds = int(os.environ["LISTEN_FDS"])
-    except (ValueError, KeyError):
+    except ValueError, KeyError:
         raise OSError("invalid LISTEN_FDS value")
     _set_close_on_exec(fds)
     return fds

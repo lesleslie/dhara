@@ -625,7 +625,9 @@ class DharaMCPServer:
             "register_health_tools": lambda app: register_health_tools_group(app, self),
         }
 
-        assert self.server is not None, "FastMCP server required for tool profile dispatch"
+        assert self.server is not None, (
+            "FastMCP server required for tool profile dispatch"
+        )
         # ``PROFILE_REGISTRATIONS`` is invariant in its value type; the W0
         # helper accepts ``list[str | Callable] | type[ALL_TOOLS]``. We
         # always pass lists, so widen with an explicit cast rather than

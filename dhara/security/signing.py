@@ -52,9 +52,7 @@ class ObjectSigner:
         self._backend = default_backend()
 
     @classmethod
-    def from_password(
-        cls, password: bytes, salt: bytes | None = None
-    ) -> "ObjectSigner":
+    def from_password(cls, password: bytes, salt: bytes | None = None) -> ObjectSigner:
         """Create signer from password using PBKDF2 key derivation.
 
         This is the recommended way to create a signer from a user-provided
@@ -85,7 +83,7 @@ class ObjectSigner:
         return cls(kdf.derive(password))
 
     @classmethod
-    def from_file(cls, path: str | Path) -> "ObjectSigner":
+    def from_file(cls, path: str | Path) -> ObjectSigner:
         """Load signer key from file.
 
         Args:

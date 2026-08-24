@@ -5,6 +5,24 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] - 2026-08-24
+
+### Added
+
+- mcp: Add worktree-registry keyspace + dataclasses (ADR 015 v4 §11)
+- w3: Adopt security.secure + serialization.encode action kits
+
+### Fixed
+
+- dhara: Gitignore .venv, htmlcov, .superpowers; fix .superprofits typo
+- w3: Close dhara gaps from review
+
+### Internal
+
+- Bump requires-python to >=3.14
+- dhara: Bump tool-config pins from 3.13 to 3.14
+- dhara: Uv python pin 3.14
+
 ## [0.16.0] - 2026-08-21
 
 ### Added

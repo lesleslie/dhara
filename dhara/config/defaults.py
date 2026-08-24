@@ -167,7 +167,7 @@ class DharaConfig:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "DharaConfig":
+    def from_dict(cls, data: dict) -> DharaConfig:
         """Create configuration from dictionary.
 
         Args:

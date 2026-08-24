@@ -12,7 +12,6 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal, cast
 
-import yaml
 from oneiric.actions.serialization import (
     SerializationAction,
     SerializationActionSettings,

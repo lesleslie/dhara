@@ -486,7 +486,7 @@ class StorageServer:
                 # Use select with timeout to allow checking _running flag
                 try:
                     r, _w, e = select.select([sock], [], [], 1.0)
-                except (OSError, ValueError):
+                except OSError, ValueError:
                     continue
 
                 for s in r:
@@ -542,7 +542,7 @@ class StorageServer:
                     # Handle command with appropriate locking
                     self._handle_command_threaded(s, client, command_code)
 
-                except (TimeoutError, OSError, ClientError):
+                except TimeoutError, OSError, ClientError:
                     break
 
         finally:

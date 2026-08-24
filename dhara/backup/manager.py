@@ -94,7 +94,7 @@ class BackupMetadata:
         return result
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "BackupMetadata":
+    def from_dict(cls, data: dict[str, Any]) -> BackupMetadata:
         """Create from dictionary."""
         data = data.copy()
         data["backup_type"] = BackupType(data["backup_type"])

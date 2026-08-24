@@ -27,11 +27,9 @@ from a Dhara MCP tool).
 from __future__ import annotations
 
 import json
-import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
-from typing import Any, Literal
-
+from typing import Any
 
 # Keyspace prefix for all mahavishnu-owned keys in Dhara. The full
 # keyspace is namespaced under this prefix so other components
@@ -114,15 +112,15 @@ class Principal:
     cleanup_policy_override: str | None = None  # Literal["mark", "keep", "remove"]
 
     @classmethod
-    def from_uid(cls, uid: int, *, name: str | None = None) -> "Principal":
+    def from_uid(cls, uid: int, *, name: str | None = None) -> Principal:
         return cls(uid=uid, name=name or f"uid:{uid}")
 
     @classmethod
-    def anonymous(cls) -> "Principal":
+    def anonymous(cls) -> Principal:
         return cls(uid=None, name="anonymous")
 
     @classmethod
-    def current(cls) -> "Principal":
+    def current(cls) -> Principal:
         import os
 
         return cls.from_uid(os.getuid())
@@ -189,10 +187,10 @@ def deserialize_audit_event(blob: bytes) -> AuditEvent:
 
 
 __all__ = [
-    "AuditEvent",
     "CANONICAL_TYPES_MODULE",
     "CANONICAL_TYPES_NAMES",
     "KEYSPACE_PREFIX",
+    "AuditEvent",
     "Principal",
     "WorktreeLock",
     "audit_log_idx_date",

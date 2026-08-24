@@ -18,16 +18,15 @@ from functools import lru_cache, wraps
 from pathlib import Path
 from typing import Any
 
-from oneiric.actions.security import (
-    SecuritySecureAction,
-    SecuritySecureSettings,
-)
-
 from mcp_common.auth.audit import AuditLogger, AuthAuditEvent
 from mcp_common.auth.config import AuthConfig
 from mcp_common.auth.core import verify_token as _verify_token
 from mcp_common.auth.exceptions import AuthError
 from mcp_common.auth.permissions import Permission
+from oneiric.actions.security import (
+    SecuritySecureAction,
+    SecuritySecureSettings,
+)
 
 logger = logging.getLogger(__name__)
 

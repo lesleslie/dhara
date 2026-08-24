@@ -318,7 +318,7 @@ def health_probe_handler() -> RuntimeHealthSnapshot:
             if snap_state is not None
             else time.time()
         )
-    except (FileNotFoundError, KeyError, AttributeError, ValueError):
+    except FileNotFoundError, KeyError, AttributeError, ValueError:
         # No existing snapshot or malformed - use current time
         started_at = time.time()
 

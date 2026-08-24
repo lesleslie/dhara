@@ -264,7 +264,7 @@ class AsyncPostgresStorage:
             async with self._pool.acquire() as conn:
                 await conn.execute("SELECT 1")
             return True
-        except (OSError, asyncpg.PostgresError):
+        except OSError, asyncpg.PostgresError:
             return False
 
     async def cleanup(self) -> None:
