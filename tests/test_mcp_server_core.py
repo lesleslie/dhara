@@ -837,7 +837,6 @@ class TestToolRegistration:
             # ``discover_tools`` is registered via ``Tool.from_function``
             # rather than ``@server.tool``; install it on the mock server
             # directly so the full-profile assertion below sees the name.
-            from mcp.server.fastmcp.utilities.func_metadata import func_metadata
 
             async def _discover(query: str | None = None) -> list[dict[str, object]]:
                 return []
