@@ -101,7 +101,6 @@ include = [
     "*.py",
     "*.txt",
     "*.md",
-    "MANIFEST.in",
     "pyproject.toml",
     "README.md",
     "LICENSE",

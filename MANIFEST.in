@@ -1,4 +1,0 @@
-global-include *.py
-include *.txt *.md MANIFEST.in
-include doc/*.txt
-include test/*.py
