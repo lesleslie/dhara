@@ -87,6 +87,36 @@ dhara = "dhara.cli:main"
 [tool.hatch.build.targets.wheel]
 packages = ["dhara"]
 
+[tool.hatch.build.targets.sdist]
+# Mirror the old MANIFEST.in whitelist (which was setuptools-specific and
+# ignored by hatchling). Without this, the sdist would ship tooling
+# dotfiles like .envrc, .mcp.json, .claude-plugin/, .semgrepignore, the
+# .benchmarks/ cache, etc. We want only: package source, tests, docs,
+# top-level project metadata.
+include = [
+    "/dhara",
+    "/tests",
+    "/test",
+    "/doc",
+    "*.py",
+    "*.txt",
+    "*.md",
+    "MANIFEST.in",
+    "pyproject.toml",
+    "README.md",
+    "LICENSE",
+]
+exclude = [
+    ".benchmarks",
+    ".claude-plugin",
+    ".lycheecache",
+    ".mcp.json",
+    ".envrc",
+    ".python-version",
+    ".semgrepignore",
+    ".betterleaks.toml",
+]
+
 [tool.ruff]
 target-version = "py314"
 line-length = 88
