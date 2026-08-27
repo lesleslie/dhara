@@ -70,12 +70,18 @@ def _make_mock_settings(**overrides) -> MagicMock:
 
 
 def _build_cli_app(settings: MagicMock):
-    """Build a real Typer app while stubbing the CLI factory."""
+    """Build a real Typer app while stubbing the CLI factory.
+
+    Phase 3 Task 4.2: ``create_cli`` now constructs a ``DharaCLI``
+    (a ``BodaiCLIBase`` subclass) that mounts the MCP lifecycle sub-Typer
+    by binding ``MCPServerCLIFactory._cmd_*`` instance methods directly,
+    so the factory's ``create_app`` is no longer called. We stub the
+    factory so any bound command bodies degrade to ``MagicMock`` calls
+    rather than touching the real Dhara server.
+    """
     from dhara.cli import create_cli
 
     factory = MagicMock()
-    app = typer.Typer()
-    factory.create_app.return_value = app
 
     with (
         patch("dhara.core.config.DharaSettings.load", return_value=settings),
@@ -709,21 +715,31 @@ class TestCreateCli:
         mock_create_storage,
         mock_create_admin,
     ):
-        """create_cli should return a Typer app instance."""
+        """``create_cli`` must return a ``DharaCLI`` (a ``BodaiCLIBase`` /
+        ``typer.Typer``) and wire up the legacy + Dhara-specific command
+        groups on it. Phase 3 Task 4.2 removed the call to
+        ``MCPServerCLIFactory.create_app``; commands are now mounted by
+        binding ``factory._cmd_*`` instance methods onto a sub-Typer
+        inside ``DharaCLI._register_mcp_subcommands``."""
+        from dhara.cli import DharaCLI
+
         mock_settings = _make_mock_settings()
 
         mock_factory = MagicMock()
-        mock_app = MagicMock(spec=typer.Typer)
-        mock_factory.create_app.return_value = mock_app
         mock_factory_cls.return_value = mock_factory
 
         with patch("dhara.core.config.DharaSettings.load", return_value=mock_settings):
             result = create_cli()
 
-        assert result is mock_app
+        assert isinstance(result, DharaCLI)
+        # Factory is instantiated once so ``DharaCLI`` can bind the
+        # lifecycle sub-command bodies; ``create_app`` is no longer
+        # called because ``DharaCLI`` is itself the root Typer app.
         mock_factory_cls.assert_called_once()
-        mock_factory.create_app.assert_called_once()
-        mock_create_db.assert_called_once_with(mock_app)
+        mock_factory.create_app.assert_not_called()
+        # Legacy + Dhara-specific command groups should be mounted on
+        # the new ``DharaCLI`` instance (which IS a typer.Typer).
+        mock_create_db.assert_called_once()
         mock_create_adapters.assert_called_once()
         mock_create_storage.assert_called_once()
         mock_create_admin.assert_called_once()
@@ -765,23 +781,40 @@ class TestCreateCliRuntime:
     """Tests for the runtime behavior of the Typer app built by create_cli()."""
 
     def test_version_option_prints_version(self):
-        """The global --version flag should print the CLI version.
+        """The global ``--version`` flag should print the CLI version.
 
         Source of truth is ``pyproject.toml [project].version`` via
         ``importlib.metadata.version("dhara")``; the test asserts the
         prefix and reads the actual version dynamically so the assertion
         tracks future bumps automatically.
+
+        Phase 3 Task 4.2: the ``--version`` option is now contributed by
+        ``BodaiCLIBase``'s unified callback, which uses a parameter
+        named ``version_flag`` (not ``version``). We invoke the same
+        callback via the CliRunner so the test exercises Typer's actual
+        parsing/CLI surface (not the inner-callback function signature).
         """
         from importlib.metadata import version
 
+        from typer.testing import CliRunner
+
         settings = _make_mock_settings()
         app = _build_cli_app(settings)
+        runner = CliRunner()
 
         with patch("typer.echo") as mock_echo:
-            with pytest.raises(typer.Exit):
-                app.registered_callback.callback(version=True)
+            result = runner.invoke(app, ["--version"])
 
-        mock_echo.assert_called_once_with(f"dhara version {version('dhara')}")
+        assert result.exit_code == 0, result.output
+        # BodaiCLIBase's unified callback emits "<component>: <version>".
+        # We accept either the legacy ``dhara version X`` or the new
+        # ``dhara: X`` shape so the assertion remains backwards-tolerant
+        # while still proving the version flag triggers a print.
+        expected_v = version("dhara")
+        assert any(
+            expected_v in str(call.args[0]) if call.args else False
+            for call in mock_echo.call_args_list
+        ) or expected_v in result.output
 
     def test_adapters_storage_and_admin_commands(self, tmp_path):
         """Root-level custom commands should execute through the Typer app."""

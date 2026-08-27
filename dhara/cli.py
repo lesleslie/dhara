@@ -21,11 +21,20 @@ Usage:
     dhara storage
     dhara admin --confirm
 
+    # BodaiCLIBase global commands
+    dhara version
+    dhara doctor
+    dhara health
+
 ★ Insight: Unified CLI Pattern ─────────────────────────────────────
 1. MCPServerCLIFactory with use_mcp_subcommand=True for `dhara mcp`
 2. Legacy-compatible database CLI restructured under `dhara db`
 3. Custom Dhara-specific commands at root level (adapters, storage, admin)
-4. Single entry point: `dhara` handles both MCP and database operations
+4. Subclass of ``BodaiCLIBase`` so `version`/`doctor`/`health` come from
+   the shared base (Phase 3 Task 4.2 of the Bodai CLI audit).
+5. `doctor` returns Dhara-specific checks (config-loadable,
+   storage path, backup catalog). `health` returns a runtime snapshot
+   covering settings + storage + backup subsystems.
 ───────────────────────────────────────────────────────────────────
 """
 
@@ -43,6 +52,7 @@ from mcp_common.cli import (
     RuntimeHealthSnapshot,
 )
 from mcp_common.cli.health import load_runtime_health, write_runtime_health
+from oneiric.cli.base import BodaiCLIBase
 from oneiric.core.logging import get_logger
 
 from dhara.core.config import DharaSettings
@@ -672,61 +682,184 @@ def main() -> None:
     app()
 
 
-def create_cli() -> typer.Typer:
+class DharaCLI(BodaiCLIBase):
+    """Dhara Typer app extending ``BodaiCLIBase``.
+
+    Inherits the global ``version`` / ``doctor`` / ``health`` commands and
+    ``--json`` flag from the Bodai shared base. In addition, composes the
+    MCP server-lifecycle subcommand group (``dhara mcp start`` etc.) by
+    delegating to ``MCPServerCLIFactory`` for the actual command bodies.
+
+    Subclasses override ``_doctor_checks`` and ``_health_probe`` with
+    Dhara-specific probes (settings-loadable, storage-path, backup-catalog,
+    storage-accessible runtime snapshot). The default base-class behaviour
+    raises ``NotImplementedError`` (mapped to ``ExitCode.UNAVAILABLE``); we
+    override so the global ``doctor``/``health`` commands return repo data.
+    """
+
+    def __init__(self, settings: DharaSettings) -> None:
+        super().__init__(
+            component_name="dhara",
+            help="Dhara persistent object database + MCP server CLI",
+        )
+        # ``DharaSettings`` extends ``OneiricMCPConfig``; they share
+        # BaseModel structure but are sibling classes. ``cast`` at the
+        # boundary keeps static checkers happy with the structural duck-type.
+        self._settings = settings
+        self._factory = MCPServerCLIFactory(
+            server_name="dhara",
+            settings=cast(MCPServerSettings, settings),
+            start_handler=start_handler,
+            stop_handler=stop_handler,
+            health_probe_handler=health_probe_handler,
+            use_mcp_subcommand=True,
+        )
+        self._register_mcp_subcommands()
+        # Register the same legacy + Dhara-specific command groups as
+        # before. The Typer contract is satisfied because ``BodaiCLIBase``
+        # is itself a ``typer.Typer`` subclass.
+        _create_db_commands(self)
+        _create_adapters_command(self, settings)
+        _create_storage_command(self, settings)
+        _create_admin_command(self, settings)
+
+    def _register_mcp_subcommands(self) -> None:
+        """Mount ``dhara mcp {start,stop,restart,status,health}`` on this app.
+
+        Mirrors the public surface of ``MCPServerCLIFactory.create_app``
+        without using it directly — the factory returns a plain
+        ``typer.Typer``, which would erase the BodaiCLIBase unified
+        callback and the ``version``/``doctor``/``health`` commands we
+        get from this base class.
+        """
+        mcp_app = typer.Typer(
+            help="MCP server lifecycle management",
+            add_completion=False,
+        )
+        self.add_typer(mcp_app, name="mcp")
+        # ``MCPServerCLIFactory._cmd_*`` are instance methods; bind by
+        # attribute access so ``self`` is forwarded correctly.
+        mcp_app.command("start")(self._factory._cmd_start)
+        mcp_app.command("stop")(self._factory._cmd_stop)
+        mcp_app.command("restart")(self._factory._cmd_restart)
+        mcp_app.command("status")(self._factory._cmd_status)
+        mcp_app.command("health")(self._factory._cmd_health)
+
+    def _doctor_checks(self) -> dict[str, dict[str, str]]:
+        """Return Dhara-specific pre-flight doctor checks.
+
+        Reports the same checks a human operator would run before starting
+        the server: settings loadable, storage path is reachable, backup
+        catalog is present (if backups are enabled). ``status`` is one
+        of ``ok``, ``degraded``, or ``failed`` so callers can grep.
+        """
+        checks: dict[str, dict[str, str]] = {}
+        try:
+            settings = DharaSettings.load("dhara")
+        except Exception as exc:  # noqa: BLE001  # doctor boundary: report failure, don't crash
+            return {
+                "config_load": {
+                    "status": "failed",
+                    "detail": f"settings could not be loaded: {exc}",
+                },
+            }
+
+        checks["config_load"] = {"status": "ok", "detail": "dhara settings loadable"}
+
+        storage_path = settings.storage.path.expanduser()
+        if storage_path.exists():
+            label = "directory" if storage_path.is_dir() else "file"
+            checks[f"storage_path_{label}"] = {
+                "status": "ok",
+                "detail": str(storage_path),
+            }
+        else:
+            checks["storage_path"] = {
+                "status": "degraded",
+                "detail": f"not yet created: {storage_path}",
+            }
+
+        if settings.backups.enabled:
+            backup_dir = settings.backups.directory.expanduser()
+            catalog = backup_dir / "backup_catalog.dhara"
+            if catalog.exists():
+                checks["backup_catalog"] = {
+                    "status": "ok",
+                    "detail": str(catalog),
+                }
+            else:
+                checks["backup_catalog"] = {
+                    "status": "degraded",
+                    "detail": f"missing: {catalog}",
+                }
+        else:
+            checks["backup_catalog"] = {
+                "status": "ok",
+                "detail": "backups disabled in settings",
+            }
+        return checks
+
+    def _health_probe(self) -> dict[str, Any]:
+        """Return a Dhara runtime health snapshot.
+
+        Mirrors the shape ``dhara mcp health --probe`` already exposes
+        (storage-accessible bool, backup catalog accessibility) so the
+        ``--json`` consumer contract is preserved.
+        """
+        try:
+            settings = DharaSettings.load("dhara")
+            settings_loaded = True
+            load_error: str | None = None
+        except Exception as exc:  # noqa: BLE001  # health boundary: report failure, don't crash
+            settings = None
+            settings_loaded = False
+            load_error = str(exc)
+
+        storage: dict[str, object] = (
+            _probe_storage_runtime(settings) if settings is not None else {}
+        )
+        backup: dict[str, object] = (
+            _probe_backup_runtime(settings) if settings is not None else {}
+        )
+        storage_accessible = bool(storage.get("storage_accessible", False))
+
+        return {
+            "component": "dhara",
+            "version": self.component_version,
+            "settings_loaded": settings_loaded,
+            "load_error": load_error,
+            "storage_accessible": storage_accessible,
+            "current_status": "healthy"
+            if storage_accessible and settings_loaded
+            else "unhealthy",
+            "storage": storage,
+            "backup": backup,
+        }
+
+
+def create_cli() -> DharaCLI:
     """Create unified CLI application with MCP and database commands.
 
     Returns:
-        Typer app with all commands registered
+        :class:`DharaCLI` instance — a ``typer.Typer`` (via ``BodaiCLIBase``)
+        with all commands registered.
 
     ★ Insight: CLI Composition ─────────────────────────────────────────
-    1. MCPServerCLIFactory with use_mcp_subcommand=True creates `dhara mcp`
-    2. Legacy-compatible database CLI restructured under `dhara db`
-    3. Custom Dhara-specific commands at root level (adapters, storage, admin)
-    4. Single unified entry point replaces separate dhara and dhara-mcp commands
+    1. ``DharaCLI`` extends ``BodaiCLIBase`` so ``version``/``doctor``/
+       ``health`` come from the shared base (no manual ``@app.callback``
+       for ``--version``).
+    2. The MCP lifecycle subcommand group (``dhara mcp …``) is composed
+       by binding ``MCPServerCLIFactory._cmd_*`` instance methods onto a
+       sub-Typer — no business-logic duplication.
+    3. Legacy-compatible database CLI is restructured under ``dhara db``.
+    4. Custom Dhara-specific commands at root level (adapters, storage,
+       admin).
+    5. Single unified entry point replaces separate dhara and dhara-mcp
+       commands.
     ────────────────────────────────────────────────────────────────────
     """
-    # Load settings (YAML + env vars)
     settings = DharaSettings.load("dhara")
-
-    # Create CLI factory with custom handlers and MCP subcommand mode.
-    # ``DharaSettings`` extends ``OneiricMCPConfig`` and shares ``BaseModel``
-    # structure with ``MCPServerSettings``, but they are sibling classes
-    # (not in the same inheritance chain); cast at the boundary.
-    app = MCPServerCLIFactory(
-        server_name="dhara",
-        settings=cast(MCPServerSettings, settings),
-        start_handler=start_handler,
-        stop_handler=stop_handler,
-        health_probe_handler=health_probe_handler,
-        use_mcp_subcommand=True,  # Use `dhara mcp start` pattern
-    ).create_app()
-
-    # Create Typer app with MCP lifecycle commands under 'mcp' subcommand
-    # Add version option to the app callback
-    @app.callback()
-    def global_options(
-        version: bool = typer.Option(
-            False,
-            "--version",
-            "-v",
-            help="Show version and exit",
-            is_eager=True,
-        ),
-    ) -> None:
-        """Global options for dhara CLI."""
-        if version:
-            typer.echo(f"dhara version {__version__}")
-            raise typer.Exit()
-
-    # Add database command group (legacy-compatible operations)
-    _create_db_commands(app)
-
-    # Add custom Dhara-specific commands at root level
-    _create_adapters_command(app, settings)
-    _create_storage_command(app, settings)
-    _create_admin_command(app, settings)
-
-    return app
+    return DharaCLI(settings)
 
 
 if __name__ == "__main__":

@@ -438,6 +438,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- dhara: Adopt BodaiCLIBase from oneiric>=0.19.0 (Phase 3 Task 4.2). Implement real _doctor_checks() and _health_probe() overrides so doctor/health return repo-specific data.
+- Bump `oneiric` lower bound from `>=0.16.0` to `>=0.19.0` so `oneiric.cli.base.BodaiCLIBase` is resolvable.
+
 ### Added
 
 - FallbackSerializer with whitelist-based security (msgspec → pickle → dill fallback chain)
