@@ -87,6 +87,9 @@ Repository = "https://github.com/lesleslie/dhara"
 [project.scripts]
 dhara = "dhara.cli:main"
 
+[project.entry-points."bodai.apps"]
+dhara = "dhara.cli:app"
+
 [tool.hatch.build.targets.wheel]
 packages = ["dhara"]
 

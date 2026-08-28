@@ -864,3 +864,7 @@ def create_cli() -> DharaCLI:
 
 if __name__ == "__main__":
     main()
+
+
+# Bodai umbrella entry-point (Phase 5.1)
+app = create_cli()
