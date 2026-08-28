@@ -11,7 +11,12 @@ from dhara.lock.protocol import (
     LockPermanentError,
     LockTimeout,
 )
-from dhara.lock.sql import SQLBackendLock
+
+try:
+    from dhara.lock.sql import SQLBackendLock
+except ImportError:
+    # duckdb is optional; SQLBackendLock is unavailable without it.
+    SQLBackendLock = None  # type: ignore[assignment,misc]  # ty: ignore[invalid-assignment]
 
 try:
     from dhara.lock.postgres import PostgresBackendLock
