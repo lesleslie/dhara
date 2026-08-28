@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 # PEP 735 dependency-groups (replaces [project.optional-dependencies]).
-# Install with: uv sync --group dev --group cloud
+# Install with: uv sync --group dev --group cloud --group duckdb
 [dependency-groups]
 dev = [
     "crackerjack>=0.70.0",
@@ -14,14 +14,21 @@ dev = [
     "session-buddy>=0.19.9",
 ]
 # Cloud storage backends. None are runtime-required; Dhara falls back
-# to local SQLite/duckdb when these aren't installed. The empty
-# `aiosqlite`/`pytest` slots from the old [project.optional-dependencies]
-# cloud group are removed (they were dev-only or already a main dep).
+# to local SQLite when these aren't installed. The empty `aiosqlite`/
+# `pytest` slots from the old [project.optional-dependencies] cloud
+# group are removed (they were dev-only or already a main dep).
 cloud = [
     "asyncpg>=0.31.0",
     "azure-storage-blob>=12.29.0",
     "boto3>=1.43.20",
     "google-cloud-storage>=3.10.1",
+]
+# Optional SQL lock backend (dhara.lock.sql). The InMemoryDharaLock impl
+# in dhara.lock.in_memory works without this group; SQLBackendLock
+# (which `dhara.lock.__init__` imports eagerly for the registry lookup)
+# requires it. Install with: uv sync --group duckdb.
+duckdb = [
+    "duckdb>=1.0.0",
 ]
 
 # Full-Featured Library Template

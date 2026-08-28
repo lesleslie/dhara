@@ -1009,6 +1009,9 @@ dev = [
     { name = "pytest-timeout" },
     { name = "session-buddy" },
 ]
+duckdb = [
+    { name = "duckdb" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -1040,6 +1043,7 @@ dev = [
     { name = "pytest-timeout", specifier = ">=2.4.0" },
     { name = "session-buddy", specifier = ">=0.19.9" },
 ]
+duckdb = [{ name = "duckdb", specifier = ">=1.0.0" }]
 
 [[package]]
 name = "dnspython"
