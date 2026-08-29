@@ -29,11 +29,23 @@ from dhara.schema.approval_log import STRUCT as approval_log
 from dhara.schema.approval_log import ApprovalLog
 from dhara.schema.audit_record import STRUCT as audit_record
 from dhara.schema.audit_record import AuditRecord
+from dhara.schema.capability_descriptor import (
+    STRUCT as capability_descriptor,
+)
+from dhara.schema.capability_descriptor import (
+    CapabilityDescriptor,
+)
 from dhara.schema.channel_session_state import (
     STRUCT as channel_session_state,
 )
 from dhara.schema.channel_session_state import (
     ChannelSessionState,
+)
+from dhara.schema.ecosystem_run_record import (
+    STRUCT as ecosystem_run_record,
+)
+from dhara.schema.ecosystem_run_record import (
+    EcosystemRunRecord,
 )
 from dhara.schema.webhook_ingress import STRUCT as webhook_ingress
 from dhara.schema.webhook_ingress import WebhookIngress
@@ -44,14 +56,18 @@ __all__ = [
     "SCHEMA_REGISTRY",
     "ApprovalLog",
     "AuditRecord",
+    "CapabilityDescriptor",
     "ChannelSessionState",
+    "EcosystemRunRecord",
     "SchemaEntry",
     "SchemaValidationError",
     "WebhookIngress",
     "WorkflowOutcome",
     "approval_log",
     "audit_record",
+    "capability_descriptor",
     "channel_session_state",
+    "ecosystem_run_record",
     "from_dict",
     "register",
     "to_dict",
