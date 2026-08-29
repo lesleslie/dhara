@@ -5,6 +5,12 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.2] - 2026-08-28
+
+### Changed
+
+- dhara: Use project_root= instead of path= in load_settings()
+
 ## [0.17.1] - 2026-08-28
 
 ### Added
@@ -467,7 +473,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- dhara: Adopt BodaiCLIBase from oneiric>=0.19.0 (Phase 3 Task 4.2). Implement real _doctor_checks() and _health_probe() overrides so doctor/health return repo-specific data.
+- dhara: Adopt BodaiCLIBase from oneiric>=0.19.0 (Phase 3 Task 4.2). Implement real \_doctor_checks() and \_health_probe() overrides so doctor/health return repo-specific data.
 - Bump `oneiric` lower bound from `>=0.16.0` to `>=0.19.0` so `oneiric.cli.base.BodaiCLIBase` is resolvable.
 
 ### Added
