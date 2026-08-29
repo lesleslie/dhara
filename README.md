@@ -71,8 +71,14 @@ Common options for database commands:
 ```bash
 dhara adapters               # List registered adapters
 dhara storage                # Display storage information
-dhara admin                  # Launch admin shell (IPython)
+dhara admin --confirm        # Launch admin shell (IPython, AdminShell-based)
 ```
+
+**Which shell to use?** `dhara admin` for configuration/adapter inspection
+(uses `AdminShell`); `dhara db client` for low-level druva storage access
+(uses `IPython.terminal.embed.InteractiveShellEmbed` directly). Both shells
+are first-class; do not assume one replaces the other.
+
 
 ## Validation
 

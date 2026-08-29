@@ -480,11 +480,15 @@ def _create_storage_command(app: typer.Typer, settings: DharaSettings) -> None:
 
 
 def _create_admin_command(app: typer.Typer, settings: DharaSettings) -> None:
-    """Create the admin command for launching IPython shell.
+    """`dhara admin [--confirm]` — IPython-based admin shell using AdminShell.
 
-    Args:
-        app: Typer app to add command to
-        settings: DharaSettings instance
+    Use `dhara admin` for: configuration inspection, adapter inventory,
+    ecosystem-level operations. Backed by `DharaShell(AdminShell)`.
+
+    Use `dhara db client` for: low-level druva storage access.
+    Backed by `IPython.terminal.embed.InteractiveShellEmbed` directly.
+
+    Both shells are first-class; do not assume one replaces the other.
     """
 
     @app.command("admin")
