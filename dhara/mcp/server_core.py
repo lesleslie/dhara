@@ -28,6 +28,7 @@ import asyncio
 import time
 from contextlib import suppress
 from importlib.metadata import PackageNotFoundError, version
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 if TYPE_CHECKING:
@@ -114,7 +115,8 @@ async def _wire_cache(config: Any, core_self: Any) -> Any:
     cache_backend = getattr(config, "cache_backend", "memory")
     if cache_backend == "redis":
         provider_settings = load_settings(
-            project_name="dhara"
+            project_name="dhara",
+            project_root=Path(__file__).resolve().parent.parent,
         ).adapters.provider_settings.get("cache.redis", {})
         cache_settings = (
             RedisCacheSettings(**provider_settings)
