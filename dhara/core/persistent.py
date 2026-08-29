@@ -59,8 +59,8 @@ except ImportError:
 
         def __new__(klass: type[Self], *args: Any, **kwargs: Any) -> Self:
             instance: ConnectionBase = object.__new__(klass)
-            instance.transaction_serial = 1
-            return instance
+            instance.transaction_serial = 1  # ty: ignore[invalid-assignment]
+            return instance  # ty: ignore[invalid-return-type]
 
     _GHOST_SAFE_ATTRIBUTES: dict[str, int] = {
         "__repr__": 1,
@@ -116,7 +116,7 @@ except ImportError:
             _setattribute(instance, "_p_serial", 0)
             _setattribute(instance, "_p_connection", None)
             _setattribute(instance, "_p_oid", None)
-            return instance
+            return instance  # ty: ignore[invalid-return-type]
 
         def __getattribute__(self, name: str) -> Any:
             if name[:3] != "_p_" and name not in _GHOST_SAFE_ATTRIBUTES:

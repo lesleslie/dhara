@@ -253,3 +253,12 @@ exclude_patterns = [
     "**/test_*.py",
 ]
 max_complexity = 15
+
+[tool.ty]
+src = { include = ["dhara/**/*.py"] }
+
+[tool.ty.rules]
+# Same `# ty: ignore` directive can report UNUSED in interactive shell but
+# suppress a real error under crackerjack (stricter ty config). Treat
+# unused-ignore as informational only so directives work in both contexts.
+unused-ignore-comment = "ignore"

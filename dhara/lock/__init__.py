@@ -16,13 +16,13 @@ try:
     from dhara.lock.sql import SQLBackendLock
 except ImportError:
     # duckdb is optional; SQLBackendLock is unavailable without it.
-    SQLBackendLock = None  # type: ignore[assignment,misc]
+    SQLBackendLock = None  # ty: ignore[invalid-assignment]
 
 try:
     from dhara.lock.postgres import PostgresBackendLock
 except ImportError:
     # asyncpg is optional; PostgresBackendLock is unavailable without it.
-    PostgresBackendLock = None  # type: ignore[assignment,misc]
+    PostgresBackendLock = None  # ty: ignore[invalid-assignment]
 
 __all__ = [
     "DharaLock",

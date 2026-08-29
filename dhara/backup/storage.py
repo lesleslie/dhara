@@ -528,7 +528,7 @@ class AzureBlobStorageAdapter(_DelegatingStorageAdapter):
         # path) or a stream object exposing ``.readall()`` (older paths).
         if isinstance(readall, (bytes, bytearray)):
             return bytes(readall)
-        return readall.readall()  # noqa: FURB123
+        return readall.readall()  # noqa: FURB123  # ty: ignore[unresolved-attribute]
 
     def upload_file(self, local_path: str, remote_path: str) -> bool:
         try:
