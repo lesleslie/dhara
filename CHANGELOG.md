@@ -5,6 +5,24 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.18.0] - 2026-08-29
+
+### Added
+
+- **BREAKING:** dhara: Rename BodaiCLIBase to OneiricCLIBase
+
+### Changed
+
+- dhara: Bump oneiric floor to >=0.20 for OneiricCLIBase
+
+### Fixed
+
+- dhara: Resolve ty comprehensive-hook failures
+
+### Documentation
+
+- dhara: Clarify admin vs db client (both kept, Plan Task 3.1.2)
+
 ## [0.17.2] - 2026-08-28
 
 ### Changed
