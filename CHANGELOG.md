@@ -475,6 +475,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - dhara: Adopt BodaiCLIBase from oneiric>=0.19.0 (Phase 3 Task 4.2). Implement real \_doctor_checks() and \_health_probe() overrides so doctor/health return repo-specific data.
 - Bump `oneiric` lower bound from `>=0.16.0` to `>=0.19.0` so `oneiric.cli.base.BodaiCLIBase` is resolvable.
+- **BREAKING**: Rename `BodaiCLIBase` → `OneiricCLIBase` across `dhara/cli.py`, `tests/cli/test_base.py`, and `tests/test_cli.py`; bump `oneiric` floor to `>=0.20` (hard cutover, no deprecation alias).
 
 ### Added
 

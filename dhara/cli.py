@@ -21,7 +21,7 @@ Usage:
     dhara storage
     dhara admin --confirm
 
-    # BodaiCLIBase global commands
+    # OneiricCLIBase global commands
     dhara version
     dhara doctor
     dhara health
@@ -30,7 +30,7 @@ Usage:
 1. MCPServerCLIFactory with use_mcp_subcommand=True for `dhara mcp`
 2. Legacy-compatible database CLI restructured under `dhara db`
 3. Custom Dhara-specific commands at root level (adapters, storage, admin)
-4. Subclass of ``BodaiCLIBase`` so `version`/`doctor`/`health` come from
+4. Subclass of ``OneiricCLIBase`` so `version`/`doctor`/`health` come from
    the shared base (Phase 3 Task 4.2 of the Bodai CLI audit).
 5. `doctor` returns Dhara-specific checks (config-loadable,
    storage path, backup catalog). `health` returns a runtime snapshot
@@ -52,7 +52,7 @@ from mcp_common.cli import (
     RuntimeHealthSnapshot,
 )
 from mcp_common.cli.health import load_runtime_health, write_runtime_health
-from oneiric.cli.base import BodaiCLIBase
+from oneiric.cli.base import OneiricCLIBase
 from oneiric.core.logging import get_logger
 
 from dhara.core.config import DharaSettings
@@ -682,8 +682,8 @@ def main() -> None:
     app()
 
 
-class DharaCLI(BodaiCLIBase):
-    """Dhara Typer app extending ``BodaiCLIBase``.
+class DharaCLI(OneiricCLIBase):
+    """Dhara Typer app extending ``OneiricCLIBase``.
 
     Inherits the global ``version`` / ``doctor`` / ``health`` commands and
     ``--json`` flag from the Bodai shared base. In addition, composes the
@@ -716,7 +716,7 @@ class DharaCLI(BodaiCLIBase):
         )
         self._register_mcp_subcommands()
         # Register the same legacy + Dhara-specific command groups as
-        # before. The Typer contract is satisfied because ``BodaiCLIBase``
+        # before. The Typer contract is satisfied because ``OneiricCLIBase``
         # is itself a ``typer.Typer`` subclass.
         _create_db_commands(self)
         _create_adapters_command(self, settings)
@@ -728,7 +728,7 @@ class DharaCLI(BodaiCLIBase):
 
         Mirrors the public surface of ``MCPServerCLIFactory.create_app``
         without using it directly — the factory returns a plain
-        ``typer.Typer``, which would erase the BodaiCLIBase unified
+        ``typer.Typer``, which would erase the OneiricCLIBase unified
         callback and the ``version``/``doctor``/``health`` commands we
         get from this base class.
         """
@@ -841,11 +841,11 @@ def create_cli() -> DharaCLI:
     """Create unified CLI application with MCP and database commands.
 
     Returns:
-        :class:`DharaCLI` instance — a ``typer.Typer`` (via ``BodaiCLIBase``)
+        :class:`DharaCLI` instance — a ``typer.Typer`` (via ``OneiricCLIBase``)
         with all commands registered.
 
     ★ Insight: CLI Composition ─────────────────────────────────────────
-    1. ``DharaCLI`` extends ``BodaiCLIBase`` so ``version``/``doctor``/
+    1. ``DharaCLI`` extends ``OneiricCLIBase`` so ``version``/``doctor``/
        ``health`` come from the shared base (no manual ``@app.callback``
        for ``--version``).
     2. The MCP lifecycle subcommand group (``dhara mcp …``) is composed

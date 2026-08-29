@@ -73,7 +73,7 @@ def _build_cli_app(settings: MagicMock):
     """Build a real Typer app while stubbing the CLI factory.
 
     Phase 3 Task 4.2: ``create_cli`` now constructs a ``DharaCLI``
-    (a ``BodaiCLIBase`` subclass) that mounts the MCP lifecycle sub-Typer
+    (a ``OneiricCLIBase`` subclass) that mounts the MCP lifecycle sub-Typer
     by binding ``MCPServerCLIFactory._cmd_*`` instance methods directly,
     so the factory's ``create_app`` is no longer called. We stub the
     factory so any bound command bodies degrade to ``MagicMock`` calls
@@ -715,7 +715,7 @@ class TestCreateCli:
         mock_create_storage,
         mock_create_admin,
     ):
-        """``create_cli`` must return a ``DharaCLI`` (a ``BodaiCLIBase`` /
+        """``create_cli`` must return a ``DharaCLI`` (a ``OneiricCLIBase`` /
         ``typer.Typer``) and wire up the legacy + Dhara-specific command
         groups on it. Phase 3 Task 4.2 removed the call to
         ``MCPServerCLIFactory.create_app``; commands are now mounted by
@@ -789,7 +789,7 @@ class TestCreateCliRuntime:
         tracks future bumps automatically.
 
         Phase 3 Task 4.2: the ``--version`` option is now contributed by
-        ``BodaiCLIBase``'s unified callback, which uses a parameter
+        ``OneiricCLIBase``'s unified callback, which uses a parameter
         named ``version_flag`` (not ``version``). We invoke the same
         callback via the CliRunner so the test exercises Typer's actual
         parsing/CLI surface (not the inner-callback function signature).
@@ -806,7 +806,7 @@ class TestCreateCliRuntime:
             result = runner.invoke(app, ["--version"])
 
         assert result.exit_code == 0, result.output
-        # BodaiCLIBase's unified callback emits "<component>: <version>".
+        # OneiricCLIBase's unified callback emits "<component>: <version>".
         # We accept either the legacy ``dhara version X`` or the new
         # ``dhara: X`` shape so the assertion remains backwards-tolerant
         # while still proving the version flag triggers a print.

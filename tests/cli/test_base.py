@@ -1,9 +1,9 @@
-"""Tests for Dhara's BodaiCLIBase adoption (Phase 3 Task 4.2).
+"""Tests for Dhara's OneiricCLIBase adoption (Phase 3 Task 4.2).
 
 Mirrors the cascade-invariant contract tests from
 ``oneiric/tests/cli/test_base.py`` (20 tests) and adapts them to verify:
 
-1. The subclass ``DharaCLI`` extends ``BodaiCLIBase``.
+1. The subclass ``DharaCLI`` extends ``OneiricCLIBase``.
 2. ``version`` command emits the component name + installed version.
 3. ``doctor`` / ``health`` global commands return repo-specific data
    (NOT ``ExitCode.UNAVAILABLE`` from the base-class
@@ -21,7 +21,7 @@ import warnings
 
 import pytest
 import typer
-from oneiric.cli.base import BodaiCLIBase, ExitCode
+from oneiric.cli.base import OneiricCLIBase, ExitCode
 from typer.testing import CliRunner
 
 from dhara.cli import DharaCLI, create_cli
@@ -53,9 +53,9 @@ def dhara_app() -> DharaCLI:
 # ---------------------------------------------------------------------------
 
 
-def test_dhara_cli_extends_bodai_cli_base(dhara_app: DharaCLI) -> None:
-    """``DharaCLI`` must be a ``BodaiCLIBase`` instance."""
-    assert isinstance(dhara_app, BodaiCLIBase)
+def test_dhara_cli_extends_oneiric_cli_base(dhara_app: DharaCLI) -> None:
+    """``DharaCLI`` must be a ``OneiricCLIBase`` instance."""
+    assert isinstance(dhara_app, OneiricCLIBase)
     assert isinstance(dhara_app, typer.Typer)
 
 
@@ -201,12 +201,12 @@ def test_dhara_cli_overrides_doctor_checks(dhara_app: DharaCLI) -> None:
     """``_doctor_checks`` is overridden in the DharaCLI subclass — its
     base-class implementation raises ``NotImplementedError`` which would
     cascade through to ``ExitCode.UNAVAILABLE`` (round-2 F-γ invariant)."""
-    assert DharaCLI._doctor_checks is not BodaiCLIBase._doctor_checks
+    assert DharaCLI._doctor_checks is not OneiricCLIBase._doctor_checks
 
 
 def test_dhara_cli_overrides_health_probe(dhara_app: DharaCLI) -> None:
     """``_health_probe`` is overridden in the DharaCLI subclass."""
-    assert DharaCLI._health_probe is not BodaiCLIBase._health_probe
+    assert DharaCLI._health_probe is not OneiricCLIBase._health_probe
 
 
 def test_dhara_cli_doctor_checks_returns_at_least_one_check(
@@ -244,7 +244,7 @@ def test_dhara_cli_health_probe_returns_snapshot(
 
 def test_no_extra_callback_registered(dhara_app: DharaCLI) -> None:
     """Round-1 F-α cascade invariant: exactly ONE callback is registered
-    — the unified root callback from BodaiCLIBase. ``DharaCLI`` must NOT
+    — the unified root callback from OneiricCLIBase. ``DharaCLI`` must NOT
     redeclare ``@self.callback`` (the original ``@app.callback(...)`` for
     ``--version`` was removed when adopting the base class)."""
     callback = getattr(dhara_app, "registered_callback", None)
@@ -275,7 +275,7 @@ def test_resolve_json_output_helper_inherited(dhara_app: DharaCLI) -> None:
 
 
 def test_legacy_commands_still_wired(runner: CliRunner, dhara_app: DharaCLI) -> None:
-    """Adopting ``BodaiCLIBase`` must NOT regress the existing commands:
+    """Adopting ``OneiricCLIBase`` must NOT regress the existing commands:
     the ``mcp``, ``db``, ``adapters``, ``storage``, ``admin`` subcommands
     surfaced by ``dhara --help`` are the plan's G4 outcome."""
     result = runner.invoke(dhara_app, ["--help"])
