@@ -71,7 +71,7 @@ dependencies = [
     # >=0.19.0 required for `oneiric.cli.base.BodaiCLIBase` (Phase 3
     # Task 4.2 CLI audit contract — see
     # `mahavishnu/docs/plans/2026-08-25-bodai-cli-audit.md` §4.2).
-    "oneiric>=0.19.0",
+    "oneiric>=0.19.1",
     # ASGI server for FastMCP
     "uvicorn>=0.48.0",
     # Admin shell with IPython (ecosystem standard)
