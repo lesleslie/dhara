@@ -7,7 +7,7 @@ $Id$
 from collections.abc import Iterator
 from contextlib import suppress
 from sys import stderr
-from typing import Any, Self, cast
+from typing import Any, Self
 
 from dhara.utils import IS_PYPY, as_bytes, iteritems, str_to_int8
 
@@ -57,12 +57,10 @@ except ImportError:
 
         __slots__ = ["transaction_serial"]
 
-        def __new__(klass: type, *args: Any, **kwargs: Any) -> Self:
+        def __new__(klass: type[Self], *args: Any, **kwargs: Any) -> Self:
             instance: ConnectionBase = object.__new__(klass)
-            instance.transaction_serial = 1  # type: ignore
-            # `object.__new__` returns `Unknown`; the runtime instance is
-            # `klass` and matches `Self`, so cast for the declared return.
-            return cast("Self", instance)
+            instance.transaction_serial = 1
+            return instance
 
     _GHOST_SAFE_ATTRIBUTES: dict[str, int] = {
         "__repr__": 1,
@@ -112,15 +110,13 @@ except ImportError:
 
         __slots__ = ["_p_connection", "_p_oid", "_p_serial", "_p_status"]
 
-        def __new__(klass: type, *args: Any, **kwargs: Any) -> Self:
+        def __new__(klass: type[Self], *args: Any, **kwargs: Any) -> Self:
             instance: PersistentBase = object.__new__(klass)
             _setattribute(instance, "_p_status", UNSAVED)
             _setattribute(instance, "_p_serial", 0)
             _setattribute(instance, "_p_connection", None)
             _setattribute(instance, "_p_oid", None)
-            # `object.__new__` returns `Unknown`; the runtime instance is
-            # `klass` and matches `Self`, so cast for the declared return.
-            return cast("Self", instance)
+            return instance
 
         def __getattribute__(self, name: str) -> Any:
             if name[:3] != "_p_" and name not in _GHOST_SAFE_ATTRIBUTES:

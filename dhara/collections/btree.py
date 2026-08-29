@@ -877,17 +877,17 @@ class BTree[K, V]:
                     any_existed = True
                 self._set_impl(k, v)
             for k, v in kwargs.items():  # type: ignore[union-attr]
-                if self._get_impl(k) is not MISSING:  # type: ignore[arg-type]
+                if self._get_impl(k) is not MISSING:  # ty: ignore[invalid-argument-type]
                     any_existed = True
-                self._set_impl(k, v)  # type: ignore[arg-type]
+                self._set_impl(k, v)  # ty: ignore[invalid-argument-type]
             return any_existed
         if not args:
             # Pure-kwargs dict-like update.
             any_existed = False
             for k, v in kwargs.items():  # type: ignore[union-attr]
-                if self._get_impl(k) is not MISSING:  # type: ignore[arg-type]
+                if self._get_impl(k) is not MISSING:  # ty: ignore[invalid-argument-type]
                     any_existed = True
-                self._set_impl(k, v)  # type: ignore[arg-type]
+                self._set_impl(k, v)  # ty: ignore[invalid-argument-type]
             return any_existed
         raise TypeError("update expected at most 1 argument")
 
@@ -1130,7 +1130,7 @@ class BTree[K, V]:
 
     def __contains__(self, key: object) -> bool:
         """``key in t`` — uses the existing ``_get_impl`` lookup."""
-        return self._get_impl(key) is not MISSING  # type: ignore[arg-type]
+        return self._get_impl(key) is not MISSING  # ty: ignore[invalid-argument-type]
 
     def __iter__(self) -> Iterator[K]:
         """Iterate keys in sorted (ascending) order."""
@@ -1170,7 +1170,7 @@ class BTree[K, V]:
         """
         if key in self:
             return
-        self._set_impl(key, value)  # type: ignore[arg-type]
+        self._set_impl(key, value)  # ty: ignore[invalid-argument-type]
 
     def setdefault(self, key: K, default: V) -> V:
         """Insert ``default`` if ``key`` missing, else return existing value."""

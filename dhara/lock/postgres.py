@@ -25,7 +25,7 @@ from oneiric.core.logging import get_logger
 try:
     import asyncpg
 except ImportError:  # pragma: no cover - asyncpg is optional, gated on `cloud` group
-    asyncpg = None  # type: ignore[assignment]  # ty: ignore[invalid-assignment]
+    asyncpg = None  # type: ignore[assignment]
 
 from dhara.lock.events import LockEventEmitter
 from dhara.lock.protocol import (
