@@ -114,13 +114,16 @@ async def _wire_cache(config: Any, core_self: Any) -> Any:
     """
     cache_backend = getattr(config, "cache_backend", "memory")
     if cache_backend == "redis":
-        # Anchor at package install location via explicit ``path=``.
-        # oneiric 0.19.1's load_settings() takes only (path, project_name);
-        # ``project_root`` is not a real kwarg. Passing the absolute
-        # settings file forces Layer 1 to resolve regardless of CWD.
+        # Anchor at package install location via ``project_root=``.
+        # oneiric's load_settings() accepts project_root to anchor
+        # Layer 6-7 (settings/{name}.yaml, settings/local.yaml) at
+        # the package directory while still honoring Layer 1-5
+        # (explicit path, env vars, XDG). Do NOT use ``path=`` here —
+        # that short-circuits the explicit-config layer and disables
+        # XDG lookup at ~/.config/{project_name}/*.yaml.
         provider_settings = load_settings(
-            path=Path(__file__).resolve().parent.parent / "settings" / "dhara.yaml",
             project_name="dhara",
+            project_root=Path(__file__).resolve().parent.parent,
         ).adapters.provider_settings.get("cache.redis", {})
         cache_settings = (
             RedisCacheSettings(**provider_settings)
