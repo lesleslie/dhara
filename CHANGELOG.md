@@ -5,6 +5,33 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.1] - 2026-08-28
+
+### Added
+
+- dhara: Adopt BodaiCLIBase + real doctor/health (Phase 3 Task 4.2)
+- dhara: Bodai.apps entry-point (Phase 5.1)
+
+### Fixed
+
+- build: Restore dhara sdist whitelist
+- dhara: Anchor load_settings() path at package install location
+- dhara: Anchor load_settings() project_root at package install location
+- dhara: Formalize duckdb as optional dependency-group
+- dhara: Lazy-wrap SQLBackendLock to mirror postgres pattern
+- dhara: Resolve 13 ty type-check errors
+
+### Documentation
+
+- readme: Bump Python badge from 3.13+ to 3.14+
+
+### Internal
+
+- build: Remove dead MANIFEST.in (now subsumed by hatch sdist config)
+- build: Standardize dhara on hatchling backend
+- deps: Bump oneiric floor to >=0.19.1
+- dhara: Remove unused v1-path func_metadata import in test
+
 ## [0.17.0] - 2026-08-24
 
 ### Added
