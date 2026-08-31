@@ -11,6 +11,12 @@ dev = [
     "pytest-asyncio>=1.4.0",
     "pytest-cov>=7.1.0",
     "pytest-timeout>=2.4.0",
+    # httpx2 is only imported by tests/integration/mcp/* (the
+    # `import httpx2 as httpx` ASGI client fixture pattern). creosote
+    # scans only `dhara/` source so listing it under [project.dependencies]
+    # raises a false-positive unused-dep flag. Tests get it via the dev
+    # group which `crackerjack run` installs automatically.
+    "httpx2>=2.12.0",
     "session-buddy>=0.19.9",
 ]
 # Cloud storage backends. None are runtime-required; Dhara falls back
@@ -37,7 +43,7 @@ duckdb = [
 
 [project]
 name = "dhara"
-version = "0.19.1"
+version = "0.19.2"
 description = "A Python Persistent Object Database with ACID Transactions"
 readme = "README.md"
 requires-python = ">=3.14"

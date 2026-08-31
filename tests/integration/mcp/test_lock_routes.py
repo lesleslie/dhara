@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import duckdb
-import httpx
+import httpx2 as httpx
 import pytest
 from fastmcp import FastMCP
 

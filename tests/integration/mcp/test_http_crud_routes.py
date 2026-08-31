@@ -148,7 +148,7 @@ def mcp_server(tmp_path: Path):
 @pytest.fixture
 async def http_client(mcp_server):
     """Yield an httpx.AsyncClient against the FastMCP ASGI app."""
-    import httpx
+    import httpx2 as httpx
 
     app = mcp_server.server.http_app(transport="http")
     transport = httpx.ASGITransport(app=app)
