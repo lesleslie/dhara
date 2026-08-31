@@ -936,8 +936,16 @@ class DharaMCPServer:
         # Initialize async stores before the event loop starts
         asyncio.run(self._init_async_stores())
 
-        # FastMCP 3.x uses run_http_async() for HTTP transport
-        asyncio.run(self.server.run_http_async(host=host, port=port))
+        # FastMCP 3.x uses run_http_async() for HTTP transport.
+        # Override the hardcoded 2s graceful-shutdown timeout so lifespan
+        # teardown can complete cleanup without being cancelled mid-shutdown.
+        asyncio.run(
+            self.server.run_http_async(
+                host=host,
+                port=port,
+                uvicorn_config={"timeout_graceful_shutdown": 30},
+            )
+        )
 
     async def _init_async_stores(self) -> None:
         """Initialize async stores from AsyncSqliteStorage for async tool dispatch."""
