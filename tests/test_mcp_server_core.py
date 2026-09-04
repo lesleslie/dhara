@@ -1101,7 +1101,12 @@ class TestRuntimeStatus:
             assert status["status"] == "ok"
             assert status["ready"] is True
             assert status["service"] == "dhara"
-            assert status["version"] == "0.15.2"
+            # Source the expected version from the same canonical metadata
+            # the server uses; comparing to a hardcoded literal would drift
+            # on every version bump.
+            from dhara.mcp.server_core import _PACKAGE_VERSION
+
+            assert status["version"] == _PACKAGE_VERSION
             assert "uptime_seconds" in status
             assert isinstance(status["uptime_seconds"], float)
             assert status["uptime_seconds"] >= 0
@@ -1735,6 +1740,7 @@ class TestServerLifecycle:
                 mock_server_instance.run_http_async.assert_called_once_with(
                     host="0.0.0.0",
                     port=9999,
+                    uvicorn_config={"timeout_graceful_shutdown": 30},
                 )
         finally:
             _stop_patches()
@@ -1758,6 +1764,7 @@ class TestServerLifecycle:
                 mock_server_instance.run_http_async.assert_called_once_with(
                     host="127.0.0.1",
                     port=8683,
+                    uvicorn_config={"timeout_graceful_shutdown": 30},
                 )
         finally:
             _stop_patches()

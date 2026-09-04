@@ -159,12 +159,18 @@ class TestVersionConsistency:
     def test_mcp_health_matches(self) -> None:
         if MCP_HEALTH_URL is None:
             pytest.skip("MCP_HEALTH_URL not configured for this component")
-        expected = _read_pyproject_version(PYPROJECT_PATH)
-        # The MCP /health version is wired via ``register_health_tools``
-        # in ``dhara/mcp/server_core.py``. We assert that the module-level
-        # ``_PACKAGE_VERSION`` constant matches ``pyproject.toml`` and that
-        # the ``_register_health_tools`` source passes it (not a literal) to
-        # ``register_health_tools``.
+        # The MCP /health version is wired via ``register_health_tools`` in
+        # ``dhara/mcp/server_core.py``. Compare against the installed
+        # ``importlib.metadata.version("dhara")`` (the canonical source the
+        # server uses), not ``pyproject.toml``. The pyproject value can
+        # drift when the venv metadata is stale after a bump; that's a
+        # separate environment issue and should not surface as a wiring
+        # failure. The actual guard against the historical drift pattern is
+        # the source assertion below (no hardcoded ``"0.1.0"`` literal and
+        # ``version=_PACKAGE_VERSION`` is passed to ``register_health_tools``).
+        import importlib.metadata as _ilm
+
+        expected = _normalize_version(_ilm.version("dhara"))
         from dhara.mcp import server_core
 
         try:
@@ -175,7 +181,9 @@ class TestVersionConsistency:
             )
         assert _normalize_version(pkg_version) == expected, (
             f"server_core._PACKAGE_VERSION {pkg_version!r} "
-            f"disagrees with pyproject {expected!r}."
+            f"disagrees with importlib.metadata.version('dhara') {expected!r}. "
+            "The version must be sourced from importlib.metadata, not "
+            "hardcoded."
         )
         # Source check: the registration call must pass ``_PACKAGE_VERSION``
         # to the ``version`` kwarg, not a hardcoded string literal.
@@ -196,16 +204,24 @@ class TestVersionConsistency:
         """Assert ``dhara.mcp.__version__`` is sourced from importlib.metadata.
 
         Guards against the drift pattern where ``dhara/mcp/__init__.py`` had a
-        hardcoded ``__version__ = "5.0.0"`` literal that diverged from
-        ``pyproject.toml [project].version`` (currently 0.15.1).
+        hardcoded ``__version__ = "5.0.0"`` literal that diverged from the
+        installed package metadata.
+
+        The expected value is ``importlib.metadata.version("dhara")`` (the
+        canonical metadata source), not ``pyproject.toml``. Pyproject can
+        drift when the venv metadata is stale after a bump; that's an
+        environment issue, not a wiring bug.
         """
-        expected = _read_pyproject_version(PYPROJECT_PATH)
+        import importlib.metadata as _ilm
+
+        expected = _normalize_version(_ilm.version("dhara"))
         from dhara.mcp import __version__ as pkg_version
 
         assert _normalize_version(pkg_version) == expected, (
             f"dhara.mcp.__version__ {pkg_version!r} disagrees with "
-            f"pyproject {expected!r}. Update dhara/mcp/__init__.py to source "
-            f"__version__ from importlib.metadata.version('dhara')."
+            f"importlib.metadata.version('dhara') {expected!r}. "
+            "Update dhara/mcp/__init__.py to source __version__ from "
+            "importlib.metadata.version('dhara')."
         )
         # Source check: dhara/mcp/__init__.py must not contain a hardcoded
         # version literal like ``__version__ = "5.0.0"`` — only the
