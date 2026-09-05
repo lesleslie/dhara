@@ -122,7 +122,7 @@ class LiteMode(OperationalMode):
             if not self._is_port_available(self.DEFAULT_HOST, self.DEFAULT_PORT):
                 logger.warning(
                     f"Port {self.DEFAULT_PORT} may be in use. "
-                    f"If startup fails, try: dhara start --mode=lite --port=8684"
+                    f"If startup fails, try: dhara start --mode=lite --port=8685"
                 )
 
             logger.debug("Lite mode environment validation passed")

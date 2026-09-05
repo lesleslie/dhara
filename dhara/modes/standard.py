@@ -355,7 +355,7 @@ class StandardMode(OperationalMode):
         if not self._is_port_available(host, port):
             logger.warning(
                 f"Port {port} may be in use. "
-                f"If startup fails, try: dhara start --mode=standard --port=8684"
+                f"If startup fails, try: dhara start --mode=standard --port=8685"
             )
 
     def _is_port_available(self, host: str, port: int) -> bool:
