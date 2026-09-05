@@ -596,6 +596,7 @@ class StorageServer:
         if type(command_byte) is int:
             command_code = chr(command_byte)
         else:
+            # pragma: no cover — Python 3 socket.recv always returns bytes
             command_code = command_byte
         handler = getattr(self, f"handle_{command_code}", None)
         if handler is None:
