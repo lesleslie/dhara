@@ -20,7 +20,90 @@ effort from application programmers.
 
 Dhara is the **curator** of the [Bodai ecosystem](https://github.com/lesleslie/bodai) — the persistent object storage backend for adapter configs, service lifecycle state, and ecosystem events consumed by Mahavishnu, Akosha, Session-Buddy, Crackerjack, and Oneiric.
 
-Standalone, Dhara is a modern continuation of **Durus** — a Python persistent object system with ACID properties. See [bodai/docs](https://github.com/lesleslie/bodai) for how Dhara fits into the broader ecosystem.
+Standalone operation is a first-class design goal, not an afterthought —
+see [Standalone use](#standalone-use) below. For how Dhara fits into the
+broader Bodai control plane, see the [Bodai ecosystem notes](https://github.com/lesleslie/bodai).
+
+## Standalone Use
+
+Dhara is a member of the [Bodai ecosystem](https://github.com/lesleslie/bodai)
+and serves there as the curator component — but it is **fully usable on its own**
+by any Python application. The Bodai control plane is one set of consumers;
+your service is not a special case, and you do not need to pull in any
+other Bodai component to use Dhara.
+
+A standalone install has zero ecosystem dependencies:
+
+```bash
+uv pip install dhara
+dhara db start --file ~/my_app.dhara
+```
+
+**Three deployment shapes work without anything Bodai-specific:**
+
+- **In-process.** `AsyncFileStorage` + `AsyncConnection` open the database
+  inside your Python process. No server, no socket, no extra runtime.
+- **Single-host server.** `dhara db start` brings up the storage server on
+  TCP `:8685` by default (configurable via `--port`). Multiple processes on
+  the same machine share one store.
+- **Distributed server.** The same storage protocol across hosts.
+  ACID transactions still serialize through the storage server; clients
+  keep a persistent on-disk cache like ZEO clients do.
+
+**Serverless-friendly by design.** With `AsyncConnection` and the asyncio-first
+API, Dhara fits cleanly into function-as-a-service contexts:
+
+- **AWS Lambda / Cloud Run / Vercel functions** — use `AsyncFileStorage` for
+  cold-fast access, or point all functions at a shared managed PostgreSQL.
+- **Cold-start mitigation** — instantiate the storage inside the handler
+  rather than at module scope. Per-connection caches reset to disk on every
+  commit, so cold starts are cheap.
+- **DuckDB analytical queries** — the DuckDB backend reads from the same
+  store and answers OLAP-shaped questions in one shot, useful for
+  serverless "summarise and return" handlers.
+- **In-memory `Storage` backend** — useful for unit tests and ephemeral
+  pipelines that don't need to persist anything.
+
+The MCP server (`dhara mcp start`, default port `8683`) is itself optional —
+if your application does not need an AI/agent surface, skip it. The
+storage server and the MCP server are independent services.
+
+## Why Dhara, Not ZODB/ZEO?
+
+A reasonable first question when you land here is: *how does Dhara compare
+to [ZODB](https://zodb.org) and [ZEO](https://zopefoundation.github.io/ZEO/),
+the older and more widely-deployed Python object database with a similar
+design point?*
+
+The full feature-by-feature matrix — including a Mermaid diagram of both
+stacks, the lineage notes, and a "where each one still wins" section —
+lives in [`docs/ZODB_COMPARISON.md`](./docs/ZODB_COMPARISON.md). The short
+version for the Bodai use case:
+
+- **The MCP layer.** ZEO has nothing like this. Dhara exposes a [FastMCP]
+  server on port `8683` so AI agents (and the rest of the Bodai stack) can
+  read and write persistent state without a Python ZODB client in the loop.
+  Most of the Bodai integration depends on this surface.
+- **The Oneiric adapter registry role.** ZEO is a generic object store.
+  Dhara is the canonical Oneiric adapter config store for the entire Bodai
+  control plane — config for Mahavishnu adapters, Akosha embeddings, and
+  Crackerjack quality gates all live here.
+- **Single-threaded by design.** ZODB runs multi-threaded. Dhara explicitly
+  does not. That is a deliberate trade — most Bodai-shaped workloads are
+  read-heavy with short, infrequent writes that benefit from a simpler
+  concurrency story.
+- **Modern Python stack.** 3.13+ type hints throughout, `msgspec` for
+  serialization alongside pickle, Oneiric layered config, asyncio-first
+  `AsyncConnection`. ZODB 5.x is solid and production-proven, but is in
+  maintenance rather than active development.
+
+For non-Bodai workloads the comparison doc also covers the longer answer,
+including **where ZODB/ZEO still wins** — most notably the `BTrees` family
+of large-index containers and the `_p_resolveConflict` application-level
+merge hook for collaborative-edit patterns, neither of which Dhara
+deliberately replicates.
+
+[FastMCP]: https://github.com/modelcontextprotocol/python-sdk
 
 ## Origin
 
@@ -63,7 +146,7 @@ Common options for database commands:
 
 - `--file PATH` or `-f PATH` - Database file path
 - `--host HOST` or `-h HOST` - Server host (default: 127.0.0.1)
-- `--port PORT` or `-p PORT` - Server port (default: 2972)
+- `--port PORT` or `-p PORT` - Server port (default: 8685)
 - `--readonly` - Open in read-only mode
 
 ### Dhara-Specific Commands
@@ -114,7 +197,7 @@ The current policy and migration targets are documented in
 dhara db start
 ```
 
-This starts a Dhara storage server using a temporary file and listening for clients on localhost port 2972.
+This starts a Dhara storage server using a temporary file and listening for clients on localhost port 8685.
 
 **Connect as a client:**
 
