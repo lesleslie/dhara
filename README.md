@@ -98,10 +98,11 @@ version for the Bodai use case:
   maintenance rather than active development.
 
 For non-Bodai workloads the comparison doc also covers the longer answer,
-including **where ZODB/ZEO still wins** — most notably the `BTrees` family
-of large-index containers and the `_p_resolveConflict` application-level
-merge hook for collaborative-edit patterns, neither of which Dhara
-deliberately replicates.
+including **where ZODB/ZEO still wins** — most notably ZODB's mature
+`BTrees` family of large-index containers (Dhara ships `BTree` since
+0.10.0 but not the full family), and the `_p_resolveConflict`
+application-level merge hook for collaborative-edit patterns, which Dhara
+does not replicate.
 
 [FastMCP]: https://github.com/modelcontextprotocol/python-sdk
 
@@ -379,5 +380,4 @@ or "Pole Star" - complementing the original Latin name **Durus**, meaning
 
 ## License
 
-dhara is released under an open-source license. See LICENSE.txt for
-details.
+BSD 3-Clause License — see `LICENSE` in the project root for details.

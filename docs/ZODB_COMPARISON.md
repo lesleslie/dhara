@@ -18,7 +18,7 @@ matrix, lineage, and process-topology diagram.
 | **Maintenance (2025)**     | Maintenance mode — bug/security fixes only                         | Active — Python 3.13+, msgspec, Oneiric, MCP server                        |
 | **Threading model**        | Multi-threaded server                                             | Single-threaded server (explicit design choice)                           |
 | **Concurrency model**      | Optimistic — `ConflictError` + app-level `_p_resolveConflict` merge| Connection-registered single-writer per connection (server orders writes)  |
-| **Large-index support**    | `BTrees.OOBTree`, `IOBTree`, etc. — the standard way               | None (relies on plain `PersistentDict`)                                   |
+| **Large-index support**    | `BTrees.OOBTree`, `IOBTree`, etc. — mature full family, the standard way | `BTree` since 0.10.0 at `dhara.collections.btree`; less mature than ZODB's full family |
 | **Conflict resolution**    | Yes — classes opt in to auto-merge on `ConflictError`              | No application hook                                                       |
 | **Network storage layer**  | ZEO (default port `8100`)                                         | Dhara Storage Server (default port `8685`)                                 |
 | **AI/agent surface**       | None (regular Python client library)                               | FastMCP server on default port `8683`                                      |
@@ -83,7 +83,7 @@ tracks dirty state.
 |--------------------------|---------------------------------------------------------------------------|--------------------------------------------------------------------------|
 | Threading model          | Multi-threaded server                                                     | Single-threaded server (explicit design choice)                          |
 | Data model               | Graph of `persistent.Persistent` subclasses reachable from a root         | Same — graph of `dhara.core.persistent.Persistent` subclasses             |
-| Built-in collections     | `PersistentMapping`, `PersistentList`, **`BTrees`** family for large indices | `PersistentDict`, `PersistentList`. No BTree layer.                       |
+| Built-in collections     | `PersistentMapping`, `PersistentList`, **`BTrees`** family (OOBTree / IOBTree / etc.) for large indices | `PersistentDict`, `PersistentList`, plus `BTree` (since 0.10.0) — but not the full ZODB family |
 | Serialization            | `pickle`                                                                  | `pickle`, with `msgspec` option                                           |
 | Transactions             | `transaction.begin()` / `commit()` / `abort()`; savepoints supported      | `connection.commit()` / `abort()` on the Connection                       |
 | Conflict model           | Optimistic. Two clients modifying the same `Persistent` instance raise `ConflictError` on commit. Classes can opt in to merge with `_p_resolveConflict` | Single-writer per Connection. Writes serialize through the server. **No application-visible merge hook.** |
@@ -98,12 +98,14 @@ but it also means Dhara can't replicate ZODB's pattern for collaborative
 editing the way a wiki might use it.
 
 `★ Insight ─────────────────────────────────────`
-The BTrees gap is the other big one. If you wanted to put Dhara in front
-of a catalog with millions of indexed entries, you'd be doing something
-ZODB's `BTrees.OOBTree` does elegantly and Dhara has no analog for. Today
-Dhara's consumer (the Bodai control plane) doesn't need that scale, so
-the gap is theoretical — but worth knowing before you adopt Dhara for a
-catalog-style workload.
+The BTrees story is more nuanced than "Dhara has none." Dhara does ship
+a `BTree[K, V]` at `dhara.collections.btree` (added in 0.10.0), and
+today's consumers can index large collections with it. What Dhara does
+*not* replicate is the full ZODB family — `BTrees.OOBTree`, `IOBTree`,
+`IIBTree`, etc., each tuned for different key/value sizes, with multi-
+process concurrency guarantees and decades of operational tuning. If
+you're choosing on this axis, "Dhara has BTree" vs "ZODB has the full
+BTrees family" is the honest framing; "Dhara has no BTree" was wrong.
 `─────────────────────────────────────────────────`
 
 ## Server and distribution layer
