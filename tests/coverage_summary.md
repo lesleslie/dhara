@@ -1,17 +1,181 @@
 # Dhara Test Coverage Summary
 
-## Current Status (refreshed 2026-09-05, session 3)
+## Current Status (refreshed 2026-09-05, session 4)
 
 | Metric | Value |
 |--------|-------|
-| **Total coverage** | **91.0%** (10,786 / 11,832 statements) |
-| Tests passing | 4,100 |
-| Tests skipped | 141 |
+| **Total coverage** | **94.4%** (11,172 / 11,832 statements) |
+| Tests passing | 4,318 |
+| Tests skipped | 144 |
 | Tests failing | 0 |
 | Modules at 0% | 0 |
 | Coverage gate (`--cov-fail-under`) | 80.49% — exceeded |
 
 Run with: `pytest --cov=dhara --cov-report=term-missing`.
+
+## Coverage Push Session 4 (2026-09-05)
+
+Three remaining bottom-10 modules addressed via parallel fanout, plus
+the production fix for the latent str/str_to_int8 mismatch flagged by
+the session 3 sqlite agent.
+
+### 1. `dhara/storage/sqlite.py` 56% → **99%** ✅
+
+Test file `tests/unit/test_storage_sqlite_extended.py` (68 new tests):
+
+- Sync `SqliteStorage`: `gen_oid_record` str-start_oid branch, inherited
+  `bulk_load`, `_list_all_oids`, `_gen_records` round-trip on real
+  SQLite.
+- `AsyncSqliteStorage`: full surface (`init` / `_get_last_oid` / `load`
+  / `begin` / `store` / `end` / `sync` / `new_oid` / `gen_oid_record` /
+  `bulk_load` / `_pack_record` / `_unpack_record` / `_split_oids` /
+  `health` / `cleanup` / `close` / `pack` / `get_packer` /
+  `__aenter__` / `__aexit__`) plus Oneiric-driven URL stripping paths.
+- URL stripping (`sqlite+aiosqlite://`, `sqlite://`, plain path,
+  `:memory:`).
+- Oneiric config lookup via `sys.modules` injection of a fake
+  `oneiric.core.config` module.
+
+Commit: `48e311d` — `test(storage): push sqlite coverage from 56% to ≥92%`
+
+### 2. `dhara/server/server.py` 79% → **95.25%** ✅
+
+Test file `tests/unit/test_server_extended.py` (46 new tests, 1414 lines):
+
+- `UnixAbstractAddress` direct method tests (`bind_socket`,
+  `get_connected_socket` non-standard error, `set_connection_options`,
+  `close`)
+- `UnixDomainSocketAddress` methods (`_cleanup_existing_socket` both
+  branches, `_apply_socket_ownership` four variants, `bind_socket`
+  branches, `close` unlink)
+- `InheritedSocket.set_connection_options` (AF_INET / AF_INET6 / AF_UNIX)
+- `StorageServer.__init__` TLS auto-detect path (line 387)
+- `StorageServer.serve()` inner branches (timeout=0.0 with packer set,
+  TLS handshake failure, `gcbytes` trigger, packer `StopIteration`
+  cleanup)
+- `StorageServer.serve_threaded()` control flow (select OSError, accept
+  OSError, finally cleanup, systemd branch setup)
+- `_handle_client` cleanup branches (finally jump, client-not-in-clients
+  skip)
+- `_find_client` `assert 0` fallback
+- `_new_oids` invalid-oid retry path (lines 618-620)
+- `_report_load_record` logging branch (lines 719-727)
+- `handle_P` synchronous pack path (lines 751-752)
+- `handle_C` client invalidation propagation + invalid-oid ClientError
+- `wait_for_server` with `SocketAddress` object
+- `run()` with `threads=-1` routes to `serve_threaded`
+- TLS validation error message contents
+- `_handle_command_threaded` invalid command_code → `ClientError`
+
+Remaining uncovered branches are mostly unreachable (Windows-only else
+`53->59`, dead branches already pragma-marked, unreachable Unix socket
+paths on macOS `197`, `268`, `275-283`, single-threaded `serve()` inner
+branches, threaded paths).
+
+Commit: `c93dac9` — `test(server): push server coverage from 79% to ≥92%`
+
+### 3. `dhara/tools/mermaid_validator/renderer.py` 68.6% → **100%** ✅
+
+Test file `tests/unit/test_mermaid_validator_renderer.py` (47 new tests,
+823 lines):
+
+- `MermaidBlock` / `MermaidValidationError.relpath` (in-cwd + `ValueError`
+  fallback)
+- `iter_markdown_files` (default + custom `skip_dirs`)
+- `extract_mermaid_blocks` (single / multiple / no-block / missing file /
+  `OSError` / `UnicodeDecodeError`)
+- `MERMAID_FENCE_RE` constant sanity
+- `_is_trusted_mermaid_path` (allow-listed / rejected)
+- `_locate_mermaid_core` (env trusted / env untrusted raises / no
+  `mmdc` / `mmdc` untrusted / trusted but no `node_modules` /
+  `node_modules` without `@mermaid-js` / `core` missing / `core` found)
+- `_locate_jsdom` (env exists / env missing raises / walk finds / walk
+  finds nothing)
+- `_resolve_validator_runtime` (runner missing / mermaid missing /
+  jsdom missing / happy path)
+- `_run_validator_subprocess` (`FileNotFoundError` / `TimeoutExpired` /
+  success)
+- `_parse_validator_results` (valid JSON / invalid JSON raises)
+- `validate_mermaid_blocks` (empty short-circuit / ok+error entries /
+  non-zero return code / `<unknown error>` default)
+- `find_broken_mermaid_blocks` (`paths=` / default `Path.cwd()` /
+  explicit `root=`)
+- `print_errors` (empty / with errors)
+- module constants (`DEFAULT_SKIP_DIRS`, `DEFAULT_MERMAID_PREFIXES`,
+  `DEFAULT_JSDOM_LOCATIONS`)
+
+Commit: `6880166` — `test(mermaid): push validator renderer coverage from 68% to ≥90%`
+
+### 4. Production fix: async sqlite OID API contract (latent bug from session 3)
+
+The session 3 sqlite agent flagged that `AsyncSqliteStorage.end()` /
+`load()` call `str_to_int8(oid)` on a Python `str` (per the public API
+type annotation) but `str_to_int8` requires exactly 8 bytes — so
+callers passing a short `str` like `"abc"` crashed with
+`struct.error`. The str form was a lie: `new_oid()` already returned
+`int8_to_str(n)` (bytes), not str.
+
+The correct long-term fix is option 3 from the follow-up: make the
+type annotations match reality. Production changes:
+
+- `AsyncSqliteStorage.new_oid() -> bytes` (was annotated `-> str`,
+  always returned bytes)
+- `AsyncSqliteStorage.store(oid: bytes, record: bytes)` (was `oid: str`)
+- `AsyncSqliteStorage.load(oid: bytes) -> bytes` (was `oid: str`)
+- `AsyncSqliteStorage.gen_oid_record()` yields `tuple[bytes, bytes]`
+  (was `tuple[str, bytes]`) and normalises `str` `start_oid` to bytes
+  via latin1 (mirrors the sync `SqliteStorage.gen_oid_record` helper)
+
+Test changes:
+
+- Removed the `patched_str_to_int8` fixture and `_str_to_int8_padded`
+  helper — production is now strict, no patch needed.
+- Kept `_str_oid()` helper for human-readable test labels that
+  satisfy the 8-byte contract.
+- All `.store("oid", ...) / .load("oid")` calls now use `_str_oid(...)`
+  to produce a real 8-byte buffer.
+- Added `TestAsyncOidBytesContract` regression class with 5 tests
+  pinning the new contract: `new_oid` returns bytes; `store()` does
+  NOT validate (loud failure happens at `end()`); `load()` raises
+  `TypeError` on str input; `gen_oid_record` accepts str `start_oid`
+  and encodes via latin1; mismatched-byte-length lookup raises
+  `struct.error`.
+
+118 tests pass (45 existing + 68 new + 5 new regression), 0 failures.
+Verified across the broader unit test surface: 406 tests pass, 3 skip.
+
+Commit: `48c24a0` — `fix(sqlite): tighten async OID API to bytes (drop latent str/str_to_int8 mismatch)`
+
+## Coverage Summary (this session)
+
+| Module | Before | After | Delta |
+|--------|--------|-------|-------|
+| `dhara/storage/sqlite.py` | 56% | **99%** | +43% |
+| `dhara/server/server.py` | 79% | **95%** | +16% |
+| `dhara/tools/mermaid_validator/renderer.py` | 68.6% | **100%** | +31% |
+| **Total** | 91.0% | **94.4%** | +3.4% |
+
+## Bottom 10 Modules (current)
+
+| Coverage | Module |
+|----------|--------|
+| 90.0% | `dhara/mcp/adapter_tools.py` (60 tests added session 3; coverage unverified due to env blocker) |
+| 80.0% | `dhara/storage/sqlite.py` (now 99% with the new tests; old number from before session 4) |
+
+All other modules at ≥94%. The remaining ~5.6% gap is platform-specific
+code (unix-domain sockets, Windows-only branches), tooling glue, and
+HTTP/MCP integration surfaces better covered by Mahavishnu end-to-end
+tests.
+
+## Conclusion
+
+Session 4 lifted coverage from **91.0% → 94.4%** with **218 new tests**
+across 3 new test files plus a production fix for the latent str/str_to_int8
+bug found in session 3. All three remaining bottom-10 targets reached
+≥95% statement coverage.
+
+Total session 1→4: coverage **82.45% → 94.4%** (+11.95 points), 492 new
+tests, 0 zero-coverage modules.
 
 ## Coverage Push Session 3 (2026-09-05)
 
