@@ -5,6 +5,18 @@ This file provides common fixtures used across multiple test files,
 migrated from the legacy test/ directory.
 """
 
+# Stub out the duckdb C extension so coverage tracing does not break
+# on dhara.lock.sql's ``import duckdb`` (transitively pulled in by
+# some test modules). dhara doesn't need real duckdb for unit tests.
+# This is harmless for non-duckdb code paths and required for any
+# test that imports dhara.lock.sql transitively.
+from unittest.mock import MagicMock
+import sys
+
+sys.modules.setdefault("duckdb", MagicMock())
+sys.modules.setdefault("_duckdb", MagicMock())
+sys.modules.setdefault("_duckdb._sqltypes", MagicMock())
+
 from os import unlink
 from os.path import exists
 
