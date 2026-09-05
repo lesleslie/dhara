@@ -83,7 +83,7 @@ class SqliteStorage(Storage):
         if not Path(filename).exists():
             self._init()
         else:
-            self._conn = sqlite3.connect(filename)
+            self._conn = sqlite3.connect(filename, check_same_thread=False)
             self._last_oid = self._get_last_oid()
         self._conn.text_factory = bytes
         # self._conn.executescript(_PRAGMAS)
@@ -95,7 +95,13 @@ class SqliteStorage(Storage):
         self._conn.commit()
 
     def _init(self) -> None:
-        self._conn = sqlite3.connect(self.filename)
+        # check_same_thread=False is required because serve_threaded()
+        # dispatches handlers to a ThreadPoolExecutor worker thread that
+        # touches this connection. Concurrency is bounded by the server's
+        # storage_lock for write commands; the storage also relies on
+        # sqlite3's per-thread serialisation for read commands, so the
+        # server's RLock around write commands is sufficient.
+        self._conn = sqlite3.connect(self.filename, check_same_thread=False)
         c = self._conn.cursor()
         c.executescript(_DB_SCHEMA)
         self._commit()
