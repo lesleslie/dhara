@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - dhara: Standardize storage server default port from `2972` (legacy Durus default, pre-Bodai) to `8685` (Bodai-canonical core-services slot, paired with MCP server `8683`). See [`docs/port-rationale.md`](./docs/port-rationale.md) for the conflict scan that drove the choice (port `8684` was ruled out — already owned by fastblocks).
+- dhara: Update `dhara/modes/{standard,lite}.py` startup-hint strings from `--port=8684` to `--port=8685` so the error-recovery suggestions no longer steer users into a fastblocks-owned port.
+
+### Fixed
+
+- dhara docs: Correct an incorrect factual claim in `docs/ZODB_COMPARISON.md` and the README that Dhara has no BTree support. Dhara ships `BTree[K, V]` in `dhara/collections/btree.py` (added in 0.10.0; re-exported from `dhara/collections/__init__.py`). The doc tables and the matching README cross-reference now distinguish Dhara's `BTree` from ZODB's full `BTrees` family rather than claiming BTree is absent.
+- dhara docs: Align the README "License" section with the actual project license — BSD 3-Clause License, as declared in the project root `LICENSE`. (The historical `LICENSE.txt` retains its Durus-derived "MIT/X license" wording for the upstream CNRI/Durus licence chain; that is upstream lineage, not the current project licence.)
+
+### Cross-repo (not part of this repo)
+
+- bodai portmap: The master `bodai/docs/portmap.md` historically referred to the curator as "Druva" — a separate name-drift from the port drift. Renamed to "Dhara" across the table row, the section heading, the firewall comment, and the YAML keys. Tracked here for completeness with the Dhara-side work; the commit lives in the bodai repo, not this one.
 
 ## [0.19.0] - 2026-08-30
 
