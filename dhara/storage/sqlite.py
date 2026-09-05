@@ -27,6 +27,7 @@ from dhara.serialize.record import pack_record, split_oids, unpack_record
 from dhara.storage.base import OID, Storage
 from dhara.utils import as_bytes, int8_to_str, iteritems, str_to_int8
 
+
 _DB_SCHEMA = """\
 BEGIN TRANSACTION;
 CREATE TABLE objects (
@@ -410,7 +411,7 @@ class AsyncSqliteStorage:
                 return 0
             return row[0]  # type: ignore[no-any-return]
 
-    async def load(self, oid: str) -> bytes:
+    async def load(self, oid: bytes) -> bytes:
         """Load record for oid. Raises KeyError if not found."""
         if self._conn is None:
             raise RuntimeError("Storage not initialized")
@@ -462,7 +463,7 @@ class AsyncSqliteStorage:
         self._pending_records.clear()
         self._transaction_open = True
 
-    async def store(self, oid: str, record: bytes) -> None:
+    async def store(self, oid: bytes, record: bytes) -> None:
         """Store record for oid within the current transaction."""
         self._pending_records.append((oid, record))
 
@@ -494,7 +495,7 @@ class AsyncSqliteStorage:
         self._invalid.clear()
         return list(result)  # type: ignore[return-value]
 
-    async def new_oid(self) -> str:
+    async def new_oid(self) -> bytes:
         """Allocate and return a new OID (thread-safe)."""
         async with self._oid_lock:
             oid = int8_to_str(self._last_oid)
@@ -503,7 +504,7 @@ class AsyncSqliteStorage:
 
     async def gen_oid_record(
         self, start_oid: str | None = None, batch_size: int = 100
-    ) -> AsyncIterator[tuple[str, bytes]]:
+    ) -> AsyncIterator[tuple[bytes, bytes]]:
         """Async generator yielding (oid, record) pairs."""
         if self._conn is None:
             raise RuntimeError("Storage not initialized")
@@ -517,9 +518,16 @@ class AsyncSqliteStorage:
                     # Return raw data bytes as the record
                     yield oid_str, row[1] or b""
         else:
+            # Normalise ``start_oid`` to bytes — the async storage
+            # public API takes ``bytes`` OIDs (consistent with
+            # ``int8_to_str`` output from ``new_oid()``). Mirrors the
+            # sync ``gen_oid_record`` helper which encodes ``str`` via
+            # latin1 so callers can pass either form.
+            if isinstance(start_oid, str):
+                start_oid = start_oid.encode("latin1")
             # BFS traversal from start_oid
-            todo = [start_oid]
-            seen: set[str] = set()
+            todo: list[bytes] = [start_oid]
+            seen: set[bytes] = set()
             while todo:
                 oid = todo.pop()
                 if oid in seen:

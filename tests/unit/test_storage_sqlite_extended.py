@@ -13,18 +13,19 @@ Pushes coverage on dhara/storage/sqlite.py from 56% (existing tests in
   inherited ``bulk_load`` path, and ``_list_all_oids`` / ``_gen_records``
   round-trips on real SQLite.
 
-NOTE: ``AsyncSqliteStorage.end`` calls ``str_to_int8(oid)`` on a *str* oid
-while ``str_to_int8`` only accepts 8-byte big-endian buffers (a latent bug
-in the production code). Tests that round-trip through ``store`` -> ``end``
-install a local ``str_to_int8`` patch that pads short OIDs so the
-production code paths still execute. We do NOT modify the production code.
+The async API surface takes 8-byte ``bytes`` OIDs (consistent with the
+``int8_to_str`` output from ``new_oid()``). The pre-existing ``str``
+type annotations were misleading — they were a latent bug because
+``str_to_int8`` requires exactly 8 bytes. The production fix tightens
+the annotations to ``bytes`` and ``new_oid()`` / ``store(oid, ...)`` /
+``load(oid)`` now reject ``str`` inputs loudly at the type system level.
 """
 
 from __future__ import annotations
 
 import sqlite3
 import struct
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator
 from pathlib import Path
 from struct import pack as struct_pack, unpack as struct_unpack
 from typing import Any
@@ -59,39 +60,15 @@ def _pack(oid: bytes, data: bytes, refs: bytes = b"") -> bytes:
 
 
 def _str_oid(s: str) -> bytes:
-    """Encode a short string OID into the 8-byte big-endian shape that
-    AsyncSqliteStorage.end() expects once ``str_to_int8`` has been patched."""
+    """Encode a short string OID as an 8-byte big-endian buffer.
+
+    Used to make test data human-readable while still satisfying the
+    async storage ``bytes``-only API contract.
+    """
     encoded = s.encode("latin1")
     if len(encoded) >= 8:
         return encoded[:8]
     return encoded + b"\x00" * (8 - len(encoded))
-
-
-def _str_to_int8_padded(s: bytes | str) -> int:
-    """str_to_int8 replacement that accepts short str or bytes OIDs.
-
-    AsyncSqliteStorage.end() applies ``str_to_int8(oid)`` directly to the
-    string-form OID stored via ``store(oid: str, ...)``. The real
-    ``str_to_int8`` only accepts 8-byte big-endian buffers, so without
-    this patch ``end()`` would raise ``struct.error``. The patch keeps the
-    production code paths exercised for coverage.
-    """
-    if isinstance(s, str):
-        s = s.encode("latin1")
-    if len(s) != 8:
-        s = (s + b"\x00" * 8)[:8]
-    return struct_unpack(">Q", s)[0]
-
-
-@pytest.fixture
-def patched_str_to_int8() -> Iterator[Any]:
-    """Patch dhara.storage.sqlite.str_to_int8 for the AsyncSqliteStorage.end
-    bug while running async round-trip tests."""
-    with patch(
-        "dhara.storage.sqlite.str_to_int8",
-        side_effect=_str_to_int8_padded,
-    ):
-        yield
 
 
 # ---------------------------------------------------------------------------
@@ -464,7 +441,7 @@ class TestAsyncInit:
 
     @pytest.mark.asyncio
     async def test_get_last_oid_after_inserts(
-        self, patched_str_to_int8: Any
+        self
     ) -> None:
         s = AsyncSqliteStorage(url="sqlite+aiosqlite://:memory:")
         await s.init()
@@ -488,23 +465,23 @@ class TestAsyncLoad:
     async def test_load_raises_runtime_when_not_initialized(self) -> None:
         s = AsyncSqliteStorage(url="sqlite+aiosqlite://:memory:")
         with pytest.raises(RuntimeError, match="Storage not initialized"):
-            await s.load("oid")
+            await s.load(_str_oid("oid"))
 
     @pytest.mark.asyncio
     async def test_load_missing_raises_keyerror(
-        self, patched_str_to_int8: Any
+        self
     ) -> None:
         s = AsyncSqliteStorage(url="sqlite+aiosqlite://:memory:")
         await s.init()
         try:
             with pytest.raises(KeyError):
-                await s.load("missing")
+                await s.load(_str_oid("missing"))
         finally:
             await s.close()
 
     @pytest.mark.asyncio
     async def test_load_existing_returns_record_bytes(
-        self, patched_str_to_int8: Any
+        self
     ) -> None:
         s = AsyncSqliteStorage(url="sqlite+aiosqlite://:memory:")
         await s.init()
@@ -513,7 +490,7 @@ class TestAsyncLoad:
             await s.store(_str_oid("oid1"), b"hello")
             await s.end()
 
-            assert await s.load("oid1") == b"hello"
+            assert await s.load(_str_oid("oid1")) == b"hello"
         finally:
             await s.close()
 
@@ -536,9 +513,12 @@ class TestAsyncTransactions:
     async def test_store_appends_to_pending(self) -> None:
         s = AsyncSqliteStorage(url="sqlite+aiosqlite://:memory:")
         await s.begin()
-        await s.store("oid1", b"rec1")
-        await s.store("oid2", b"rec2")
-        assert s._pending_records == [("oid1", b"rec1"), ("oid2", b"rec2")]
+        await s.store(_str_oid("oid1"), b"rec1")
+        await s.store(_str_oid("oid2"), b"rec2")
+        assert s._pending_records == [
+            (_str_oid("oid1"), b"rec1"),
+            (_str_oid("oid2"), b"rec2"),
+        ]
 
     @pytest.mark.asyncio
     async def test_end_raises_runtime_when_not_initialized(self) -> None:
@@ -548,7 +528,7 @@ class TestAsyncTransactions:
 
     @pytest.mark.asyncio
     async def test_end_empty_transaction_clears_open_flag(
-        self, patched_str_to_int8: Any
+        self
     ) -> None:
         s = AsyncSqliteStorage(url="sqlite+aiosqlite://:memory:")
         await s.init()
@@ -562,7 +542,7 @@ class TestAsyncTransactions:
 
     @pytest.mark.asyncio
     async def test_end_appends_to_pack_extra_during_pack(
-        self, patched_str_to_int8: Any
+        self
     ) -> None:
         """When ``_pack_extra`` is set during a transaction, end() pushes
         every stored OID onto it so the packer treats the record as alive."""
@@ -582,7 +562,7 @@ class TestAsyncTransactions:
 
     @pytest.mark.asyncio
     async def test_end_commit_makes_records_loadable(
-        self, patched_str_to_int8: Any
+        self
     ) -> None:
         s = AsyncSqliteStorage(url="sqlite+aiosqlite://:memory:")
         await s.init()
@@ -592,14 +572,14 @@ class TestAsyncTransactions:
             await s.store(_str_oid("oid2"), b"data2")
             await s.end()
 
-            assert await s.load("oid1") == b"data1"
-            assert await s.load("oid2") == b"data2"
+            assert await s.load(_str_oid("oid1")) == b"data1"
+            assert await s.load(_str_oid("oid2")) == b"data2"
         finally:
             await s.close()
 
     @pytest.mark.asyncio
     async def test_end_insert_or_replace_overwrites_existing(
-        self, patched_str_to_int8: Any
+        self
     ) -> None:
         s = AsyncSqliteStorage(url="sqlite+aiosqlite://:memory:")
         await s.init()
@@ -612,7 +592,7 @@ class TestAsyncTransactions:
             await s.store(_str_oid("oid1"), b"second")
             await s.end()
 
-            assert await s.load("oid1") == b"second"
+            assert await s.load(_str_oid("oid1")) == b"second"
         finally:
             await s.close()
 
@@ -667,7 +647,7 @@ class TestAsyncNewOid:
 
     @pytest.mark.asyncio
     async def test_oid_persists_across_reopen(
-        self, tmp_path: Path, patched_str_to_int8: Any
+        self, tmp_path: Path
     ) -> None:
         path = tmp_path / "persist.db"
         url = f"sqlite+aiosqlite://{path}"
@@ -704,7 +684,7 @@ class TestAsyncGenOidRecord:
 
     @pytest.mark.asyncio
     async def test_no_start_oid_returns_all(
-        self, patched_str_to_int8: Any
+        self
     ) -> None:
         s = AsyncSqliteStorage(url="sqlite+aiosqlite://:memory:")
         await s.init()
@@ -730,7 +710,7 @@ class TestAsyncGenOidRecord:
 
     @pytest.mark.asyncio
     async def test_with_start_oid(
-        self, patched_str_to_int8: Any
+        self
     ) -> None:
         s = AsyncSqliteStorage(url="sqlite+aiosqlite://:memory:")
         await s.init()
@@ -739,14 +719,14 @@ class TestAsyncGenOidRecord:
             await s.store(_str_oid("oid1"), b"data")
             await s.end()
 
-            pairs = [p async for p in s.gen_oid_record(start_oid="oid1")]
-            assert pairs == [("oid1", b"data")]
+            pairs = [p async for p in s.gen_oid_record(start_oid=_str_oid("oid1"))]
+            assert pairs == [(_str_oid("oid1"), b"data")]
         finally:
             await s.close()
 
     @pytest.mark.asyncio
     async def test_with_missing_start_oid_skips(
-        self, patched_str_to_int8: Any
+        self
     ) -> None:
         s = AsyncSqliteStorage(url="sqlite+aiosqlite://:memory:")
         await s.init()
@@ -756,7 +736,7 @@ class TestAsyncGenOidRecord:
             await s.end()
 
             pairs = [
-                p async for p in s.gen_oid_record(start_oid="missing")
+                p async for p in s.gen_oid_record(start_oid=_str_oid("missing"))
             ]
             assert pairs == []
         finally:
@@ -764,7 +744,7 @@ class TestAsyncGenOidRecord:
 
     @pytest.mark.asyncio
     async def test_no_start_oid_empty_db(
-        self, patched_str_to_int8: Any
+        self
     ) -> None:
         s = AsyncSqliteStorage(url="sqlite+aiosqlite://:memory:")
         await s.init()
@@ -865,7 +845,7 @@ class TestAsyncSplitOids:
 class TestAsyncBulkLoad:
     @pytest.mark.asyncio
     async def test_bulk_load_skips_missing(
-        self, patched_str_to_int8: Any
+        self
     ) -> None:
         s = AsyncSqliteStorage(url="sqlite+aiosqlite://:memory:")
         await s.init()
@@ -876,7 +856,7 @@ class TestAsyncBulkLoad:
             await s.end()
 
             loaded = [
-                rec async for rec in s.bulk_load(["oid1", "missing", "oid2"])
+                rec async for rec in s.bulk_load([_str_oid("oid1"), _str_oid("missing"), _str_oid("oid2")])
             ]
             assert loaded == [b"a", b"b"]
         finally:
@@ -884,7 +864,7 @@ class TestAsyncBulkLoad:
 
     @pytest.mark.asyncio
     async def test_bulk_load_empty(
-        self, patched_str_to_int8: Any
+        self
     ) -> None:
         s = AsyncSqliteStorage(url="sqlite+aiosqlite://:memory:")
         await s.init()
@@ -896,13 +876,13 @@ class TestAsyncBulkLoad:
 
     @pytest.mark.asyncio
     async def test_bulk_load_all_missing(
-        self, patched_str_to_int8: Any
+        self
     ) -> None:
         s = AsyncSqliteStorage(url="sqlite+aiosqlite://:memory:")
         await s.init()
         try:
             loaded = [
-                rec async for rec in s.bulk_load(["nope", "nada"])
+                rec async for rec in s.bulk_load([_str_oid("nope"), _str_oid("nada")])
             ]
             assert loaded == []
         finally:
@@ -1018,7 +998,7 @@ class TestAsyncContextManager:
 
     @pytest.mark.asyncio
     async def test_aenter_returns_self_instance(
-        self, patched_str_to_int8: Any
+        self
     ) -> None:
         s = AsyncSqliteStorage(url="sqlite+aiosqlite://:memory:")
         async with s as returned:
@@ -1029,7 +1009,7 @@ class TestAsyncContextManager:
 
     @pytest.mark.asyncio
     async def test_aexit_closes_even_on_exception(
-        self, patched_str_to_int8: Any
+        self
     ) -> None:
         s = AsyncSqliteStorage(url="sqlite+aiosqlite://:memory:")
         with pytest.raises(ValueError, match="boom"):
@@ -1045,7 +1025,7 @@ class TestAsyncContextManager:
 
 @pytest.mark.asyncio
 async def test_async_storage_full_lifecycle(
-    tmp_path: Path, patched_str_to_int8: Any
+    tmp_path: Path
 ) -> None:
     """End-to-end smoke: init → begin → store → end → load → sync → close."""
     path = tmp_path / "lifecycle.db"
@@ -1060,8 +1040,8 @@ async def test_async_storage_full_lifecycle(
         await s.end()
 
         # Round-trip load.
-        assert await s.load("root") == b"root-data"
-        assert await s.load("child") == b"child-data"
+        assert await s.load(_str_oid("root")) == b"root-data"
+        assert await s.load(_str_oid("child")) == b"child-data"
 
         # new_oid returns an 8-byte big-endian OID; it monotonically
         # increments from the current _last_oid (the DB max(id) at init).
@@ -1073,7 +1053,7 @@ async def test_async_storage_full_lifecycle(
 
         assert await s.health() is True
 
-        bulk = [rec async for rec in s.bulk_load(["root", "child"])]
+        bulk = [rec async for rec in s.bulk_load([_str_oid("root"), _str_oid("child")])]
         assert sorted(bulk) == sorted([b"root-data", b"child-data"])
 
         # gen_oid_record with no start_oid returns every row.
@@ -1096,3 +1076,117 @@ async def test_async_storage_full_lifecycle(
         await s.pack()
     finally:
         await s.close()
+
+
+# ---------------------------------------------------------------------------
+# Regression tests for the str-vs-bytes OID contract
+# ---------------------------------------------------------------------------
+
+
+class TestAsyncOidBytesContract:
+    """Regression tests pinning the bytes-only OID contract on the
+    async storage public API.
+
+    The pre-fix public API accepted ``str`` OIDs (per the type
+    annotations on ``new_oid()``, ``store(oid, ...)``, and
+    ``load(oid)``) but called ``str_to_int8(oid)`` internally, which
+    requires exactly 8 bytes — so any caller passing a Python ``str``
+    short of 8 characters got ``struct.error`` deep in
+    ``store() -> end()`` round-trips.
+
+    The fix:
+      * ``new_oid()`` now returns ``bytes`` (was annotated ``-> str``
+        but always returned ``int8_to_str(n)``).
+      * ``store(oid, ...)`` and ``load(oid)`` are annotated as
+        accepting ``bytes``; passing ``str`` raises ``TypeError`` from
+        ``str_to_int8`` (the underlying primitive still requires bytes).
+      * ``gen_oid_record(start_oid)`` keeps its ``str | None`` API and
+        normalises ``str`` to ``bytes`` internally (mirrors the sync
+        ``SqliteStorage.gen_oid_record`` helper).
+
+    These tests document the new contract so future changes don't
+    silently regress to accepting arbitrary ``str`` lengths.
+    """
+
+    @pytest.mark.asyncio
+    async def test_new_oid_returns_bytes_not_str(self) -> None:
+        s = AsyncSqliteStorage(url="sqlite+aiosqlite://:memory:")
+        await s.init()
+        try:
+            oid = await s.new_oid()
+            assert isinstance(oid, bytes)
+            assert len(oid) == 8  # int8 big-endian
+        finally:
+            await s.close()
+
+    @pytest.mark.asyncio
+    async def test_store_then_end_with_short_str_oid_raises(self) -> None:
+        """``store(oid, record)`` does not validate ``oid`` shape — it
+        just appends to the pending list. The validation happens later
+        when ``end()`` calls ``str_to_int8``. Pin this contract so
+        callers don't rely on ``store`` raising."""
+        s = AsyncSqliteStorage(url="sqlite+aiosqlite://:memory:")
+        await s.init()
+        try:
+            await s.begin()
+            await s.store("abc", b"x")  # does not raise
+            with pytest.raises((TypeError, struct.error)):
+                await s.end()
+        finally:
+            await s.close()
+
+    @pytest.mark.asyncio
+    async def test_load_with_short_str_oid_raises_typeerror(self) -> None:
+        """Short Python ``str`` OIDs raise ``TypeError`` from
+        ``str_to_int8`` rather than crashing inside the SELECT."""
+        s = AsyncSqliteStorage(url="sqlite+aiosqlite://:memory:")
+        await s.init()
+        try:
+            with pytest.raises(TypeError):
+                await s.load("abc")
+        finally:
+            await s.close()
+
+    @pytest.mark.asyncio
+    async def test_gen_oid_record_accepts_str_start_oid(self) -> None:
+        """``gen_oid_record`` keeps the ``str | None`` API for caller
+        ergonomics and encodes internally to bytes. Pin the contract:
+        short ``str`` start_oid encodes to ``bytes`` via latin1, then
+        the load() inside the generator hits ``struct.error`` if the
+        encoded length is not exactly 8. ``_str_oid`` produces an 8-byte
+        padded form for human-readable labels."""
+        s = AsyncSqliteStorage(url="sqlite+aiosqlite://:memory:")
+        await s.init()
+        try:
+            await s.begin()
+            await s.store(_str_oid("oid1"), b"data")
+            await s.end()
+
+            # Round-trip via the 8-byte padded form.
+            pairs = [
+                p async for p in s.gen_oid_record(start_oid=_str_oid("oid1"))
+            ]
+            assert pairs == [(_str_oid("oid1"), b"data")]
+        finally:
+            await s.close()
+
+    @pytest.mark.asyncio
+    async def test_gen_oid_record_with_str_short_oid_rounds_trip(self) -> None:
+        """gen_oid_record encodes ``str`` to bytes via latin1. If the
+        encoded length is <8 the round-trip lookup fails with
+        ``struct.error`` from ``str_to_int8`` — caller must pad to 8
+        bytes explicitly via ``_str_oid`` for short labels."""
+        s = AsyncSqliteStorage(url="sqlite+aiosqlite://:memory:")
+        await s.init()
+        try:
+            await s.begin()
+            await s.store(_str_oid("oid1"), b"data")
+            await s.end()
+
+            # ``gen_oid_record("oid1")`` encodes to ``b"oid1"`` (4 bytes)
+            # which str_to_int8 rejects. Verify the loud failure.
+            with pytest.raises(struct.error):
+                async for _ in s.gen_oid_record(start_oid="oid1"):
+                    pass
+        finally:
+            await s.close()
