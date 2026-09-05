@@ -85,13 +85,13 @@ dhara db start
 dhara db start --file test.dhara
 
 # Start server on custom port
-dhara db start --port 2972
+dhara db start --port 8685
 
 # Connect to server (interactive console)
 dhara db client
 
 # Connect to server with specific port
-dhara db client --port 2972
+dhara db client --port 8685
 
 # Open file directly (no server)
 dhara db client --file test.dhara
@@ -341,7 +341,7 @@ async def main() -> None:
 
     # Network storage
     connection = await AsyncConnection.new(
-        ClientStorage(address=("localhost", 2972))
+        ClientStorage(address=("localhost", 8685))
     )
 
 
@@ -434,7 +434,7 @@ storage:
 
 server:
   host: localhost
-  port: 2972
+  port: 8685
   gcbytes: 1000000
 
 serialization:

@@ -26,7 +26,7 @@ class StorageConfig:
     backend: Literal["file", "sqlite", "client", "memory", "postgres"] = "memory"
     path: Path | None = None
     host: str = "localhost"
-    port: int = 2972
+    port: int = 8685
     read_only: bool = False
 
     def __post_init__(self):

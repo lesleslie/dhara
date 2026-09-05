@@ -221,7 +221,7 @@ This runbook covers:
    du -sh /backup/*
 
    # Check network connectivity
-   netstat -tuln | grep :2972
+   netstat -tuln | grep :8685
    ```
 
 1. **Impact Assessment**

@@ -77,7 +77,7 @@ Start the dhara server:
 ./deployment/scripts/deploy.sh run
 
 # Or directly
-python -m dhara.cli db start --host=127.0.0.1 --port=2972
+python -m dhara.cli db start --host=127.0.0.1 --port=8685
 
 # With custom configuration
 python -m dhara.cli db start --file=deployment/config/production.yaml
@@ -129,9 +129,9 @@ The following files control buildpack behavior:
 # Or manually with Docker
 docker run -d \
     --name dhara-server \
-    -p 2972:2972 \
+    -p 8685:8685 \
     -v dhara-data:/data \
-    -e PORT=2972 \
+    -e PORT=8685 \
     ghcr.io/lesleslie/dhara:0.15.2
 ```
 
@@ -198,8 +198,8 @@ gcloud run deploy dhara-server \
     --platform=managed \
     --region=us-central1 \
     --allow-unauthenticated \
-    --port=2972 \
-    --set-env-vars PORT=2972
+    --port=8685 \
+    --set-env-vars PORT=8685
 ```
 
 ### AWS App Runner
@@ -235,7 +235,7 @@ connection:
 
 server:
   host: 0.0.0.0
-  port: 2972
+  port: 8685
 
 serialization:
   default: msgspec
@@ -256,7 +256,7 @@ Override configuration with environment variables:
 ```bash
 # Server configuration
 export DHARA_HOST=0.0.0.0
-export DHARA_PORT=2972
+export DHARA_PORT=8685
 export DHARA_CONFIG=/path/to/config.yaml
 
 # Storage configuration
@@ -295,7 +295,7 @@ config = load_config("config.yaml")  # Detects YAML/JSON
 
 ```bash
 # Run health check
-./deployment/scripts/healthcheck.sh --host=localhost --port=2972
+./deployment/scripts/healthcheck.sh --host=localhost --port=8685
 ```
 
 ### Kubernetes Probes
@@ -309,13 +309,13 @@ The Kubernetes deployment includes:
 ```yaml
 livenessProbe:
   tcpSocket:
-    port: 2972
+    port: 8685
   initialDelaySeconds: 10
   periodSeconds: 10
 
 readinessProbe:
   tcpSocket:
-    port: 2972
+    port: 8685
   initialDelaySeconds: 5
   periodSeconds: 5
 ```
@@ -473,8 +473,8 @@ Buildpack images are secure by default:
 
 ```bash
 # Check port availability
-netstat -tuln | grep 2972
-lsof -i :2972
+netstat -tuln | grep 8685
+lsof -i :8685
 
 # Check configuration
 python -c "from dhara.config.loader import load_config; print(load_config('deployment/config/production.yaml'))"

@@ -16,10 +16,10 @@ spec:
   sessionAffinity: None  # Could use ClientIP for sticky sessions
   ports:
   - name: dhara
-    port: 2972
-    targetPort: 2972
+    port: 8685
+    targetPort: 8685
     protocol: TCP
-    # nodePort: 32972  # Required if type=NodePort (30000-32767 range)
+    # nodePort: 38685  # Required if type=NodePort (30000-32767 range)
   selector:
     app: dhara
     component: server
@@ -40,8 +40,8 @@ spec:
 #   clusterIP: None
 #   ports:
 #   - name: dhara
-#     port: 2972
-#     targetPort: 2972
+#     port: 8685
+#     targetPort: 8685
 #     protocol: TCP
 #   selector:
 #     app: dhara
@@ -95,4 +95,4 @@ spec:
 #           service:
 #             name: dhara-server
 #             port:
-#               number: 2972
+#               number: 8685

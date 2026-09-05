@@ -6,7 +6,7 @@ set -euo pipefail
 
 # Configuration
 HOST="${DRUVA_HOST:-localhost}"
-PORT="${DRUVA_PORT:-2972}"
+PORT="${DRUVA_PORT:-8685}"
 TIMEOUT="${HEALTH_CHECK_TIMEOUT:-5}"
 ATTEMPTS="${HEALTH_CHECK_ATTEMPTS:-3}"
 DELAY="${HEALTH_CHECK_DELAY:-2}"
@@ -124,7 +124,7 @@ Usage: $0 [options]
 
 Options:
     -h, --host HOST        druva server host (default: localhost)
-    -p, --port PORT        druva server port (default: 2972)
+    -p, --port PORT        druva server port (default: 8685)
     -t, --timeout SECONDS  Connection timeout (default: 5)
     -a, --attempts NUM     Number of attempts (default: 3)
     -d, --delay SECONDS    Delay between attempts (default: 2)
@@ -143,11 +143,11 @@ Exit Codes:
     2                      Invalid arguments
 
 Examples:
-    # Check default localhost:2972
+    # Check default localhost:8685
     $0
 
     # Check remote host
-    $0 --host druva.example.com --port 2972
+    $0 --host druva.example.com --port 8685
 
     # With custom timeout and attempts
     $0 --timeout 10 --attempts 5

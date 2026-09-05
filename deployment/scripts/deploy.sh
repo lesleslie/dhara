@@ -128,7 +128,7 @@ run_server() {
 
     # Set defaults
     local host="${DHARA_HOST:-127.0.0.1}"
-    local port="${DHARA_PORT:-2972}"
+    local port="${DHARA_PORT:-8685}"
     local config="${DHARA_CONFIG:-deployment/config/production.yaml}"
 
     # Check if config exists
@@ -213,9 +213,9 @@ deploy_buildpack_local() {
     docker run -d \
         --name dhara-server \
         --restart unless-stopped \
-        -p 2972:2972 \
+        -p 8685:8685 \
         -v dhara-data:/data \
-        -e PORT=2972 \
+        -e PORT=8685 \
         "${image_name}"
 
     log_info "dhara server started from buildpack image"
@@ -279,7 +279,7 @@ run_dev_server() {
 
     # Run dev server
     log_info "Starting dev server with auto-reload..."
-    DHARA_HOST="127.0.0.1" DHARA_PORT="2972" DHARA_CONFIG="deployment/config/development.yaml" python3 -m dhara.mcp
+    DHARA_HOST="127.0.0.1" DHARA_PORT="8685" DHARA_CONFIG="deployment/config/development.yaml" python3 -m dhara.mcp
 }
 
 show_usage() {
@@ -303,7 +303,7 @@ Cloud Deployment Commands:
 Environment Variables:
     DHARA_VERSION        Version tag (default: 5.0.0)
     DHARA_HOST           Server host (default: 127.0.0.1)
-    DHARA_PORT           Server port (default: 2972)
+    DHARA_PORT           Server port (default: 8685)
     DHARA_CONFIG         Config file path
     DOCKER_REGISTRY      Container registry (default: ghcr.io)
     KUBERNETES_NAMESPACE K8s namespace (default: default)

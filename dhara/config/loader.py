@@ -449,7 +449,7 @@ def merge_configs(*configs: DharaConfig) -> DharaConfig:
             result.storage.path = config.storage.path
         if config.storage.host != "localhost":
             result.storage.host = config.storage.host
-        if config.storage.port != 2972:
+        if config.storage.port != 8685:
             result.storage.port = config.storage.port
         if config.storage.read_only:
             result.storage.read_only = config.storage.read_only

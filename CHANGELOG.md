@@ -5,6 +5,12 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- dhara: Standardize storage server default port from `2972` (legacy Durus default, pre-Bodai) to `8685` (Bodai-canonical core-services slot, paired with MCP server `8683`). See [`docs/port-rationale.md`](./docs/port-rationale.md) for the conflict scan that drove the choice (port `8684` was ruled out — already owned by fastblocks).
+
 ## [0.19.0] - 2026-08-30
 
 ### Added

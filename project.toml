@@ -45,7 +45,7 @@ value = "/workspace:/layers/paketo-buildpacks_python-start/pythonpath"
 # Server process configuration
 [[build.env]]
 name = "PORT"
-value = "2972"
+value = "8685"
 
 # Health check endpoint
 [[build.env]]
@@ -58,4 +58,4 @@ value = "port"
 
 [[build.env]]
 name = "BP_HEALTH_CHECKER_PORT"
-value = "2972"
+value = "8685"

@@ -62,7 +62,7 @@ STATUS_INVALID = as_bytes("I")
 
 TIMEOUT = 10
 DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 2972
+DEFAULT_PORT = 8685
 DEFAULT_GCBYTES = 0
 DEFAULT_THREADS = 0  # 0 = single-threaded (backward compatible)
 

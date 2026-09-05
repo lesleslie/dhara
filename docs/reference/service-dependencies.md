@@ -119,7 +119,7 @@ storage:
 
 server:
   host: localhost
-  port: 2972
+  port: 8685
   gcbytes: 1000000
 
 serialization:
@@ -204,7 +204,7 @@ dhara db client --file data.dhara
 
 **Network protocols**:
 
-- TCP (default port: 2972)
+- TCP (default port: 8685)
 - Unix domain sockets (local only)
 
 ```bash
@@ -217,7 +217,7 @@ dhara db start --socket /var/run/dhara.sock
 
 **Firewall considerations**:
 
-- Allow TCP port 2972 (or custom port)
+- Allow TCP port 8685 (or custom port)
 - Use TLS/SSL for production deployments
 - Consider Unix domain sockets for local communication
 
@@ -286,7 +286,7 @@ dhara db start --file /var/lib/dhara/data.dhara
 **Requirements**:
 
 - Network connectivity
-- Server: TCP port 2972 (or custom)
+- Server: TCP port 8685 (or custom)
 - Client: Server address
 
 ```bash
@@ -309,7 +309,7 @@ FROM python:3.13
 RUN pip install dhara
 
 VOLUME /var/lib/dhara
-EXPOSE 2972
+EXPOSE 8685
 
 CMD ["dhara", "db", "start", "--file", "/var/lib/dhara/data.dhara"]
 ```
@@ -336,7 +336,7 @@ spec:
       - name: dhara
         image: dhara:latest
         ports:
-        - containerPort: 2972
+        - containerPort: 8685
         volumeMounts:
         - name: data
           mountPath: /var/lib/dhara

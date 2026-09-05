@@ -12,7 +12,7 @@ storage:
 
   # Client storage settings (for backend='client')
   host: localhost
-  port: 2972
+  port: 8685
 
   # Read-only mode (useful for replicas/backup reads)
   read_only: false
@@ -50,7 +50,7 @@ server:
   host: 0.0.0.0
 
   # Port to listen on
-  port: 2972
+  port: 8685
 
   # Garbage collection threshold in bytes
   # When storage grows by this many bytes, trigger automatic GC

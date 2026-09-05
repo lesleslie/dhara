@@ -27,7 +27,7 @@ spec:
         version: v5.0.0
       annotations:
         prometheus.io/scrape: "false"
-        prometheus.io/port: "2972"
+        prometheus.io/port: "8685"
     spec:
       # Security context for pod
       securityContext:
@@ -72,14 +72,14 @@ spec:
 
         ports:
         - name: dhara
-          containerPort: 2972
+          containerPort: 8685
           protocol: TCP
 
         env:
         - name: DHARA_HOST
           value: "0.0.0.0"
         - name: DHARA_PORT
-          value: "2972"
+          value: "8685"
         - name: DHARA_STORAGE_BACKEND
           value: "file"
         - name: DHARA_STORAGE_PATH
@@ -120,7 +120,7 @@ spec:
             command:
             - python
             - -c
-            - "import socket; s=socket.socket(); s.settimeout(5); s.connect(('localhost', 2972)); s.close()"
+            - "import socket; s=socket.socket(); s.settimeout(5); s.connect(('localhost', 8685)); s.close()"
           initialDelaySeconds: 30
           periodSeconds: 30
           timeoutSeconds: 10
@@ -133,7 +133,7 @@ spec:
             command:
             - python
             - -c
-            - "import socket; s=socket.socket(); s.settimeout(5); s.connect(('localhost', 2972)); s.close()"
+            - "import socket; s=socket.socket(); s.settimeout(5); s.connect(('localhost', 8685)); s.close()"
           initialDelaySeconds: 10
           periodSeconds: 10
           timeoutSeconds: 5
@@ -146,7 +146,7 @@ spec:
             command:
             - python
             - -c
-            - "import socket; s=socket.socket(); s.settimeout(5); s.connect(('localhost', 2972)); s.close()"
+            - "import socket; s=socket.socket(); s.settimeout(5); s.connect(('localhost', 8685)); s.close()"
           initialDelaySeconds: 5
           periodSeconds: 10
           timeoutSeconds: 5

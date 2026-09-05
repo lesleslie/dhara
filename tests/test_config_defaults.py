@@ -35,7 +35,7 @@ class TestStorageConfig:
 
     def test_default_port(self):
         cfg = StorageConfig()
-        assert cfg.port == 2972
+        assert cfg.port == 8685
 
     def test_default_read_only(self):
         cfg = StorageConfig()

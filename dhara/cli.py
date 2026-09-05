@@ -567,7 +567,7 @@ def _create_db_commands(app: typer.Typer) -> None:
             None, "--file", "-f", help="Database file path"
         ),
         host: str = typer.Option("127.0.0.1", "--host", "-h", help="Server host"),
-        port: int = typer.Option(2972, "--port", "-p", help="Server port"),
+        port: int = typer.Option(8685, "--port", "-p", help="Server port"),
         readonly: bool = typer.Option(
             False, "--readonly", help="Open in read-only mode"
         ),
@@ -607,7 +607,7 @@ def _create_db_commands(app: typer.Typer) -> None:
             None, "--file", "-f", help="Database file path"
         ),
         host: str = typer.Option("127.0.0.1", "--host", "-h", help="Listen host"),
-        port: int = typer.Option(2972, "--port", "-p", help="Listen port"),
+        port: int = typer.Option(8685, "--port", "-p", help="Listen port"),
         readonly: bool = typer.Option(
             False, "--readonly", help="Open in read-only mode"
         ),
@@ -642,7 +642,7 @@ def _create_db_commands(app: typer.Typer) -> None:
             None, "--file", "-f", help="Database file path"
         ),
         host: str = typer.Option("127.0.0.1", "--host", "-h", help="Server host"),
-        port: int = typer.Option(2972, "--port", "-p", help="Server port"),
+        port: int = typer.Option(8685, "--port", "-p", help="Server port"),
     ) -> None:
         """Pack a Dhara database to reclaim space.
 
