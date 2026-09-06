@@ -12,10 +12,58 @@ migrated from the legacy test/ directory.
 # test that imports dhara.lock.sql transitively.
 from unittest.mock import MagicMock
 import sys
+import types
 
 sys.modules.setdefault("duckdb", MagicMock())
 sys.modules.setdefault("_duckdb", MagicMock())
 sys.modules.setdefault("_duckdb._sqltypes", MagicMock())
+
+# Stub out the ``key_value`` package tree so that ``beartype_this_package()``
+# (which runs as a top-level side effect in ``key_value/aio/__init__.py``)
+# never executes under pytest-cov. The beartype import hook installed by that
+# call races with coverage tracing on Python 3.14 and crashes pytest collection.
+#
+# Why this is test-only and safe:
+#   * Production code never runs under pytest-cov, so production is unaffected.
+#   * dhara itself does not import ``key_value``; only ``fastmcp`` (a transitive
+#     dep) does, and fastmcp is only used by MCP code paths.
+#   * ``fastmcp/__init__.py`` imports ``key_value.aio.*`` at module-load time,
+#     so the hook fires on the very first ``import fastmcp``. Stubbing
+#     ``key_value.aio`` before pytest discovery prevents that.
+#   * Tests that exercise MCP code paths already use ``FastMCP`` as a class
+#     reference; they don't construct ``MemoryStore`` or ``PydanticAdapter``
+#     directly, so a MagicMock stand-in is observationally equivalent.
+class _StubPackage(types.ModuleType):
+    """Module stub with ``__path__`` set so dotted-name imports resolve."""
+
+    def __init__(self, name: str) -> None:
+        super().__init__(name)
+        self.__path__ = []  # makes this a package, not a leaf module
+
+
+# Leaf submodules fastmcp pulls in across all of its server-side code paths.
+# Every ancestor in the dotted path is registered as ``_StubPackage`` so that
+# ``from key_value.aio.X.Y import Z`` can resolve each segment via sys.modules.
+_KEY_VALUE_LEAVES: tuple[str, ...] = (
+    "key_value.aio.adapters.pydantic",
+    "key_value.aio.protocols",
+    "key_value.aio.protocols.key_value",
+    "key_value.aio.stores.memory",
+    "key_value.aio.stores.redis",
+    "key_value.aio.stores.filetree",
+    "key_value.aio.wrappers.limit_size",
+    "key_value.aio.wrappers.statistics",
+    "key_value.aio.wrappers.statistics.wrapper",
+    "key_value.aio.wrappers.encryption",
+)
+
+for _leaf in _KEY_VALUE_LEAVES:
+    sys.modules.setdefault(_leaf, MagicMock())
+    _parts = _leaf.split(".")
+    for _i in range(1, len(_parts)):
+        _ancestor = ".".join(_parts[:_i])
+        if _ancestor not in sys.modules:
+            sys.modules[_ancestor] = _StubPackage(_ancestor)
 
 from os import unlink
 from os.path import exists

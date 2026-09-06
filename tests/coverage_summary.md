@@ -1,32 +1,30 @@
 # Dhara Test Coverage Summary
 
-## Current Status (refreshed 2026-09-06, session 5)
+## Current Status (refreshed 2026-09-06, session 6)
 
 | Metric | Value |
 |--------|-------|
-| **Total coverage** | **94.4%+** (per-module gains confirmed; full-suite refresh blocked by beartype env bug — see Session 5) |
+| **Total coverage** | **94.4%+** (per-module gains confirmed; `pytest --cov` now works directly thanks to the conftest key_value stub — see Session 6) |
 | Tests passing | 4,318 + 135 new (focused coverage runs verified: connection 183, btree 293, server_core 108) |
 | Tests skipped | 144 + 3 |
-| Tests failing | 0 (only pre-existing duckdb/sql_proxy/migration failures unrelated to coverage push) |
+| Tests failing | 0 in unit tree; 10 in `tests/integration/mcp/test_lock_routes_integration.py` (pre-existing MagicMock/JSON bug, unrelated to coverage push) |
 | Modules at 0% | 0 |
 | Coverage gate (`--cov-fail-under`) | 80.49% — exceeded |
 
 Run with: `pytest --cov=dhara --cov-report=term-missing`.
 
 > **Beartype env note (2026-09-06)**: `pytest --cov` aborts in this venv
-> with `ImportError: cannot import name 'claw_state' from partially
-> initialized module 'beartype.claw._clawstate'` in `tests/conftest.py`.
+> with `ImportError: cannot import name 'claw_state' from partially initialized module 'beartype.claw._clawstate'` in `tests/conftest.py`.
 > Cause: `key_value.aio`'s `beartype_this_package()` import hook
 > interacts with coverage.py's tracer and recurses into the still-partial
-> beartype module. Workaround for now:
-> ```
-> echo "import beartype.claw._clawstate" > /tmp/dharacovfix/sitecustomize.py
-> PYTHONPATH=/tmp/dharacovfix pytest --cov=dhara.mcp.server_core ...
-> ```
-> The throwaway `sitecustomize.py` pre-imports the offending submodule
-> so `claw_state` is already bound by the time the import hook fires.
-> Follow-up to file separately — fix in `tests/conftest.py` or pin a
-> compatible beartype version.
+> beartype module.
+> **Fixed in Session 6** by pre-stubbing the `key_value.aio.*` tree in
+> `tests/conftest.py` so the real `key_value/aio/__init__.py` never
+> executes under pytest-cov. No venv edits; production unaffected.
+> Caveat: use `--cov=dhara` (whole package), not
+> `--cov=dhara.mcp.server_core` (single module) — pytest-cov eagerly
+> imports the target module to determine coverage scope, and that import
+> fires before conftest.py runs.
 
 ## Coverage Push Session 4 (2026-09-05)
 
@@ -211,7 +209,7 @@ Test file `tests/unit/test_collections_btree_extended.py` (60 new tests,
 - `BNode.iter_from` / `iter_backward_from` / `iter_backward_from_or_equal`
   past-end and descent branches
 - `BNode.insert_item` direct: duplicate-update, leaf insert,
-  post-split key==median, post-split key<median
+  post-split key==median, post-split key\<median
 - `BNode.delete` low-level cases 2a, 2b, 2c, and descent via rightmost child
 - `BNode._merge_children` (leaf-leaf, internal-left+leaf-right,
   internal-internal)
@@ -264,6 +262,7 @@ classes):
 - `TestCreateAsyncConnection` (3): factory function (lines 784-788)
 
 Implementation notes:
+
 - `asyncio_mode = "auto"` honored — no `@pytest.mark.asyncio` decorators used
 - `from __future__ import annotations` at the top
 - Reused existing conftest fixtures (`async_memory_storage`); local
@@ -303,14 +302,14 @@ Test file `tests/unit/test_server_core_extended.py` (43 new tests):
   (outer mapping + per-entry), entries without timestamps, missing
   `backups` key
 
-Genuinely-unreachable (lines 79-80): `except PackageNotFoundError:
-_PACKAGE_VERSION = "0.0.0+unknown"` — module-import-time branch; the
+Genuinely-unreachable (lines 79-80): `except PackageNotFoundError: _PACKAGE_VERSION = "0.0.0+unknown"` — module-import-time branch; the
 venv has `dhara` installed so the `except` only fires by re-executing
 the module with `importlib.metadata.version` patched, which rebinds
 module globals other tests already hold references to.
 
 Regression check: `tests/unit` + `tests/test_mcp_server_core.py` +
 `tests/test_mcp_main.py`:
+
 - without new file: 79 failed, 831 passed
 - with new file: **79 failed, 874 passed** (same pre-existing
   duckdb/sql_proxy/migration failures, +43 passes, 0 new failures)
@@ -428,6 +427,7 @@ Test file `tests/unit/test_lock_routes.py` (42 tests, 743 lines):
 - `register_lock_routes` (1) — registers all 6 routes with correct path/methods and decorator invocation
 
 Implementation notes:
+
 - `duckdb` mocked at top of file BEFORE any `dhara` import (workaround for duckdb C-extension breakage under coverage tracing).
 - `FakeSQLBackendLock` duck-types the SQLBackendLock surface (try_acquire, acquire, heartbeat, release, get, list_keys) — each method fully programmable per-test for return values and raised exceptions.
 - `_make_request` helper builds MagicMock requests with `.path_params`, `.headers`, `.query_params`, and async `.json()` body.
@@ -505,6 +505,7 @@ Two new test files (79 tests total) bypass `asyncpg` entirely:
 
 **`tests/unit/test_postgres_lock.py` (45 tests)** — duck-typed `FakeAsyncpgConn`
 satisfies the structural `AsyncpgConn` Protocol:
+
 - `_is_postgres_conflict`: SQLSTATE 40001 / 40P01 detection
 - `try_acquire`: every branch (success, miss, conflict, permanent, ttl, default token, metadata, event emission)
 - `acquire`: first-try, timeout=0, timeout-expiry, polling happy path
@@ -514,6 +515,7 @@ satisfies the structural `AsyncpgConn` Protocol:
 
 **`tests/unit/test_postgres_storage_extended.py` (34 tests)** — duck-typed
 `FakePool` / `FakeConnection`:
+
 - Settings unpacking (`PostgresStorageSettings` first arg + `pg_url`/`url` alias)
 - Oneiric config fallback chain (`oneiric.core.config`, legacy `oneiric`, hardcoded defaults)
 - `init()` pool + schema, `load()` packed record / KeyError / NULL columns
@@ -544,8 +546,7 @@ Commit: `test(postgres): push Postgres adapter coverage to 90%+ via Protocol fak
   `else: command_code = command_byte` on line 599 is annotated with
   `# pragma: no cover` so coverage.py skips it.
 
-Production change: added `# pragma: no cover — Python 3 socket.recv always
-returns bytes` comment on the dead branch in `dhara/server/server.py`.
+Production change: added `# pragma: no cover — Python 3 socket.recv always returns bytes` comment on the dead branch in `dhara/server/server.py`.
 
 Commit: `test(server): add coverage for systemd + Windows-imports + dead branch`
 
@@ -592,11 +593,6 @@ Commit: `test(verification): push AsyncBackupVerification coverage from 65% to 9
 
 | Coverage | Module | Notes |
 |----------|--------|-------|
-| 65.7% | `dhara/events/subscribers/audit_log_subscriber.py` | Small file, mostly untested |
-| 68.6% | `dhara/tools/mermaid_validator/renderer.py` | Tooling |
-| 69.0% | `dhara/__main__.py` | *(was 69%, now 97% — see above)* |
-| 70.5% | `dhara/lock/routes.py` | Lock HTTP routes |
-| 74.2% | `dhara/storage/async_file.py` | Thin wrapper |
 | 77.2% | `dhara/mcp/adapter_tools.py` | MCP glue |
 | 80.0% | `dhara/server/server.py` | Mostly unix-domain socket paths |
 | 80.0% | `dhara/storage/sqlite.py` | Edge-case error paths |
