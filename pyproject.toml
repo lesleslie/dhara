@@ -71,7 +71,7 @@ classifiers = [
 
 dependencies = [
     # MCP server framework (ecosystem standard)
-    "fastmcp>=3.4.0,<4",
+    "fastmcp>=3.4.0,<5",
     "mcp-common>=0.18.0",
     # Configuration and logging (ecosystem standard).
     # >=0.20 required for `oneiric.cli.base.OneiricCLIBase` (was `BodaiCLIBase`
