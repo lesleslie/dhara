@@ -5,6 +5,36 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.5] - 2026-09-06
+
+### Fixed
+
+- shell: Inline DharaSessionTracker no-op stub
+- tests: Remove duckdb MagicMock stub from test_lock_routes.py + adapter_tools_extended.py
+
+### Documentation
+
+- tests: Refresh coverage_summary.md with wave 8+9 fanout
+
+### Testing
+
+- audit: Push flusher/outbox/query_tool coverage to ≥95%
+- collections: Push list/set/dict coverage to ≥95%
+- core: Push persistent.py coverage to ≥95%
+- mcp: Push __main__ coverage from 50% to 100%
+- mcp: Push auth.py coverage from 27% to 99%
+- mcp: Push ecosystem_state.py coverage to >=95%
+- mcp: Push kv_timeseries.py coverage from 11% to >=95%
+- Push fastmcp_auth.py coverage to >=95%
+- serialize: Push factory.py coverage from 17% to 100%
+- serialize: Push msgpack/msgspec coverage to ≥95%
+- server: Push socket.py coverage to ≥95%
+
+### Internal
+
+- Remove abandoned zero-coverage modules
+- Remove orphan test_monitoring_server_actual.py
+
 ## [0.19.4] - 2026-09-06
 
 ### Added

@@ -213,7 +213,7 @@ def test_prune_events_treats_naive_timestamp_as_utc() -> None:
 
 
 def test_prune_events_keeps_when_timestamp_unparseable() -> None:
-    """An unparseable timestamp should not be pruned (defensive default)."""
+    """An unparsable timestamp should not be pruned (defensive default)."""
     events = PersistentList(
         [
             _build_persistent_event("not-a-date"),
@@ -779,7 +779,7 @@ async def test_list_events_handles_naive_old_timestamp(
 async def test_list_events_keeps_event_with_unparseable_timestamp(
     store: AsyncEcosystemStateStore,
 ) -> None:
-    """An event with an unparseable timestamp stays in the list (defensive).
+    """An event with an unparsable timestamp stays in the list (defensive).
 
     The cutoff check uses ``event_dt is not None and event_dt < cutoff``,
     so a ``None`` event_dt (from a bad timestamp string) skips the cutoff

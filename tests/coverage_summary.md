@@ -15,8 +15,7 @@
 Run with: `pytest --cov=dhara --cov-report=term-missing`.
 
 > **Beartype env note (2026-09-06)**: `pytest --cov` previously aborted
-> with `ImportError: cannot import name 'claw_state' from partially
-> initialized module 'beartype.claw._clawstate'`. Cause: `key_value.aio`'s
+> with `ImportError: cannot import name 'claw_state' from partially initialized module 'beartype.claw._clawstate'`. Cause: `key_value.aio`'s
 > `beartype_this_package()` import hook interacted with coverage.py's
 > tracer and recursed into the still-partial beartype module.
 > **Fixed in Session 6** by pre-stubbing the `key_value.aio.*` tree in
@@ -34,8 +33,7 @@ Run with: `pytest --cov=dhara --cov-report=term-missing`.
 > so any integration test using real duckdb as a backing store got a
 > `MagicMock` instead. Symptom: 10 failures in
 > `tests/integration/mcp/test_lock_routes_integration.py` with
-> `TypeError: the JSON object must be str, bytes or bytearray, not
-> MagicMock` at `dhara/lock/sql.py:117`. The two unit tests that
+> `TypeError: the JSON object must be str, bytes or bytearray, not MagicMock` at `dhara/lock/sql.py:117`. The two unit tests that
 > genuinely need a mocked duckdb (`test_lock_routes.py` and
 > `test_adapter_tools_extended.py`) carry their own local stub at the
 > top of the file, so the global stub was redundant for them and harmful
@@ -207,8 +205,7 @@ changes outside `tests/conftest.py` and the type-drift fixes in
 ### 1. Beartype hook neutralized via conftest `key_value.aio.*` stub
 
 `pytest --cov` previously crashed during conftest.py load with
-`ImportError: cannot import name 'claw_state' from partially
-initialized module 'beartype.claw._clawstate'`. Root cause: `fastmcp`
+`ImportError: cannot import name 'claw_state' from partially initialized module 'beartype.claw._clawstate'`. Root cause: `fastmcp`
 imports `key_value.aio.*` at module-load time; `key_value/aio/__init__.py`
 calls `beartype_this_package()` which installs a loader hook into
 `sys.path_hooks`. That hook then races with coverage.py's tracer and
@@ -222,8 +219,7 @@ ever executing the real `key_value/aio/__init__.py`. Leaves get a
 `MagicMock` so attribute access from fastmcp keeps working
 transparently. **No venv files touched; production unaffected.**
 
-Commit: `0f2fdfc` — `test(conftest): stub key_value.aio tree to
-neutralize beartype hook under pytest-cov`
+Commit: `0f2fdfc` — `test(conftest): stub key_value.aio tree to neutralize beartype hook under pytest-cov`
 
 ### 2. Duckdb stub removed from conftest (was breaking integration tests)
 
@@ -231,9 +227,7 @@ The original conftest change above also stubbed `duckdb` with a
 `MagicMock` (workaround for the duckdb C extension breaking under
 coverage tracing). That stub was too broad: 10 integration tests in
 `tests/integration/mcp/test_lock_routes_integration.py` were failing
-with `TypeError: the JSON object must be str, bytes or bytearray, not
-MagicMock` at `dhara/lock/sql.py:117`. Trace showed `duckdb.connect()
-→ execute() → fetchall()` was producing mock objects end-to-end.
+with `TypeError: the JSON object must be str, bytes or bytearray, not MagicMock` at `dhara/lock/sql.py:117`. Trace showed `duckdb.connect() → execute() → fetchall()` was producing mock objects end-to-end.
 
 Fix: remove the duckdb stub from `tests/conftest.py` entirely. The two
 unit tests that need a mocked duckdb (`test_lock_routes.py` and
@@ -242,8 +236,7 @@ unit tests that need a mocked duckdb (`test_lock_routes.py` and
 ahead of any dhara import. The integration tests don't stub duckdb and
 now get the real C extension.
 
-Commit: `9406d85` — `fix(tests): remove duckdb stub from conftest —
-was breaking integration tests`
+Commit: `9406d85` — `fix(tests): remove duckdb stub from conftest — was breaking integration tests`
 
 ### 3. lychee/linkcheckmd broken ZEO link + 5 ty errors fixed
 
@@ -262,9 +255,9 @@ Three crackerjack hooks were failing — addressed in two commits:
   in the same commit.
 
 Commits:
+
 - `32fde49` — `fix(docs): update ZEO link to current readthedocs URL`
-- `895d8d2` — `fix(storage): correct str/bytes drift in
-  AsyncSqliteStorage types`
+- `895d8d2` — `fix(storage): correct str/bytes drift in AsyncSqliteStorage types`
 
 ### 4. Coverage push fanout — all targets already at 100%
 
@@ -485,6 +478,7 @@ resolved** (lock-routes MagicMock/JSON bug, root-caused to the
 over-broad duckdb stub in conftest.py).
 
 Session 6 follow-ups resolved:
+
 - ✅ Beartype hook neutralized via conftest `key_value.aio.*` stub —
   `pytest --cov` now works end-to-end with no env-side workarounds.
 - ✅ Duckdb stub removed from conftest (was breaking integration tests).
@@ -532,14 +526,14 @@ The dead-code removal commit (`883b337`) deleted
 `tests/test_monitoring_server.py`. It missed
 `tests/test_monitoring_server_actual.py` — a parallel test variant
 that imports the deleted module and was silently aborting pytest
-collection with `ImportError: cannot import name 'server' from
-'dhara.monitoring'`. Verified via grep that zero production code,
+collection with `ImportError: cannot import name 'server' from 'dhara.monitoring'`. Verified via grep that zero production code,
 current docs, or active test files reference the deleted module —
 only historical references in `docs/archive/` remained (non-actionable).
 
 Commit: `750f3ca` — `chore: remove orphan test_monitoring_server_actual.py`
 
 ### Total session 1→6+wave 8+9: coverage **82.45% → 95%+**, 976+ new
+
 tests, 0 zero-coverage modules, **6** latent production bugs found and
 fixed (session 6 added the str/bytes drift in `dhara/storage/sqlite.py`,
 plus the four ty errors in the same module), **10 pre-existing
