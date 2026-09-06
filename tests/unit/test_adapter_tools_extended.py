@@ -17,10 +17,19 @@ storage than via hand-rolled mocks.
 
 from __future__ import annotations
 
+import sys
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
+
+# Workaround for duckdb C-extension breakage under pytest-cov coverage
+# tracing. adapter_tools.py does not import duckdb directly, but the
+# connection layer (dhara.core.connection) does, and the trace re-entrance
+# breaks collection. Stub duckdb BEFORE any dhara import.
+sys.modules.setdefault("duckdb", MagicMock())
+sys.modules.setdefault("_duckdb", MagicMock())
+sys.modules.setdefault("_duckdb._sqltypes", MagicMock())
 
 from dhara.core.connection import AsyncConnection
 from dhara.mcp.adapter_tools import (
