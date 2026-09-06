@@ -21,6 +21,40 @@ from oneiric.shell.config import ShellConfig
 logger = logging.getLogger(__name__)
 
 
+class DharaSessionTracker:
+    """No-op session tracker for Dhara shell sessions.
+
+    The original implementation lived in ``dhara/shell/session_tracker.py``
+    and delegated to a Session-Buddy MCP client. That module was removed
+    in commit ``883b337`` (dead-code sweep), but ``DharaShell`` still wires
+    one up and ``dhara.cli.admin_command`` constructs ``DharaShell``
+    directly. The shell's ``_emit_session_start`` / ``_emit_session_end``
+    already wrap every call in try/except, so a no-op stub here restores
+    the type contract without re-introducing the removed dependency.
+    """
+
+    def __init__(self, component_name: str) -> None:
+        self.component_name = component_name
+
+    async def emit_session_start(
+        self,
+        shell_type: str,
+        metadata: dict[str, Any],
+    ) -> str | None:
+        """No-op; real Session-Buddy integration intentionally out of scope."""
+        return None
+
+    async def emit_session_end(
+        self,
+        session_id: str,
+        metadata: dict[str, Any],
+    ) -> None:
+        """No-op; real Session-Buddy integration intentionally out of scope."""
+
+    async def close(self) -> None:
+        """No-op; nothing to release."""
+
+
 class DharaShell(AdminShell):
     """Dhara-specific admin shell.
 
@@ -77,11 +111,7 @@ class DharaShell(AdminShell):
         self._add_dhara_namespace()
 
         # Override session tracker with Dhara-specific metadata
-        from .session_tracker import DharaSessionTracker
-
-        self.session_tracker = DharaSessionTracker(
-            component_name="dhara",
-        )
+        self.session_tracker = DharaSessionTracker(component_name="dhara")
         self._session_id: str | None = None
 
     def _add_dhara_namespace(self) -> None:
