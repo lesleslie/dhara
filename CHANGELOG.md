@@ -5,6 +5,63 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.4] - 2026-09-06
+
+### Added
+
+- Add docs/ZODB_COMPARISON.md and docs/port-rationale.md
+- docs: Add Standalone use and Why-not-ZODB sections to README
+
+### Fixed
+
+- Allow SqliteStorage to be used across worker threads
+- Correct str/bytes drift in AsyncSqliteStorage types
+- dhara: Point modes startup-hint strings at port 8685
+- docs: Address remaining multi-agent review findings
+- docs: Correct BTrees claim and align README License with the actual project license
+- docs: Remove stale dhara/config/security_test.py duplicate
+- Remove duckdb stub from conftest — was breaking integration tests
+- sqlite: Tighten async OID API to bytes (drop latent str/str_to_int8 mismatch)
+- Update ZEO link to current readthedocs URL
+
+### Documentation
+
+- CLAUDE.md: Cross-reference MCP backend wiring discipline (Bodai-wide)
+- tests: Refresh coverage_summary.md with current numbers
+- tests: Refresh coverage_summary.md with session 2 numbers
+- tests: Refresh coverage_summary.md with session 3 numbers
+- tests: Refresh coverage_summary.md with session 4 numbers
+- tests: Refresh coverage_summary.md with session 5 numbers
+- tests: Refresh coverage_summary.md with session 6 work
+
+### Testing
+
+- adapter_tools: Push coverage from 77% to ≥92%
+- Add comprehensive InMemoryDharaLock coverage
+- collections: Push btree coverage from 80% to 99%
+- conftest: Stub duckdb before dhara import to fix pytest-cov crash
+- conftest: Stub key_value.aio tree to neutralize beartype hook under pytest-cov
+- core: Push connection coverage from 87% to 100%
+- integration: Add comprehensive StorageServer coverage
+- mcp: Push server_core coverage from 78% to 99%
+- mermaid: Push validator renderer coverage from 68% to ≥90%
+- Push __main__.py coverage from 69% to 97%
+- Push AsyncBackupScheduler coverage from 72% to 90%
+- Push AsyncBackupVerification coverage from 65% to 98%
+- Push lock.routes coverage from 70% to ≥95%
+- Push Postgres adapter coverage to 90%+ via Protocol fakes
+- Push server coverage from 79% to ≥92%
+- server: Add coverage for systemd + Windows-imports + dead branch
+- storage: Push async_file coverage from 42% to ≥95%
+- storage: Push sqlite coverage from 56% to ≥92%
+- subscribers: Push audit_log_subscriber coverage from 66% to ≥95%
+- tests: Fix collection collision + sync uv.lock to 0.19.3
+
+### Internal
+
+- dhara: Standardize storage server default port on Bodai-canonical 8685
+- Remove obsolete tests/test_main.py shadow
+
 ## [Unreleased]
 
 ### Changed
