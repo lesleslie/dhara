@@ -5,18 +5,24 @@ This file provides common fixtures used across multiple test files,
 migrated from the legacy test/ directory.
 """
 
-# Stub out the duckdb C extension so coverage tracing does not break
-# on dhara.lock.sql's ``import duckdb`` (transitively pulled in by
-# some test modules). dhara doesn't need real duckdb for unit tests.
-# This is harmless for non-duckdb code paths and required for any
-# test that imports dhara.lock.sql transitively.
 from unittest.mock import MagicMock
 import sys
 import types
 
-sys.modules.setdefault("duckdb", MagicMock())
-sys.modules.setdefault("_duckdb", MagicMock())
-sys.modules.setdefault("_duckdb._sqltypes", MagicMock())
+# NOTE on duckdb stubbing: there is NO duckdb stub here on purpose.
+#
+# The two unit tests that need a mocked duckdb (because their production
+# code transitively imports it and the duckdb C extension breaks under
+# coverage tracing) carry their own local ``sys.modules.setdefault("duckdb",
+# MagicMock())`` at the top of the file: tests/unit/test_lock_routes.py
+# and tests/unit/test_adapter_tools_extended.py.
+#
+# Stubbing duckdb globally here would silently break the integration tests
+# (tests/integration/mcp/test_lock_routes_integration.py and friends) that
+# use real duckdb as their backing store — the stub turns duckdb.connect()
+# into a MagicMock, so every chained call returns a mock object and the
+# assertions fail with confusing errors (TypeError on json.loads(MagicMock)).
+# Real duckdb must reach those tests intact.
 
 # Stub out the ``key_value`` package tree so that ``beartype_this_package()``
 # (which runs as a top-level side effect in ``key_value/aio/__init__.py``)
