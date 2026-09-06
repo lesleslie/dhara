@@ -27,7 +27,6 @@ from dhara.serialize.record import pack_record, split_oids, unpack_record
 from dhara.storage.base import OID, Storage
 from dhara.utils import as_bytes, int8_to_str, iteritems, str_to_int8
 
-
 _DB_SCHEMA = """\
 BEGIN TRANSACTION;
 CREATE TABLE objects (
@@ -384,8 +383,8 @@ class AsyncSqliteStorage:
         self._last_oid: int = 0
         self._oid_lock: asyncio.Lock = asyncio.Lock()
         self._pack_increment = pack_increment
-        self._pending_records: list[tuple[str, bytes]] = []
-        self._pack_extra: list[str] | None = None
+        self._pending_records: list[tuple[bytes, bytes]] = []
+        self._pack_extra: list[bytes] | None = None
         self._invalid: set[str] = set()
         self._transaction_open: bool = False
 
@@ -523,10 +522,13 @@ class AsyncSqliteStorage:
             # ``int8_to_str`` output from ``new_oid()``). Mirrors the
             # sync ``gen_oid_record`` helper which encodes ``str`` via
             # latin1 so callers can pass either form.
-            if isinstance(start_oid, str):
-                start_oid = start_oid.encode("latin1")
+            start_oid_bytes: bytes = (
+                start_oid.encode("latin1")
+                if isinstance(start_oid, str)
+                else (start_oid or b"")
+            )
             # BFS traversal from start_oid
-            todo: list[bytes] = [start_oid]
+            todo: list[bytes] = [start_oid_bytes]
             seen: set[bytes] = set()
             while todo:
                 oid = todo.pop()
@@ -558,7 +560,7 @@ class AsyncSqliteStorage:
             pos += oid_len
         return result
 
-    async def bulk_load(self, oids: list[str]) -> AsyncIterator[bytes]:
+    async def bulk_load(self, oids: list[bytes]) -> AsyncIterator[bytes]:
         """Async bulk load — yields bytes records for each oid."""
         for oid in oids:
             try:
