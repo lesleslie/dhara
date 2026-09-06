@@ -57,7 +57,7 @@ API, Dhara fits cleanly into function-as-a-service contexts:
   cold-fast access, or point all functions at a shared managed PostgreSQL.
 - **Cold-start mitigation** — instantiate the storage inside the handler
   rather than at module scope. Per-connection caches reset to disk on every
-  commit (the same persistent on-disk cache pattern ZEO pioneered, retuned
+  commit (the same persistent on-disk cache pattern ZEO pioneered, returned
   for asyncio), so cold starts are cheap.
 - **DuckDB analytical queries** — the DuckDB backend reads from the same
   store and answers OLAP-shaped questions in one shot, useful for
@@ -72,7 +72,7 @@ storage server and the MCP server are independent services.
 ## Why Dhara, Not ZODB/ZEO?
 
 A reasonable first question when you land here is: *how does Dhara compare
-to [ZODB](https://zodb.org) and [ZEO](https://zopefoundation.github.io/ZEO/),
+to [ZODB](https://zodb.org) and [ZEO](https://zeo.readthedocs.io/en/latest/),
 the older and more widely-deployed Python object database with a similar
 design point?*
 
@@ -110,8 +110,6 @@ does not replicate.
 > writes serialize through the server rather than running in parallel.
 > "asyncio-first" here is about the client API shape, not server-side
 > parallelism.
-
-[FastMCP]: https://github.com/modelcontextprotocol/python-sdk
 
 ## Origin
 
@@ -388,3 +386,5 @@ or "Pole Star" - complementing the original Latin name **Durus**, meaning
 ## License
 
 BSD 3-Clause License — see `LICENSE` in the project root for details.
+
+[fastmcp]: https://github.com/modelcontextprotocol/python-sdk
