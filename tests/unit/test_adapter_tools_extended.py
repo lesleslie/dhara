@@ -23,13 +23,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
-# Workaround for duckdb C-extension breakage under pytest-cov coverage
-# tracing. adapter_tools.py does not import duckdb directly, but the
-# connection layer (dhara.core.connection) does, and the trace re-entrance
-# breaks collection. Stub duckdb BEFORE any dhara import.
-sys.modules.setdefault("duckdb", MagicMock())
-sys.modules.setdefault("_duckdb", MagicMock())
-sys.modules.setdefault("_duckdb._sqltypes", MagicMock())
+# NOTE: NO duckdb stub here. Previous session added a duckdb MagicMock
+# stub "to work around pytest-cov coverage tracing breakage". That stub
+# was unused (adapter_tools.py does not import duckdb) AND harmful: under
+# xdist it polluted sys.modules and broke other test files (notably
+# tests/unit/audit/test_audit_extended.py) that needed real duckdb. The
+# conftest's key_value.aio stub already prevents the beartype race when
+# running with --cov=dhara (whole-package coverage).
 
 from dhara.core.connection import AsyncConnection
 from dhara.mcp.adapter_tools import (

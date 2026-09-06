@@ -4,8 +4,14 @@ Covers every route handler exposed via :func:`register_lock_routes` plus the
 ``_handle_to_dict`` / ``_safe_json`` / ``_owner_header`` helpers and the
 ``_bind`` wrapper.
 
-duckdb is mocked at import time so the test module loads under pytest-cov
-without needing the duckdb C extension to be importable.
+NOTE: NO duckdb stub here. The route handlers do not touch duckdb (the
+``store`` parameter is a ``SQLBackendLock`` Protocol, exercised via mocks
+below). A previous session added a ``sys.modules.setdefault('duckdb',
+MagicMock())`` block "for pytest-cov coverage tracing"; that was both
+unnecessary (the duckdb C extension loads fine under pytest-cov) and
+actively harmful under xdist — the sys.modules pollution leaked into
+``tests/unit/audit/test_audit_extended.py`` when this file was collected
+before audit's, breaking 11 tests with a MagicMock conn fixture.
 """
 
 from __future__ import annotations
@@ -17,13 +23,6 @@ from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
-# CRITICAL: mock duckdb BEFORE importing any dhara.lock modules.
-# dhara.lock.sql does `import duckdb` at module level; under pytest-cov
-# the C extension import fails on some runners.
-sys.modules.setdefault("duckdb", MagicMock())
-sys.modules.setdefault("_duckdb", MagicMock())
-sys.modules.setdefault("_duckdb._sqltypes", MagicMock())
 
 from starlette.responses import JSONResponse  # noqa: E402
 
