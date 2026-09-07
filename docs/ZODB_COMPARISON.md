@@ -69,7 +69,7 @@ several of the differences in the matrix below.
 | Current line | ZODB 5.7.x / 5.8.x, ZEO 5.x | Dhara 0.19.x (targeting 0.20; 1.0 compatibility-reduction window) |
 | Cadence | Maintenance: small releases, security fixes, no rewrites | Active development on Python 3.13/3.14 |
 | Ecosystem | Zope / Plone CMS, Pyramid, long-lived internal tools | Bodai ecosystem + standalone adoption |
-| License | Zope Public License (ZPL) | Open-source (see `LICENSE.txt`) |
+| License | Zope Public License (ZPL) | Open-source — BSD 3-Clause (see `LICENSE`; CNRI/Durus lineage recorded in `NOTICE` and pre-0.1.0 changelog entries) |
 
 Both are in the same design niche: *Python-native object database with
 ACID transactions and transparent persistence*. The lineages don't share

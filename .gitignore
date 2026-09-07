@@ -55,8 +55,9 @@ build/
 # Benchmark baseline scratch (executor-only; see cache-adapter consolidation plan Phase 0)
 benchmarks-baseline.txt
 
+# `.superprofits` was a typo for `.superpowers` (renamed 2026-07-11 in commit 355d996).
+# Kept here as a guard so any orphan doesn't reappear in `git status`.
 .superprofits/
-.superpowers/
 
 # ============================================================================
 # Node.js - Wave-11 mermaid CI guard
