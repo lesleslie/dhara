@@ -116,8 +116,8 @@ does not replicate.
 dhara was originally written by the MEMS Exchange software development
 team at the Corporation for National Research Initiatives (CNRI). dhara
 was designed to be the storage component for the Python-powered web sites
-operated by the MEMS Exchange. See `doc/README_CNRI.txt` for more
-details.
+operated by the MEMS Exchange. See the *Acknowledgements* section below
+for the full upstream lineage.
 
 ## Overview
 
