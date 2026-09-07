@@ -48,7 +48,9 @@ def _parse_tool_decorators() -> dict[str, set[str]]:
         for node in tree.body:
             if isinstance(node, ast.Assign) and len(node.targets) == 1:
                 target = node.targets[0]
-                if isinstance(target, ast.Name) and isinstance(node.value, ast.Constant):
+                if isinstance(target, ast.Name) and isinstance(
+                    node.value, ast.Constant
+                ):
                     if isinstance(node.value.value, str):
                         module_constants[target.id] = node.value.value
 
@@ -81,10 +83,7 @@ def _parse_tool_decorators() -> dict[str, set[str]]:
                 continue
             func = dec.func
             # Bare ``self.server.tool()`` → always on
-            if (
-                isinstance(func, ast.Attribute)
-                and func.attr == "tool"
-            ):
+            if isinstance(func, ast.Attribute) and func.attr == "tool":
                 tool_to_groups.setdefault(stmt.name, set()).add("__always_on__")
                 continue
             # ``_tool(GROUP_KEY, ...)`` — first arg is the group key
@@ -95,12 +94,18 @@ def _parse_tool_decorators() -> dict[str, set[str]]:
     return tool_to_groups
 
 
-def _groups_for_profile(profile: str, groups_by_profile: dict[str, list[str]]) -> set[str]:
+def _groups_for_profile(
+    profile: str, groups_by_profile: dict[str, list[str]]
+) -> set[str]:
     """Resolve which group keys are active for the given profile."""
     return set(groups_by_profile[profile])
 
 
-def _capture(profile: str, tool_to_groups: dict[str, set[str]], groups_by_profile: dict[str, list[str]]) -> list[str]:
+def _capture(
+    profile: str,
+    tool_to_groups: dict[str, set[str]],
+    groups_by_profile: dict[str, list[str]],
+) -> list[str]:
     """Pick tool names whose group(s) intersect the active profile.
 
     A tool with any always-on decorator (``__always_on__``) is included
@@ -109,17 +114,13 @@ def _capture(profile: str, tool_to_groups: dict[str, set[str]], groups_by_profil
     """
     active = _groups_for_profile(profile, groups_by_profile)
     always_on = active | {"__always_on__"}
-    selected = [
-        name
-        for name, groups in tool_to_groups.items()
-        if groups & always_on
-    ]
+    selected = [name for name, groups in tool_to_groups.items() if groups & always_on]
     return sorted(selected)
 
 
 def _load_groups_by_profile() -> dict[str, list[str]]:
     """Read the dhara profile → groups map directly from profiles.py."""
-    from dhara.mcp.profiles import TOOL_GROUPS_BY_PROFILE, ToolProfile
+    from dhara.mcp.profiles import TOOL_GROUPS_BY_PROFILE
 
     return {
         profile.value: list(groups)

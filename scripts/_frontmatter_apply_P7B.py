@@ -9,6 +9,7 @@ Per-file (status, role, topic) assignments derived from each file's body. Each
 file's existing `**Status:**` line (if any) gets a trailing legacy comment so the
 validator's --allow-nonstandard mode stays green.
 """
+
 from pathlib import Path
 
 PLAN_FM_TEMPLATE = (
@@ -177,7 +178,9 @@ def add_legacy_comment(text: str) -> str:
         if stripped.startswith("**Status") and "Status" in stripped:
             original = stripped.rstrip("\n")
             if "-- see YAML frontmatter" not in original:
-                lines[i] = original + "  <!-- legacy status — see YAML frontmatter -->\n"
+                lines[i] = (
+                    original + "  <!-- legacy status — see YAML frontmatter -->\n"
+                )
             break
     return "".join(lines)
 
@@ -198,9 +201,7 @@ def main() -> None:
         body_with_comment = add_legacy_comment(original)
         new_content = frontmatter + body_with_comment
         path.write_text(new_content, encoding="utf-8")
-        results.append(
-            (rel_path, params["status"], params["role"], params["topic"])
-        )
+        results.append((rel_path, params["status"], params["role"], params["topic"]))
     print(f"\nEdited {len(results)} files:")
     for rel, st, rl, tp in results:
         print(f"  {rel}: status={st} role={rl} topic={tp}")

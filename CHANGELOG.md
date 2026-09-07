@@ -5,15 +5,30 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.8] - 2026-09-07
+
+### Fixed
+
+- Replace deprecated asyncio.iscoroutinefunction with inspect.iscoroutinefunction
+- scripts: Make regenerate_plan_index.py timezone-aware (DTZ011)
+
+### Documentation
+
+- Align README with current Dhara CLI, storage backends, and modes
+
+### Internal
+
+- Clean up tracked cruft + sync uv.lock to 0.19.7
+
 ## [0.19.6] - 2026-09-06
 
 ### Testing
 
-- fastmcp: Update pin baseline to <5 (post-v4-migration)
+- fastmcp: Update pin baseline to \<5 (post-v4-migration)
 
 ### Build
 
-- deps: Raise FastMCP pin ceiling from <4 to <5 (Phase 3 v4 migration)
+- deps: Raise FastMCP pin ceiling from \<4 to \<5 (Phase 3 v4 migration)
 
 ## [0.19.5] - 2026-09-06
 

@@ -148,10 +148,10 @@ def require_dhara_auth(
 # These are minimal stubs that delegate to mcp_common.auth where possible.
 
 import asyncio
-import inspect
 import base64
 import hashlib
 import hmac
+import inspect
 import json
 import os
 import secrets
