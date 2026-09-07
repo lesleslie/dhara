@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastmcp.server.auth.authorization import require_scopes
+from fastmcp.server.auth import require_scopes
 from fastmcp.server.auth.providers.jwt import AccessToken, TokenVerifier
 
 from dhara.mcp.auth import Role, TokenAuth

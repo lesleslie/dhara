@@ -33,7 +33,7 @@ def _auth_helper(server_self: DharaMCPServer) -> Any:
     - auth disabled → ``require_scopes()`` (empty-scope check)
     - auth enabled → ``require_scopes`` (function; called with *scopes below)
     """
-    from fastmcp.server.auth.authorization import require_scopes
+    from fastmcp.server.auth import require_scopes
 
     assert server_self.config is not None, "config required for auth scopes"
     if not server_self.config.authentication.enabled:
