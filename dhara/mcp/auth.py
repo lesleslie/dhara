@@ -148,6 +148,7 @@ def require_dhara_auth(
 # These are minimal stubs that delegate to mcp_common.auth where possible.
 
 import asyncio
+import inspect
 import base64
 import hashlib
 import hmac
@@ -667,7 +668,7 @@ class AuthMiddleware:
                 kwargs["auth_result"] = auth_result
                 return func(*args, **kwargs)  # type: ignore[no-any-return]
 
-            if asyncio.iscoroutinefunction(func):
+            if inspect.iscoroutinefunction(func):
                 return async_wrapper
 
             return sync_wrapper
