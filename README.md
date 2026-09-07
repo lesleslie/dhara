@@ -93,7 +93,7 @@ version for the Bodai use case:
   does not. That is a deliberate trade — most Bodai-shaped workloads are
   read-heavy with short, infrequent writes that benefit from a simpler
   concurrency story.
-- **Modern Python stack.** 3.13+ type hints throughout, `msgspec` for
+- **Modern Python stack.** 3.14+ type hints throughout, `msgspec` for
   serialization alongside pickle, Oneiric layered config, asyncio-first
   `AsyncConnection`. ZODB 5.x is solid and production-proven, but is in
   maintenance rather than active development.
@@ -220,17 +220,6 @@ Dhara currently exposes two configuration layers:
 - `dhara.config` remains available for lightweight dataclass helpers and compatibility with older code
 
 For service startup, operator configuration, and environment-variable overrides, use `DharaSettings`.
-
-## Deprecation Policy
-
-Dhara is in an active compatibility-reduction window.
-
-- Deprecated compatibility imports remain available in `0.8.x`
-- They are planned for stronger enforcement in `0.9.x`
-- Convenience compatibility shims are candidates for removal in `1.0.0`
-
-The current policy and migration targets are documented in
-`docs/LEGACY_COMPATIBILITY_AND_REMOVAL_PLAN.md`.
 
 ## Quick Demo
 
@@ -426,7 +415,7 @@ by the original Durus developers.
 
 This modern version (dhara) includes:
 
-- Modern Python 3.13+ type hints
+- Modern Python 3.14+ type hints
 - Enhanced serialization options (msgspec)
 - Oneiric configuration and logging integration
 - MCP server for modern AI/agent workflows
