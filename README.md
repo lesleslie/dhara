@@ -129,51 +129,88 @@ are transactional.
 
 ## CLI Commands
 
-Dhara provides a unified CLI with three command groups:
+Dhara ships a Typer-based unified CLI. All subcommands accept `--help`.
 
-### MCP Server Commands (for AI/Agent Workflows)
+### Top-level subcommands
+
+| Command | Purpose |
+| --- | --- |
+| `dhara version` | Print the installed Dhara version. |
+| `dhara doctor` | Run diagnostic checks against the local runtime. |
+| `dhara health` | Probe the local runtime health (used by the Bodai radar). |
+| `dhara adapters` | List registered Oneiric adapters. |
+| `dhara storage` | Display storage information (backend, file, port). |
+| `dhara admin` | Launch the Dhara admin shell (IPython). |
+| `dhara mcp ...` | MCP server lifecycle (see below). |
+| `dhara db ...` | Legacy-compatible database operations (Durus v0.x scripts). |
+
+### MCP server lifecycle (`dhara mcp ...`)
 
 ```bash
-dhara mcp start              # Start MCP server
-dhara mcp stop               # Stop MCP server
-dhara mcp status             # Check server status
-dhara mcp health             # Health check
+dhara mcp start               # Start the FastMCP server (default :8683)
+dhara mcp stop                # Stop it
+dhara mcp status              # Is it running?
+dhara mcp health              # Health probe
+dhara mcp restart             # stop + start
+dhara mcp config              # Show resolved MCP settings
 ```
 
-### Database Commands (Dhara Storage Operations)
+### Database operations (`dhara db ...`)
+
+The `db` subcommand tree is the legacy-compatible interface carried over
+from the Durus 0.x CLI. Most new code should prefer `dhara start --mode=...`
+(see *Modes* below), but `dhara db` keeps existing scripts working.
 
 ```bash
-dhara db start               # Start Dhara storage server
-dhara db client              # Connect to server (interactive)
-dhara db pack                # Reclaim storage space
+dhara db start                # Start Dhara storage server
+dhara db client               # Connect to a running server (interactive IPython)
+dhara db pack                 # Reclaim storage space
 ```
 
 Common options for database commands:
 
 - `--file PATH` or `-f PATH` - Database file path
 - `--host HOST` or `-h HOST` - Server host (default: 127.0.0.1)
-- `--port PORT` or `-p PORT` - Server port (default: 8685)
+- `--port PORT` or `-p PORT` - Server port (default: `8685` for the storage server, `8683` for the MCP server)
 - `--readonly` - Open in read-only mode
 
-### Dhara-Specific Commands
+### Modes
+
+Dhara's startup modes are the recommended way to bring the storage server
+up. They pre-wire host/port and the default backend so you do not have
+to memorize the right flags for each scenario.
 
 ```bash
-dhara adapters               # List registered adapters
-dhara storage                # Display storage information
-dhara admin                  # Launch admin shell (IPython)
+dhara start --mode=lite         # Zero-config, local SQLite, port 8683
+dhara start --mode=standard     # Full feature set, configurable storage, port 8685
 ```
+
+The two modes are implemented in `dhara/modes/lite.py` and
+`dhara/modes/standard.py`. See `dhara/modes/__init__.py` for the mode
+detection and resolution rules.
 
 ## Validation
 
-The preferred local validation path is `crackerjack`:
+The preferred local validation path is `crackerjack` (the CLI, not
+`python -m crackerjack`):
 
 ```bash
-python -m crackerjack qa-health
-python -m crackerjack run-tests
+crackerjack run                # Full quality gate (format + lint + type + tests)
+crackerjack run -p minor       # Bump + commit + tag + push + publish (when hooks pass)
+crackerjack run -p patch       # Patch-level release
+crackerjack doctor             # Diagnostic checks (pre-flight)
+crackerjack health             # Health probe
 ```
 
-Use direct `pytest` commands when you need to isolate a single file or debug a
-specific failure.
+For a single test file or a specific failure, drop down to `pytest` directly:
+
+```bash
+pytest tests/unit/test_storage_sqlite.py
+pytest -k "test_cache_shrink" -x
+```
+
+When `crackerjack run` reports issues, fix them via Crackerjack's
+AI-assisted flow rather than re-running the gates by hand.
 
 ## Configuration Surfaces
 
@@ -197,27 +234,40 @@ The current policy and migration targets are documented in
 
 ## Quick Demo
 
-**Start a Dhara server:**
+**Start a Dhara server (recommended):**
 
 ```bash
-dhara db start
+dhara start --mode=lite
 ```
 
-This starts a Dhara storage server using a temporary file and listening for clients on localhost port 8685.
+This starts the storage server in *lite* mode — a local SQLite-backed
+file, listening on `127.0.0.1:8683`. Use `--mode=standard` for the
+production-shaped configuration (default port `8685`).
+
+If you have an existing Durus-style script that still calls
+`dhara db start`, that path is preserved under the `dhara db ...`
+subcommand tree for compatibility — see *CLI Commands* above.
 
 **Connect as a client:**
 
 ```bash
-dhara db client
+dhara admin
 ```
 
-This opens an interactive IPython shell connected to the storage server. You have access to a dictionary-like persistent object, `root`. If you make changes to items of `root` and run `connection.commit()`, the changes are written to the file. If you make changes and then run `connection.abort()`, the attributes revert back to the values they had at the last commit.
+This opens an interactive IPython shell connected to the running server.
+You have access to a dictionary-like persistent object, `root`. If you
+make changes to items of `root` and run `connection.commit()`, the
+changes are written to the file. If you make changes and then run
+`connection.abort()`, the attributes revert back to the values they
+had at the last commit.
 
-**Multiple clients:** Run `dhara db client` in another terminal to see how committed changes to `root` in one client are available in other clients when they synchronize via `connection.abort()` or `connection.commit()`.
+**Multiple clients:** open a second terminal and run `dhara admin`
+again. Committed changes to `root` in one client are visible in other
+clients after the next `connection.abort()` or `connection.commit()`.
 
 **Stop the server:** Press *Control-C* in the server terminal.
 
-**Persistence example:**
+**Persistence example (using the legacy `db` commands):**
 
 ```bash
 # Start server with a persistent file
@@ -346,23 +396,26 @@ add calls to `self._p_note_change()` in every method that makes changes.
 
 ## Storage back-ends
 
-This version of dhara includes a number of back-end storage
-implementations that may be used. The default is `AsyncFileStorage`,
-a thin wrapper over `AsyncSqliteStorage` that maps a filesystem path to
-a `sqlite+aiosqlite://` URL. It accepts the path-style constructor that
-callers expect from the legacy `FileStorage` API while delegating to the
-canonical async SQLite backend.
+Dhara ships several storage backends, all implemented under
+`dhara/storage/`. Pick the one that matches your durability and
+concurrency story.
 
-Note: SHELF-1 is removed in 0.11.0. New and migrated databases should use
-`AsyncFileStorage` (path-style) or `AsyncSqliteStorage` (URL-style) directly.
+| Backend | Module | Use it for |
+| --- | --- | --- |
+| `AsyncFileStorage` | `dhara/storage/async_file.py` | Local single-process persistence. **Default.** A thin alias for `AsyncSqliteStorage` that maps a filesystem path to a `sqlite+aiosqlite://` URL — drop-in for the legacy `FileStorage` path-style API. |
+| `AsyncSqliteStorage` | `dhara/storage/sqlite.py` | The canonical async SQLite backend. Use this when you want the URL form directly (`sqlite+aiosqlite:///path/to.db`). |
+| `SqliteStorage` | `dhara/storage/sqlite.py` | Sync SQLite backend (Durus-compatible). Useful for batch jobs and existing scripts that need the blocking API. Online backups and point-in-time recovery are *not* available with this backend. |
+| `PostgresStorage` | `dhara/storage/postgres.py` | Multi-process, multi-host persistence. Drop-in for managed PostgreSQL or self-hosted clusters. Install the `cloud` dep group to enable. |
+| `DuckDBStorage` | `dhara/storage/duckdb_adapter.py` | OLAP-shaped analytical queries over the same persistent store. Useful for serverless "summarise and return" handlers. Install the `duckdb` dep group to enable. |
+| `MemoryStorage` | `dhara/storage/memory.py` | Ephemeral, in-process. Tests and short-lived pipelines. |
+| `ClientStorage` | `dhara/storage/client.py` | Connect to a remote Dhara storage server over TCP or Unix domain socket. The standard choice when several processes share a store. |
 
-Finally, there is an experimental Sqlite storage module,
-`SqliteStorage`. The module uses a SQLite3 database to persist object
-data. One disadvantage of this module compared to the others is that
-online backups are more difficult (for the other two it is safe to just
-copy the file while the server is running). You also lose the ability
-to do point-in-time recovery (which the other two storage
-implementations provide, assuming you did not yet pack the DB).
+> **Removed:** `FileStorage` (the pre-async Durus path-style class) and
+> `SHELF-1` are gone. New and migrated code should use
+> `AsyncFileStorage` (path-style) or `AsyncSqliteStorage` (URL-style)
+> directly. `AsyncFileStorage("test.dhara")` and
+> `AsyncSqliteStorage("sqlite+aiosqlite:///test.dhara")` point at the
+> same database.
 
 ## Acknowledgements
 
