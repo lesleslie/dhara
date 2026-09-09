@@ -452,7 +452,7 @@ class DharaMCPServer:
 
             return Response(content=metrics, media_type=media_type)
 
-        # NOTE: /tools/call route is registered AFTER storage is initialized
+        # NOTE: /mcp/tools/call route is registered AFTER storage is initialized
         # so self.kv_store, self.ecosystem_state are available.
         # See tools_call_route below after _register_tools() completes.
 
@@ -585,9 +585,11 @@ class DharaMCPServer:
 
         logger.info("Dhara MCP tools registration complete (via W0 dispatch)")
 
-        # Register REST-style /tools/call endpoint for Akosha client compatibility.
-        # Akosha's DharaServiceRegistryClient calls /tools/call (not /mcp) with
-        # {"name": "...", "arguments": {...}}. We call underlying store methods directly.
+        # Register REST-style /mcp/tools/call endpoint for Akosha client compatibility.
+        # Akosha's DharaServiceRegistryClient builds ``{base_url}/tools/call`` where
+        # ``base_url`` ends in ``/mcp`` (DHARA_DEFAULT_URL = "http://localhost:8683/mcp"),
+        # producing the effective URL ``/mcp/tools/call``. The endpoint accepts
+        # {"name": "...", "arguments": {...}} and calls underlying store methods directly.
         self._register_tools_call_route()
 
         # Register substrate CRUD HTTP routes (Workstream C).
@@ -653,18 +655,18 @@ class DharaMCPServer:
         )
 
     def _register_tools_call_route(self) -> None:
-        """Register /tools/call REST-style endpoint for Akosha client compatibility."""
+        """Register /mcp/tools/call REST-style endpoint for Akosha client compatibility."""
         assert self.server is not None, "FastMCP server required for tools/call route"
 
-        import asyncio
         import json
 
-        @self.server.custom_route("/tools/call", methods=["POST"])
+        @self.server.custom_route("/mcp/tools/call", methods=["POST"])
         async def tools_call(request: Any) -> Any:
             """REST-style tool call endpoint for Akosha client compatibility.
 
-            Akosha's DharaServiceRegistryClient calls /tools/call with a JSON body
-            containing {"name": "...", "arguments": {...}}.
+            Akosha's DharaServiceRegistryClient calls ``{base_url}/tools/call``
+            where ``base_url`` ends in ``/mcp``, producing ``/mcp/tools/call``.
+            The body is ``{"name": "...", "arguments": {...}}``.
             This route translates REST-style calls into store method invocations.
             """
             from starlette.responses import JSONResponse
@@ -680,9 +682,11 @@ class DharaMCPServer:
             if not tool_name:
                 return JSONResponse({"error": "Missing tool name"}, status_code=400)
 
-            # Map tool names to async store methods
-            # These are bound at request time when stores are initialized
-            sync_tool_map: dict[str, Any] = {
+            # Map tool names to async store methods (bound at request time once
+            # stores are initialized). All targets are coroutine functions, so
+            # they must be awaited directly — do NOT wrap in asyncio.to_thread
+            # (that would return the coroutine object without awaiting it).
+            tool_dispatch: dict[str, Any] = {
                 "get": self._async_kv_store.get_async if self._async_kv_store else None,
                 "put": self._async_kv_store.put_async if self._async_kv_store else None,
                 "list_prefix": self._async_kv_store.list_prefix_async
@@ -702,19 +706,22 @@ class DharaMCPServer:
                 else None,
             }
 
-            if tool_name in sync_tool_map and sync_tool_map[tool_name] is None:
+            if tool_name in tool_dispatch and tool_dispatch[tool_name] is None:
                 return JSONResponse(
                     {"error": f"Store not initialized: {tool_name}"}, status_code=500
                 )
 
-            if tool_name not in sync_tool_map:
+            if tool_name not in tool_dispatch:
                 return JSONResponse(
                     {"error": f"Unknown tool: {tool_name}"}, status_code=404
                 )
 
             try:
-                # Run sync store methods in thread pool to avoid blocking event loop
-                result = await asyncio.to_thread(sync_tool_map[tool_name], **arguments)
+                # Await the async store method directly — these are coroutine
+                # functions and `asyncio.to_thread` would return the coroutine
+                # object without awaiting it (causing JSON serialization to
+                # fail with "Object of type coroutine is not JSON serializable").
+                result = await tool_dispatch[tool_name](**arguments)
                 # Return in Akosha client format: {"content": [{"type": "text", "text": "..."}]}
                 text = json.dumps(result)
                 return JSONResponse(
