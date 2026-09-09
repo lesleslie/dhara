@@ -161,7 +161,7 @@ def _bare_server(**attrs: Any) -> Any:
 
 
 class _FakeRequest:
-    """Minimal Starlette-request stand-in for the ``/tools/call`` shim."""
+    """Minimal Starlette-request stand-in for the ``/mcp/tools/call`` shim."""
 
     def __init__(self, payload: Any = None, *, raise_on_json: bool = False) -> None:
         self._payload = payload
@@ -530,7 +530,7 @@ async def test_healthz_route_is_unconditional(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# /tools/call REST shim
+# /mcp/tools/call REST shim
 # ---------------------------------------------------------------------------
 
 
@@ -539,7 +539,7 @@ def _tools_call_handler(**attrs: Any) -> Iterator[Any]:
     fastmcp, routes = _make_capturing_server()
     srv = _bare_server(server=fastmcp, **attrs)
     srv._register_tools_call_route()
-    yield srv, routes["/tools/call"]
+    yield srv, routes["/mcp/tools/call"]
 
 
 async def test_tools_call_rejects_invalid_json() -> None:
@@ -586,7 +586,7 @@ async def test_tools_call_reports_uninitialized_ecosystem_store(
 
 async def test_tools_call_returns_akosha_content_envelope() -> None:
     kv_store = MagicMock(name="AsyncKVTimeSeriesStore")
-    kv_store.get_async = MagicMock(return_value={"value": 42})
+    kv_store.get_async = AsyncMock(return_value={"value": 42})
     with _tools_call_handler(_async_kv_store=kv_store) as (_srv, handler):
         response = await handler(
             _FakeRequest({"name": "get", "arguments": {"key": "k"}})
@@ -600,7 +600,7 @@ async def test_tools_call_returns_akosha_content_envelope() -> None:
 
 async def test_tools_call_dispatches_ecosystem_state_tools() -> None:
     eco = MagicMock(name="AsyncEcosystemStateStore")
-    eco.list_services_async = MagicMock(return_value=["dhara"])
+    eco.list_services_async = AsyncMock(return_value=["dhara"])
     with _tools_call_handler(_async_ecosystem_state=eco) as (_srv, handler):
         response = await handler(_FakeRequest({"name": "list_services"}))
 
@@ -611,7 +611,7 @@ async def test_tools_call_dispatches_ecosystem_state_tools() -> None:
 
 async def test_tools_call_wraps_store_exceptions_as_is_error() -> None:
     kv_store = MagicMock(name="AsyncKVTimeSeriesStore")
-    kv_store.put_async = MagicMock(side_effect=RuntimeError("write failed"))
+    kv_store.put_async = AsyncMock(side_effect=RuntimeError("write failed"))
     with _tools_call_handler(_async_kv_store=kv_store) as (_srv, handler):
         response = await handler(
             _FakeRequest({"name": "put", "arguments": {"key": "k", "value": 1}})
