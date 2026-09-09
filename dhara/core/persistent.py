@@ -6,9 +6,9 @@ $Id$
 
 from collections.abc import Iterator
 from contextlib import suppress
-from sys import stderr
 from typing import Any, Self
 
+from dhara.logger import logger
 from dhara.utils import IS_PYPY, as_bytes, iteritems, str_to_int8
 
 # these must match the constants in _persistent.c
@@ -36,7 +36,7 @@ try:
     # C extension is available.
     _ = (ConnectionBase, _hasattribute, call_if_persistent)
 except ImportError:
-    stderr.write("Using Python base classes for persistence.\n")
+    logger.debug("Using Python base classes for persistence.")
 
     _setattribute = object.__setattr__
     _delattribute = object.__delattr__

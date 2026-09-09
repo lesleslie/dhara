@@ -75,11 +75,11 @@ def direct_output(file: Any) -> None:
     if sys.stdout is sys.__stdout__:
         sys.stdout = file
     else:
-        log(100, "sys.stdout already customized.")
+        logger.debug("sys.stdout already customized.")
     if sys.stderr is sys.__stderr__:
         sys.stderr = file
     else:
-        log(100, "sys.stderr already customized.")
+        logger.debug("sys.stderr already customized.")
 
 
 def is_logging(level: int) -> bool:

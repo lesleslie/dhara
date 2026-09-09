@@ -68,9 +68,9 @@ class TestDirectOutput:
         with patch("sys.__stderr__", stderr_buf):
             with patch("sys.__stdout__", io.StringIO()):
                 with patch("sys.stdout", custom_stdout):
-                    with patch("dhara.logger.log") as mock_log:
+                    with patch("dhara.logger.logger.debug") as mock_debug:
                         direct_output(buf)
-        mock_log.assert_any_call(100, "sys.stdout already customized.")
+        mock_debug.assert_any_call("sys.stdout already customized.")
 
     def test_direct_output_resets_stderr(self):
         buf = io.StringIO()
@@ -98,9 +98,9 @@ class TestDirectOutput:
         with patch("sys.__stderr__", stderr_buf):
             with patch("sys.__stdout__", sys.stdout):
                 with patch("sys.stderr", custom_stderr):
-                    with patch("dhara.logger.log") as mock_log:
+                    with patch("dhara.logger.logger.debug") as mock_debug:
                         direct_output(buf)
-        mock_log.assert_any_call(100, "sys.stderr already customized.")
+        mock_debug.assert_any_call("sys.stderr already customized.")
 
     def test_direct_output_same_as___stderr__(self):
         buf = io.StringIO()
