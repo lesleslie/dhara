@@ -389,7 +389,7 @@ Test file `tests/unit/test_server_core_extended.py` (43 new tests):
 - **D-LOCK** `register_lock_routes` branch: present / absent `sql_backend`
 - **HTTP routes**: `/health`, `/ready`, `/readyz` 200 + 503-on-exception
   paths; `/healthz` unconditional 200
-- **`/tools/call` REST shim** end-to-end: invalid JSON 400, missing name
+- **`/mcp/tools/call` REST shim** end-to-end: invalid JSON 400, missing name
   400, unknown tool 404, uninitialized KV/ecosystem stores 500 (all 7
   tool names), Akosha content envelope success, exception → `isError: true` 500
 - **`_read_backup_catalog_async`**: nested `__state__` envelope unwrapping

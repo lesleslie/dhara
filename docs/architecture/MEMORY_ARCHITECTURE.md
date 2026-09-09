@@ -16,13 +16,13 @@ context-versions, progress-snapshots). It is the only Bodai component
 that exposes both an MCP tool surface (`mcp__dhara__*`) and a
 REST-style HTTP substrate (`/adapters/{id}/active-settings-version`,
 `/tenants/{id}/context-versions`, `/workflows/{id}/progress-snapshots`,
-`/tools/call`).
+`/mcp/tools/call`).
 
 This document describes what Dhara stores, who reads and writes it,
 and the integration contracts the rest of the ecosystem depends on.
 The four contract bugs captured below were the trigger for writing it
 — they all stemmed from undocumented expectations about how the
-persistent object store, the substrate routes, the REST `/tools/call`
+persistent object store, the substrate routes, the REST `/mcp/tools/call`
 endpoint, and the tool profile gating line up.
 
 ______________________________________________________________________
@@ -254,8 +254,8 @@ erDiagram
 |--------|-------------------|----------------------|-------------------|
 | `kv` + `kv_ttl` | `get`, `list_prefix`, Akosha `FitnessAnalyzer` (`component_endpoint/*` discovery) | `put`, every component's Phase-0 bootstrap (Mahavishnu workers, Akosha `component_endpoint/akosha`, etc.) | TTL evicted on read; no sweep |
 | `time_series` | `query_time_series`, `aggregate_patterns` (Akosha analytics, Mahavishnu metrics) | `record_time_series` (Mahavishnu metrics emitter, Akosha `FitnessAnalyzer`) | `_purge_ts` drops items `< retention_days` on every write — default 60 days |
-| `ecosystem_services` | `list_services` (Akosha), `get_service`, `/tools/call` (legacy REST) | `upsert_service` (every component's Phase-0) | No sweep; `lease_expires_at` is metadata-only |
-| `ecosystem_events` | `list_events`, `/tools/call` | `record_event`, in-process EventBus subscribers | `_prune_events` on every `record_event_async` — default 30 days |
+| `ecosystem_services` | `list_services` (Akosha), `get_service`, `/mcp/tools/call` (REST-style MCP call) | `upsert_service` (every component's Phase-0) | No sweep; `lease_expires_at` is metadata-only |
+| `ecosystem_events` | `list_events`, `/mcp/tools/call` | `record_event`, in-process EventBus subscribers | `_prune_events` on every `record_event_async` — default 30 days |
 | `adapters` + `version_history` + `health_checks` | `list_adapters`, `get_adapter`, `list_adapter_versions`, `validate_adapter`, `get_adapter_health` (every consumer looking up an Oneiric adapter at runtime) | `store_adapter`, `update_version` (consumed by every Mahavishnu worker that needs to swap an adapter implementation) | Bounded by `AdapterConfig.max_versions_per_adapter` (default 10, range 1..100); `version_history` is appended to, never trimmed mid-history |
 | `substrate.*` | HTTP routes registered in `register_substrate_routes` (consumed by Bodai Mahavishnu / orchestrators / agent runtimes) | Same routes via POST | Inline dict-of-lists; no sweep — see Known Gaps |
 | `<backup_dir>/backup_catalog.dhara` | `_probe_backups`, `BackupCatalog.get_last_backup`, `BackupCatalog.get_incremental_chain` | `BackupManager.perform_*_backup` | `cleanup_old_backups` honors the per-type retention policy (full=30d, incremental=7d, differential=14d) |
@@ -366,7 +366,7 @@ ______________________________________________________________________
 ## 3. MCP Read Surface
 
 The read surface is grouped by access pattern. Tools within the same
-group may also be callable via the REST `/tools/call` endpoint — see
+group may also be callable via the REST `/mcp/tools/call` endpoint — see
 Contract 5.2.
 
 ### KV / time-series recall
@@ -438,7 +438,7 @@ them directly. Components that only speak MCP use `upsert_service` /
 
 | HTTP route | Method | Purpose |
 |------------|--------|---------|
-| `/tools/call` | POST | REST-style `{name, arguments}` envelope used by Akosha's `DharaServiceRegistryClient`; see Contract 5.2 |
+| `/mcp/tools/call` | POST | REST-style `{name, arguments}` envelope used by Akosha's `DharaServiceRegistryClient`. Path is rooted under `/mcp` because Akosha's `base_url` ends in `/mcp` and the client appends `/tools/call`; see Contract 5.2 |
 | `/health`, `/healthz`, `/ready`, `/readyz`, `/metrics` | GET | Probe + Prometheus scrape |
 
 ______________________________________________________________________
@@ -451,7 +451,7 @@ Phase-0 registration** from the rest of the ecosystem.
 
 | Consumer | Surface | Reads from Dhara | Writes to Dhara |
 |----------|---------|------------------|-----------------|
-| **Akosha** | `mcp__dhara__list_prefix` (via `DharaServiceRegistryClient`); `/tools/call` POST | `kv["component_endpoint/*"]` for `FitnessAnalyzer` poll-target discovery (`akosha/mcp/tools/__init__.py:195` → `DHARA_MCP_URL`); `ecosystem_services[*]` via `list_services` | `kv["component_endpoint/akosha"]` at Phase 0; `time_series[routing_fitness/{tc}/{selector}]` from `FitnessAnalyzer._flush_buffer` |
+| **Akosha** | `mcp__dhara__list_prefix` (via `DharaServiceRegistryClient`); `/mcp/tools/call` POST | `kv["component_endpoint/*"]` for `FitnessAnalyzer` poll-target discovery (`akosha/mcp/tools/__init__.py:195` → `DHARA_MCP_URL`); `ecosystem_services[*]` via `list_services` | `kv["component_endpoint/akosha"]` at Phase 0; `time_series[routing_fitness/{tc}/{selector}]` from `FitnessAnalyzer._flush_buffer` |
 | **Mahavishnu** | `mcp__dhara__put` (worker results), `mcp__dhara__list_prefix` (component registration scan), HTTP substrate routes for tenant context + workflow progress | `kv["component_endpoint/*"]` for worker orchestration; `adapters[*]` via `list_adapters` for Oneiric distribution | `kv["component_endpoint/mahavishnu"]` at Phase 0; `record_time_series` for routing-fitness poll results; active-settings-version POSTs on adapter promotion |
 | **Session-Buddy** | (read-only; no canonical integration) | `ecosystem_services["session_buddy"]` is discoverable but SB does not consume | Optional heartbeat via `upsert_service` |
 | **Crackerjack** | (read-only) | `ecosystem_services["crackerjack"]` is discoverable | Optional heartbeat via `upsert_service` |
@@ -507,9 +507,9 @@ once with the right kwargs. The companion
 `test_put_with_ttl` exercises the TTL path. Both fail if the facade
 leaks.
 
-### Contract 5.2 — REST `/tools/call` only supports a closed set, despite the discovery surface suggesting more
+### Contract 5.2 — REST `/mcp/tools/call` only supports a closed set, despite the discovery surface suggesting more
 
-**Bug**: `dhara/mcp/server_core.py` registers a `custom_route("/tools/call", ...)`
+**Bug**: `dhara/mcp/server_core.py` registers a `custom_route("/mcp/tools/call", ...)`
 that maps only **7** tool names to async store methods:
 `get`, `put`, `list_prefix` (KV); `list_services`, `get_service`,
 `record_event`, `list_events` (ecosystem state). All other tools
@@ -517,7 +517,7 @@ that maps only **7** tool names to async store methods:
 `get_adapter`, `store_adapter`, `dhara_sql_query`, etc.) return
 `{"error": "Unknown tool: ..."}` with HTTP 404. Akosha's
 `DharaServiceRegistryClient` was the first caller; if Mahavishnu
-adds a `dhara_sql_query` call via `/tools/call`, it will fail
+adds a `dhara_sql_query` call via `/mcp/tools/call`, it will fail
 silently in dashboards that mark `404` as a soft retry.
 
 **Contract**: Every name registered in `_register_tools_call_route`'s
@@ -531,7 +531,7 @@ for what Akosha can fetch via REST.
 **Regression test**:
 `tests/test_mcp_server_core.py::TestRunPutAndGet::test_put_and_get_kv_tools`
 covers KV; an analogous test should be added for ecosystem state
-(`record_event` + `list_events`) round-tripping through `/tools/call`
+(`record_event` + `list_events`) round-tripping through `/mcp/tools/call`
 with the correct JSON envelope
 (`{"content": [{"type": "text", "text": "<json>"}]}`).
 A suggested path: `tests/integration/mcp/test_tools_call_route.py::test_record_event_round_trip_through_tools_call`.
@@ -855,12 +855,12 @@ forces SELECT-family prefixes; any non-SELECT raises `ValueError`.
 ### Q15 — Run a fitness analysis cycle from the Mahavishnu side via REST
 
 **Goal**: Akosha's `DharaServiceRegistryClient.list_services` over
-REST-style `/tools/call`.
+REST-style `/mcp/tools/call`.
 
 ```python
 import httpx
 
-async with httpx.AsyncClient(base_url="http://localhost:8683") as client:
+async with httpx.AsyncClient(base_url="http://localhost:8683/mcp") as client:
     response = await client.post(
         "/tools/call",
         json={"name": "list_services", "arguments": {"status": "healthy"}},
@@ -991,7 +991,7 @@ The backup catalog itself lives at
 | `store_adapter` (new) / `update_version` | 10-50 ms / 15-60 ms | No (Oneiric publish workflow) |
 | `dhara_sql_query` (DuckDB, in-memory) | 1-50 ms | No (admin) |
 | HTTP `POST /adapters/{id}/active-settings-version` | 5-30 ms | No (orchestrator) |
-| HTTP `GET /tools/call` (legacy Akosha path) | 5-20 ms | Yes |
+| HTTP `POST /mcp/tools/call` (Akosha REST-style MCP call) | 5-20 ms | Yes |
 
 ### Failure modes
 
@@ -999,7 +999,7 @@ The backup catalog itself lives at
 - **AsyncConnection not initialized for an MCP tool** (e.g. called before `_init_async_stores` finishes): every async tool handler has an explicit `assert self._async_X is not None`. In production this only fires if a tool is invoked before lifespan startup completes (rare — listen on the port only after `_init_async_stores` returns).
 - **Cross-loop `RuntimeError` from `_run_cache_wire` / `_run_async_connection_wire`**: each helper checks `asyncio.get_running_loop()` and refuses to run if a loop is active. The CLI (`dhara mcp start`) runs them before `server.run_http_async()`, so this only fires under improper testing harnesses.
 - **Pre-entered `AsyncFileStorage` passed to `AsyncConnection.new`**: `_run_async_connection_wire` checks `storage._conn` and runs `__aenter__` if the storage hasn't been initialized — without this, `load()` raises `RuntimeError("Storage not initialized")`.
-- **`/tools/call` returns 404 for an MCP-only tool**: see Contract 5.2.
+- **`/mcp/tools/call` returns 404 for an MCP-only tool**: see Contract 5.2.
 - **Substrate write accepted for any `version` value (no monotonicity check)**: see Contract 5.3 and Known Gaps.
 - **PostgreSQL asyncpg pool exhausted**: `AsyncPostgresStorage` raises; restart the pool by restarting the MCP server (no in-pool retry).
 - **Backup upload to cloud fails**: `BackupManager.upload_to_cloud` returns `False` and logs ERROR; the local backup file is still created and indexed in the catalog — recovery can replay uploads manually.
