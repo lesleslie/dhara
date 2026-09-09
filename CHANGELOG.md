@@ -5,6 +5,20 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.19.9] - 2026-09-09
+
+### Fixed
+
+- Route 'already customized' notices through logger.debug, not stderr
+
+### Documentation
+
+- Bump README to Python 3.14+ and trim stale deprecation policy
+
+### Internal
+
+- Archive the Durus/CNRI upstream tree (doc/)
+
 ## [0.19.8] - 2026-09-07
 
 ### Fixed
