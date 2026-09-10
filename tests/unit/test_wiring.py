@@ -40,6 +40,7 @@ from dhara.mcp.tools.group_registers import (
     register_ecosystem_state_group,
     register_health_tools_group,
     register_kv_timeseries_group,
+    register_skills_signer_tools_group,
     register_sql_proxy_group,
 )
 
@@ -204,6 +205,12 @@ class TestGoldenFixtureParity:
             "ecosystem_state": register_ecosystem_state_group,
             "sql_proxy": register_sql_proxy_group,
             "register_health_tools": register_health_tools_group,
+            # Phase 1.5 — wired up but not registered at MINIMAL/STAND/FULL
+            # because the manifest data ships via /health rather than as an
+            # MCP tool (per plan §10.3.6). The wrapper entry is here so the
+            # post-Phase-1.5 fan-out DHARA_MANDATORY_GROUPS iteration can
+            # resolve the key without raising KeyError.
+            "register_skills_signer_tools": register_skills_signer_tools_group,
         }
 
         # Step 1: per-profile registration (mirrors W0 step 1)

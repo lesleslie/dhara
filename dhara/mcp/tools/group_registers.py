@@ -57,7 +57,7 @@ def register_kv_timeseries_group(server: FastMCP, instance: DharaMCPServer) -> N
             return require_scopes_fn
         return require_scopes_fn(*scopes)
 
-    @server.tool(auth=auth("write"))
+    @server.tool(name="dhara_put", auth=auth("write"))
     async def put(
         key: str,
         value: dict[str, Any] | str | float | bool | list[Any] | None,
@@ -67,20 +67,20 @@ def register_kv_timeseries_group(server: FastMCP, instance: DharaMCPServer) -> N
         assert instance._async_kv_store is not None, "Async store not initialized"
         return await instance._async_kv_store.put_async(key=key, value=value, ttl=ttl)  # type: ignore[no-any-return]
 
-    @server.tool(auth=auth("read"))
+    @server.tool(name="dhara_get", auth=auth("read"))
     async def get(key: str) -> dict[str, Any]:
         """Get a key/value record."""
         assert instance._async_kv_store is not None, "Async store not initialized"
         return await instance._async_kv_store.get_async(key=key)  # type: ignore[no-any-return]
 
-    @server.tool(auth=auth("read"))
+    @server.tool(name="dhara_list_prefix", auth=auth("read"))
     async def list_prefix(prefix: str) -> dict[str, Any]:
         """List all key/value records under a key prefix."""
         assert instance._async_kv_store is not None, "Async store not initialized"
         results = await instance._async_kv_store.list_prefix_async(prefix)
         return {"ok": True, "count": len(results), "items": results}
 
-    @server.tool(auth=auth("write"))
+    @server.tool(name="dhara_record_time_series", auth=auth("write"))
     async def record_time_series(
         metric_type: str,
         entity_id: str,
@@ -96,7 +96,7 @@ def register_kv_timeseries_group(server: FastMCP, instance: DharaMCPServer) -> N
             timestamp=timestamp,
         )
 
-    @server.tool(auth=auth("read"))
+    @server.tool(name="dhara_query_time_series", auth=auth("read"))
     async def query_time_series(
         metric_type: str,
         entity_id: str,
@@ -112,7 +112,7 @@ def register_kv_timeseries_group(server: FastMCP, instance: DharaMCPServer) -> N
             limit=limit,
         )
 
-    @server.tool(auth=auth("read"))
+    @server.tool(name="dhara_aggregate_patterns", auth=auth("read"))
     async def aggregate_patterns(
         start_date: str,
         min_occurrences: int = 2,
@@ -143,7 +143,7 @@ def register_adapter_registry_group(server: FastMCP, instance: DharaMCPServer) -
         validate_adapter_async_impl,
     )
 
-    @server.tool(auth=auth("write"))
+    @server.tool(name="dhara_store_adapter", auth=auth("write"))
     async def store_adapter(
         domain: str,
         key: str,
@@ -172,7 +172,7 @@ def register_adapter_registry_group(server: FastMCP, instance: DharaMCPServer) -
             metadata=metadata or {},
         )
 
-    @server.tool(auth=auth("read"))
+    @server.tool(name="dhara_get_contract_info", auth=auth("read"))
     async def get_contract_info() -> dict[str, Any]:
         """Return the supported Dhara MCP contract summary."""
         assert instance.config is not None, "config required for contract info"
@@ -247,7 +247,7 @@ def register_adapter_registry_group(server: FastMCP, instance: DharaMCPServer) -
             },
         }
 
-    @server.tool(auth=auth("read"))
+    @server.tool(name="dhara_get_adapter", auth=auth("read"))
     async def get_adapter(
         domain: str,
         key: str,
@@ -266,7 +266,7 @@ def register_adapter_registry_group(server: FastMCP, instance: DharaMCPServer) -
             version=version,
         )
 
-    @server.tool(auth=auth("list"))
+    @server.tool(name="dhara_list_adapters", auth=auth("list"))
     async def list_adapters(
         domain: str | None = None,
         category: str | None = None,
@@ -281,7 +281,7 @@ def register_adapter_registry_group(server: FastMCP, instance: DharaMCPServer) -
             category=category,
         )
 
-    @server.tool(auth=auth("list"))
+    @server.tool(name="dhara_list_adapter_versions", auth=auth("list"))
     async def list_adapter_versions(
         domain: str,
         key: str,
@@ -298,7 +298,7 @@ def register_adapter_registry_group(server: FastMCP, instance: DharaMCPServer) -
             provider=provider,
         )
 
-    @server.tool(auth=auth("read"))
+    @server.tool(name="dhara_validate_adapter", auth=auth("read"))
     async def validate_adapter(
         domain: str,
         key: str,
@@ -317,7 +317,7 @@ def register_adapter_registry_group(server: FastMCP, instance: DharaMCPServer) -
             version=version,
         )
 
-    @server.tool(auth=auth("read"))
+    @server.tool(name="dhara_get_adapter_health", auth=auth("read"))
     async def get_adapter_health(
         domain: str,
         key: str,
@@ -344,7 +344,7 @@ def register_ecosystem_state_group(server: FastMCP, instance: DharaMCPServer) ->
             return require_scopes_fn
         return require_scopes_fn(*scopes)
 
-    @server.tool(auth=auth("write"))
+    @server.tool(name="dhara_upsert_service", auth=auth("write"))
     async def upsert_service(
         service_id: str,
         service_type: str,
@@ -368,7 +368,7 @@ def register_ecosystem_state_group(server: FastMCP, instance: DharaMCPServer) ->
             heartbeat_at=heartbeat_at,
         )
 
-    @server.tool(auth=auth("read"))
+    @server.tool(name="dhara_get_service", auth=auth("read"))
     async def get_service(service_id: str) -> dict[str, Any]:
         """Fetch a durable ecosystem service record."""
         assert instance._async_ecosystem_state is not None, (
@@ -377,7 +377,7 @@ def register_ecosystem_state_group(server: FastMCP, instance: DharaMCPServer) ->
         service = await instance._async_ecosystem_state.get_service_async(service_id)
         return {"ok": True, "service": service}
 
-    @server.tool(auth=auth("list"))
+    @server.tool(name="dhara_list_services", auth=auth("list"))
     async def list_services(
         service_type: str | None = None,
         capability: str | None = None,
@@ -394,7 +394,7 @@ def register_ecosystem_state_group(server: FastMCP, instance: DharaMCPServer) ->
         )
         return {"ok": True, "count": len(services), "services": services}
 
-    @server.tool(auth=auth("write"))
+    @server.tool(name="dhara_record_event", auth=auth("write"))
     async def record_event(
         event_type: str,
         source_service: str,
@@ -414,7 +414,7 @@ def register_ecosystem_state_group(server: FastMCP, instance: DharaMCPServer) ->
             timestamp=timestamp,
         )
 
-    @server.tool(auth=auth("list"))
+    @server.tool(name="dhara_list_events", auth=auth("list"))
     async def list_events(
         event_type: str | None = None,
         source_service: str | None = None,
