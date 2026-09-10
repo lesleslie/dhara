@@ -64,6 +64,7 @@ from dhara.mcp.adapter_tools import (
 from dhara.mcp.ecosystem_state import AsyncEcosystemStateStore, EventRetention
 from dhara.mcp.fastmcp_auth import build_token_verifier
 from dhara.mcp.kv_timeseries import AsyncKVTimeSeriesStore, TimeSeriesRetention
+from dhara.mcp.signer_feed import SignerFeedState, init_signer_feed_state
 from dhara.mcp.substrate_routes import register_substrate_routes
 from dhara.storage.async_file import AsyncFileStorage
 
@@ -184,7 +185,7 @@ class _SyncConnectionFacade:
     existing loop (FastMCP handlers, ``_probe_storage`` called from
     async endpoints, etc.), we dispatch via
     ``asyncio.run_coroutine_threadsafe`` instead of ``run_until_complete``
-    to avoid ``RuntimeError: This loop is already running``.
+    to avoid ``RuntimeError: This event loop is already running``.
 
     Lifecycle: created by ``_run_async_connection_wire`` during ``__init__``.
     After init, async tool handlers should prefer the original
@@ -347,6 +348,15 @@ class DharaMCPServer:
         self._audit_subscriber: AuditLogSubscriber | None = None
         self._audit_flush_task: asyncio.Task[None] | None = None
 
+        # Phase 1.5: skills_signer feed state (per plan §10.3.2 instance
+        # model). The ``/health`` route closure captures ``self`` and reads
+        # ``self.signer_feed_state`` at request time, so this attribute MUST
+        # exist before either branch — the lightweight path leaves it as
+        # ``None`` (no signing identity needed for audit-only/test mode) and
+        # the main path populates it below before the FastMCP server routes
+        # are registered.
+        self.signer_feed_state: SignerFeedState | None = None
+
         if config is None:
             # Lightweight construction mode (audit-only/test path). The
             # FastMCP server, storage, and adapters are not constructed;
@@ -366,6 +376,26 @@ class DharaMCPServer:
             default_role=config.authentication.token.default_role,
             required_scopes=config.authentication.required_scopes,
         )
+
+        # Phase 1.5: initialize the skills_signer feed state BEFORE the
+        # ``/health`` route is registered so the route closure can rely on
+        # ``self.signer_feed_state`` being populated by the time any probe
+        # fires. Per plan §10.3.2 option (instance model) — unlike
+        # akosha (lifespan) and mahavishnu (module singleton), dhara
+        # owns a single :class:`DharaMCPServer` instance and stores the
+        # feed state on it. The init is wrapped in try/except so a key
+        # persistence failure degrades to ``signer_feed_state=None``
+        # rather than crashing ``__init__``; the ``/health`` route
+        # reports ``ok=False`` with the error string in that case.
+        try:
+            self.signer_feed_state = init_signer_feed_state()
+        except Exception as exc:  # noqa: BLE001 - signing init failure must not crash server
+            logger.error(
+                "Failed to initialize skills_signer feed state: %s; "
+                "/health will report skills_signer as degraded",
+                exc,
+            )
+            self.signer_feed_state = None
 
         # Initialize FastMCP server
         self.server = FastMCP(
@@ -625,6 +655,7 @@ class DharaMCPServer:
             register_ecosystem_state_group,
             register_health_tools_group,
             register_kv_timeseries_group,
+            register_skills_signer_tools_group,
             register_sql_proxy_group,
         )
 
@@ -634,6 +665,11 @@ class DharaMCPServer:
             "ecosystem_state": lambda app: register_ecosystem_state_group(app, self),
             "sql_proxy": lambda app: register_sql_proxy_group(app, self),
             "register_health_tools": lambda app: register_health_tools_group(app, self),
+            # Phase 1.5 — skills_signer (per plan §10.3.6, §10.3.1). The
+            # actual signer init runs in __init__ before tool registration
+            # so this group is a no-op at registration time; the manifest
+            # data is already published via _runtime_status().
+            "register_skills_signer_tools": lambda app: register_skills_signer_tools_group(app, self),
         }
 
         assert self.server is not None, (
@@ -909,10 +945,32 @@ class DharaMCPServer:
         return asyncio.run(_read())
 
     def _runtime_status(self) -> dict[str, Any]:
-        """Return canonical runtime health and readiness data."""
+        """Return canonical runtime health and readiness data.
+
+        Phase 1.5: extend the body with a ``checks`` map that surfaces
+        the skills_signer feed state. The shape mirrors akosha/mahavishnu:
+        ``checks.skills_signer.ok`` drives the boolean /health probe so
+        the wire-up is greppable across the 5 Bodai servers. When signer
+        init failed (state is ``None``) or the manifest is empty, ``ok``
+        is False and the dict carries an ``error`` or zero-entity signal.
+        """
         storage = self._probe_storage()
         backups = self._probe_backups()
         ready = bool(storage.get("accessible"))
+
+        # Phase 1.5 — skills_signer feed state. The /health probe loops
+        # over ``checks.values()`` and applies ``bool(c.get("ok"))``,
+        # so every entry must expose ``ok``. Both the populated-state
+        # (from SignerFeedState.as_dict) and the degraded fallbacks
+        # satisfy that contract.
+        if self.signer_feed_state is None:
+            checks_skills_signer: dict[str, Any] = {
+                "ok": False,
+                "error": "signer feed state not initialized",
+            }
+        else:
+            checks_skills_signer = self.signer_feed_state.as_dict()
+
         return {
             "status": "ok" if ready else "error",
             "service": "dhara",
@@ -926,6 +984,9 @@ class DharaMCPServer:
             },
             "storage": storage,
             "backups": backups,
+            "checks": {
+                "skills_signer": checks_skills_signer,
+            },
         }
 
     def run(self, host: str = "127.0.0.1", port: int = 8683) -> None:

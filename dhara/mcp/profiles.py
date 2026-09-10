@@ -135,6 +135,11 @@ REG_KEY_KV = TOOL_GROUP_KV_TIME_SERIES
 REG_KEY_ADAPTER = TOOL_GROUP_ADAPTER_REGISTRY
 REG_KEY_ECOSYSTEM = TOOL_GROUP_ECOSYSTEM_STATE
 REG_KEY_SQL = TOOL_GROUP_SQL_PROXY
+# Phase 1.5 — skills_signer (per plan §10.3.6, §10.3.1). The actual
+# signer state is initialized in DharaMCPServer.__init__ before tool
+# registration runs; this REG_KEY is a no-op at registration time and
+# the manifest data is published via _runtime_status().
+REG_KEY_SKILLS_SIGNER = "register_skills_signer_tools"
 
 
 def _build_registration_map() -> dict[str, Callable[[FastMCP, DharaMCPServer], None]]:
@@ -148,6 +153,7 @@ def _build_registration_map() -> dict[str, Callable[[FastMCP, DharaMCPServer], N
         register_ecosystem_state_group,
         register_health_tools_group,
         register_kv_timeseries_group,
+        register_skills_signer_tools_group,
         register_sql_proxy_group,
     )
 
@@ -157,6 +163,7 @@ def _build_registration_map() -> dict[str, Callable[[FastMCP, DharaMCPServer], N
         REG_KEY_ECOSYSTEM: register_ecosystem_state_group,
         REG_KEY_SQL: register_sql_proxy_group,
         REG_KEY_HEALTH: register_health_tools_group,
+        REG_KEY_SKILLS_SIGNER: register_skills_signer_tools_group,
     }
 
 
@@ -167,7 +174,15 @@ REGISTRATION_MAP: dict[str, Callable[[FastMCP, DharaMCPServer], None]] = (
 # Always-on groups: registered at every profile level in addition to the
 # per-profile list. Health checks must be reachable from any profile tier
 # (load balancers / orchestrators depend on them).
-DHARA_MANDATORY_GROUPS: set[str] = {REG_KEY_HEALTH}
+#
+# Phase 1.5 — skills_signer is infrastructure-critical: signing
+# verification is on every Phase 2/6 install. Per plan §10.3.1 the
+# group MUST be visible from MINIMAL upward, so it sits in
+# DHARA_MANDATORY_GROUPS (always-on, not per-profile).
+DHARA_MANDATORY_GROUPS: set[str] = {
+    REG_KEY_HEALTH,
+    REG_KEY_SKILLS_SIGNER,
+}
 
 
 __all__ = [

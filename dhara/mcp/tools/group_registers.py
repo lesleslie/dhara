@@ -477,10 +477,41 @@ def register_health_tools_group(server: FastMCP, instance: DharaMCPServer) -> No
     instance._register_health_tools()
 
 
+def register_skills_signer_tools_group(
+    server: FastMCP, instance: DharaMCPServer
+) -> None:
+    """Phase 1.5 — register the skills_signer tools group (per plan §10.3.6).
+
+    Phase 1.5 itself only wires the feed state (the manifest data is
+    published via ``DharaMCPServer._runtime_status()``). Phase 1 will
+    add the ``list_skills`` / ``get_skill`` MCP tools here. The
+    registration function is intentionally a no-op for now — the
+    keypair load + manifest build runs inside
+    ``DharaMCPServer.__init__`` before any tool registration so the
+    ``/health`` route closure can rely on ``self.signer_feed_state``
+    being populated by the time any probe fires.
+
+    Args:
+        server: the FastMCP server (unused at Phase 1.5; kept for
+            signature parity with the other per-group wrappers).
+        instance: the :class:`DharaMCPServer` whose
+            ``signer_feed_state`` is published in ``/health``.
+    """
+    # No-op at registration time. Signer init runs in DharaMCPServer.__init__
+    # (after the lightweight construction check, before FastMCP server routes
+    # are registered). During the config=None lightweight construction path,
+    # ``signer_feed_state`` stays as ``None`` and ``_runtime_status()``
+    # reports ``ok=False`` with ``error="signer feed state not initialized"``
+    # — but the lightweight path does NOT register the /health route, so
+    # callers there can't observe the feed at all.
+    return
+
+
 __all__ = [
     "register_adapter_registry_group",
     "register_ecosystem_state_group",
     "register_health_tools_group",
     "register_kv_timeseries_group",
+    "register_skills_signer_tools_group",
     "register_sql_proxy_group",
 ]
