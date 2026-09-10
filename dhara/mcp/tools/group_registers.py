@@ -483,17 +483,17 @@ def register_skills_signer_tools_group(
     """Phase 1.5 — register the skills_signer tools group (per plan §10.3.6).
 
     Phase 1.5 itself only wires the feed state (the manifest data is
-    published via ``DharaMCPServer._runtime_status()``). Phase 1 will
-    add the ``list_skills`` / ``get_skill`` MCP tools here. The
-    registration function is intentionally a no-op for now — the
-    keypair load + manifest build runs inside
-    ``DharaMCPServer.__init__`` before any tool registration so the
-    ``/health`` route closure can rely on ``self.signer_feed_state``
-    being populated by the time any probe fires.
+    published via ``DharaMCPServer._runtime_status()``). Phase 1 adds
+    the ``list_skills`` / ``get_skill`` MCP tools via the dedicated
+    :func:`register_skill_registry_group` (separate registration key
+    per plan §6, dhara naming convention) — this wrapper stays a
+    no-op so the manifest data ships via ``_runtime_status()`` rather
+    than as duplicate tool registrations.
 
     Args:
-        server: the FastMCP server (unused at Phase 1.5; kept for
-            signature parity with the other per-group wrappers).
+        server: the FastMCP server (unused at phase
+            1.5; kept for signature parity with the other per-group
+            wrappers).
         instance: the :class:`DharaMCPServer` whose
             ``signer_feed_state`` is published in ``/health``.
     """
@@ -503,8 +503,38 @@ def register_skills_signer_tools_group(
     # ``signer_feed_state`` stays as ``None`` and ``_runtime_status()``
     # reports ``ok=False`` with ``error="signer feed state not initialized"``
     # — but the lightweight path does NOT register the /health route, so
-    # callers there can't observe the feed at all.
+    # callers there can't observe the feed at all. Phase 1's
+    # ``list_skills`` / ``get_skill`` tools are registered separately via
+    # :func:`register_skill_registry_group`.
     return
+
+
+def register_skill_registry_group(
+    server: FastMCP, instance: DharaMCPServer
+) -> None:
+    """Phase 1 — register the ``list_skills`` / ``get_skill`` MCP tools.
+
+    Delegates to :func:`dhara.mcp.tools.skill_registry.register_skill_registry`
+    so the per-group wiring here stays a one-liner. The actual tool
+    handlers live in :mod:`dhara.mcp.tools.skill_registry` and pull
+    the :class:`SkillsSigner` from the module-level
+    :func:`dhara.mcp.signer_feed.get_signer_feed_state` singleton.
+
+    The dhara-specific naming convention (per plan §6) is
+    ``skill_registry`` (not ``skill_tools`` like the akosha reference
+    impl); this matches the file name
+    ``dhara/mcp/tools/skill_registry.py``.
+
+    Args:
+        server: the FastMCP server to decorate.
+        instance: the :class:`DharaMCPServer` (kept for signature
+            parity with the other per-group wrappers — the registry
+            tools don't need the instance because they read the signer
+            singleton).
+    """
+    from dhara.mcp.tools.skill_registry import register_skill_registry
+
+    register_skill_registry(server)
 
 
 __all__ = [
@@ -512,6 +542,7 @@ __all__ = [
     "register_ecosystem_state_group",
     "register_health_tools_group",
     "register_kv_timeseries_group",
+    "register_skill_registry_group",
     "register_skills_signer_tools_group",
     "register_sql_proxy_group",
 ]

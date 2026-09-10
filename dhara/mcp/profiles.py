@@ -140,6 +140,11 @@ REG_KEY_SQL = TOOL_GROUP_SQL_PROXY
 # registration runs; this REG_KEY is a no-op at registration time and
 # the manifest data is published via _runtime_status().
 REG_KEY_SKILLS_SIGNER = "register_skills_signer_tools"
+# Phase 1 — list_skills / get_skill (per plan §5 task #1-3). Always-on
+# per plan §10.3.1 (skills_signer parity: signing infrastructure and
+# skill metadata MUST be reachable from MINIMAL upward so the picker
+# parity story holds at every profile tier).
+REG_KEY_SKILL_REGISTRY = "register_skill_registry_group"
 
 
 def _build_registration_map() -> dict[str, Callable[[FastMCP, DharaMCPServer], None]]:
@@ -153,6 +158,7 @@ def _build_registration_map() -> dict[str, Callable[[FastMCP, DharaMCPServer], N
         register_ecosystem_state_group,
         register_health_tools_group,
         register_kv_timeseries_group,
+        register_skill_registry_group,
         register_skills_signer_tools_group,
         register_sql_proxy_group,
     )
@@ -164,6 +170,7 @@ def _build_registration_map() -> dict[str, Callable[[FastMCP, DharaMCPServer], N
         REG_KEY_SQL: register_sql_proxy_group,
         REG_KEY_HEALTH: register_health_tools_group,
         REG_KEY_SKILLS_SIGNER: register_skills_signer_tools_group,
+        REG_KEY_SKILL_REGISTRY: register_skill_registry_group,
     }
 
 
@@ -179,9 +186,15 @@ REGISTRATION_MAP: dict[str, Callable[[FastMCP, DharaMCPServer], None]] = (
 # verification is on every Phase 2/6 install. Per plan §10.3.1 the
 # group MUST be visible from MINIMAL upward, so it sits in
 # DHARA_MANDATORY_GROUPS (always-on, not per-profile).
+#
+# Phase 1 — skill_registry carries the picker-parity ``list_skills`` /
+# ``get_skill`` tools and must also be visible from MINIMAL upward
+# (plan §10.3.1: ``list_skills`` and ``get_skill`` MCP tools MUST be in
+# the mandatory group so picker parity holds at MINIMAL tier).
 DHARA_MANDATORY_GROUPS: set[str] = {
     REG_KEY_HEALTH,
     REG_KEY_SKILLS_SIGNER,
+    REG_KEY_SKILL_REGISTRY,
 }
 
 

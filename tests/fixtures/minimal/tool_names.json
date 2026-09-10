@@ -1,5 +1,7 @@
 [
   "aggregate_patterns",
+  "dhara_get_skill",
+  "dhara_list_skills",
   "discover_tools",
   "get",
   "list_prefix",

@@ -40,6 +40,7 @@ from dhara.mcp.tools.group_registers import (
     register_ecosystem_state_group,
     register_health_tools_group,
     register_kv_timeseries_group,
+    register_skill_registry_group,
     register_skills_signer_tools_group,
     register_sql_proxy_group,
 )
@@ -211,6 +212,11 @@ class TestGoldenFixtureParity:
             # post-Phase-1.5 fan-out DHARA_MANDATORY_GROUPS iteration can
             # resolve the key without raising KeyError.
             "register_skills_signer_tools": register_skills_signer_tools_group,
+            # Phase 1 — list_skills / get_skill (per plan §5 task #1-3,
+            # §10.3.1 mandatory group). The wrapper delegates to
+            # ``dhara.mcp.tools.skill_registry.register_skill_registry``
+            # which adds ``dhara_list_skills`` and ``dhara_get_skill``.
+            "register_skill_registry_group": register_skill_registry_group,
         }
 
         # Step 1: per-profile registration (mirrors W0 step 1)
@@ -492,3 +498,24 @@ class TestBehavioralParity:
         asyncio.run(captured["dhara_sql_query"](sql="SELECT 1"))
 
         mock_query.assert_called_once_with(sql="SELECT 1", params=None)
+
+    def test_skill_registry_wrapper_registers_two_tools(self) -> None:
+        """Phase 1 — the skill_registry wrapper registers ``dhara_list_skills``
+        AND ``dhara_get_skill`` (per plan §5 task #2-3).
+
+        The wrapper delegates to
+        ``dhara.mcp.tools.skill_registry.register_skill_registry``. This
+        test asserts both tools are captured on a mock FastMCP server;
+        the schema/sign behavior is covered by ``test_skill_metadata_schema.py``
+        and the wiring-fixture parity test above.
+        """
+        server, captured = self._build_mock_fastmcp()
+        instance = self._build_mock_instance()
+        register_skill_registry_group(server, instance)
+
+        assert "dhara_list_skills" in captured, (
+            "skill_registry wrapper should register 'dhara_list_skills'"
+        )
+        assert "dhara_get_skill" in captured, (
+            "skill_registry wrapper should register 'dhara_get_skill'"
+        )

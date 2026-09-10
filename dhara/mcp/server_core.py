@@ -218,7 +218,7 @@ class _SyncConnectionFacade:
         self._run(self._async.commit())
 
     def abort(self) -> None:
-        self._run(self._async.abort())
+        return self._run(self._async.abort())
 
     @property
     def cache(self) -> Any:
@@ -387,6 +387,15 @@ class DharaMCPServer:
         # persistence failure degrades to ``signer_feed_state=None``
         # rather than crashing ``__init__``; the ``/health`` route
         # reports ``ok=False`` with the error string in that case.
+        #
+        # Per Phase 1 brief: "After constructing SignerFeedState with
+        # manifest, build SkillsSigner.from_keypair(server_keypair) and
+        # pass to it, call init_signer_feed_state(signer_feed_state)".
+        # The refactored ``init_signer_feed_state()`` performs all three
+        # steps (build SignerFeedState with manifest + signer attached,
+        # AND install the module singleton for Phase 1
+        # ``list_skills`` / ``get_skill`` MCP tools) in a single call,
+        # so the wiring here is unchanged.
         try:
             self.signer_feed_state = init_signer_feed_state()
         except Exception as exc:  # noqa: BLE001 - signing init failure must not crash server
@@ -655,6 +664,7 @@ class DharaMCPServer:
             register_ecosystem_state_group,
             register_health_tools_group,
             register_kv_timeseries_group,
+            register_skill_registry_group,
             register_skills_signer_tools_group,
             register_sql_proxy_group,
         )
@@ -670,6 +680,12 @@ class DharaMCPServer:
             # so this group is a no-op at registration time; the manifest
             # data is already published via _runtime_status().
             "register_skills_signer_tools": lambda app: register_skills_signer_tools_group(app, self),
+            # Phase 1 — list_skills / get_skill (per plan §5 task #1-3,
+            # §10.3.1 mandatory group). Always-on: the registration
+            # wrapper delegates to
+            # ``dhara.mcp.tools.skill_registry.register_skill_registry``
+            # which adds ``dhara_list_skills`` and ``dhara_get_skill``.
+            "register_skill_registry_group": lambda app: register_skill_registry_group(app, self),
         }
 
         assert self.server is not None, (
