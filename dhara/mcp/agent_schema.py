@@ -83,7 +83,9 @@ class AgentMetadata(BaseModel):
 
     model_config = ConfigDict(
         extra="forbid",
-        str_strip_whitespace=True,
+        # ``str_strip_whitespace`` is intentionally NOT set: per Phase 3
+        # §11 B-6, the ``system_prompt`` field carries the agent body
+        # verbatim and ``content_hash`` covers those exact bytes.
         # ``validate_assignment`` lets us re-validate when the tool
         # code sets ``metadata.signature`` after construction.
         validate_assignment=True,
