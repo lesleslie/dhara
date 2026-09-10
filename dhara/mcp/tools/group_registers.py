@@ -537,8 +537,38 @@ def register_skill_registry_group(
     register_skill_registry(server)
 
 
+def register_agent_registry_group(
+    server: FastMCP, instance: DharaMCPServer
+) -> None:
+    """Phase 3 — register the ``list_agents`` / ``get_agent`` MCP tools.
+
+    Delegates to :func:`dhara.mcp.tools.agent_registry.register_agent_registry`
+    so the per-group wiring here stays a one-liner. The actual tool
+    handlers live in :mod:`dhara.mcp.tools.agent_registry` and pull
+    the :class:`SkillsSigner` from the module-level
+    :func:`dhara.mcp.signer_feed.get_signer_feed_state` singleton
+    (Phase 1.5 infrastructure reused for Phase 3 identity signing).
+
+    The dhara-specific naming convention (per plan §6) is
+    ``agent_registry`` (not ``agent_tools`` like the akosha reference
+    impl); this matches the file name
+    ``dhara/mcp/tools/agent_registry.py``.
+
+    Args:
+        server: the FastMCP server to decorate.
+        instance: the :class:`DharaMCPServer` (kept for signature
+            parity with the other per-group wrappers — the registry
+            tools don't need the instance because they read the signer
+            singleton).
+    """
+    from dhara.mcp.tools.agent_registry import register_agent_registry
+
+    register_agent_registry(server)
+
+
 __all__ = [
     "register_adapter_registry_group",
+    "register_agent_registry_group",
     "register_ecosystem_state_group",
     "register_health_tools_group",
     "register_kv_timeseries_group",

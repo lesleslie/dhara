@@ -37,6 +37,7 @@ from dhara.mcp.profiles import (
 )
 from dhara.mcp.tools.group_registers import (
     register_adapter_registry_group,
+    register_agent_registry_group,
     register_ecosystem_state_group,
     register_health_tools_group,
     register_kv_timeseries_group,
@@ -107,6 +108,14 @@ class TestProfileRegistrationsStructure:
     def test_full_groups_equal_legacy_full_groups(self) -> None:
         """PROFILE_REGISTRATIONS[FULL] matches the legacy FULL_GROUPS list."""
         assert PROFILE_REGISTRATIONS[ToolProfile.FULL] == FULL_GROUPS
+
+    def test_mandatory_groups_include_agent_registry(self) -> None:
+        """Phase 3 — agent_registry is in DHARA_MANDATORY_GROUPS (per
+        plan §10.3.1 picker-parity rule). Agents are an even larger
+        RCE surface than Skills, so the group must be reachable from
+        MINIMAL upward.
+        """
+        assert "register_agent_registry_group" in DHARA_MANDATORY_GROUPS
 
 
 class TestRegistrationMapStructure:
@@ -217,6 +226,11 @@ class TestGoldenFixtureParity:
             # ``dhara.mcp.tools.skill_registry.register_skill_registry``
             # which adds ``dhara_list_skills`` and ``dhara_get_skill``.
             "register_skill_registry_group": register_skill_registry_group,
+            # Phase 3 — list_agents / get_agent (per plan §5 Phase 3,
+            # §10.3.1 mandatory group). The wrapper delegates to
+            # dhara.mcp.tools.agent_registry.register_agent_registry
+            # which adds dhara_list_agents and dhara_get_agent.
+            "register_agent_registry_group": register_agent_registry_group,
         }
 
         # Step 1: per-profile registration (mirrors W0 step 1)
@@ -518,4 +532,26 @@ class TestBehavioralParity:
         )
         assert "dhara_get_skill" in captured, (
             "skill_registry wrapper should register 'dhara_get_skill'"
+        )
+
+    def test_agent_registry_wrapper_registers_two_tools(self) -> None:
+        """Phase 3 — the agent_registry wrapper registers ``dhara_list_agents``
+        AND ``dhara_get_agent`` (per plan §5 Phase 3 task #2).
+
+        The wrapper delegates to
+        ``dhara.mcp.tools.agent_registry.register_agent_registry``. This
+        test asserts both tools are captured on a mock FastMCP server;
+        the schema/sign behavior is covered by
+        ``test_agent_metadata_schema.py`` and the e2e tests
+        ``test_list_agents_e2e.py`` / ``test_get_agent_e2e.py``.
+        """
+        server, captured = self._build_mock_fastmcp()
+        instance = self._build_mock_instance()
+        register_agent_registry_group(server, instance)
+
+        assert "dhara_list_agents" in captured, (
+            "agent_registry wrapper should register 'dhara_list_agents'"
+        )
+        assert "dhara_get_agent" in captured, (
+            "agent_registry wrapper should register 'dhara_get_agent'"
         )

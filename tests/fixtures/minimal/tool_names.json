@@ -1,6 +1,8 @@
 [
   "aggregate_patterns",
+  "dhara_get_agent",
   "dhara_get_skill",
+  "dhara_list_agents",
   "dhara_list_skills",
   "discover_tools",
   "get",

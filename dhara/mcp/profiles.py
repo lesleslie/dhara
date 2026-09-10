@@ -145,6 +145,12 @@ REG_KEY_SKILLS_SIGNER = "register_skills_signer_tools"
 # skill metadata MUST be reachable from MINIMAL upward so the picker
 # parity story holds at every profile tier).
 REG_KEY_SKILL_REGISTRY = "register_skill_registry_group"
+# Phase 3 — list_agents / get_agent (per plan §5 Phase 3, §10.3.1).
+# Always-on per plan §10.3.1 picker-parity rule (agents are an even
+# larger RCE surface than Skills because the body IS the system
+# prompt — must be reachable from MINIMAL upward so picker parity
+# holds at every profile tier).
+REG_KEY_AGENT_REGISTRY = "register_agent_registry_group"
 
 
 def _build_registration_map() -> dict[str, Callable[[FastMCP, DharaMCPServer], None]]:
@@ -155,6 +161,7 @@ def _build_registration_map() -> dict[str, Callable[[FastMCP, DharaMCPServer], N
     """
     from dhara.mcp.tools.group_registers import (
         register_adapter_registry_group,
+        register_agent_registry_group,
         register_ecosystem_state_group,
         register_health_tools_group,
         register_kv_timeseries_group,
@@ -171,6 +178,7 @@ def _build_registration_map() -> dict[str, Callable[[FastMCP, DharaMCPServer], N
         REG_KEY_HEALTH: register_health_tools_group,
         REG_KEY_SKILLS_SIGNER: register_skills_signer_tools_group,
         REG_KEY_SKILL_REGISTRY: register_skill_registry_group,
+        REG_KEY_AGENT_REGISTRY: register_agent_registry_group,
     }
 
 
@@ -191,10 +199,17 @@ REGISTRATION_MAP: dict[str, Callable[[FastMCP, DharaMCPServer], None]] = (
 # ``get_skill`` tools and must also be visible from MINIMAL upward
 # (plan §10.3.1: ``list_skills`` and ``get_skill`` MCP tools MUST be in
 # the mandatory group so picker parity holds at MINIMAL tier).
+#
+# Phase 3 — agent_registry carries the picker-parity
+# ``list_agents`` / ``get_agent`` tools and must also be visible from
+# MINIMAL upward (plan §10.3.1: picker parity for agents holds at
+# every profile tier; agents without a body are non-functional so
+# MINIMAL tier must still see them).
 DHARA_MANDATORY_GROUPS: set[str] = {
     REG_KEY_HEALTH,
     REG_KEY_SKILLS_SIGNER,
     REG_KEY_SKILL_REGISTRY,
+    REG_KEY_AGENT_REGISTRY,
 }
 
 
