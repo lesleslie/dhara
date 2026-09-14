@@ -50,6 +50,31 @@ class TimeSeriesConfig(BaseModel):
     retention_days: int = Field(default=60, ge=1, le=3650)
 
 
+class OtelTracesConfig(BaseModel):
+    """OTel/local-traces query configuration.
+
+    Dhara does not currently persist OTel traces — this config exposes a
+    DuckDB file path that conforms to the Akosha/Mahavishnu HotStore
+    schema, so the ``query_local_traces`` MCP tool can return uniform
+    results across all 5 Bodai components. Returns ``[]`` until traces
+    are written by a component's OtelIngester pointing at this path.
+
+    Install the optional ``otel-traces`` dep group (``uv sync
+    --group otel-traces``) to enable reading; otherwise the tool
+    gracefully returns ``[]`` and logs an ImportError at first call.
+    """
+
+    enabled: bool = Field(default=True)
+    database_path: Path | None = Field(
+        default=None,
+        description=(
+            "DuckDB file path. Defaults to ``<storage.path.parent>/traces.duckdb`` "
+            "(sibling to the SHELF-1 storage file) when unset."
+        ),
+    )
+    embedding_dim: int = Field(default=384, ge=64, le=4096)
+
+
 class EcosystemStateConfig(BaseModel):
     """Ecosystem registry and event-log configuration."""
 
@@ -170,6 +195,7 @@ class DharaSettings(OneiricMCPConfig):
     cloud_storage: CloudStorageConfig = Field(default_factory=CloudStorageConfig)
     time_series: TimeSeriesConfig = Field(default_factory=TimeSeriesConfig)
     ecosystem_state: EcosystemStateConfig = Field(default_factory=EcosystemStateConfig)
+    otel_traces: OtelTracesConfig = Field(default_factory=OtelTracesConfig)
     authentication: AuthenticationConfig = Field(default_factory=AuthenticationConfig)
     backups: BackupRuntimeConfig = Field(default_factory=BackupRuntimeConfig)
 

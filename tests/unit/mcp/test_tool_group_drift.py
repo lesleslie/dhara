@@ -26,16 +26,15 @@ import ast
 from pathlib import Path
 
 import pytest
+from mcp_common.tools import ToolProfile
 
 from dhara.mcp.profiles import (
     FULL_GROUPS,
     MINIMAL_GROUPS,
     STANDARD_GROUPS,
-    TOOL_GROUPS_BY_PROFILE,
     TOOL_GROUP_TOOLS,
+    TOOL_GROUPS_BY_PROFILE,
 )
-from mcp_common.tools import ToolProfile
-
 
 # Resolve group_registers.py relative to this test file so the test does
 # not depend on the caller's working directory.
@@ -56,6 +55,7 @@ _WRAPPER_TO_GROUP: dict[str, str] = {
     "register_adapter_registry_group": "adapter_registry",
     "register_ecosystem_state_group": "ecosystem_state",
     "register_sql_proxy_group": "sql_proxy",
+    "register_otel_traces_group": "otel_traces",
     "register_health_tools_group": "health",
 }
 
@@ -191,11 +191,22 @@ def test_group_membership_matches_profile(
 
 
 def test_tool_count_per_group() -> None:
-    """Sanity check: each group must have at least two tools. SQL_PROXY is
-    allowed to have exactly two (the proxy/execute + proxy/query pair).
+    """Sanity check: each group must have at least two tools, with two
+    narrow exemptions for single-tool parity groups.
+
+    * ``sql_proxy`` is the proxy/execute + proxy/query pair (count = 2,
+      passes the check).
+    * ``otel_traces`` is a parity-mirror of the byte-for-byte
+      ``query_local_traces`` shape shipped on Akosha/Mahavishnu/
+      Session-Buddy/Crackerjack — all of which expose exactly one
+      tool with that name. The shape is intentional, not
+      over-fragmentation, so it is exempt from the minimum-two rule.
     """
+    exempt: set[str] = {"otel_traces"}
     too_small: list[tuple[str, int]] = []
     for group_name, tool_names in TOOL_GROUP_TOOLS.items():
+        if group_name in exempt:
+            continue
         if len(tool_names) < 2:
             too_small.append((group_name, len(tool_names)))
 
