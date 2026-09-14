@@ -647,49 +647,29 @@ class DharaMCPServer:
     async def _apply_w0_profile(self) -> None:
         """Call :func:`mcp_common.tools.dispatch._apply_tool_profile` for this server.
 
-        Per-instance ``registration_map`` captures ``self`` so the per-group
-        wrappers in :mod:`dhara.mcp.tools.group_registers` can access
-        ``self._async_kv_store``, ``self.config``, etc. The W0 helper
-        itself is async — ``_register_tools`` drives it via ``asyncio.run``
-        from the sync ``__init__`` call site.
+        The ``registration_map`` is derived from the module-level
+        :data:`dhara.mcp.profiles.REGISTRATION_MAP` so adding a new group
+        in :mod:`dhara.mcp.profiles` flows here automatically — see the
+        Phase 3 fix that closed the two-source-of-truth drift between this
+        method's inline dict and ``_build_registration_map``. Each 2-arg
+        ``register_*_group(app, self)`` callable is wrapped in a closure
+        that binds ``self`` so the dispatch loop can invoke it as
+        ``fn(app)``.
+
+        The W0 helper itself is async — ``_register_tools`` drives it via
+        ``asyncio.run`` from the sync ``__init__`` call site.
         """
         from mcp_common.tools.dispatch import _apply_tool_profile
 
         from dhara.mcp.profiles import (
             DHARA_MANDATORY_GROUPS,
             PROFILE_REGISTRATIONS,
-        )
-        from dhara.mcp.tools.group_registers import (
-            register_adapter_registry_group,
-            register_ecosystem_state_group,
-            register_health_tools_group,
-            register_kv_timeseries_group,
-            register_skill_registry_group,
-            register_skills_signer_tools_group,
-            register_sql_proxy_group,
+            REGISTRATION_MAP,
         )
 
         registration_map: dict[str, Callable[[FastMCP], Awaitable[None] | None]] = {
-            "kv_time_series": lambda app: register_kv_timeseries_group(app, self),
-            "adapter_registry": lambda app: register_adapter_registry_group(app, self),
-            "ecosystem_state": lambda app: register_ecosystem_state_group(app, self),
-            "sql_proxy": lambda app: register_sql_proxy_group(app, self),
-            "register_health_tools": lambda app: register_health_tools_group(app, self),
-            # Phase 1.5 — skills_signer (per plan §10.3.6, §10.3.1). The
-            # actual signer init runs in __init__ before tool registration
-            # so this group is a no-op at registration time; the manifest
-            # data is already published via _runtime_status().
-            "register_skills_signer_tools": lambda app: (
-                register_skills_signer_tools_group(app, self)
-            ),
-            # Phase 1 — list_skills / get_skill (per plan §5 task #1-3,
-            # §10.3.1 mandatory group). Always-on: the registration
-            # wrapper delegates to
-            # ``dhara.mcp.tools.skill_registry.register_skill_registry``
-            # which adds ``dhara_list_skills`` and ``dhara_get_skill``.
-            "register_skill_registry_group": lambda app: register_skill_registry_group(
-                app, self
-            ),
+            key: (lambda app, _fn=fn: _fn(app, self))
+            for key, fn in REGISTRATION_MAP.items()
         }
 
         assert self.server is not None, (
