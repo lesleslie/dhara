@@ -5,6 +5,17 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.1] - 2026-09-14
+
+### Fixed
+
+- dhara: Delete _register_tools_call_route mount (Phase 3 REQ-004)
+- mcp: Derive registration_map from profiles.REGISTRATION_MAP
+
+### Internal
+
+- deps: Bump mcp-common floor to >=0.26.0,<0.27.0 (Phase 2.5)
+
 ## [0.20.0] - 2026-09-13
 
 ### Added
@@ -19,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- mcp: Add dhara_* prefix to all user-facing tool registrations
+- mcp: Add dhara\_\* prefix to all user-facing tool registrations
 - mcp: Drop str_strip_whitespace from AgentMetadata config (B-6 hash-pin)
 - Move /tools/call to /mcp/tools/call; await async store methods directly
 
