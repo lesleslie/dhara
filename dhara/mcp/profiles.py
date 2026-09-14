@@ -26,6 +26,7 @@ TOOL_GROUP_ADAPTER_REGISTRY = "adapter_registry"
 TOOL_GROUP_KV_TIME_SERIES = "kv_time_series"
 TOOL_GROUP_ECOSYSTEM_STATE = "ecosystem_state"
 TOOL_GROUP_SQL_PROXY = "sql_proxy"
+TOOL_GROUP_OTEL_TRACES = "otel_traces"
 
 TOOL_GROUP_TOOLS: dict[str, list[str]] = {
     TOOL_GROUP_KV_TIME_SERIES: [
@@ -56,6 +57,9 @@ TOOL_GROUP_TOOLS: dict[str, list[str]] = {
         "dhara_sql_execute",
         "dhara_sql_query",
     ],
+    TOOL_GROUP_OTEL_TRACES: [
+        "dhara_query_local_traces",
+    ],
 }
 
 TOOL_GROUP_DESCRIPTIONS: dict[str, str] = {
@@ -63,6 +67,7 @@ TOOL_GROUP_DESCRIPTIONS: dict[str, str] = {
     TOOL_GROUP_ADAPTER_REGISTRY: "Dhara adapter registry: store, retrieve, validate, and version adapters",
     TOOL_GROUP_ECOSYSTEM_STATE: "Durable ecosystem service and event records",
     TOOL_GROUP_SQL_PROXY: "Generic SQL proxy (execute DDL/DML, query SELECT/WITH) — DuckDB in dev/test, asyncpg in production",
+    TOOL_GROUP_OTEL_TRACES: "OTel/local-traces query — uniform polling target for Akosha's fitness analyzer; reads HotStore-schema DuckDB",
 }
 
 HEALTH_TOOLS: list[str] = [
@@ -79,6 +84,7 @@ STANDARD_GROUPS = MINIMAL_GROUPS + [
     TOOL_GROUP_ADAPTER_REGISTRY,
     TOOL_GROUP_ECOSYSTEM_STATE,
     TOOL_GROUP_SQL_PROXY,
+    TOOL_GROUP_OTEL_TRACES,
 ]
 FULL_GROUPS = STANDARD_GROUPS
 
@@ -120,12 +126,14 @@ PROFILE_REGISTRATIONS: dict[ToolProfile, list[str | Callable]] = {
         TOOL_GROUP_ADAPTER_REGISTRY,
         TOOL_GROUP_ECOSYSTEM_STATE,
         TOOL_GROUP_SQL_PROXY,
+        TOOL_GROUP_OTEL_TRACES,
     ],
     ToolProfile.FULL: [
         TOOL_GROUP_KV_TIME_SERIES,
         TOOL_GROUP_ADAPTER_REGISTRY,
         TOOL_GROUP_ECOSYSTEM_STATE,
         TOOL_GROUP_SQL_PROXY,
+        TOOL_GROUP_OTEL_TRACES,
     ],
 }
 
@@ -135,6 +143,13 @@ REG_KEY_KV = TOOL_GROUP_KV_TIME_SERIES
 REG_KEY_ADAPTER = TOOL_GROUP_ADAPTER_REGISTRY
 REG_KEY_ECOSYSTEM = TOOL_GROUP_ECOSYSTEM_STATE
 REG_KEY_SQL = TOOL_GROUP_SQL_PROXY
+# Phase 1.2c — query_local_traces (per routing-feedback-loop-v4 §6.1).
+# Mirrors the byte-for-byte shape shipped on Akosha/Mahavishnu so
+# Akosha's fitness analyzer can poll Dhara uniformly across all 5
+# Bodai components. Uses the group-name key convention (matches
+# kv/adapter/ecosystem/sql_proxy) because otel_traces is per-profile
+# (PROFILE_REGISTRATIONS) rather than DHARA_MANDATORY_GROUPS.
+REG_KEY_OTEL_TRACES = TOOL_GROUP_OTEL_TRACES
 # Phase 1.5 — skills_signer (per plan §10.3.6, §10.3.1). The actual
 # signer state is initialized in DharaMCPServer.__init__ before tool
 # registration runs; this REG_KEY is a no-op at registration time and
@@ -165,6 +180,7 @@ def _build_registration_map() -> dict[str, Callable[[FastMCP, DharaMCPServer], N
         register_ecosystem_state_group,
         register_health_tools_group,
         register_kv_timeseries_group,
+        register_otel_traces_group,
         register_skill_registry_group,
         register_skills_signer_tools_group,
         register_sql_proxy_group,
@@ -175,6 +191,7 @@ def _build_registration_map() -> dict[str, Callable[[FastMCP, DharaMCPServer], N
         REG_KEY_ADAPTER: register_adapter_registry_group,
         REG_KEY_ECOSYSTEM: register_ecosystem_state_group,
         REG_KEY_SQL: register_sql_proxy_group,
+        REG_KEY_OTEL_TRACES: register_otel_traces_group,
         REG_KEY_HEALTH: register_health_tools_group,
         REG_KEY_SKILLS_SIGNER: register_skills_signer_tools_group,
         REG_KEY_SKILL_REGISTRY: register_skill_registry_group,
@@ -225,6 +242,7 @@ __all__ = [
     "TOOL_GROUP_DESCRIPTIONS",
     "TOOL_GROUP_ECOSYSTEM_STATE",
     "TOOL_GROUP_KV_TIME_SERIES",
+    "TOOL_GROUP_OTEL_TRACES",
     "TOOL_GROUP_SQL_PROXY",
     "TOOL_GROUP_TOOLS",
     "get_active_profile",

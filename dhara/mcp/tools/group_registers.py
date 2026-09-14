@@ -467,6 +467,75 @@ def register_sql_proxy_group(server: FastMCP, instance: DharaMCPServer) -> None:
         return await _dhara_sql_query_impl(sql=sql, params=params)  # type: ignore[no-any-return]
 
 
+def register_otel_traces_group(server: FastMCP, instance: DharaMCPServer) -> None:
+    """Register OTel/local-traces query tool (STANDARD profile).
+
+    Mirrors the byte-for-byte ``query_local_traces`` shape shipped on
+    Akosha and Mahavishnu so Akosha's fitness analyzer can poll Dhara
+    uniformly. Dhara has no trace data today (no OtelIngester) — the
+    tool returns ``[]`` until a component's OtelIngester points at the
+    configured DuckDB file. Closes the routing-feedback-loop-v4 partial
+    in ``docs/plans/2026-05-23-bodai-routing-feedback-loop-v4.md``.
+
+    Requires the optional ``otel-traces`` dep group; without it, the
+    tool returns ``[]`` and logs an ImportError once at first call.
+    """
+    require_scopes_fn = _auth_helper(instance)
+
+    def auth(*scopes: str) -> Any:
+        if not instance.config or not instance.config.authentication.enabled:
+            return require_scopes_fn
+        return require_scopes_fn(*scopes)
+
+    from dhara.mcp.tools.otel_traces import (
+        dhara_query_local_traces as _dhara_query_local_traces_impl,
+    )
+
+    @server.tool(auth=auth("read"))
+    async def dhara_query_local_traces(
+        task_class: str,
+        time_range_minutes: int = 60,
+        system_id: str | None = None,
+        limit: int = 100,
+    ) -> list[dict[str, Any]]:
+        """Query OTel traces by task_class and time range.
+
+        This is the Bodai component endpoint that Akosha's fitness
+        analyzer polls to collect traces for fitness signal computation.
+
+        Args:
+            task_class: Task classification tag to filter on
+                (e.g. ``"code_generation"``).
+            time_range_minutes: How far back to query (default 60 minutes,
+                max 1 week).
+            system_id: Optional source system identifier (auto-detected
+                if not provided).
+            limit: Maximum number of traces to return (default 100, max 1000).
+
+        Returns:
+            List of trace records with ``outcome``, ``duration_ms``,
+            ``selector``, ``component_name``, ``task_class``, ``timestamp``.
+            Empty list when the trace database is missing, the HotStore
+            dep is uninstalled, or no matching traces are found.
+        """
+        # Inject Dhara's config so the impl can resolve the DuckDB path
+        # without coupling to instance internals.
+        otel_cfg = (
+            instance.config.otel_traces if instance.config is not None else None
+        )
+        storage_cfg = (
+            instance.config.storage if instance.config is not None else None
+        )
+        return await _dhara_query_local_traces_impl(
+            task_class=task_class,
+            time_range_minutes=time_range_minutes,
+            system_id=system_id,
+            limit=limit,
+            otel_traces=otel_cfg,
+            storage=storage_cfg,
+        )
+
+
 def register_health_tools_group(server: FastMCP, instance: DharaMCPServer) -> None:
     """Register health check tools (always-on via DHARA_MANDATORY_GROUPS).
 

@@ -36,6 +36,13 @@ cloud = [
 duckdb = [
     "duckdb>=1.0.0",
 ]
+# OTel/local-trace query backend. The ``query_local_traces`` MCP tool
+# reads from a DuckDB file conforming to the Akosha/Mahavishnu HotStore
+# schema. Without this group, the tool returns ``[]`` and logs an
+# ImportError once at first call. Install with: uv sync --group otel-traces.
+otel-traces = [
+    "akosha>=0.17.1",
+]
 
 # Full-Featured Library Template
 # For: Libraries, frameworks, shared packages (oneiric, mcp-common, acb, fastblocks)

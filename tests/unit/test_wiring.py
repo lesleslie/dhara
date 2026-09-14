@@ -21,10 +21,9 @@ import ast
 import json
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
-
 from mcp_common.tools import ToolProfile
 
 from dhara.mcp.profiles import (
@@ -33,7 +32,6 @@ from dhara.mcp.profiles import (
     MINIMAL_GROUPS,
     PROFILE_REGISTRATIONS,
     REGISTRATION_MAP,
-    STANDARD_GROUPS,
 )
 from dhara.mcp.tools.group_registers import (
     register_adapter_registry_group,
@@ -41,6 +39,7 @@ from dhara.mcp.tools.group_registers import (
     register_ecosystem_state_group,
     register_health_tools_group,
     register_kv_timeseries_group,
+    register_otel_traces_group,
     register_skill_registry_group,
     register_skills_signer_tools_group,
     register_sql_proxy_group,
@@ -81,7 +80,7 @@ class TestProfileRegistrationsStructure:
         assert PROFILE_REGISTRATIONS[ToolProfile.MINIMAL] == ["kv_time_series"]
 
     def test_standard_groups_match_legacy(self) -> None:
-        """STANDARD profile registers KV + adapter + ecosystem + SQL.
+        """STANDARD profile registers KV + adapter + ecosystem + SQL + otel-traces.
 
         Matches the legacy ``STANDARD_GROUPS`` constant in :mod:`dhara.mcp.profiles`
         (which already included ``TOOL_GROUP_SQL_PROXY``). Behavioral
@@ -94,6 +93,7 @@ class TestProfileRegistrationsStructure:
             "adapter_registry",
             "ecosystem_state",
             "sql_proxy",
+            "otel_traces",
         ]
 
     def test_full_groups_match_legacy(self) -> None:
@@ -103,6 +103,7 @@ class TestProfileRegistrationsStructure:
             "adapter_registry",
             "ecosystem_state",
             "sql_proxy",
+            "otel_traces",
         ]
 
     def test_full_groups_equal_legacy_full_groups(self) -> None:
@@ -214,6 +215,9 @@ class TestGoldenFixtureParity:
             "adapter_registry": register_adapter_registry_group,
             "ecosystem_state": register_ecosystem_state_group,
             "sql_proxy": register_sql_proxy_group,
+            # Phase 1.2c — query_local_traces (routing-feedback-loop-v4
+            # §6.1). Per-profile group, not mandatory.
+            "otel_traces": register_otel_traces_group,
             "register_health_tools": register_health_tools_group,
             # Phase 1.5 — wired up but not registered at MINIMAL/STAND/FULL
             # because the manifest data ships via /health rather than as an
@@ -455,7 +459,8 @@ class TestBehavioralParity:
         tool invoked it exactly once with the right kwargs.
         """
         import asyncio
-        from unittest.mock import AsyncMock as _AsyncMock, patch as _patch
+        from unittest.mock import AsyncMock as _AsyncMock
+        from unittest.mock import patch as _patch
 
         server, captured = self._build_mock_fastmcp()
         instance = self._build_mock_instance()
@@ -491,7 +496,8 @@ class TestBehavioralParity:
     def test_sql_proxy_wrapper_uses_sql_proxy_impl(self) -> None:
         """SQL tool ``dhara_sql_query`` dispatches through ``dhara.mcp.tools.sql_proxy`` impl."""
         import asyncio
-        from unittest.mock import AsyncMock as _AsyncMock, patch as _patch
+        from unittest.mock import AsyncMock as _AsyncMock
+        from unittest.mock import patch as _patch
 
         server, captured = self._build_mock_fastmcp()
         instance = self._build_mock_instance()
