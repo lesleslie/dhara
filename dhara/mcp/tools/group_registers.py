@@ -506,12 +506,9 @@ def register_skills_signer_tools_group(
     # callers there can't observe the feed at all. Phase 1's
     # ``list_skills`` / ``get_skill`` tools are registered separately via
     # :func:`register_skill_registry_group`.
-    return
 
 
-def register_skill_registry_group(
-    server: FastMCP, instance: DharaMCPServer
-) -> None:
+def register_skill_registry_group(server: FastMCP, instance: DharaMCPServer) -> None:
     """Phase 1 — register the ``list_skills`` / ``get_skill`` MCP tools.
 
     Delegates to :func:`dhara.mcp.tools.skill_registry.register_skill_registry`
@@ -537,9 +534,7 @@ def register_skill_registry_group(
     register_skill_registry(server)
 
 
-def register_agent_registry_group(
-    server: FastMCP, instance: DharaMCPServer
-) -> None:
+def register_agent_registry_group(server: FastMCP, instance: DharaMCPServer) -> None:
     """Phase 3 — register the ``list_agents`` / ``get_agent`` MCP tools.
 
     Delegates to :func:`dhara.mcp.tools.agent_registry.register_agent_registry`

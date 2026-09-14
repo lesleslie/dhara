@@ -1,16 +1,15 @@
-# dhara
+# Dhara
 
 [![Code style: crackerjack](https://img.shields.io/badge/code%20style-crackerjack-000042)](https://github.com/lesleslie/crackerjack)
 [![Runtime: oneiric](https://img.shields.io/badge/runtime-oneiric-6e5494)](https://github.com/lesleslie/oneiric)
 [![uv](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json)](https://github.com/astral-sh/uv)
 [![Python: 3.14+](https://img.shields.io/badge/python-3.14%2B-green)](https://www.python.org/downloads/)
 
-**dhara** is a modern continuation of **Durus**, a persistent object system
-for applications written in the Python programming language. It could be
-called a noSQL database. However, it does provide "ACID" properties
-(Atomicity, Consistency, Isolation, Durability).
+**Dhara** is a modern continuation of **Durus**: a persistent object system
+for Python applications with ACID (Atomicity, Consistency, Isolation,
+Durability) transactions.
 
-The implementation of dhara is not multi-threaded but does provide
+The implementation is not multi-threaded but does provide
 concurrency via a client/server model. It is optimized for read heavy
 work loads and aggressively caches persistent objects in memory.
 For many applications, this design enables good performance with minimal
@@ -20,50 +19,32 @@ effort from application programmers.
 
 Dhara is the **curator** of the [Bodai ecosystem](https://github.com/lesleslie/bodai) — the persistent object storage backend for adapter configs, service lifecycle state, and ecosystem events consumed by Mahavishnu, Akosha, Session-Buddy, Crackerjack, and Oneiric.
 
-Standalone operation is a first-class design goal, not an afterthought —
-see [Standalone use](#standalone-use) below. For how Dhara fits into the
-broader Bodai control plane, see the [Bodai ecosystem notes](https://github.com/lesleslie/bodai).
+Dhara can be used directly by Python applications or as part of the Bodai
+control plane. See [Standalone use](#standalone-use) and the [Bodai ecosystem
+notes](https://github.com/lesleslie/bodai).
 
 ## Standalone Use
 
-Dhara is a member of the [Bodai ecosystem](https://github.com/lesleslie/bodai)
-and serves there as the curator component — but it is **fully usable on its own**
-by any Python application. The Bodai control plane is one set of consumers;
-your service is not a special case, and you do not need to pull in any
-other Bodai component to use Dhara.
+Dhara is also usable directly by Python applications without installing
+other Bodai components.
 
-A standalone install has zero ecosystem dependencies:
+A standalone install has no dependencies on other Bodai components:
 
 ```bash
 uv pip install dhara
 dhara db start --file ~/my_app.dhara
 ```
 
-**Three deployment shapes work without anything Bodai-specific:**
+**Deployment shapes:**
 
 - **In-process.** `AsyncFileStorage` + `AsyncConnection` open the database
-  inside your Python process. No server, no socket, no extra runtime.
-- **Single-host server.** `dhara db start` brings up the storage server on
-  TCP `:8685` by default (configurable via `--port`). Multiple processes on
-  the same machine share one store.
-- **Distributed server.** The same storage protocol across hosts.
-  ACID transactions still serialize through the storage server; clients
-  keep a persistent on-disk cache like ZEO clients do.
-
-**Serverless-friendly by design.** With `AsyncConnection` and the asyncio-first
-API, Dhara fits cleanly into function-as-a-service contexts:
-
-- **AWS Lambda / Cloud Run / Vercel functions** — use `AsyncFileStorage` for
-  cold-fast access, or point all functions at a shared managed PostgreSQL.
-- **Cold-start mitigation** — instantiate the storage inside the handler
-  rather than at module scope. Per-connection caches reset to disk on every
-  commit (the same persistent on-disk cache pattern ZEO pioneered, returned
-  for asyncio), so cold starts are cheap.
-- **DuckDB analytical queries** — the DuckDB backend reads from the same
-  store and answers OLAP-shaped questions in one shot, useful for
-  serverless "summarise and return" handlers.
-- **In-memory `Storage` backend** — useful for unit tests and ephemeral
-  pipelines that don't need to persist anything.
+  inside your Python process, with no server or socket required.
+- **Shared storage server.** `dhara db start` exposes the storage protocol on
+  TCP `:8685` by default so multiple processes on one host can share a store.
+- **Distributed server.** The same storage protocol works across hosts;
+  transactions still serialize through the storage server.
+- **MCP service.** `dhara mcp start` exposes the FastMCP API on `:8683`.
+- **Ephemeral.** `MemoryStorage` supports tests and short-lived pipelines.
 
 The MCP server (`dhara mcp start`, default port `8683`) is itself optional —
 if your application does not need an AI/agent surface, skip it. The
@@ -113,15 +94,15 @@ does not replicate.
 
 ## Origin
 
-dhara was originally written by the MEMS Exchange software development
-team at the Corporation for National Research Initiatives (CNRI). dhara
-was designed to be the storage component for the Python-powered web sites
+Dhara was originally written by the MEMS Exchange software development
+team at the Corporation for National Research Initiatives (CNRI). It was
+designed to be the storage component for the Python-powered web sites
 operated by the MEMS Exchange. See the *Acknowledgements* section below
 for the full upstream lineage.
 
 ## Overview
 
-dhara offers an easy way to use and maintain a consistent collection
+Dhara offers an easy way to use and maintain a consistent collection
 of object instances used by one or more processes. Access and change
 of a persistent instances is managed through a cached Connection
 instance which includes `commit()` and `abort()` methods so that changes
@@ -140,7 +121,7 @@ Dhara ships a Typer-based unified CLI. All subcommands accept `--help`.
 | `dhara health` | Probe the local runtime health (used by the Bodai radar). |
 | `dhara adapters` | List registered Oneiric adapters. |
 | `dhara storage` | Display storage information (backend, file, port). |
-| `dhara admin` | Launch the Dhara admin shell (IPython). |
+| `dhara admin --confirm` | Launch the unrestricted Dhara admin shell (IPython). |
 | `dhara mcp ...` | MCP server lifecycle (see below). |
 | `dhara db ...` | Legacy-compatible database operations (Durus v0.x scripts). |
 
@@ -152,14 +133,14 @@ dhara mcp stop                # Stop it
 dhara mcp status              # Is it running?
 dhara mcp health              # Health probe
 dhara mcp restart             # stop + start
-dhara mcp config              # Show resolved MCP settings
 ```
 
 ### Database operations (`dhara db ...`)
 
 The `db` subcommand tree is the legacy-compatible interface carried over
-from the Durus 0.x CLI. Most new code should prefer `dhara start --mode=...`
-(see *Modes* below), but `dhara db` keeps existing scripts working.
+from the Durus 0.x CLI. Use `dhara mcp start` for the MCP service and
+`dhara db start` when you need the shared storage server; the `db` tree keeps
+existing scripts working.
 
 ```bash
 dhara db start                # Start Dhara storage server
@@ -176,101 +157,144 @@ Common options for database commands:
 
 ### Modes
 
-Dhara's startup modes are the recommended way to bring the storage server
-up. They pre-wire host/port and the default backend so you do not have
-to memorize the right flags for each scenario.
+Dhara selects `lite` or `standard` configuration through `DHARA_MODE`.
+The mode-specific file controls storage defaults and server settings; the
+MCP service remains on `8683`, while the legacy-compatible storage server
+defaults to `8685`.
 
 ```bash
-dhara start --mode=lite         # Zero-config, local SQLite, port 8683
-dhara start --mode=standard     # Full feature set, configurable storage, port 8685
+DHARA_MODE=lite dhara mcp start
+DHARA_MODE=standard dhara mcp start
 ```
 
-The two modes are implemented in `dhara/modes/lite.py` and
-`dhara/modes/standard.py`. See `dhara/modes/__init__.py` for the mode
-detection and resolution rules.
+The mode implementations live in `dhara/modes/lite.py` and
+`dhara/modes/standard.py`.
 
 ## Validation
 
-The preferred local validation path is `crackerjack` (the CLI, not
-`python -m crackerjack`):
+The preferred local validation path is [Crackerjack](https://github.com/lesleslie/crackerjack):
 
 ```bash
-crackerjack run                # Full quality gate (format + lint + type + tests)
-crackerjack run -p minor       # Bump + commit + tag + push + publish (when hooks pass)
-crackerjack run -p patch       # Patch-level release
-crackerjack doctor             # Diagnostic checks (pre-flight)
-crackerjack health             # Health probe
+crackerjack run       # Full quality gate, including tests
+crackerjack doctor    # Diagnostic checks
+crackerjack health    # Health probe
 ```
 
-For a single test file or a specific failure, drop down to `pytest` directly:
-
-```bash
-pytest tests/unit/test_storage_sqlite.py
-pytest -k "test_cache_shrink" -x
-```
-
-When `crackerjack run` reports issues, fix them via Crackerjack's
-AI-assisted flow rather than re-running the gates by hand.
+Use the repository's focused test commands only when investigating a
+specific failure; the README's canonical validation path is Crackerjack.
 
 ## Configuration Surfaces
 
-Dhara currently exposes two configuration layers:
+Dhara's canonical service configuration is `DharaSettings` from
+`dhara.core.config`. Its self-contained loader applies these layers:
 
-- `dhara.core.config.DharaSettings` is the canonical runtime settings model for the CLI and MCP server
-- `dhara.config` remains available for lightweight dataclass helpers and compatibility with older code
+1. `settings/lite.yaml` when `DHARA_MODE=lite`
+1. `settings/standard.yaml` when `DHARA_MODE=standard`
+1. `settings/dhara.yaml` when no mode is selected
+1. `settings/local.yaml` as a project-local override
+1. `DHARA_*` environment variables, using nested names such as
+   `DHARA_STORAGE__PATH` and `DHARA_STORAGE__BACKEND`
 
-For service startup, operator configuration, and environment-variable overrides, use `DharaSettings`.
+Legacy `DRUVA_*` and `DURUS_*` variables are mirrored into the canonical
+`DHARA_*` namespace for compatibility. Oneiric supplies the shared CLI,
+logging, and adapter infrastructure. Dhara's core service settings loader
+does not inspect Oneiric's generic XDG config files; use the project YAML
+layers or `DHARA_*` environment variables for those settings. Oneiric-backed
+adapter/provider settings used by MCP integrations may use Oneiric's own
+layered loader, including `${XDG_CONFIG_HOME:-~/.config}/dhara/config.yaml`
+and `local.yaml`.
+
+## MCP Surface
+
+The MCP server uses `DHARA_TOOL_PROFILE` to control optional tool groups.
+Health, discovery, signed skill metadata, and signed agent metadata are
+available at every profile level.
+
+- **MINIMAL**: key/value and time-series tools
+  (`dhara_put`, `dhara_get`, `dhara_list_prefix`,
+  `dhara_record_time_series`, `dhara_query_time_series`,
+  `dhara_aggregate_patterns`)
+- **STANDARD**: adds the Oneiric adapter registry, durable ecosystem state,
+  and SQL proxy tools (`dhara_sql_execute`, `dhara_sql_query`)
+- **FULL**: enables the complete optional tool set; it currently registers
+  the same groups as STANDARD
+
+The signed catalog tools are:
+
+- `dhara_list_skills` / `dhara_get_skill`
+- `dhara_list_agents` / `dhara_get_agent`
+
+The server also exposes `/health`, `/healthz`, `/ready`, `/readyz`, and
+`/metrics` on the MCP HTTP port. `DHARA_TOOL_PROFILE` defaults to the full
+profile unless a restricted profile is selected.
 
 ## Quick Demo
 
-**Start a Dhara server (recommended):**
+**Start the MCP service:**
 
 ```bash
-dhara start --mode=lite
+# Start the MCP service in lite mode (HTTP :8683)
+DHARA_MODE=lite dhara mcp start
 ```
 
-This starts the storage server in *lite* mode — a local SQLite-backed
-file, listening on `127.0.0.1:8683`. Use `--mode=standard` for the
-production-shaped configuration (default port `8685`).
+This starts the MCP service against the local SQLite-backed configuration on
+`127.0.0.1:8683`. Use `DHARA_MODE=standard` for the standard configuration.
+The service exposes `/health`, `/ready`, and `/metrics`.
+
+To start the shared storage server instead, use the legacy-compatible `db`
+commands:
+
+```bash
+dhara db start --file ~/.local/share/dhara/lite.dhara --port 8685
+dhara db client --host 127.0.0.1 --port 8685
+```
 
 If you have an existing Durus-style script that still calls
 `dhara db start`, that path is preserved under the `dhara db ...`
 subcommand tree for compatibility — see *CLI Commands* above.
 
-**Connect as a client:**
+**Open the local admin shell:**
 
 ```bash
-dhara admin
+dhara admin --confirm
 ```
 
-This opens an interactive IPython shell connected to the running server.
-You have access to a dictionary-like persistent object, `root`. If you
-make changes to items of `root` and run `connection.commit()`, the
+This opens an interactive IPython shell against the configured local
+storage file. It does not connect to the MCP service or the shared storage
+server. You have access to a dictionary-like persistent object, `root`.
+If you make changes to items of `root` and run `connection.commit()`, the
 changes are written to the file. If you make changes and then run
-`connection.abort()`, the attributes revert back to the values they
-had at the last commit.
+`connection.abort()`, the attributes revert back to the values they had at
+the last commit.
 
-**Multiple clients:** open a second terminal and run `dhara admin`
-again. Committed changes to `root` in one client are visible in other
-clients after the next `connection.abort()` or `connection.commit()`.
+**Connect to the shared storage server:** open a second terminal and run:
 
-**Stop the server:** Press *Control-C* in the server terminal.
+```bash
+dhara db client --host 127.0.0.1 --port 8685
+```
+
+Committed changes to `root` in one client are visible in other clients
+after the next `connection.abort()` or `connection.commit()`.
+
+**Stop the MCP service:** `dhara mcp stop`.
+
+**Stop a foreground storage server:** Press *Control-C* in its terminal.
 
 **Persistence example (using the legacy `db` commands):**
 
 ```bash
-# Start server with a persistent file
-dhara db start --file test.dhara
+# Start the storage server with a persistent file
+dhara db start --file test.dhara --port 8685
 
 # Connect, make changes, commit
-dhara db client --file test.dhara
+dhara db client --host 127.0.0.1 --port 8685
 # In the shell:
 # >>> root["hello"] = "world"
 # >>> connection.commit()
 
 # Stop and restart - data persists
 dhara db start --file test.dhara
-dhara db client --file test.dhara
+dhara db client --host 127.0.0.1 --port 8685
 # >>> root["hello"]
 # 'world'
 ```
@@ -283,7 +307,7 @@ dhara db client --file test.dhara
 
 All commands accept `--help` for more options.
 
-## Using dhara in a Program
+## Using Dhara in a Program
 
 To use dhara, a Python program needs to make a Storage instance and a
 Connection instance. For the Storage instance, you have two choices:
@@ -308,7 +332,7 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-Example using ClientStorage to open a Connection to a dhara server:
+Example using ClientStorage to open a Connection to a Dhara server:
 
 ```py
 from dhara.core.connection import Connection
@@ -395,7 +419,7 @@ concurrency story.
 | `AsyncSqliteStorage` | `dhara/storage/sqlite.py` | The canonical async SQLite backend. Use this when you want the URL form directly (`sqlite+aiosqlite:///path/to.db`). |
 | `SqliteStorage` | `dhara/storage/sqlite.py` | Sync SQLite backend (Durus-compatible). Useful for batch jobs and existing scripts that need the blocking API. Online backups and point-in-time recovery are *not* available with this backend. |
 | `PostgresStorage` | `dhara/storage/postgres.py` | Multi-process, multi-host persistence. Drop-in for managed PostgreSQL or self-hosted clusters. Install the `cloud` dep group to enable. |
-| `DuckDBStorage` | `dhara/storage/duckdb_adapter.py` | OLAP-shaped analytical queries over the same persistent store. Useful for serverless "summarise and return" handlers. Install the `duckdb` dep group to enable. |
+| `DuckDBStorage` | `dhara/storage/duckdb_adapter.py` | OLAP-shaped analytical queries over the same persistent store. Install the `duckdb` dependency group to enable. |
 | `MemoryStorage` | `dhara/storage/memory.py` | Ephemeral, in-process. Tests and short-lived pipelines. |
 | `ClientStorage` | `dhara/storage/client.py` | Connect to a remote Dhara storage server over TCP or Unix domain socket. The standard choice when several processes share a store. |
 
@@ -413,20 +437,14 @@ by the MEMS Exchange software development team at the Corporation for National
 Research Initiatives (CNRI). We are grateful for the foundational work done
 by the original Durus developers.
 
-This modern version (dhara) includes:
+The current implementation uses modern Python 3.14+ typing, `msgspec`,
+SQLite/aiosqlite, and FastMCP.
 
-- Modern Python 3.14+ type hints
-- Enhanced serialization options (msgspec)
-- Oneiric configuration and logging integration
-- MCP server for modern AI/agent workflows
-- Comprehensive security and performance improvements
-
-The name **dhara** (ध्रुव) is Sanskrit for "immovable, eternal, constant,"
-or "Pole Star" - complementing the original Latin name **Durus**, meaning
+The name **Dhara** complements the original Latin name **Durus**, meaning
 "hard, sturdy, tough, enduring."
 
 ## License
 
 BSD 3-Clause License — see `LICENSE` in the project root for details.
 
-[fastmcp]: https://github.com/modelcontextprotocol/python-sdk
+[fastmcp]: https://github.com/jlowin/fastmcp

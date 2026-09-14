@@ -125,7 +125,8 @@ import datetime
 seven_days_ago = (datetime.date.today() - datetime.timedelta(days=7)).isoformat()
 
 patterns = await mcp__dhara__dhara_aggregate_patterns(
-    start_date=seven_days_ago, min_occurrences=10,
+    start_date=seven_days_ago,
+    min_occurrences=10,
 )
 # patterns is a list of {metric_type, record_keys, occurrences, ...}
 top = sorted(patterns, key=lambda p: p["occurrences"], reverse=True)[:3]

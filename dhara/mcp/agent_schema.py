@@ -180,9 +180,7 @@ class AgentMetadata(BaseModel):
                 "(forbidden: '/', uppercase, leading '.', length > 63)"
             )
         if ".." in value:
-            raise ValueError(
-                f"value {value!r} contains forbidden substring '..'"
-            )
+            raise ValueError(f"value {value!r} contains forbidden substring '..'")
         return value
 
     @field_validator("description")
@@ -212,7 +210,9 @@ class AgentMetadata(BaseModel):
             )
         server_key, name, version = parts
         if not _NAME_OR_SERVER_RE.fullmatch(server_key):
-            raise ValueError(f"id {value!r} has invalid server_key segment {server_key!r}")
+            raise ValueError(
+                f"id {value!r} has invalid server_key segment {server_key!r}"
+            )
         if not _NAME_OR_SERVER_RE.fullmatch(name):
             raise ValueError(f"id {value!r} has invalid name segment {name!r}")
         if not version or "/" in version or ".." in version:

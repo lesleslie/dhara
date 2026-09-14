@@ -153,10 +153,13 @@ healthy = result["services"]
 # Cross-check leases — a service with status=healthy but an expired
 # lease is a stalled heartbeat, not a truly healthy service.
 import datetime
+
 now = datetime.datetime.now(datetime.UTC)
 live = [
-    s for s in healthy
-    if datetime.datetime.fromisoformat(s["lease_expires_at"].replace("Z", "+00:00")) > now
+    s
+    for s in healthy
+    if datetime.datetime.fromisoformat(s["lease_expires_at"].replace("Z", "+00:00"))
+    > now
 ]
 ```
 

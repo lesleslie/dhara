@@ -679,13 +679,17 @@ class DharaMCPServer:
             # actual signer init runs in __init__ before tool registration
             # so this group is a no-op at registration time; the manifest
             # data is already published via _runtime_status().
-            "register_skills_signer_tools": lambda app: register_skills_signer_tools_group(app, self),
+            "register_skills_signer_tools": lambda app: (
+                register_skills_signer_tools_group(app, self)
+            ),
             # Phase 1 — list_skills / get_skill (per plan §5 task #1-3,
             # §10.3.1 mandatory group). Always-on: the registration
             # wrapper delegates to
             # ``dhara.mcp.tools.skill_registry.register_skill_registry``
             # which adds ``dhara_list_skills`` and ``dhara_get_skill``.
-            "register_skill_registry_group": lambda app: register_skill_registry_group(app, self),
+            "register_skill_registry_group": lambda app: register_skill_registry_group(
+                app, self
+            ),
         }
 
         assert self.server is not None, (

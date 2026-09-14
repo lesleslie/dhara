@@ -125,16 +125,22 @@ Skill action:
 
 ```python
 latest = await mcp__dhara__dhara_list_adapter_versions(
-    domain="adapter", key="cache", provider="memory",
+    domain="adapter",
+    key="cache",
+    provider="memory",
 )
 current_version = latest[0]["version"]
 
 adapter = await mcp__dhara__dhara_get_adapter(
-    domain="adapter", key="cache", provider="memory",
+    domain="adapter",
+    key="cache",
+    provider="memory",
     version=current_version,
 )
 health = await mcp__dhara__dhara_get_adapter_health(
-    domain="adapter", key="cache", provider="memory",
+    domain="adapter",
+    key="cache",
+    provider="memory",
 )
 ```
 

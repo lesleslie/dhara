@@ -5,6 +5,33 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.20.0] - 2026-09-13
+
+### Added
+
+- mcp: Phase 1 server-published skills (list_skills + get_skill)
+- mcp: Phase 1.5 ed25519 skills_signer infrastructure
+- mcp: Phase 3 server-published agents (list_agents + get_agent + AgentMetadata schema)
+
+### Changed
+
+- skill_schema: Add trailing newline (per Phase 1 cross-server audit)
+
+### Fixed
+
+- mcp: Add dhara_* prefix to all user-facing tool registrations
+- mcp: Drop str_strip_whitespace from AgentMetadata config (B-6 hash-pin)
+- Move /tools/call to /mcp/tools/call; await async store methods directly
+
+### Documentation
+
+- Add docs/assets/images/ + .scratch/ convention
+- architecture: Update /tools/call references to /mcp/tools/call
+
+### Testing
+
+- mcp: Upgrade tools/call mocks to AsyncMock; update route lookup
+
 ## [0.19.9] - 2026-09-09
 
 ### Fixed
