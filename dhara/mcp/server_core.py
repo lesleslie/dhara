@@ -491,10 +491,6 @@ class DharaMCPServer:
 
             return Response(content=metrics, media_type=media_type)
 
-        # NOTE: /mcp/tools/call route is registered AFTER storage is initialized
-        # so self.kv_store, self.ecosystem_state are available.
-        # See tools_call_route below after _register_tools() completes.
-
         # Initialize storage and connection
         # Expand ~ to home directory
         storage_path = config.storage.path.expanduser()
@@ -624,13 +620,6 @@ class DharaMCPServer:
 
         logger.info("Dhara MCP tools registration complete (via W0 dispatch)")
 
-        # Register REST-style /mcp/tools/call endpoint for Akosha client compatibility.
-        # Akosha's DharaServiceRegistryClient builds ``{base_url}/tools/call`` where
-        # ``base_url`` ends in ``/mcp`` (DHARA_DEFAULT_URL = "http://localhost:8683/mcp"),
-        # producing the effective URL ``/mcp/tools/call``. The endpoint accepts
-        # {"name": "...", "arguments": {...}} and calls underlying store methods directly.
-        self._register_tools_call_route()
-
         # Register substrate CRUD HTTP routes (Workstream C).
         # Persistence uses the AsyncFileStorage-backed Connection.root mapping;
         # Workstream D will swap to SQL-backed tables.
@@ -689,93 +678,6 @@ class DharaMCPServer:
             registration_map=registration_map,
             mandatory_groups=DHARA_MANDATORY_GROUPS,
         )
-
-    def _register_tools_call_route(self) -> None:
-        """Register /mcp/tools/call REST-style endpoint for Akosha client compatibility."""
-        assert self.server is not None, "FastMCP server required for tools/call route"
-
-        import json
-
-        @self.server.custom_route("/mcp/tools/call", methods=["POST"])
-        async def tools_call(request: Any) -> Any:
-            """REST-style tool call endpoint for Akosha client compatibility.
-
-            Akosha's DharaServiceRegistryClient calls ``{base_url}/tools/call``
-            where ``base_url`` ends in ``/mcp``, producing ``/mcp/tools/call``.
-            The body is ``{"name": "...", "arguments": {...}}``.
-            This route translates REST-style calls into store method invocations.
-            """
-            from starlette.responses import JSONResponse
-
-            try:
-                body = await request.json()
-            except Exception:  # noqa: BLE001  # REST body parser → HTTP 400
-                return JSONResponse({"error": "Invalid JSON"}, status_code=400)
-
-            tool_name = body.get("name")
-            arguments = body.get("arguments", {})
-
-            if not tool_name:
-                return JSONResponse({"error": "Missing tool name"}, status_code=400)
-
-            # Map tool names to async store methods (bound at request time once
-            # stores are initialized). All targets are coroutine functions, so
-            # they must be awaited directly — do NOT wrap in asyncio.to_thread
-            # (that would return the coroutine object without awaiting it).
-            tool_dispatch: dict[str, Any] = {
-                "get": self._async_kv_store.get_async if self._async_kv_store else None,
-                "put": self._async_kv_store.put_async if self._async_kv_store else None,
-                "list_prefix": self._async_kv_store.list_prefix_async
-                if self._async_kv_store
-                else None,
-                "list_services": self._async_ecosystem_state.list_services_async
-                if self._async_ecosystem_state
-                else None,
-                "get_service": self._async_ecosystem_state.get_service_async
-                if self._async_ecosystem_state
-                else None,
-                "record_event": self._async_ecosystem_state.record_event_async
-                if self._async_ecosystem_state
-                else None,
-                "list_events": self._async_ecosystem_state.list_events_async
-                if self._async_ecosystem_state
-                else None,
-            }
-
-            if tool_name in tool_dispatch and tool_dispatch[tool_name] is None:
-                return JSONResponse(
-                    {"error": f"Store not initialized: {tool_name}"}, status_code=500
-                )
-
-            if tool_name not in tool_dispatch:
-                return JSONResponse(
-                    {"error": f"Unknown tool: {tool_name}"}, status_code=404
-                )
-
-            try:
-                # Await the async store method directly — these are coroutine
-                # functions and `asyncio.to_thread` would return the coroutine
-                # object without awaiting it (causing JSON serialization to
-                # fail with "Object of type coroutine is not JSON serializable").
-                result = await tool_dispatch[tool_name](**arguments)
-                # Return in Akosha client format: {"content": [{"type": "text", "text": "..."}]}
-                text = json.dumps(result)
-                return JSONResponse(
-                    {
-                        "content": [{"type": "text", "text": text}],
-                        "isError": False,
-                    }
-                )
-            except Exception as exc:  # noqa: BLE001  # REST body parser → HTTP 500
-                return JSONResponse(
-                    {
-                        "content": [
-                            {"type": "text", "text": json.dumps({"error": str(exc)})}
-                        ],
-                        "isError": True,
-                    },
-                    status_code=500,
-                )
 
     def _register_health_tools(self) -> None:
         """Register health check tools using mcp-common.

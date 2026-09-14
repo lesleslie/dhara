@@ -12,7 +12,6 @@ branches those files leave uncovered:
   periodic-flush task
 * the ``postgres`` storage-backend branch and the D-LOCK route branch
 * the HTTP route error handlers (``/health``, ``/ready``, ``/readyz``)
-* the whole ``/tools/call`` REST shim
 * ``_read_backup_catalog_async``'s ``__state__`` envelope unwrapping
 
 Everything is mocked: no sockets, no real storage, no network.
@@ -161,7 +160,7 @@ def _bare_server(**attrs: Any) -> Any:
 
 
 class _FakeRequest:
-    """Minimal Starlette-request stand-in for the ``/mcp/tools/call`` shim."""
+    """Minimal Starlette-request stand-in for the probe- and healthz-route tests."""
 
     def __init__(self, payload: Any = None, *, raise_on_json: bool = False) -> None:
         self._payload = payload
@@ -462,7 +461,6 @@ def test_register_tools_registers_lock_routes_when_sql_backend_present() -> None
         patch.object(DharaMCPServer, "_apply_w0_profile", AsyncMock()),
         patch.object(server_core, "register_substrate_routes") as substrate,
         patch("dhara.lock.routes.register_lock_routes") as lock_routes,
-        patch.object(DharaMCPServer, "_register_tools_call_route", MagicMock()),
     ):
         srv._register_tools()
 
@@ -478,7 +476,6 @@ def test_register_tools_skips_lock_routes_without_sql_backend() -> None:
         patch.object(DharaMCPServer, "_apply_w0_profile", AsyncMock()),
         patch.object(server_core, "register_substrate_routes"),
         patch("dhara.lock.routes.register_lock_routes") as lock_routes,
-        patch.object(DharaMCPServer, "_register_tools_call_route", MagicMock()),
     ):
         srv._register_tools()
 
@@ -530,100 +527,10 @@ async def test_healthz_route_is_unconditional(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# /mcp/tools/call REST shim
-# ---------------------------------------------------------------------------
-
-
-@contextmanager
-def _tools_call_handler(**attrs: Any) -> Iterator[Any]:
-    fastmcp, routes = _make_capturing_server()
-    srv = _bare_server(server=fastmcp, **attrs)
-    srv._register_tools_call_route()
-    yield srv, routes["/mcp/tools/call"]
-
-
-async def test_tools_call_rejects_invalid_json() -> None:
-    with _tools_call_handler() as (_srv, handler):
-        response = await handler(_FakeRequest(raise_on_json=True))
-    assert response.status_code == 400
-    assert _body(response) == {"error": "Invalid JSON"}
-
-
-async def test_tools_call_requires_tool_name() -> None:
-    with _tools_call_handler() as (_srv, handler):
-        response = await handler(_FakeRequest({"arguments": {}}))
-    assert response.status_code == 400
-    assert _body(response) == {"error": "Missing tool name"}
-
-
-async def test_tools_call_rejects_unknown_tool() -> None:
-    with _tools_call_handler() as (_srv, handler):
-        response = await handler(_FakeRequest({"name": "nope"}))
-    assert response.status_code == 404
-    assert _body(response) == {"error": "Unknown tool: nope"}
-
-
-@pytest.mark.parametrize("tool_name", ["get", "put", "list_prefix"])
-async def test_tools_call_reports_uninitialized_kv_store(tool_name: str) -> None:
-    with _tools_call_handler() as (_srv, handler):
-        response = await handler(_FakeRequest({"name": tool_name}))
-    assert response.status_code == 500
-    assert _body(response) == {"error": f"Store not initialized: {tool_name}"}
-
-
-@pytest.mark.parametrize(
-    "tool_name",
-    ["list_services", "get_service", "record_event", "list_events"],
-)
-async def test_tools_call_reports_uninitialized_ecosystem_store(
-    tool_name: str,
-) -> None:
-    with _tools_call_handler() as (_srv, handler):
-        response = await handler(_FakeRequest({"name": tool_name}))
-    assert response.status_code == 500
-    assert _body(response) == {"error": f"Store not initialized: {tool_name}"}
-
-
-async def test_tools_call_returns_akosha_content_envelope() -> None:
-    kv_store = MagicMock(name="AsyncKVTimeSeriesStore")
-    kv_store.get_async = AsyncMock(return_value={"value": 42})
-    with _tools_call_handler(_async_kv_store=kv_store) as (_srv, handler):
-        response = await handler(
-            _FakeRequest({"name": "get", "arguments": {"key": "k"}})
-        )
-
-    kv_store.get_async.assert_called_once_with(key="k")
-    payload = _body(response)
-    assert payload["isError"] is False
-    assert json.loads(payload["content"][0]["text"]) == {"value": 42}
-
-
-async def test_tools_call_dispatches_ecosystem_state_tools() -> None:
-    eco = MagicMock(name="AsyncEcosystemStateStore")
-    eco.list_services_async = AsyncMock(return_value=["dhara"])
-    with _tools_call_handler(_async_ecosystem_state=eco) as (_srv, handler):
-        response = await handler(_FakeRequest({"name": "list_services"}))
-
-    payload = _body(response)
-    assert payload["isError"] is False
-    assert json.loads(payload["content"][0]["text"]) == ["dhara"]
-
-
-async def test_tools_call_wraps_store_exceptions_as_is_error() -> None:
-    kv_store = MagicMock(name="AsyncKVTimeSeriesStore")
-    kv_store.put_async = AsyncMock(side_effect=RuntimeError("write failed"))
-    with _tools_call_handler(_async_kv_store=kv_store) as (_srv, handler):
-        response = await handler(
-            _FakeRequest({"name": "put", "arguments": {"key": "k", "value": 1}})
-        )
-
-    assert response.status_code == 500
-    payload = _body(response)
-    assert payload["isError"] is True
-    assert json.loads(payload["content"][0]["text"]) == {"error": "write failed"}
-
-
-# ---------------------------------------------------------------------------
+# /mcp/tools/call REST shim removed in Phase 3 of the mcp-common
+# transport unification plan. The route + handler + 8 tests were
+# deleted; remaining ``_FakeRequest`` usage lives in probe-route
+# tests (test_probe_routes_*) and test_healthz_route_is_unconditional.
 # _read_backup_catalog_async
 # ---------------------------------------------------------------------------
 
