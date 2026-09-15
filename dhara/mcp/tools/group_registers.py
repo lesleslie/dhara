@@ -520,12 +520,8 @@ def register_otel_traces_group(server: FastMCP, instance: DharaMCPServer) -> Non
         """
         # Inject Dhara's config so the impl can resolve the DuckDB path
         # without coupling to instance internals.
-        otel_cfg = (
-            instance.config.otel_traces if instance.config is not None else None
-        )
-        storage_cfg = (
-            instance.config.storage if instance.config is not None else None
-        )
+        otel_cfg = instance.config.otel_traces if instance.config is not None else None
+        storage_cfg = instance.config.storage if instance.config is not None else None
         return await _dhara_query_local_traces_impl(
             task_class=task_class,
             time_range_minutes=time_range_minutes,
