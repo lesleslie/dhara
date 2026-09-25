@@ -70,16 +70,6 @@ def interactive_client(
         description = socket_address
     connection = Connection(storage, cache_size=cache_size)
 
-    # Import adapter registry for new adapter distribution features
-    try:
-        from dhara.mcp.adapter_tools import AdapterRegistry
-
-        registry = AdapterRegistry(connection)
-        has_adapters = True
-    except ImportError:
-        registry = None
-        has_adapters = False
-
     # Try to use IPython if available, fall back to InteractiveConsole
     try:
         # Intentional: legacy interactive admin console for the Dhara CLI.
@@ -105,35 +95,8 @@ def interactive_client(
         "pp": pprint,
     }
 
-    # Add adapter management if available
-    if has_adapters and registry:
-        namespace.update(
-            {
-                "registry": registry,
-                "adapters": registry,
-                # Convenience methods
-                "store_adapter": registry.store_adapter,
-                "get_adapter": registry.get_adapter,
-                "list_adapters": registry.list_adapters,
-                "list_versions": registry.list_adapter_versions,
-                "validate_adapter": registry.validate_adapter,
-                "check_health": registry.check_adapter_health,
-                "adapter_count": registry.count,
-            }
-        )
-
     # Build help text
     help_text = "    connection -> the Connection\n    root       -> the root instance"
-    if has_adapters:
-        help_text += "\n\nAdapter Management:\n"
-        help_text += "    registry/adapters -> AdapterRegistry instance\n"
-        help_text += "    store_adapter()    -> Store an adapter\n"
-        help_text += "    get_adapter()      -> Retrieve an adapter\n"
-        help_text += "    list_adapters()    -> List all adapters\n"
-        help_text += "    list_versions()    -> List adapter versions\n"
-        help_text += "    validate_adapter()  -> Validate adapter config\n"
-        help_text += "    check_health()     -> Check adapter health\n"
-        help_text += "    adapter_count()    -> Count total adapters"
 
     if use_ipython:
         # Use IPython with enhanced features
