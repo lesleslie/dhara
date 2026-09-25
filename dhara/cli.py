@@ -1,23 +1,23 @@
-"""Dhara Unified CLI - MCP Server + Database Operations.
+"""Dhara CLI - Database Operations + Admin Shell.
 
-This module provides a unified CLI for Dhara that combines:
-1. MCP server lifecycle management (start/stop/status/health)
-2. Legacy-compatible database operations (client/server/pack)
+This module provides a CLI for Dhara that covers:
+
+1. Legacy-compatible database operations (client/server/pack)
+2. Dhara-specific commands (storage info, admin IPython shell)
+
+Engine surface only — the prior MCP server subcommand group
+(``dhara mcp {start,stop,status,health}``) was removed when the MCP server
+surface was retired. Dhara now ships as a standalone persistent-object
+library; the OneiricCLIBase shared base continues to provide
+``version``/``doctor``/``health``.
 
 Usage:
-    # MCP server commands
-    dhara mcp start
-    dhara mcp status
-    dhara mcp health
-    dhara mcp stop
-
     # Database commands (legacy-compatible)
-    dhara db start  [--file PATH] [--host HOST] [--port PORT]
-    dhara db client [--file PATH] [--host HOST] [--port PORT]
+    dhara db start  [--file PATH] [--hostHOST] [--port PORT]
+    dhara db client [--file PATH] [--hostHOST] [--port PORT]
     dhara db pack   [--file PATH]
 
     # Custom Dhara commands
-    dhara adapters [--domain DOMAIN] [--category CATEGORY]
     dhara storage
     dhara admin --confirm
 
@@ -25,53 +25,20 @@ Usage:
     dhara version
     dhara doctor
     dhara health
-
-★ Insight: Unified CLI Pattern ─────────────────────────────────────
-1. MCPServerCLIFactory with use_mcp_subcommand=True for `dhara mcp`
-2. Legacy-compatible database CLI restructured under `dhara db`
-3. Custom Dhara-specific commands at root level (adapters, storage, admin)
-4. Subclass of ``OneiricCLIBase`` so `version`/`doctor`/`health` come from
-   the shared base (Phase 3 Task 4.2 of the Bodai CLI audit).
-5. `doctor` returns Dhara-specific checks (config-loadable,
-   storage path, backup catalog). `health` returns a runtime snapshot
-   covering settings + storage + backup subsystems.
-───────────────────────────────────────────────────────────────────
 """
 
 from __future__ import annotations
 
-import time
-from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import typer
-from mcp_common.cli import (
-    MCPServerCLIFactory,
-    MCPServerSettings,
-    RuntimeHealthSnapshot,
-)
-from mcp_common.cli.health import load_runtime_health, write_runtime_health
 from oneiric.cli.base import OneiricCLIBase
 from oneiric.core.logging import get_logger
 
 from dhara.core.config import DharaSettings
-from dhara.mcp.server_core import DharaMCPServer
 
 logger = get_logger(__name__)
-
-# Version is read from the installed package metadata so ``dhara --version``
-# always matches ``pyproject.toml`` (currently 0.15.2). ``importlib.metadata``
-# is the canonical way to introspect installed distributions without
-# importing the package; this avoids the constant-drift trap when the
-# version is bumped via ``crackerjack run -p minor``.
-try:
-    __version__ = version("dhara")
-except PackageNotFoundError:
-    __version__ = "0.0.0+unknown"
-
-# Global server instance (for stop handler)
-_server_instance: DharaMCPServer | None = None
 
 
 def _probe_storage_runtime(settings: DharaSettings) -> dict[str, object]:
@@ -173,194 +140,6 @@ def _probe_backup_runtime(settings: DharaSettings) -> dict[str, object]:
         }
 
 
-def start_handler() -> None:
-    """Custom start handler - called after PID file created.
-
-    Initializes and starts the Dhara MCP server with FastMCP framework.
-    Handles graceful shutdown on SIGTERM/SIGINT.
-
-    ★ Insight: Start Handler Lifecycle ───────────────────────────────
-    1. Load DharaSettings (YAML + environment variables)
-    2. Initialize DharaMCPServer with FastMCP
-    3. Start uvicorn server (async)
-    4. Handle KeyboardInterrupt for graceful shutdown
-    5. Clean up resources on exit
-    ────────────────────────────────────────────────────────────────────
-    """
-    global _server_instance
-
-    # Load settings with error handling
-    try:
-        settings = DharaSettings.load("dhara")
-    except Exception as e:  # noqa: BLE001  # CLI config-load boundary: any failure prints and exits with status 1
-        typer.echo(f"Error loading configuration: {e}", err=True)
-        raise typer.Exit(1)
-
-    logger.info(f"Starting Dhara MCP Server: {settings.server_name}")
-    logger.debug(f"Storage path: {settings.storage.path}")
-    logger.debug(f"Read-only: {settings.storage.read_only}")
-
-    # Initialize server
-    _server_instance = DharaMCPServer(settings)
-
-    # Save initial health snapshot
-    health_snapshot = RuntimeHealthSnapshot(
-        orchestrator_pid=None,  # Will be filled by CLI
-        watchers_running=True,
-        remote_enabled=False,
-        lifecycle_state={
-            "started_at": time.time(),
-            "storage_path": str(settings.storage.path),
-            "read_only": settings.storage.read_only,
-        },
-        activity_state={
-            "adapters_registered": _server_instance.adapter_registry.count(),
-            "current_status": "running",
-        },
-    )
-    write_runtime_health(settings.health_snapshot_path(), health_snapshot)
-
-    # Start server (FastMCP.run() is synchronous - manages its own event loop)
-    try:
-        _server_instance.run(
-            host=settings.host or "127.0.0.1",
-            port=settings.port or 8683,
-        )
-    except KeyboardInterrupt:
-        logger.info("Received shutdown signal")
-    finally:
-        # Cleanup
-        if _server_instance:
-            _server_instance.close()
-        stopped_snapshot = RuntimeHealthSnapshot(
-            orchestrator_pid=None,
-            watchers_running=False,
-            remote_enabled=False,
-            lifecycle_state={
-                "started_at": health_snapshot.lifecycle_state.get("started_at")
-                if health_snapshot.lifecycle_state is not None
-                else time.time(),
-                "stopped_at": time.time(),
-                "storage_path": str(settings.storage.path),
-                "read_only": settings.storage.read_only,
-            },
-            activity_state={
-                "adapters_registered": 0,
-                "current_status": "stopped",
-            },
-        )
-        write_runtime_health(settings.health_snapshot_path(), stopped_snapshot)
-        logger.info("Dhara MCP Server stopped")
-
-
-def stop_handler(_pid: int) -> None:
-    """Custom stop handler - called before PID file removed.
-
-    Gracefully shutdown the Dhara MCP server and cleanup resources.
-
-    Args:
-        _pid: Process ID being stopped (unused, kept for interface)
-
-    ★ Insight: Stop Handler Lifecycle ─────────────────────────────────
-    1. Close Dhara connection (flushes pending changes)
-    2. Close AsyncFileStorage (releases file locks)
-    3. Update health snapshot to 'stopped' state
-    4. Clean up any background tasks
-    ────────────────────────────────────────────────────────────────────
-    """
-    global _server_instance
-
-    settings = DharaSettings.load("dhara")
-
-    if _server_instance:
-        logger.info("Stopping Dhara MCP Server...")
-        _server_instance.close()
-        _server_instance = None
-    stopped_snapshot = RuntimeHealthSnapshot(
-        orchestrator_pid=None,
-        watchers_running=False,
-        remote_enabled=False,
-        lifecycle_state={
-            "stopped_at": time.time(),
-            "storage_path": str(settings.storage.path),
-            "read_only": settings.storage.read_only,
-        },
-        activity_state={
-            "adapters_registered": 0,
-            "current_status": "stopped",
-        },
-    )
-    write_runtime_health(settings.health_snapshot_path(), stopped_snapshot)
-    logger.info("Dhara MCP Server stopped")
-
-
-def health_probe_handler() -> RuntimeHealthSnapshot:
-    """Custom health probe - called by `dhara mcp health --probe`.
-
-    Checks:
-    - Storage file exists and is accessible
-    - Connection is active
-    - Adapter registry is initialized
-    - Resource usage
-
-    Returns:
-        RuntimeHealthSnapshot with current health state
-
-    ★ Insight: Health Probe Design ────────────────────────────────────
-    1. Load current health snapshot if exists
-    2. Check storage file accessibility
-    3. Verify adapter registry state
-    4. Calculate uptime and activity metrics
-    5. Return structured health snapshot
-    ────────────────────────────────────────────────────────────────────
-    """
-    settings = DharaSettings.load("dhara")
-
-    storage_status = _probe_storage_runtime(settings)
-    backup_status = _probe_backup_runtime(settings)
-
-    # Try to load existing health snapshot
-    try:
-        existing_snapshot = load_runtime_health(settings.health_snapshot_path())
-        snap_state = existing_snapshot.lifecycle_state
-        started_at = (
-            snap_state.get("started_at", time.time())
-            if snap_state is not None
-            else time.time()
-        )
-    except FileNotFoundError, KeyError, AttributeError, ValueError:
-        # No existing snapshot or malformed - use current time
-        started_at = time.time()
-
-    # Calculate uptime
-    uptime_seconds = time.time() - started_at
-
-    # Determine health status
-    is_healthy = bool(storage_status.get("storage_accessible"))
-
-    return RuntimeHealthSnapshot(
-        orchestrator_pid=None,  # Will be filled by CLI
-        watchers_running=is_healthy,
-        remote_enabled=False,
-        lifecycle_state={
-            "started_at": started_at,
-            "uptime_seconds": uptime_seconds,
-            "storage_path": str(settings.storage.path),
-            **storage_status,
-            **backup_status,
-            "read_only": settings.storage.read_only,
-        },
-        activity_state={
-            "adapters_registered": 0,  # Would check registry if server running
-            "current_status": "healthy" if is_healthy else "unhealthy",
-            "ready": is_healthy,
-            "storage_status": "ok"
-            if storage_status.get("storage_accessible")
-            else "error",
-        },
-    )
-
-
 def _validate_path(file_path: str | None) -> Path | None:
     """Validate a file path for security.
 
@@ -397,49 +176,6 @@ def _validate_path(file_path: str | None) -> Path | None:
         raise typer.Exit(1)
 
     return resolved
-
-
-def _create_adapters_command(app: typer.Typer, settings: DharaSettings) -> None:
-    """Create the adapters command for listing adapters.
-
-    Args:
-        app: Typer app to add command to
-        settings: DharaSettings instance
-    """
-
-    @app.command("adapters")
-    def adapters(
-        domain: str | None = typer.Option(None, help="Filter by domain"),
-        category: str | None = typer.Option(None, help="Filter by category"),
-    ) -> None:
-        """List registered adapters in Dhara."""
-        import asyncio
-
-        from dhara.core.connection import AsyncConnection
-        from dhara.mcp.adapter_tools import AsyncAdapterRegistry
-        from dhara.storage.async_file import AsyncFileStorage
-
-        async def _list_adapters() -> list[dict[str, Any]]:
-            storage = AsyncFileStorage(str(settings.storage.path))
-            await storage.init()
-            try:
-                connection = await AsyncConnection.new(storage)
-                registry = AsyncAdapterRegistry(connection)
-                return await registry.list_adapters_async(
-                    domain=domain, category=category
-                )
-            finally:
-                await storage.close()
-
-        adapters = asyncio.run(_list_adapters())
-
-        typer.echo(f"\n📦 Found {len(adapters)} adapters:\n")
-
-        for adapter in adapters:
-            typer.echo(f"  {adapter['adapter_id']} @ {adapter['version']}")
-            typer.echo(
-                f"    {adapter['metadata'].get('description', 'No description')}"
-            )
 
 
 def _create_storage_command(app: typer.Typer, settings: DharaSettings) -> None:
@@ -686,9 +422,9 @@ class DharaCLI(OneiricCLIBase):
     """Dhara Typer app extending ``OneiricCLIBase``.
 
     Inherits the global ``version`` / ``doctor`` / ``health`` commands and
-    ``--json`` flag from the Bodai shared base. In addition, composes the
-    MCP server-lifecycle subcommand group (``dhara mcp start`` etc.) by
-    delegating to ``MCPServerCLIFactory`` for the actual command bodies.
+    ``--json`` flag from the shared Oneiric base. The MCP server-lifecycle
+    subcommand group (``dhara mcp {start,stop,...}``) was retired with the
+    rest of the MCP surface in Wave 2.
 
     Subclasses override ``_doctor_checks`` and ``_health_probe`` with
     Dhara-specific probes (settings-loadable, storage-path, backup-catalog,
@@ -700,50 +436,15 @@ class DharaCLI(OneiricCLIBase):
     def __init__(self, settings: DharaSettings) -> None:
         super().__init__(
             component_name="dhara",
-            help="Dhara persistent object database + MCP server CLI",
+            help="Dhara persistent object database CLI",
         )
-        # ``DharaSettings`` extends ``OneiricMCPConfig``; they share
-        # BaseModel structure but are sibling classes. ``cast`` at the
-        # boundary keeps static checkers happy with the structural duck-type.
         self._settings = settings
-        self._factory = MCPServerCLIFactory(
-            server_name="dhara",
-            settings=cast(MCPServerSettings, settings),
-            start_handler=start_handler,
-            stop_handler=stop_handler,
-            health_probe_handler=health_probe_handler,
-            use_mcp_subcommand=True,
-        )
-        self._register_mcp_subcommands()
-        # Register the same legacy + Dhara-specific command groups as
-        # before. The Typer contract is satisfied because ``OneiricCLIBase``
-        # is itself a ``typer.Typer`` subclass.
+        # Register the legacy + Dhara-specific command groups. The Typer
+        # contract is satisfied because ``OneiricCLIBase`` is itself a
+        # ``typer.Typer`` subclass.
         _create_db_commands(self)
-        _create_adapters_command(self, settings)
         _create_storage_command(self, settings)
         _create_admin_command(self, settings)
-
-    def _register_mcp_subcommands(self) -> None:
-        """Mount ``dhara mcp {start,stop,restart,status,health}`` on this app.
-
-        Mirrors the public surface of ``MCPServerCLIFactory.create_app``
-        without using it directly — the factory returns a plain
-        ``typer.Typer``, which would erase the OneiricCLIBase unified
-        callback and the ``version``/``doctor``/``health`` commands we
-        get from this base class.
-        """
-        mcp_app = typer.Typer(
-            help="MCP server lifecycle management",
-            add_completion=False,
-        )
-        self.add_typer(mcp_app, name="mcp")
-        # ``MCPServerCLIFactory._cmd_*`` are instance methods; bind by
-        # attribute access so ``self`` is forwarded correctly.
-        mcp_app.command("start")(self._factory._cmd_start)
-        mcp_app.command("stop")(self._factory._cmd_stop)
-        mcp_app.command("restart")(self._factory._cmd_restart)
-        mcp_app.command("status")(self._factory._cmd_status)
-        mcp_app.command("health")(self._factory._cmd_health)
 
     def _doctor_checks(self) -> dict[str, dict[str, str]]:
         """Return Dhara-specific pre-flight doctor checks.
@@ -802,9 +503,10 @@ class DharaCLI(OneiricCLIBase):
     def _health_probe(self) -> dict[str, Any]:
         """Return a Dhara runtime health snapshot.
 
-        Mirrors the shape ``dhara mcp health --probe`` already exposes
-        (storage-accessible bool, backup catalog accessibility) so the
-        ``--json`` consumer contract is preserved.
+        Reports settings-loadable status, storage-accessible bool, and
+        backup catalog accessibility — the same fields the prior
+        ``dhara mcp health --probe`` exposed, so the ``--json``
+        consumer contract is preserved at the global ``health`` command.
         """
         try:
             settings = DharaSettings.load("dhara")
@@ -838,25 +540,11 @@ class DharaCLI(OneiricCLIBase):
 
 
 def create_cli() -> DharaCLI:
-    """Create unified CLI application with MCP and database commands.
+    """Create the Dhara CLI application.
 
     Returns:
         :class:`DharaCLI` instance — a ``typer.Typer`` (via ``OneiricCLIBase``)
         with all commands registered.
-
-    ★ Insight: CLI Composition ─────────────────────────────────────────
-    1. ``DharaCLI`` extends ``OneiricCLIBase`` so ``version``/``doctor``/
-       ``health`` come from the shared base (no manual ``@app.callback``
-       for ``--version``).
-    2. The MCP lifecycle subcommand group (``dhara mcp …``) is composed
-       by binding ``MCPServerCLIFactory._cmd_*`` instance methods onto a
-       sub-Typer — no business-logic duplication.
-    3. Legacy-compatible database CLI is restructured under ``dhara db``.
-    4. Custom Dhara-specific commands at root level (adapters, storage,
-       admin).
-    5. Single unified entry point replaces separate dhara and dhara-mcp
-       commands.
-    ────────────────────────────────────────────────────────────────────
     """
     settings = DharaSettings.load("dhara")
     return DharaCLI(settings)
@@ -866,5 +554,4 @@ if __name__ == "__main__":
     main()
 
 
-# Bodai umbrella entry-point (Phase 5.1)
 app = create_cli()
