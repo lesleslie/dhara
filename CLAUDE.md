@@ -14,7 +14,6 @@ dhara is a modern persistent object system for Python - essentially a noSQL data
 - Modern Python 3.13+ type hints throughout
 - Multiple serialization backends (msgspec)
 - Oneiric integration for configuration management, logging, secrets, and adapter resolution
-- MCP server for modern AI/agent workflows
 - Enhanced security with proper secret management
 
 ## Build and Test Commands
@@ -96,9 +95,6 @@ dhara db client --port 8685
 # Open file directly (no server)
 dhara db client --file test.dhara
 
-# Stop server
-dhara mcp stop
-
 # Pack storage (garbage collection)
 dhara db pack --file test.dhara
 ```
@@ -141,11 +137,6 @@ dhara/
 ├── server/                       # Storage server
 │   ├── server.py                 # StorageServer implementation
 │   └── socket.py                 # Socket management
-│
-├── mcp/                          # MCP server integration
-│   ├── server_core.py            # DharaMCPServer (FastMCP app + lifecycle)
-│   ├── server.py                 # legacy module — raises ImportError, retained for stale imports
-│   └── auth.py                   # Authentication
 │
 ├── config/                       # Configuration management
 │   ├── loader.py                 # Oneiric config loading
@@ -467,40 +458,11 @@ When using ClientStorage:
 
 - Use Unix domain sockets for local communication (faster, more secure)
 - Use TLS/SSL for TCP sockets in production
-- Implement proper authentication via the MCP server
+- Implement proper authentication at the application layer
 
 ## MCP Integration
 
-dhara includes an MCP (Model Context Protocol) server for AI/agent workflows:
-
-```python
-from dhara.core.config import DharaSettings
-from dhara.mcp import DharaMCPServer
-
-settings = DharaSettings.load("dhara")
-server = DharaMCPServer(settings)
-server.run()
-```
-
-The MCP server provides:
-
-- Query operations
-- Transaction management
-- Schema inspection
-- Authentication and authorization
-
-### Tool Profile System
-
-Tools are gated by the `DHARA_TOOL_PROFILE` environment variable:
-
-- `full` (default): All 4 groups (`kv_time_series`, `adapter_registry`, `ecosystem_state`, `sql_proxy`) — FULL is an alias for STANDARD (identical group list)
-- `standard`: All 4 groups (same group list as `full`)
-- `minimal`: `kv_time_series` only
-
-Health tools are always-on at every profile via `DHARA_MANDATORY_GROUPS`.
-For detailed rationale (group choices, lazy registration map, W0.5 fix-loop
-history): see
-[docs/architecture/tool-profile-rationale.md](docs/architecture/tool-profile-rationale.md).
+MCP server surface removed in Wave 2; see CHANGELOG.
 
 ## Troubleshooting
 
@@ -615,23 +577,6 @@ Parallel coverage is enabled for faster test execution:
 
 <!-- CRACKERJACK_END -->
 
-## MCP Backend Wiring Discipline (Bodai-wide)
+## MCP Backend Wiring Discipline
 
-Every Bodai MCP server's `/health` endpoint must aggregate per-feed state
-(`healthy | degraded | dead`) and return 503 when any feed is not healthy.
-Every registered tool must have a working data feed exposing
-`feed.entities_count`, `feed.last_updated_timestamp`, `feed.errors_total`,
-`feed.cycles_total`. Every tool registration requires
-`tests/integration/test_<tool>_e2e.py` asserting non-empty results.
-End-to-end smoke tests in CI must spin up the server and assert non-empty
-responses per tool. Monthly Bodai-wide audit cadence.
-
-Canonical rule: `.claude/decisions/mcp-backend-wiring-discipline.md`
-(lives in the mahavishnu repo and is cross-referenced for the ecosystem).
-
-When adding any new MCP tool to this repo:
-
-- [ ] Tool registration includes `tests/integration/test_<tool>_e2e.py`.
-- [ ] Data feed exposes the four mandatory metrics.
-- [ ] `/health` aggregator includes this feed's state.
-- [ ] CI smoke test calls this tool and asserts non-empty response.
+MCP wiring discipline no longer applies — Dhara no longer ships an MCP server.
