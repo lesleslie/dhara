@@ -1,16 +1,22 @@
-"""D-OBJ-SCHEMA — typed object schemas for cross-system durable entities.
+"""D-OBJ-SCHEMA — typed object schemas for the engine.
 
-This module exposes the canonical schemas for the five cross-system
-durable entities defined in the 2026-08-03 portfolio spec:
+This module exposes the schema registry infrastructure plus the one
+surviving engine-side entity schema (``ChannelSessionState``).
 
-- :class:`AuditRecord` (D-AUDIT consumer)
-- :class:`WorkflowOutcome` (M-INFRA)
-- :class:`ApprovalLog` (M-INFRA)
-- :class:`ChannelSessionState` (S-MEM)
-- :class:`WebhookIngress` (M-INFRA)
+Surviving schemas:
+
+- :class:`ChannelSessionState` (engine-side — durable channel session
+  record). The ``metadata`` field carries session-versioning extension
+  keys (version, parent_session_id, branch_reason).
 
 Plus the central registry (:func:`SCHEMA_REGISTRY`, :func:`validate`,
 :func:`from_dict`, :func:`to_dict`) for runtime validation.
+
+The previously-exported Bodai-flavored schemas (``approval_log``,
+``audit_record``, ``capability_descriptor``, ``ecosystem_run_record``,
+``webhook_ingress``, ``workflow_outcome``) were removed in Wave 2 — they
+served Bodai consumers (mahavishnu, session-buddy, akosha) that have all
+migrated off Dhara. Engine-side persistence is unaffected.
 """
 
 from __future__ import annotations
@@ -25,53 +31,17 @@ from dhara.schema._registry import (
 )
 
 # Re-export entity Struct classes and STRUCT aliases for ergonomic imports.
-from dhara.schema.approval_log import STRUCT as approval_log
-from dhara.schema.approval_log import ApprovalLog
-from dhara.schema.audit_record import STRUCT as audit_record
-from dhara.schema.audit_record import AuditRecord
-from dhara.schema.capability_descriptor import (
-    STRUCT as capability_descriptor,
-)
-from dhara.schema.capability_descriptor import (
-    CapabilityDescriptor,
-)
-from dhara.schema.channel_session_state import (
-    STRUCT as channel_session_state,
-)
-from dhara.schema.channel_session_state import (
-    ChannelSessionState,
-)
-from dhara.schema.ecosystem_run_record import (
-    STRUCT as ecosystem_run_record,
-)
-from dhara.schema.ecosystem_run_record import (
-    EcosystemRunRecord,
-)
-from dhara.schema.webhook_ingress import STRUCT as webhook_ingress
-from dhara.schema.webhook_ingress import WebhookIngress
-from dhara.schema.workflow_outcome import STRUCT as workflow_outcome
-from dhara.schema.workflow_outcome import WorkflowOutcome
+from dhara.schema.channel_session_state import STRUCT as channel_session_state
+from dhara.schema.channel_session_state import ChannelSessionState
 
 __all__ = [
     "SCHEMA_REGISTRY",
-    "ApprovalLog",
-    "AuditRecord",
-    "CapabilityDescriptor",
     "ChannelSessionState",
-    "EcosystemRunRecord",
     "SchemaEntry",
     "SchemaValidationError",
-    "WebhookIngress",
-    "WorkflowOutcome",
-    "approval_log",
-    "audit_record",
-    "capability_descriptor",
     "channel_session_state",
-    "ecosystem_run_record",
     "from_dict",
     "register",
     "to_dict",
     "validate",
-    "webhook_ingress",
-    "workflow_outcome",
 ]
