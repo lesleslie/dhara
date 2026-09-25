@@ -23,9 +23,8 @@ from dhara.lock.protocol import (
 class SQLBackend(Protocol):
     """Minimal contract for the substrate SQL backend.
 
-    Same shape as dhara.mcp.substrate_routes.SQLBackend. Postgres
-    translation (named placeholders / $N) is future work; v1 uses
-    DuckDB-style `?` placeholders.
+    DuckDB-style `?` placeholders only in v1. Postgres translation
+    (named placeholders / $N) is future work.
     """
 
     def execute(self, sql: str, params: list[Any] | None = None) -> Any: ...
