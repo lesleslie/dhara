@@ -17,7 +17,6 @@ dev = [
     # raises a false-positive unused-dep flag. Tests get it via the dev
     # group which `crackerjack run` installs automatically.
     "httpx2>=2.12.0",
-    "session-buddy>=0.19.9",
 ]
 # Cloud storage backends. None are runtime-required; Dhara falls back
 # to local SQLite when these aren't installed. The empty `aiosqlite`/
