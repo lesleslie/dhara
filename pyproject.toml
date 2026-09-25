@@ -140,7 +140,7 @@ max-complexity = 15
 
 [tool.ruff.lint.per-file-ignores]
 # B008 in `dhara/cli.py` — Typer idiom: `typer.Option(...)` / `typer.Typer(...)`
-# in default args. Documented project convention (see mahavishnu CLAUDE.md).
+# in default args. Documented project convention.
 "dhara/cli.py" = ["B008"]
 
 [tool.pytest.ini_options]

@@ -1,8 +1,8 @@
-"""Channel session state — durable channel session record (S-MEM).
+"""Channel session state — durable channel session record.
 
-Persisted by Session-Buddy's S-CHANNEL-DURABLE consumer. The
-``metadata`` field carries S-MEM-VERSIONS extension keys
-(version, parent_session_id, branch_reason).
+Durable record of a channel session: stable channel_id/channel_type/
+sender_id, last_event_at timestamp, and a metadata dict for
+application-defined extension keys.
 """
 
 from __future__ import annotations

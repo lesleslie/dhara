@@ -248,8 +248,8 @@ def test_list_keys_returns_all_when_no_prefix(lock_store: DharaLock) -> None:
 
 
 def test_list_keys_filters_by_prefix(lock_store: DharaLock) -> None:
-    lock_store.try_acquire("mahavishnu:worker:w1")
-    lock_store.try_acquire("mahavishnu:worker:w2")
-    lock_store.try_acquire("crackerjack:async-tasks:t1")
-    worker_keys = lock_store.list_keys(prefix="mahavishnu:worker:")
-    assert {h.lock_key for h in worker_keys} == {"mahavishnu:worker:w1", "mahavishnu:worker:w2"}
+    lock_store.try_acquire("component:worker:w1")
+    lock_store.try_acquire("component:worker:w2")
+    lock_store.try_acquire("other:async-tasks:t1")
+    worker_keys = lock_store.list_keys(prefix="component:worker:")
+    assert {h.lock_key for h in worker_keys} == {"component:worker:w1", "component:worker:w2"}

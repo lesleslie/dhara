@@ -12,11 +12,11 @@ Surviving schemas:
 Plus the central registry (:func:`SCHEMA_REGISTRY`, :func:`validate`,
 :func:`from_dict`, :func:`to_dict`) for runtime validation.
 
-The previously-exported Bodai-flavored schemas (``approval_log``,
-``audit_record``, ``capability_descriptor``, ``ecosystem_run_record``,
-``webhook_ingress``, ``workflow_outcome``) were removed in Wave 2 — they
-served Bodai consumers (mahavishnu, session-buddy, akosha) that have all
-migrated off Dhara. Engine-side persistence is unaffected.
+Wave 2 removed six previously-exported schemas
+(``approval_log``, ``audit_record``, ``capability_descriptor``,
+``ecosystem_run_record``, ``webhook_ingress``, ``workflow_outcome``)
+that served external consumers which have migrated off Dhara.
+Engine-side persistence is unaffected.
 """
 
 from __future__ import annotations
