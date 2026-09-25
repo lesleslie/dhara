@@ -45,7 +45,7 @@ otel-traces = [
 ]
 
 # Full-Featured Library Template
-# For: Libraries, frameworks, shared packages (oneiric, mcp-common, acb, fastblocks)
+# For: Libraries, frameworks, shared packages (oneiric, acb, fastblocks)
 # Features: Comprehensive testing, quality tools, type checking fallback
 
 [project]
@@ -77,18 +77,14 @@ classifiers = [
 ]
 
 dependencies = [
-    # MCP server framework (ecosystem standard)
-    "fastmcp>=3.4.0,<5",
-    "mcp-common>=0.26.0,<0.27.0",
-    # Configuration and logging (ecosystem standard).
+    # Configuration and logging substrate
     # >=0.20 required for `oneiric.cli.base.OneiricCLIBase`.
     "oneiric>=0.20",
-    # ASGI server for FastMCP
-    "uvicorn>=0.48.0",
-    # Admin shell with IPython (ecosystem standard)
+    # Admin shell with IPython
     "ipython>=9.14.0",
     "rich>=15.0.0",  # For pretty tables and console output
-    "cryptography>=50.0.0",  # ed25519 signing for skill/agent distribution (Phase 1.5)
+    # TLS/X.509/Fernet primitives (engine TLS support)
+    "cryptography>=50.0.0",
     "msgspec>=0.21.1",
     "schedule>=1.2.2",
     "zstandard>=0.25.0",
