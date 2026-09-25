@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-- `dhara/` contains the package: core persistence logic in `core/`, storage backends in `storage/`, serialization in `serialize/`, persistent data structures in `collections/`, server code in `server/`, MCP integration in `mcp/`, and configuration or security helpers in `config/` and `security/`.
+- `dhara/` contains the package: core persistence logic in `core/`, storage backends in `storage/`, serialization in `serialize/`, persistent data structures in `collections/`, server code in `server/`, and configuration or security helpers in `config/` and `security/`.
 - Keep backend, serialization, and transport concerns separate; avoid coupling file storage, network client behavior, and MCP-facing features in the same modules.
 - Tests live under `tests/`; mirror package areas when adding new coverage and keep local build artifacts, compiled extension outputs, and coverage reports out of review.
 - Use repo docs and focused design notes when behavior changes affect persistence guarantees, wire protocols, or TLS expectations.
@@ -37,8 +37,8 @@
 
 ## Ecosystem Notes
 
-- Dhara is the durable storage layer in the Bodai ecosystem and may be used directly by applications or indirectly through orchestrated workflows and MCP integrations.
-- Preserve clear boundaries between core persistence features and ecosystem-specific integrations so the storage engine remains broadly reusable.
+- Dhara is a standalone persistent-object library. It uses Oneiric for configuration management, logging, secrets, and adapter resolution, and Crackerjack for CI/CD.
+- Preserve clear boundaries between core persistence features and any external integrations so the storage engine remains broadly reusable.
 
 ## Security & Configuration Tips
 
