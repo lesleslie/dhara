@@ -52,6 +52,13 @@ build/
 *.bak
 .worktrees/
 
+# ============================================================================
+# Local Configuration (one-off per-machine files)
+# ============================================================================
+settings/local.yaml
+settings/repos.yaml
+settings/ecosystem.yaml
+
 # Benchmark baseline scratch (executor-only; see cache-adapter consolidation plan Phase 0)
 benchmarks-baseline.txt
 

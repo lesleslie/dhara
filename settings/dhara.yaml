@@ -1,11 +1,22 @@
-# Dhara MCP Server Configuration
+# Dhara storage and adapter-distribution defaults.
+#
+# MCP-server-shaped config (server_name, host, port, authentication, logging,
+# cache, backups) was previously under settings/lite.yaml and
+# settings/standard.yaml; both were removed when the MCP server was retired.
+# This file now holds only the non-MCP-server side: storage backend path,
+# AsyncSqliteStorage URL, and adapter-distribution settings.
+#
+# For per-machine overrides (different storage root, XDG layout, etc.), see
+# settings/local.yaml.example and the gitignored sibling settings/local.yaml.
 
-server_name: "dhara"
-
+# Storage configuration (configurable backend)
+# XDG Base Directory compliant: defaults to ~/.local/share/.
+# NOTE: Dhara's path resolver only calls .expanduser() (no expandvars), so we
+# must use the `~` form rather than ${HOME}.
 storage:
   path: ~/.local/share/dhara/production.dhara
   read_only: false
-  backend: file
+  backend: file  # Options: file, sqlite, s3, gcs, azure
 
 # AsyncSqliteStorage reads from this key, not storage.path. The hardcoded
 # fallback ("/dev/shm/dhara.db") is Linux-only and breaks on macOS. Must use
@@ -13,23 +24,13 @@ storage:
 dhara:
   storage:
     sqlite:
-      url: sqlite+aiosqlite:////Users/les/.local/share/dhara/async.db
+      url: sqlite+aiosqlite:////~/.local/share/dhara/async.db
 
+# Adapter distribution configuration
+# (This is the Oneiric adapter-distribution side of Dhara — NOT the retired
+# MCP-server-side adapter registry.)
 adapters:
   enable_versioning: true
   enable_health_checks: true
   max_versions_per_adapter: 10
   auto_push_on_startup: true
-
-authentication:
-  enabled: false
-  method: token
-  required_scopes: []
-  token:
-    tokens_file: null
-    require_auth: true
-    default_role: readonly
-
-backups:
-  enabled: false
-  directory: ./backups

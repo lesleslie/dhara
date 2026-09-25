@@ -15,20 +15,12 @@ work loads and aggressively caches persistent objects in memory.
 For many applications, this design enables good performance with minimal
 effort from application programmers.
 
-## Bodai Ecosystem Role
-
-Dhara is the **curator** of the [Bodai ecosystem](https://github.com/lesleslie/bodai) — the persistent object storage backend for adapter configs, service lifecycle state, and ecosystem events consumed by Mahavishnu, Akosha, Session-Buddy, Crackerjack, and Oneiric.
-
-Dhara can be used directly by Python applications or as part of the Bodai
-control plane. See [Standalone use](#standalone-use) and the [Bodai ecosystem
-notes](https://github.com/lesleslie/bodai).
-
 ## Standalone Use
 
 Dhara is also usable directly by Python applications without installing
-other Bodai components.
+other ecosystem components.
 
-A standalone install has no dependencies on other Bodai components:
+A standalone install has no dependencies on other ecosystem components:
 
 ```bash
 uv pip install dhara
@@ -43,12 +35,7 @@ dhara db start --file ~/my_app.dhara
   TCP `:8685` by default so multiple processes on one host can share a store.
 - **Distributed server.** The same storage protocol works across hosts;
   transactions still serialize through the storage server.
-- **MCP service.** `dhara mcp start` exposes the FastMCP API on `:8683`.
 - **Ephemeral.** `MemoryStorage` supports tests and short-lived pipelines.
-
-The MCP server (`dhara mcp start`, default port `8683`) is itself optional —
-if your application does not need an AI/agent surface, skip it. The
-storage server and the MCP server are independent services.
 
 ## Why Dhara, Not ZODB/ZEO?
 
@@ -60,31 +47,21 @@ design point?*
 The full feature-by-feature matrix — including a Mermaid diagram of both
 stacks, the lineage notes, and a "where each one still wins" section —
 lives in [`docs/ZODB_COMPARISON.md`](./docs/ZODB_COMPARISON.md). The short
-version for the Bodai use case:
+version:
 
-- **The MCP layer.** ZEO has nothing like this. Dhara exposes a [FastMCP]
-  server on port `8683` so AI agents (and the rest of the Bodai stack) can
-  read and write persistent state without a Python ZODB client in the loop.
-  Most of the Bodai integration depends on this surface.
-- **The Oneiric adapter registry role.** ZEO is a generic object store.
-  Dhara is the canonical Oneiric adapter config store for the entire Bodai
-  control plane — config for Mahavishnu adapters, Akosha embeddings, and
-  Crackerjack quality gates all live here.
 - **Single-threaded by design.** ZODB runs multi-threaded. Dhara explicitly
-  does not. That is a deliberate trade — most Bodai-shaped workloads are
-  read-heavy with short, infrequent writes that benefit from a simpler
-  concurrency story.
+  does not. That is a deliberate trade — most workloads are read-heavy with
+  short, infrequent writes that benefit from a simpler concurrency story.
 - **Modern Python stack.** 3.14+ type hints throughout, `msgspec` for
   serialization alongside pickle, Oneiric layered config, asyncio-first
   `AsyncConnection`. ZODB 5.x is solid and production-proven, but is in
   maintenance rather than active development.
 
-For non-Bodai workloads the comparison doc also covers the longer answer,
-including **where ZODB/ZEO still wins** — most notably ZODB's mature
-`BTrees` family of large-index containers (Dhara ships `BTree` since
-0.10.0 but not the full family), and the `_p_resolveConflict`
-application-level merge hook for collaborative-edit patterns, which Dhara
-does not replicate.
+For the longer answer — most notably ZODB's mature `BTrees` family of
+large-index containers (Dhara ships `BTree` since 0.10.0 but not the full
+family), and the `_p_resolveConflict` application-level merge hook for
+collaborative-edit patterns, which Dhara does not replicate — see the
+comparison doc.
 
 > **A note on "asyncio-first":** the `AsyncConnection` API fits asyncio
 > handlers cleanly, but the *storage server itself* is single-writer —
@@ -118,29 +95,17 @@ Dhara ships a Typer-based unified CLI. All subcommands accept `--help`.
 | --- | --- |
 | `dhara version` | Print the installed Dhara version. |
 | `dhara doctor` | Run diagnostic checks against the local runtime. |
-| `dhara health` | Probe the local runtime health (used by the Bodai radar). |
+| `dhara health` | Probe the local runtime health. |
 | `dhara adapters` | List registered Oneiric adapters. |
 | `dhara storage` | Display storage information (backend, file, port). |
 | `dhara admin --confirm` | Launch the unrestricted Dhara admin shell (IPython). |
-| `dhara mcp ...` | MCP server lifecycle (see below). |
 | `dhara db ...` | Legacy-compatible database operations (Durus v0.x scripts). |
-
-### MCP server lifecycle (`dhara mcp ...`)
-
-```bash
-dhara mcp start               # Start the FastMCP server (default :8683)
-dhara mcp stop                # Stop it
-dhara mcp status              # Is it running?
-dhara mcp health              # Health probe
-dhara mcp restart             # stop + start
-```
 
 ### Database operations (`dhara db ...`)
 
 The `db` subcommand tree is the legacy-compatible interface carried over
-from the Durus 0.x CLI. Use `dhara mcp start` for the MCP service and
-`dhara db start` when you need the shared storage server; the `db` tree keeps
-existing scripts working.
+from the Durus 0.x CLI. Use `dhara db start` to start the shared storage
+server; the `db` tree keeps existing scripts working.
 
 ```bash
 dhara db start                # Start Dhara storage server
@@ -152,19 +117,18 @@ Common options for database commands:
 
 - `--file PATH` or `-f PATH` - Database file path
 - `--host HOST` or `-h HOST` - Server host (default: 127.0.0.1)
-- `--port PORT` or `-p PORT` - Server port (default: `8685` for the storage server, `8683` for the MCP server)
+- `--port PORT` or `-p PORT` - Server port (default: `8685` for the storage server)
 - `--readonly` - Open in read-only mode
 
 ### Modes
 
 Dhara selects `lite` or `standard` configuration through `DHARA_MODE`.
 The mode-specific file controls storage defaults and server settings; the
-MCP service remains on `8683`, while the legacy-compatible storage server
-defaults to `8685`.
+legacy-compatible storage server defaults to `8685`.
 
 ```bash
-DHARA_MODE=lite dhara mcp start
-DHARA_MODE=standard dhara mcp start
+DHARA_MODE=lite dhara db start
+DHARA_MODE=standard dhara db start
 ```
 
 The mode implementations live in `dhara/modes/lite.py` and
@@ -199,50 +163,19 @@ Legacy `DRUVA_*` and `DURUS_*` variables are mirrored into the canonical
 `DHARA_*` namespace for compatibility. Oneiric supplies the shared CLI,
 logging, and adapter infrastructure. Dhara's core service settings loader
 does not inspect Oneiric's generic XDG config files; use the project YAML
-layers or `DHARA_*` environment variables for those settings. Oneiric-backed
-adapter/provider settings used by MCP integrations may use Oneiric's own
-layered loader, including `${XDG_CONFIG_HOME:-~/.config}/dhara/config.yaml`
-and `local.yaml`.
-
-## MCP Surface
-
-The MCP server uses `DHARA_TOOL_PROFILE` to control optional tool groups.
-Health, discovery, signed skill metadata, and signed agent metadata are
-available at every profile level.
-
-- **MINIMAL**: key/value and time-series tools
-  (`dhara_put`, `dhara_get`, `dhara_list_prefix`,
-  `dhara_record_time_series`, `dhara_query_time_series`,
-  `dhara_aggregate_patterns`)
-- **STANDARD**: adds the Oneiric adapter registry, durable ecosystem state,
-  and SQL proxy tools (`dhara_sql_execute`, `dhara_sql_query`)
-- **FULL**: enables the complete optional tool set; it currently registers
-  the same groups as STANDARD
-
-The signed catalog tools are:
-
-- `dhara_list_skills` / `dhara_get_skill`
-- `dhara_list_agents` / `dhara_get_agent`
-
-The server also exposes `/health`, `/healthz`, `/ready`, `/readyz`, and
-`/metrics` on the MCP HTTP port. `DHARA_TOOL_PROFILE` defaults to the full
-profile unless a restricted profile is selected.
+layers or `DHARA_*` environment variables for those settings.
 
 ## Quick Demo
 
-**Start the MCP service:**
+**Start the shared storage server:**
 
 ```bash
-# Start the MCP service in lite mode (HTTP :8683)
-DHARA_MODE=lite dhara mcp start
+DHARA_MODE=lite dhara db start
+DHARA_MODE=standard dhara db start
 ```
 
-This starts the MCP service against the local SQLite-backed configuration on
-`127.0.0.1:8683`. Use `DHARA_MODE=standard` for the standard configuration.
-The service exposes `/health`, `/ready`, and `/metrics`.
-
-To start the shared storage server instead, use the legacy-compatible `db`
-commands:
+This starts the storage server against the local SQLite-backed configuration.
+The server listens on `127.0.0.1:8685` by default.
 
 ```bash
 dhara db start --file ~/.local/share/dhara/lite.dhara --port 8685
@@ -260,8 +193,8 @@ dhara admin --confirm
 ```
 
 This opens an interactive IPython shell against the configured local
-storage file. It does not connect to the MCP service or the shared storage
-server. You have access to a dictionary-like persistent object, `root`.
+storage file. It does not connect to the shared storage server. You have
+access to a dictionary-like persistent object, `root`.
 If you make changes to items of `root` and run `connection.commit()`, the
 changes are written to the file. If you make changes and then run
 `connection.abort()`, the attributes revert back to the values they had at
@@ -275,8 +208,6 @@ dhara db client --host 127.0.0.1 --port 8685
 
 Committed changes to `root` in one client are visible in other clients
 after the next `connection.abort()` or `connection.commit()`.
-
-**Stop the MCP service:** `dhara mcp stop`.
 
 **Stop a foreground storage server:** Press *Control-C* in its terminal.
 
@@ -438,7 +369,7 @@ Research Initiatives (CNRI). We are grateful for the foundational work done
 by the original Durus developers.
 
 The current implementation uses modern Python 3.14+ typing, `msgspec`,
-SQLite/aiosqlite, and FastMCP.
+and SQLite/aiosqlite.
 
 The name **Dhara** complements the original Latin name **Durus**, meaning
 "hard, sturdy, tough, enduring."
@@ -446,5 +377,3 @@ The name **Dhara** complements the original Latin name **Durus**, meaning
 ## License
 
 BSD 3-Clause License — see `LICENSE` in the project root for details.
-
-[fastmcp]: https://github.com/jlowin/fastmcp
