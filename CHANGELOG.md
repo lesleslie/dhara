@@ -5,6 +5,93 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 2026-09-24
+
+### Removed
+
+- **MCP server surface** (`dhara/mcp/` package — 22 Python source files +
+  4 agent/skill catalog markdown files + README + QUICKSTART, ~9750 lines
+  total). *Internal API; not part of Dhara's published surface. External
+  users should not be affected — only Bodai ecosystem scripts imported it.*
+
+- **Bodai audit substrate** (`dhara/audit/` package, migration
+  `0004_audit_log.sql`, `dhara/events/subscribers/audit_log_subscriber.py`).
+  *Internal substrate; was Bodai-only observability infrastructure. The
+  engine-side `dhara_audit_log` table (created in migration
+  `0001_initial.sql`) is unaffected.*
+
+- **Bodai ed25519 signing** (`dhara/skills_signer/` package).
+  *Was Bodai skill/agent distribution infrastructure; not a general-
+  purpose Dhara API. If your application imported `dhara.skills_signer`
+  directly, pin `dhara<=0.20.2`.*
+
+- **Bodai-flavored schemas** (6 files in `dhara/schema/`: `approval_log`,
+  `audit_record`, `capability_descriptor`, `ecosystem_run_record`,
+  `webhook_ingress`, `workflow_outcome`). *Were exposed via
+  `dhara.schema.*` re-exports. The `dhara.schema._registry.SCHEMA_REGISTRY`
+  survives with one entry (`channel_session_state`); only the entity
+  classes are removed.*
+
+- **CLI MCP subcommand group** (`dhara mcp {start,stop,restart,status,health}`)
+  and the `[project.entry-points."bodai.apps"]` entry point.
+
+- **Test files** (~50 files exercising deleted modules — `tests/unit/mcp/`,
+  `tests/integration/mcp/`, `tests/integration/audit/`, ~25 top-level
+  MCP-named tests, 7 audit-substrate tests, 6 schema-coupled tests, 19
+  other MCP-coupled tests, 3 MCP e2e integration tests, plus 2 missed
+  tests found during Task 24 prep).
+
+### Changed
+
+- **Engine-side refactors** for dependency decoupling:
+  - `dhara/lock/routes.py` — `FastMCP` type annotation replaced with `Any`
+    (preserves engine D-LOCK route tests; `tests/unit/test_lock_routes.py`
+    passes 42/42).
+  - `dhara/cli.py` — `MCPServerCLIFactory` base replaced with direct
+    `OneiricCLIBase` extension; the `dhara mcp …` subcommand group
+    removed; CLI surface now `db`/`admin`/`storage`/`adapters` plus
+    inherited `version`/`doctor`/`health`.
+  - `dhara/__main__.py` — dropped the `try/except ImportError` wrapper
+    around `dhara.mcp.adapter_tools.AdapterRegistry` import.
+  - `dhara/shell/__init__.py` — dropped `AdapterRegistry` and Session-Buddy
+    references; `DharaShell` now provides storage-focused helpers only.
+
+- **Coverage gate**: unchanged (still `80.48780487804878`); Wave 2 deletions
+  of low-coverage substrate code keep the gate passing.
+
+### Removed (dependencies)
+
+- `fastmcp>=3.4.0,<5` (MCP server framework)
+- `mcp-common>=0.26.0,<0.27.0` (Bodai MCP CLI tooling)
+- `uvicorn>=0.48.0` (ASGI server for FastMCP)
+- `akosha>=0.17.1` from the `otel-traces` dependency group
+- `session-buddy>=0.19.9` from the `dev` dependency group
+- `otel-traces` dependency group (entire block removed)
+
+### Kept
+
+- `cryptography>=50.0.0` — `dhara/security/tls.py` uses it for engine
+  TLS support (X.509 cert generation, Fernet encryption).
+
+### Source-only deletion note
+
+Databases that previously applied migration `0004_audit_log.sql` retain
+the `audit_log` table and `audit_log_id_seq` sequence; this release only
+removes them from source. The `dhara_audit_log` table (engine, from
+migration 0001) is unaffected.
+
+### Internal
+
+- AGENTS.md and CLAUDE.md rewritten to describe Dhara as a standalone
+  persistent-object library using Oneiric (config) and Crackerjack
+  (CI/CD); all Bodai/MCP/Vishnu/Session-Buddy/Akosha/Mahavishnu mentions
+  removed from user-facing docs.
+- pyproject.toml description comment dropped 're-implemented for the
+  Bodai ecosystem'.
+- Final integrity grep (excluding `tests/coverage_summary.md`, CHANGELOG
+  history, `.gitignore` `>>> bodai-shared-gitignore <<<` markers, and
+  `docs/`) returns zero hits.
+
 ## [0.20.2] - 2026-09-14
 
 ### Added
