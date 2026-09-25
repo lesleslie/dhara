@@ -3,11 +3,8 @@
 This module provides Dhara-specific admin shell functionality extending
 the Oneiric ecosystem shell pattern with Dhara-specific features:
 
-- Adapter registry management
 - Storage inspection and manipulation
-- Version history tracking
 - Health monitoring
-- Session tracking via Session-Buddy MCP
 """
 
 from __future__ import annotations
@@ -24,13 +21,9 @@ logger = logging.getLogger(__name__)
 class DharaSessionTracker:
     """No-op session tracker for Dhara shell sessions.
 
-    The original implementation lived in ``dhara/shell/session_tracker.py``
-    and delegated to a Session-Buddy MCP client. That module was removed
-    in commit ``883b337`` (dead-code sweep), but ``DharaShell`` still wires
-    one up and ``dhara.cli.admin_command`` constructs ``DharaShell``
-    directly. The shell's ``_emit_session_start`` / ``_emit_session_end``
-    already wrap every call in try/except, so a no-op stub here restores
-    the type contract without re-introducing the removed dependency.
+    Retained as a no-op stub for backward compatibility with downstream
+    code that constructs ``DharaShell`` directly. Methods simply return
+    None / do nothing — there is no external session-tracking integration.
     """
 
     def __init__(self, component_name: str) -> None:
@@ -41,7 +34,6 @@ class DharaSessionTracker:
         shell_type: str,
         metadata: dict[str, Any],
     ) -> str | None:
-        """No-op; real Session-Buddy integration intentionally out of scope."""
         return None
 
     async def emit_session_end(
@@ -49,25 +41,17 @@ class DharaSessionTracker:
         session_id: str,
         metadata: dict[str, Any],
     ) -> None:
-        """No-op; real Session-Buddy integration intentionally out of scope."""
+        return None
 
     async def close(self) -> None:
-        """No-op; nothing to release."""
+        return None
 
 
 class DharaShell(AdminShell):
     """Dhara-specific admin shell.
 
     Extends the Oneiric AdminShell with Dhara-specific namespace,
-    formatters, helpers, and magic commands for adapter distribution
-    and storage management.
-
-    Features:
-    - Adapter registry management
-    - Storage inspection and manipulation
-    - Version history and rollback
-    - Health monitoring
-    - Session tracking via Session-Buddy MCP
+    formatters, helpers, and magic commands for storage management.
 
     Example:
         >>> from dhara.shell import DharaShell
@@ -98,19 +82,13 @@ class DharaShell(AdminShell):
         """
         self.connection = connection
 
-        # Import AdapterRegistry
-        from dhara.mcp.adapter_tools import AdapterRegistry
-
-        # Initialize adapter registry
-        self.registry = AdapterRegistry(connection)
-
         # Pass config to parent as "app"
         super().__init__(config, shell_config)
 
         # Add Dhara-specific namespace
         self._add_dhara_namespace()
 
-        # Override session tracker with Dhara-specific metadata
+        # Override session tracker with no-op stub (no external integration)
         self.session_tracker = DharaSessionTracker(component_name="dhara")
         self._session_id: str | None = None
 
@@ -120,27 +98,13 @@ class DharaShell(AdminShell):
             {
                 # Core objects
                 "connection": self.connection,
-                "registry": self.registry,
                 "config": self.app,
-                # Convenience aliases
-                "adapters": self.registry,
-                "storage": self.connection,
-                # Adapter management methods
-                "store_adapter": self.registry.store_adapter,
-                "get_adapter": self.registry.get_adapter,
-                "list_adapters": self.registry.list_adapters,
-                "list_versions": self.registry.list_adapter_versions,
-                "validate_adapter": self.registry.validate_adapter,
-                "check_health": self.registry.check_adapter_health,
-                "adapter_count": self.registry.count,
                 # Storage helpers
                 "root": self.connection.get_root(),
                 "commit": self.connection.commit,
                 "pack": self.connection.pack,
                 # Async helpers
-                "push_adapters": self._push_adapters,
                 "show_storage_info": self._show_storage_info,
-                "show_adapter_summary": self._show_adapter_summary,
             }
         )
 
@@ -165,114 +129,30 @@ class DharaShell(AdminShell):
         except Exception:  # noqa: BLE001  # version probe fallback → "unknown"
             return "unknown"
 
-    def _get_adapters_info(self) -> list[str]:
-        """Get Dhara adapter information.
-
-        Dhara stores and distributes adapters, but doesn't use
-        the orchestration adapter pattern itself.
-
-        Returns:
-            Empty list (Dhara is curator, not orchestrator)
-        """
-        return []
-
     def _get_banner(self) -> str:
         """Get Dhara-specific banner."""
         version = self._get_component_version()
-        adapter_count = self.registry.count()
 
         return f"""
 🦀 Dhara Admin Shell v{version}
 {"=" * 60}
-Persistent Object Storage & Adapter Distribution
-
-Session Tracking: Enabled
-  Shell sessions tracked via Session-Buddy MCP
-  Metadata: version, adapter count, storage state
-
-Dhara is the curator component providing:
-  - Persistent object storage (ACID transactions)
-  - Adapter versioning and distribution
-  - Health monitoring and rollback
-  - Built-in adapter push from Oneiric
+Persistent Object Storage
 
 Storage Info:
-  Adapters Registered: {adapter_count}
   Connection: {"Active" if self.connection else "Inactive"}
 
-Convenience Functions:
-  push_adapters()        - Push Oneiric adapters to Dhara
-  show_storage_info()    - Display storage statistics
-  show_adapter_summary() - Show adapter distribution summary
-
-Adapter Management:
-  store_adapter()        - Store an adapter with versioning
-  get_adapter()          - Retrieve adapter by ID
-  list_adapters()        - List all adapters
-  list_versions()        - List adapter version history
-  validate_adapter()     - Validate adapter configuration
-  check_health()         - Check adapter health
-  adapter_count()        - Count total adapters
-
 Storage Operations:
-  root                   - Access root persistent object
-  commit()               - Commit pending changes
-  pack()                 - Pack storage (reclaim space)
+  root       - Access root persistent object
+  commit()   - Commit pending changes
+  pack()     - Pack storage (reclaim space)
 
 Available Objects:
-  connection             - Dhara Connection instance
-  registry/adapters      - AdapterRegistry instance
-  config                 - Current DharaSettings instance
+  connection - Dhara Connection instance
+  config     - Current DharaSettings instance
 
 Type 'help()' for Python help or %help_shell for shell commands
 {"=" * 60}
 """
-
-    async def _push_adapters(self) -> None:
-        """Push Oneiric built-in adapters to Dhara.
-
-        Helper function available in shell namespace.
-        Imports and calls the Oneiric adapter pusher.
-        """
-        from rich.console import Console
-        from rich.table import Table
-
-        console = Console()
-
-        try:
-            from oneiric.adapters.dhara_pusher import push_adapters_on_startup
-
-            console.print("[cyan]Pushing Oneiric adapters to Dhara...[/cyan]")
-
-            results = push_adapters_on_startup()
-
-            # Display results
-            table = Table(title="Adapter Push Results")
-            table.add_column("Metric", style="cyan")
-            table.add_column("Count", style="green")
-
-            table.add_row("Total", str(results["total"]))
-            table.add_row("Success", f"[green]{results['success']}[/green]")
-            if results["errors"] > 0:
-                table.add_row("Errors", f"[red]{results['errors']}[/red]")
-            else:
-                table.add_row("Errors", str(results["errors"]))
-
-            console.print(table)
-
-            if results["errors"] > 0:
-                console.print("\n[red]Errors:[/red]")
-                for detail in results["details"]:
-                    if detail["status"] != "success":
-                        console.print(
-                            f"  • {detail['adapter_id']}: {detail.get('error', 'Unknown')}"
-                        )
-
-        except ImportError:
-            console.print("[red]✗ Oneiric adapter pusher not found[/red]")
-            console.print("  Install oneiric to use this feature")
-        except Exception as e:  # noqa: BLE001  # shell push-adapters UI fallback
-            console.print(f"[red]✗ Failed to push adapters: {e}[/red]")
 
     async def _show_storage_info(self) -> None:
         """Display storage statistics.
@@ -303,51 +183,12 @@ Type 'help()' for Python help or %help_shell for shell commands
 
         console.print(table)
 
-    async def _show_adapter_summary(self) -> None:
-        """Show adapter distribution summary.
-
-        Helper function available in shell namespace.
-        """
-        from rich.console import Console
-        from rich.table import Table
-
-        console = Console()
-
-        try:
-            adapters = self.registry.list_adapters()
-
-            # Group by category
-            from collections import Counter
-
-            categories = Counter(
-                a["metadata"].get("category", "unknown") for a in adapters
-            )
-
-            table = Table(title="Adapter Distribution Summary")
-            table.add_column("Category", style="cyan")
-            table.add_column("Count", style="green")
-            table.add_column("Percentage", style="yellow")
-
-            total = len(adapters)
-            for category, count in categories.most_common():
-                percentage = (count / total * 100) if total > 0 else 0
-                table.add_row(category.capitalize(), str(count), f"{percentage:.1f}%")
-
-            table.add_row("Total", str(total), "100%")
-
-            console.print(table)
-
-        except Exception as e:  # noqa: BLE001  # shell adapter-summary UI fallback
-            console.print(f"[red]✗ Failed to get adapter summary: {e}[/red]")
-
     async def _emit_session_start(self) -> None:
         """Emit session start event with Dhara-specific metadata."""
         try:
             metadata = {
                 "version": self._get_component_version(),
-                "adapters": self._get_adapters_info(),
                 "component_type": "curator",
-                "adapter_count": self.registry.count(),
                 "storage_path": str(self.app.storage.path)
                 if hasattr(self.app, "storage")
                 else None,
@@ -360,10 +201,6 @@ Type 'help()' for Python help or %help_shell for shell commands
 
             if self._session_id:
                 logger.info(f"Dhara shell session started: {self._session_id}")
-            else:
-                logger.debug(
-                    "Session tracking unavailable (Session-Buddy MCP not reachable)"
-                )
         except Exception as e:  # noqa: BLE001  # session-start tracking fallback
             logger.debug(f"Failed to emit session start: {e}")
 
@@ -375,11 +212,9 @@ Type 'help()' for Python help or %help_shell for shell commands
         try:
             await self.session_tracker.emit_session_end(
                 session_id=self._session_id,
-                metadata={
-                    "adapters_at_end": self.registry.count(),
-                },
+                metadata={},
             )
-            logger.info(f"Dhara shell session ended: {self._session_id}")
+            logger.info("Dhara shell session ended")
         except Exception as e:  # noqa: BLE001  # session-end tracking fallback
             logger.debug(f"Failed to emit session end: {e}")
         finally:
