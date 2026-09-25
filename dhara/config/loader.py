@@ -389,7 +389,7 @@ def save_config(
     if format == "yaml":
         # Wave 3 (W3): route YAML config writes through the canonical
         # ``serialization.encode`` action so format, key order, and ASCII
-        # behavior match every other Bodai component. JSON bypasses the
+        # behavior match the Oneiric shared substrate. JSON bypasses the
         # kit because ``SerializationAction`` does not honor payload-level
         # ``indent`` (verified at oneiric/actions/serialization.py:91) and
         # Dhara's existing config files use ``indent=2`` for readability.
