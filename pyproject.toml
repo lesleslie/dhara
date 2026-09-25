@@ -232,11 +232,9 @@ deps-file = "pyproject.toml"
 # only sees top-level imports, which misses IPython/rich/etc. that are
 # loaded lazily inside admin shell fallbacks.
 include-deferred = true
-# uvicorn is not directly imported — it is a transitive runtime for FastMCP.
 # (ipython and rich were previously excluded here too, but creosote
 # detects their imports in dhara/shell/__init__.py and dhara/__main__.py,
 # so the exclusions are redundant and have been removed.)
-exclude-deps = ["uvicorn"]
 
 [tool.refurb]
 enable_all = false
