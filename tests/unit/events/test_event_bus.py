@@ -210,4 +210,3 @@ async def test_event_payload_validation() -> None:
             tenant_id="t1",
             activated_by="",  # empty is invalid
         )
-

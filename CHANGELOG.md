@@ -5,6 +5,55 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.0] - 2026-09-25
+
+### Changed
+
+- Wave-2: AGENTS.md — strip Bodai framing, rewrite as standalone-library description
+- Wave-2: CLAUDE.md — strip MCP/bodai mentions across project-overview, structure, integration, wiring-discipline sections
+- Wave-2: cleanup residual Bodai/Vishnu refs found in final integrity grep
+
+### Fixed
+
+- Wave-2: conftest.py — remove MCP sys.modules stubs, file_connection fixture, --pg-url addoption
+- Wave-2: delete Bodai-schema-coupled tests (6 files; schemas deleted in Task 23)
+- Wave-2: delete dhara/audit/ (Bodai audit substrate; tests + migration already removed)
+- Wave-2: delete dhara/mcp/ + 2 missed MCP-coupled tests (Task 24 + cleanup)
+- Wave-2: delete MCP e2e integration tests (agents + query_local_traces)
+- Wave-2: delete remaining MCP-coupled tests (19 files caught by expanded grep)
+- Wave-2: delete tests/integration/audit/ (7 audit-substrate tests; substrate removed in Tasks 8-10)
+- Wave-2: delete tests/unit/audit/test_audit_extended.py + tests/unit/events/test_audit_log_subscriber.py
+- Wave-2: delete tests/unit/mcp/ and tests/integration/mcp/ (28 MCP test files)
+- Wave-2: delete top-level MCP-named + skills_signer tests (24 files)
+
+### Removed
+
+- Wave-2: __main__.py — drop MCP/AdapterRegistry try-except wrapper
+- Wave-2: cli.py — drop mcp_common.cli + dhara.mcp imports + MCP subcommands (combined Tasks 6+7)
+- Wave-2: delete dhara/skills_signer/ (Bodai ed25519 skill/agent signing)
+- Wave-2: events/subscribers — drop audit_log_subscriber (audit substrate gone)
+- Wave-2: lock/routes.py — drop fastmcp import (replace with Any type annotation)
+- Wave-2: lock/sql.py — drop cross-reference to deleted dhara.mcp.substrate_routes
+- Wave-2: migrations — delete 0004_audit_log.sql (Bodai D-AUDIT; engine dhara_audit_log from 0001 is untouched)
+- Wave-2: pyproject.toml — drop 're-implemented for the Bodai ecosystem' from description comment
+- Wave-2: pyproject.toml — drop [project.entry-points."bodai.apps"] (no consumer post-Wave-1)
+- Wave-2: pyproject.toml — drop creosote exclude-deps (uvicorn no longer a dep)
+- Wave-2: pyproject.toml — drop fastmcp, mcp-common, uvicorn (MCP/serving deps)
+- Wave-2: pyproject.toml — drop session-buddy>=0.19.9 from dev group
+- Wave-2: pyproject.toml — remove otel-traces dep group (akosha>=0.17.1, MCP query_local_traces backing)
+- Wave-2: schema — delete 6 Bodai schemas, rewrite __init__.py to keep channel_session_state + _base + _registry
+- Wave-2: shell/__init__.py — strip Session-Buddy references and drop MCP import
+
+### Documentation
+
+- Wave-2: CHANGELOG — document Wave 2 removals (MCP, skills_signer, audit substrate, schemas, deps)
+- Wave-2: config/loader.py — replace Bodai framing with neutral comment
+- Wave-2: core/config.py — strip Akosha/Mahavishnu HotStore docstrings
+
+### Internal
+
+- Pre-Wave-2 cleanup
+
 ## [Unreleased] - 2026-09-24
 
 ### Removed
@@ -44,6 +93,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Engine-side refactors** for dependency decoupling:
+
   - `dhara/lock/routes.py` — `FastMCP` type annotation replaced with `Any`
     (preserves engine D-LOCK route tests; `tests/unit/test_lock_routes.py`
     passes 42/42).
