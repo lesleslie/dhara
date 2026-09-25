@@ -57,8 +57,8 @@ requires-python = ">=3.14"
 license = {text = "BSD-3-CLAUSE"}
 # dhara is a fork of Durus (https://www.durus.org/), originally developed at
 # CNRI under the Zope Public License. dhara has been re-licensed under BSD-3
-# and re-implemented for the Bodai ecosystem; CNRI's contribution is recorded
-# in NOTICE for historical attribution only.
+# and re-implemented as a standalone persistent-object library; CNRI's
+# contribution is recorded in NOTICE for historical attribution only.
 authors = [
     {name = "Les Leslie", email = "les@wedgwoodwebworks.com"},
 ]
@@ -81,8 +81,7 @@ dependencies = [
     "fastmcp>=3.4.0,<5",
     "mcp-common>=0.26.0,<0.27.0",
     # Configuration and logging (ecosystem standard).
-    # >=0.20 required for `oneiric.cli.base.OneiricCLIBase` (was `BodaiCLIBase`
-    # in 0.19.x — hard cutover rename).
+    # >=0.20 required for `oneiric.cli.base.OneiricCLIBase`.
     "oneiric>=0.20",
     # ASGI server for FastMCP
     "uvicorn>=0.48.0",
