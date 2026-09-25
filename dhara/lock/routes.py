@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastmcp import FastMCP
-
 from dhara.lock.protocol import LockHandle
 from dhara.lock.sql import SQLBackend, SQLBackendLock
 
@@ -249,7 +247,7 @@ async def _list_locks(request: Any, store: SQLBackendLock) -> Any:
 
 
 def _bind(handler: Any, store: SQLBackendLock) -> Any:
-    """Bind ``store`` to a (request, store) async handler for FastMCP routing."""
+    """Bind ``store`` to a (request, store) async handler for routing."""
 
     async def wrapper(request: Any) -> Any:
         return await handler(request, store)
@@ -257,8 +255,13 @@ def _bind(handler: Any, store: SQLBackendLock) -> Any:
     return wrapper
 
 
-def register_lock_routes(server: FastMCP, sql_backend: SQLBackend) -> None:
-    """Register REST routes for D-LOCK on the FastMCP server."""
+def register_lock_routes(server: Any, sql_backend: SQLBackend) -> None:
+    """Register REST routes for D-LOCK on the supplied server.
+
+    The server argument is typed as ``Any``; callers must pass an object
+    that exposes a ``custom_route(path, *, methods)`` decorator which
+    registers the bound handler under the given path.
+    """
     store = SQLBackendLock(sql_backend)
     routes: list[tuple[str, list[str], Any]] = [
         ("/locks/{lock_key}", ["POST"], _post_lock),
