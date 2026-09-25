@@ -54,10 +54,9 @@ class OtelTracesConfig(BaseModel):
     """OTel/local-traces query configuration.
 
     Dhara does not currently persist OTel traces — this config exposes a
-    DuckDB file path that conforms to the Akosha/Mahavishnu HotStore
-    schema, so the ``query_local_traces`` MCP tool can return uniform
-    results across all 5 Bodai components. Returns ``[]`` until traces
-    are written by a component's OtelIngester pointing at this path.
+    DuckDB file path that an external OtelIngester can write to, allowing
+    Dhara to read traces back. Returns ``[]`` until traces are written
+    by an ingester pointing at this path.
 
     Install the optional ``otel-traces`` dep group (``uv sync
     --group otel-traces``) to enable reading; otherwise the tool
