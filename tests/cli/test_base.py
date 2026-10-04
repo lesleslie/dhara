@@ -276,11 +276,14 @@ def test_resolve_json_output_helper_inherited(dhara_app: DharaCLI) -> None:
 
 def test_legacy_commands_still_wired(runner: CliRunner, dhara_app: DharaCLI) -> None:
     """Adopting ``OneiricCLIBase`` must NOT regress the existing commands:
-    the ``mcp``, ``db``, ``adapters``, ``storage``, ``admin`` subcommands
-    surfaced by ``dhara --help`` are the plan's G4 outcome."""
+    the ``db``, ``storage``, ``admin`` subcommands surfaced by ``dhara --help``
+    plus the OneiricCLIBase-inherited ``version``/``doctor``/``health`` helpers
+    are the plan's G4 outcome. The ``mcp`` and ``adapters`` subcommands were
+    retired when the project moved to substrate-managed MCP startup; they
+    no longer appear in ``dhara --help``."""
     result = runner.invoke(dhara_app, ["--help"])
     assert result.exit_code == ExitCode.SUCCESS
-    for cmd in ("mcp", "db", "adapters", "storage", "admin", "version", "doctor", "health"):
+    for cmd in ("db", "storage", "admin", "version", "doctor", "health"):
         assert cmd in result.output, (
             f"dhara --help missing {cmd!r}: {result.output!r}"
         )
