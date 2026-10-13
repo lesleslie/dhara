@@ -7,11 +7,6 @@ migrated from the legacy test/ directory.
 
 # NOTE on duckdb stubbing: there is NO duckdb stub here on purpose.
 #
-# The unit test that needs a mocked duckdb (because its production
-# code transitively imports it and the duckdb C extension breaks under
-# coverage tracing) carries its own local ``sys.modules.setdefault("duckdb",
-# MagicMock())`` at the top of the file: tests/unit/test_lock_routes.py.
-#
 # Stubbing duckdb globally here would silently break any test that uses
 # real duckdb as its backing store. Real duckdb must reach those tests intact.
 

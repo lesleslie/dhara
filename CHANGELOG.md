@@ -5,6 +5,28 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.0] - 2026-10-13
+
+### Removed
+
+- `dhara.lock` module — substrate-compat shim rot cleanup. Removed the entire
+  `dhara/dhara/lock/` package (7 modules: `__init__.py`, `events.py`,
+  `in_memory.py`, `postgres.py`, `protocol.py`, `routes.py`, `sql.py`) which
+  contained 1 `DharaLock` Protocol and 3 implementations (`InMemoryDharaLock`,
+  `SQLBackendLock`, `PostgresBackendLock`). Removed the corresponding test files
+  (`tests/unit/test_lock_routes.py`, `tests/unit/test_postgres_lock.py`, and the
+  full `tests/unit/lock/` subdirectory, 8 files total). Cleaned up the stale
+  `--ignore=tests/unit/lock/test_postgres.py` pytest directive and the now-
+  irrelevant `dhara.lock.*` docstring/comment references in `pyproject.toml`
+  and `tests/conftest.py`. The lock primitive has been re-homed to the
+  substrate-agnostic `mahavishnu.core._lock_sentinel.Lock` per the MCP
+  retirement plan's Phase 8 Task 5; verified zero active consumers in
+  `mahavishnu/`, `akosha/`, `session-buddy/`, `crackerjack/`, `mcp-common/`,
+  `oneiric/`, and the post-migration `medium-mcp/`. External users should not
+  be affected — only Bodai ecosystem scripts imported `dhara.lock`. If your
+  application imports `dhara.lock` directly, pin `dhara<=0.21.0` or migrate to
+  `mahavishnu.core._lock_sentinel.Lock`.
+
 ## [0.21.0] - 2026-09-25
 
 ### Changed

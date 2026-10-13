@@ -28,10 +28,8 @@ cloud = [
     "boto3>=1.43.20",
     "google-cloud-storage>=3.10.1",
 ]
-# Optional SQL lock backend (dhara.lock.sql). The InMemoryDharaLock impl
-# in dhara.lock.in_memory works without this group; SQLBackendLock
-# (which `dhara.lock.__init__` imports eagerly for the registry lookup)
-# requires it. Install with: uv sync --group duckdb.
+# Optional DuckDB dependency for legacy code paths that import duckdb
+# transitively. Install with: uv sync --group duckdb.
 duckdb = [
     "duckdb>=1.0.0",
 ]
@@ -154,12 +152,10 @@ addopts = [
     "--tb=short",
     "--cov-fail-under=80.48780487804878",
     # Duplicate basenames across the tree (e.g.
-    # ``tests/unit/lock/test_postgres.py`` vs
-    # ``tests/storage/test_postgres.py``) cause pytest to abort
+    # ``tests/unit/schema/test_migration.py``) cause pytest to abort
     # collection with ``import file mismatch``. The canonical copy is
     # in ``tests/storage/`` / ``tests/integration/audit/``; the stale
     # skeletons are excluded here so the rest of the suite collects.
-    "--ignore=tests/unit/lock/test_postgres.py",
     "--ignore=tests/unit/schema/test_migration.py",
 ]
 markers = [
