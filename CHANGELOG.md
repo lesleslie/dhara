@@ -5,6 +5,17 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.1] - 2026-10-14
+
+### Changed
+
+- dhara: Pre-existing test fixes
+
+### Internal
+
+- dhara: Delete lock/ module — substrate-compat shim rot (1 Protocol + 3 implementations, 0 consumers)
+- Remove dhara 1:1 wrapper slash commands
+
 ## [0.22.0] - 2026-10-13
 
 ### Removed
@@ -63,7 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Wave-2: pyproject.toml — drop fastmcp, mcp-common, uvicorn (MCP/serving deps)
 - Wave-2: pyproject.toml — drop session-buddy>=0.19.9 from dev group
 - Wave-2: pyproject.toml — remove otel-traces dep group (akosha>=0.17.1, MCP query_local_traces backing)
-- Wave-2: schema — delete 6 Bodai schemas, rewrite __init__.py to keep channel_session_state + _base + _registry
+- Wave-2: schema — delete 6 Bodai schemas, rewrite __init__.py to keep channel_session_state + \_base + \_registry
 - Wave-2: shell/__init__.py — strip Session-Buddy references and drop MCP import
 
 ### Documentation
@@ -543,7 +554,7 @@ migration 0001) is unaffected.
 - Add DharaLock Protocol, LockHandle, InMemoryDharaLock
 - Add migration 0003 for substrate_locks table
 - Add migration 0003 substrate_locks table + test
-- Add SQLBackendLock.try_acquire with atomic UPSERT
+- ~~Add SQLBackendLock.try_acquire with atomic UPSERT~~ (claim retracted in v0.22.0 — dhara.lock module deletion, substrate-compat shim rot; see ### Removed for v0.14.0-2x history)
 - Emit audit:lock.{acquired,released,heartbeat,lost} events
 - lock: Add get() and list_keys() for reapers/dashboards/precommit
 - lock: Add release/try_release/heartbeat with is_permanent guard
