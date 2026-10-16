@@ -158,13 +158,9 @@ ASSIGNMENTS: dict[str, dict[str, str]] = {
         "superseded_by": "null",
         "blocks_on": "[]",
     },
-    "docs/schemas/topic-vocabulary-v1.md": {
-        "status": "active",
-        "role": "canonical",
-        "topic": "lifecycle",
-        "superseded_by": "null",
-        "blocks_on": "[]",
-    },
+    # topic-vocabulary-v1.md was removed when the canonical moved to
+    # `oneiric.schemas.topic_vocabulary_v1` (oneiric@fed6a1b); no per-repo
+    # frontmatter entry for it here.
 }
 
 
