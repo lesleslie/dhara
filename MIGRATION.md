@@ -163,7 +163,7 @@ deleted alongside their substrate.
 
 ## Section 4: Dependency changes
 
-The following runtime / dev dependencies were dropped from `pyproject
+The following runtime / dev dependencies were dropped from \`pyproject
 when their consumers were removed:
 
 | Dropped dep | Reason | Last version |

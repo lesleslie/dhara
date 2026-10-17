@@ -5,6 +5,23 @@ All notable changes to dhara will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.21.2] - 2026-10-17
+
+### Fixed
+
+- Restore docs/schemas/topic-vocabulary-v1.md from oneiric canonical
+
+### Documentation
+
+- Add MIGRATION.md — substrate-decommissioning guide for downstream consumers
+
+### Internal
+
+- Delete 4 stale .backup files from deleted dhara/mcp/ directory
+- dhara: Delete 5 more stale .backup files across the repo
+- dhara: Drop dead topic-vocabulary dict entry
+- dhara: Drop redundant topic-vocabulary-v1.md
+
 ## [0.21.1] - 2026-10-14
 
 ### Changed
